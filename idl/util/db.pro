@@ -3,55 +3,42 @@
 ; $Id$
 ; PURPOSE:  Delete Breakpoints
 ;
-;
 ; AUTHOR: Me
-;
-;
 ; CATEGORY: Debugging 
 ;
+; CALLING SEQUENCE:  
 ;
+;  Db, list_of_breakpoints 
 ;
-; CALLING SEQUENCE:  Db, list_of_breakpoints
+;     -- or --
 ;
-;
+;  db, a,b,c,d, . . . , h
 ; 
 ; INPUTS:  
 ;
 ;  DB : a list of breakpoints
+;  Or, a comma separated list of breakpoints. 
 ;
-;
+;  The item passed is the indices of the breakpoint as returned by help,/breakpoint
 ;
 ; OPTIONAL INPUTS:  
-;
-;
 ;	
 ; KEYWORD PARAMETERS:  
 ;
+;   all: boolean, delete all 
+;   show: boolean, do a help,/breakpoints
 ;
-;
-; OUTPUTS:  
-;
-;
+; OUTPUTS:  None
 ;
 ; OPTIONAL OUTPUTS:  
 ;
-;
-;
 ; COMMON BLOCKS:  
 ;
-;
-;
-; SIDE EFFECTS:  
-;
-;
+; SIDE EFFECTS: The breakpoints are deleted 
 ;
 ; RESTRICTIONS:  
 ;
-;
-;
-; PROCEDURE:  
-;
-;
+; PROCEDURE:  Call help,/breakpoints. Use the output.
 ;
 ; EXAMPLE:  
 ;
@@ -59,6 +46,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1999/04/09 00:00:41  vapuser
+; Added 'all' keyword
+;
 ; Revision 1.1  1998/10/22 21:34:50  vapuser
 ; Initial revision
 ;
@@ -67,7 +57,7 @@
 ;Copyright (c) 1998, William Daffer
 ;-
 
-PRO DB, bp, bp1, bp2, bp3, bp4, bp5, bp6, bp7, all=all
+PRO DB, bp, bp1, bp2, bp3, bp4, bp5, bp6, bp7, all=all,show=show
 
   Rcsid = "$Id$"
 
@@ -77,8 +67,15 @@ PRO DB, bp, bp1, bp2, bp3, bp4, bp5, bp6, bp7, all=all
     return
   ENDIF 
 
+  IF keyword_set(show) THEN help,/breakpoints
+
   IF keyword_set(all) THEN BEGIN 
     help,/breakpoints, output=output
+    IF stregex(output[0],'^no breakpoints',/boolean,/fold_case) THEN BEGIN 
+      print,'No Breakpoints'
+      return
+    ENDIF 
+    
       ; 3 'lines' of text before actual breakpoints are listed
     nbp = n_elements(output)-3 
     bp = intarr(nbp)
@@ -89,6 +86,7 @@ PRO DB, bp, bp1, bp2, bp3, bp4, bp5, bp6, bp7, all=all
       bp[i] = fix(tmp[0])
     ENDFOR 
   ENDIF ELSE BEGIN 
+    IF n_params() EQ 0 THEN return
     IF VarType( bp ) eq 'STRING' THEN bp = ExpandColList(bp)
 
     IF n_elements(bp1) NE 0 THEN BEGIN 
@@ -122,5 +120,5 @@ PRO DB, bp, bp1, bp2, bp3, bp4, bp5, bp6, bp7, all=all
 
   ENDELSE 
 
-  FOR i=0,n_elements(bp)-1 DO breakpoint,/clear,bp(i)
+  FOR i=0,n_elements(bp)-1 DO breakpoint,/clear,bp[i]
 END
