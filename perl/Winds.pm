@@ -42,6 +42,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.1  2002/08/08 00:15:14  vapdev
+# Initial Revision
+#
 #
 #
 package Winds;
@@ -212,7 +215,7 @@ sub FindClosestInTimeAndDistance{
     #
     # Pretty slick, eh?
 
-    my ($FILE, $ROWTIME, $LOCATION, $DISTANCE, $INSWATH, $v, $path, $suffix);
+    my ($FILE, $ROWTIME, $LOCATION, $DISTANCE, $INSWATH, $path, $suffix);
     if (!$v) {
       if (!$first){
 	$hash{$FILE}{ROWTIME}  = $ROWTIME;
