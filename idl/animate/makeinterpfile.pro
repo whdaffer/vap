@@ -76,7 +76,7 @@
 ;              default = [50., 20., 10., 5.];
 ;
 ;   Min_Nvect - (I) scalar: Don't make interp file if there are less 
-;               this number of vectors. (default=-1, i.e. make it regardless)
+;               this number of vectors. (default=0, i.e. make it regardless)
 ;   Decimate - (I) scalar: take every nth vector, i.e. 2=> take
 ;                  every other, 3=> take every 3rd. (Defaults to 1,
 ;                  meaning take evey vector)
@@ -171,6 +171,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/10/17 00:24:05  vapuser
+; Added min_Nvect to call and requisite code to
+; use this quantity.
+;
 ; Revision 1.3  1998/10/15 02:15:48  daffer
 ; Added Ofile keyword
 ;
@@ -273,9 +277,9 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     return,0
   ENDIF 
 
-  minnvect = 1.e30
+  minnvect = 0
   IF n_elements(min_nvect) ne 0 THEN BEGIN 
-    IF min_nvect NE -1 THEN minnvect = min_nvect
+    IF min_nvect NE 0 THEN minnvect = min_nvect
   ENDIF 
 
 
@@ -339,7 +343,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
       nn = n_elements(tmp)
       FOR i=0,nn-1 DO Ofile = Ofile + tmp[i]
       Ofile = Ofile + '.hdf'
-    ENDELSE 
+    ENDIF 
 
     Ofile = Ofile[0]
       ; Let's write it out.
