@@ -10,6 +10,10 @@
 #   (i.e. what has become known as 'vaptime')
 # 
 # $Log$
+# Revision 1.6  1999/02/27 00:44:43  vapuser
+# Added code to handle the destination WWW dir
+# being on a different (possibly NFS mounted) directory.
+#
 # Revision 1.5  1998/11/25 22:38:27  vapuser
 # Changed pertinent 'renames' to 'copy's
 #
@@ -87,9 +91,9 @@ if ( $test_roi[0]) {
   open( IDL_TMP_FILE,">$idl_tmp_file") || die "Couldn't open $idl_tmp_file\n";
     # write code to tmp file
   if ($date_time) {
-    $exe_str = "auto_movie,\'$date_time\',roi=\'$roi\',/nodate";
+    $exe_str = "auto_movie,\'$date_time\',roi=\'$roi\'";
   } else {
-    $exe_str = "auto_movie,\'$NowAsVapTime\',roi=\'$roi\',/nodate";
+    $exe_str = "auto_movie,\'$NowAsVapTime\',roi=\'$roi\'";
   }
 
   # Add the PID
