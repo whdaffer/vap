@@ -41,6 +41,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.5  1999/03/03 16:55:28  vapuser
+; Set initial status =0
+;
 ; Revision 1.4  1998/12/01 18:21:44  vapuser
 ; Put in some more error checking and tacked a righteous header
 ; on the file.
@@ -67,6 +70,7 @@ PRO read_pcgoes, file, limits, data, image, year, jday, time, $
 
 status =  0 ; dress for failure
 on_error,2 
+on_ioerror, ioerror_label
 IF n_params() LT 1 THEN BEGIN 
   Usage,'Read_PcGoes,file [,limits, data, status=status, hdr=hdr ]'
   return
@@ -119,16 +123,18 @@ rcsid = "$Id$"
 test1 = 0l &  test2=0l
 openr, rlun, file, /get,error=err ; non /f77 open
 IF err NE 0 THEN BEGIN
-  message, !err_string, /cont
-  return
+  message, !err_string, /info
+  close,/all
+  GOTO, ioerror_label
 ENDIF 
 readu,rlun,test1, test2 ; read first 'nbytes' number
 close,rlun   ; close
 
 openr,rlun, file, /f77, error= err ; now open as f77 file
 IF err NE 0 THEN BEGIN
-  message, !err_string, /cont
-  return
+  message, !err_string, /info
+  close,/all
+  GOTO, ioerror_label
 ENDIF 
 
 area_file =  '' ; define area_file
@@ -148,13 +154,6 @@ CASE test1 OF
     lonsize =  hdr.resolution[0]
     latsize = hdr.resolution[1]
 
-      ; I always try to arrange lon/lat arrays as 
-      ; [lonmin,latmin,lonmax,latmax ], i.e. (x,y) of lower left
-      ; corner, (x,y) of upper right. But Goes_overlay expects 
-      ; [latmin,lonmin,latmax,lonmax] and the lon/lat bounds 
-      ; are returned in this order by all other versions of the GOES
-      ; file.
-
     limits = hdr.limits
     version =  3
   END 
@@ -170,7 +169,9 @@ CASE test1 OF
         readu,rlun,year, sat,nlat, nlon, jday, time, limits, lonsize, latsize
       END 
       ELSE : BEGIN
-        message,' Unkown version ' + strtrim( test2,2 )
+        message,' Unkown version ' + strtrim( test2,2 ),/info
+        status = 0
+        GOTO, ioerror_label
       END
     ENDCASE
   END 
@@ -188,6 +189,7 @@ CASE test1 OF
 ENDCASE 
 IF keyword_set( just_header ) THEN BEGIN 
   status =  1
+  close,/all
   return
 ENDIF 
 data =  intarr( nlon, nlat )
@@ -227,6 +229,14 @@ IF save THEN BEGIN
     date_str + dlm + lim_str +'.save'
   save,image,xs,ys,f=filename
 ENDIF 
+
+GOTO, endlabel
+ioerror_label: 
+  status = 0
+  close, /all
+endlabel:
+
+return
 END
 
 
