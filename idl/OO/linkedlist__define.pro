@@ -56,6 +56,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1998/10/28 23:29:41  vapuser
+; Add WhichNode method
+;
 ; Revision 1.4  1998/10/23 22:23:59  vapuser
 ; Can't remember
 ;
@@ -263,18 +266,18 @@ FUNCTION LinkedList::RemoveCurrent
   IF ptr_valid(self.current) THEN BEGIN 
     IF ptr_valid( (*self.current).prev ) THEN BEGIN 
       prev = (*self.current).prev 
-      *(prev).next =  (*self.current).next
+      (*prev).next =  (*self.current).next
     ENDIF 
     IF ptr_valid( (*self.current).next ) THEN BEGIN 
       next = (*self.current).next
-      *(next).prev =  (*self.current).prev
+      (*next).prev =  (*self.current).prev
     ENDIF
     head = self->GetHead()
     IF current EQ head THEN $
-      head =  *(head).next
+      head =  (*head).next
     tail = self->GetTail()
     IF current EQ tail THEN $
-      tail =  *(tail).prev
+      tail =  (*tail).prev
   ENDIF 
   self.count = self.count-1
   return,current
