@@ -18,6 +18,10 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.3  1998/10/16 21:32:02  vapuser
+# removed rcsid and some single quotes.
+# changed 'require' to 'use'
+#
 # Revision 1.2  1998/10/02 20:10:15  vapuser
 # added '$' in Id
 #
@@ -303,6 +307,7 @@ use Getopt::Long;
     die "Can't chdir to overlay dir $vap_perl::VAP_OVERLAY\n";
 
   $idl_tmp_file="idl_called_by_perl.pro";
+  print "Writing IDL tmp file $idl_tmp_file\n";
   open(IDLFILE,">$idl_tmp_file") || 
     die "Couldn't open $idl_tmp_file\n";
   
@@ -310,23 +315,25 @@ use Getopt::Long;
   $exe_str = "cloud_overlay,\'$gridded_file\',\'$idl_time_string\'";
   $exe_str .= ",wpath = \'$vap_perl::VAP_WINDS\'";
   $exe_str .= ",pid=$$";
+  $exe_str .= ",CRDecimate=[".join(",",@$crdecimate)."]";
+  $exe_str .= ",ExcludeCols=\'$excludecols\'";
 
   print IDLFILE "$exe_str\n";
   print IDLFILE "exit\n";
   close IDLFILE;
+
+  print "wrote following to idl_tmp_file\n  $exe_str\n";
 
   $exe_str=$vap_perl::IDLEXE." ".$idl_tmp_file;
   $r=system( $exe_str )/256;
   if ($r != 0) {
     die " Error in IDL\n";
   }
-  unlink "$idl_tmp_file" || die "Couldn't unlink $idl_tmp_file\n";
 
   open ( LOCK, "<$lock_file") || die "Couldn't open $lock_file after IDL \n";
   @idlout = <LOCK>;
   close (LOCK);
 
-  unlink($lock_file) || print "Couldn't delete $lock_file \n";
  
     # see if there are any lines in the idl output file with the work ERROR in them.
     # exit if there are.
@@ -338,6 +345,8 @@ use Getopt::Long;
     }
   }
 
+  unlink $idl_tmp_file || die "Couldn't unlink $idl_tmp_file\n";
+  unlink $lock_file  || print "Couldn't delete $lock_file \n";
 
     # goes_overlay gives the output gif file a name based on the input grid file name
     # get that name and rename the file to the standard 'pac_overlay_$type.gif'
