@@ -40,6 +40,7 @@
 ;                 interp_path :'' ,$;        ; Where to put the
 ;                                            ; interpolated file
 ;                 anim_path   : '', $        ; path to output frames and movie
+;                 anim_par    : intarr(3)    ; [xsize, ysize, nframes]
 ;                 min_nvect   : 0l }         ; minimum number of WVC needed to do
 ;                                            ; animation
 ;
@@ -51,6 +52,7 @@
 ;           wpath       : "$VAP_WINDS"            , $
 ;           interp_path : "$VAP_ANIM/nepac"       , $
 ;           anim_path   : "$VAP_ANIM/nepac/daily" , $
+;           anim_par    : [320,240,60]            , $
 ;           min_nvect   : 4000                    }
 ; 
 ;
@@ -81,6 +83,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/17 00:27:29  vapuser
+; By addding extensive comments to the movie defs file, I
+; introduced a bug into this one, which this change fixes.
+;
 ; Revision 1.1  1998/10/05 20:09:41  vapuser
 ; Initial revision
 ;
