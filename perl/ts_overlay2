@@ -82,6 +82,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.1  2001/11/30 00:15:55  vapuser
+# Initial revision
+#
 #
 #
 #
@@ -235,14 +238,15 @@ foreach $k (keys %hash) {
     
   if ($region eq 'GMS5') {
     ($gms5datetime, $gms5mindiff)= Gms5::GetClosest( $modidltime );
-    if (abs($gms5mindiff) < $wind_delta*3600) {
-      $test=Gms5::GetAll($gms5datetime);
-      $gms5datetime = undef if !$test;
-      
-    } else {
-      $gms5datetime = undef;
-    }
-    
+    if ($gms5mindiff) {
+      if (abs($gms5mindiff) < $wind_delta*3600) {
+	$test=Gms5::GetAll($gms5datetime);
+	$gms5datetime = undef if !$test;
+
+      } else {
+	$gms5datetime = undef;
+      }
+    }    
     die "ERROR: Both GMS cloud data and Qscat data are missing!\n" 
 	if (!($gms5datetime || @windfiles) );
 
