@@ -105,6 +105,9 @@
 ;       1998/11/20: Stole from Dave, made more 24bit compliant.
 ;
 ; $Log$
+; Revision 1.1  1998/11/20 20:01:04  vapuser
+; Initial revision
+;
 ;
 ;-
 
@@ -241,7 +244,7 @@ IF postScriptDevice THEN BEGIN
    
 ENDIF ELSE BEGIN
 
-   bar = bottom>CONGRID(bar, CEIL(xsize), CEIL(ysize), /INTERP)<(bottom+ncolors-1)
+   bar = bottom>CONGRID(bar, CEIL(xsize), CEIL(ysize) )<(bottom+ncolors-1)
    IF true THEN BEGIN    
      IF n_elements(table) ne 0 THEN BEGIN 
        r = reform(table[0,*])
