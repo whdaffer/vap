@@ -37,18 +37,22 @@
 ; KEYWORD PARAMETERS:  
 ;
 ;
-;                       delta      : Subtract this time from the end
-;                                    time
-;                       start_time : time in same format as end_time 
-;                       path       : the standard unix style path
-;                       filter     : string, a filter to use in 'findfile'
-
+;     delta      : Subtract this time from the end
+;                  time
+;     start_time : time in same format as end_time 
+;     path       : the standard unix style path
+;     filter     : string, a filter to use in 'findfile'
+;     nscat      : flag, if set, expect nscat filenaming convention.
+;                  (yymmdd.Shhmm.Ehhmm instead of yyyymmdd.Shh...)
 ;
-; OUTPUTS:  
+; OUTPUTS:  Vector of filennames.
+;
 ;
 ;
 ;
 ; OPTIONAL OUTPUTS:  
+;
+;     Count - keyword telling howmany files are output
 ;
 ;
 ;
@@ -96,6 +100,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/02 23:20:40  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -103,13 +110,16 @@
 ;-
 
 FUNCTION getwindfiles, end_time, $
-                       delta=delta, $
-                       start_time=start_time, $
-                       path=path, $
-                       filter=filter
+                       delta      = delta, $
+                       start_time = start_time, $
+                       path       = path, $
+                       filter     = filter,$
+                       count      = count,$
+                       nscat      = nscat
 
   rcsid = "$Id$";
 
+  nscat = keyword_set(nscat)
   catch, error
   IF error NE 0 THEN BEGIN 
     catch,/cancel
@@ -159,7 +169,7 @@ FUNCTION getwindfiles, end_time, $
   ENDIF 
    
   IF n_elements(filter) EQ 0 THEN filter =  'Q*'
-
+  IF nscat THEN filter = 'N*'
     ;-----------------------------------------
     ;
     ; Begin processing
@@ -172,7 +182,7 @@ FUNCTION getwindfiles, end_time, $
 
   IF cnt NE 0 THEN BEGIN 
       ; Output is {name:'', start_time:{idldt}, end_time:{idldt} }
-    windfiletimes =  wfnames2dt( windfiles )
+    windfiletimes =  wfnames2dt( windfiles, nscat=nscat )
 
     IF VarType(Windfiletimes) EQ 'STRUCTURE' THEN BEGIN 
 
@@ -184,10 +194,13 @@ FUNCTION getwindfiles, end_time, $
              dtcompare( end_time_dt, file_end_times, 'LE') 
 
       idx=where(idx,nx)
-      IF nx NE 0 THEN $
-        retarray = files(idx) $
-      ELSE $
+      IF nx NE 0 THEN BEGIN 
+        retarray = files(idx) 
+        count = nx
+      ENDIF ELSE BEGIN 
         retarray = ''
+        count = 0
+      ENDELSE 
     ENDIF ELSE $
      Message,"Bad return from wfnames2dt",/cont
 
