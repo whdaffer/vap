@@ -3,8 +3,7 @@
 #
 # $Id$
 #
-# Some routines out of vap_perl.pm which are useful enough to live in
-# their own place.  
+# The replacement of vap_perl.pm
 #
 #
 # Note on unfortunate historical accident.
@@ -33,6 +32,10 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.5  2002/07/01 20:24:20  vapdev
+# VapUtil: Moved stuff from vap_perl/VapWWW to VapUtil
+# ts_overlay: check $gms4mindiff for nullness
+#
 # Revision 1.4  2002/05/07 20:40:36  vapdev
 # Set -w and `use strict' and then fixing bugs. Start trying to standardize
 # the methods used.
@@ -63,6 +66,48 @@ use strict;
 use Time::Local;
 use Carp;
 
+
+BEGIN {
+    # Get ENV variables
+
+  $VapUtil::VAP_LIB=$ENV{'VAP_LIBRARY'} || 
+    croak "ENV VAP_LIBRARY is not defined!\n";
+
+  # Get ENV variables
+  my $ARCHIVETOP=$ENV{'VAP_GOES_TOP'}  || 
+    croak "ENV var VAP_GOES_TOP undefined!\n";
+  my $GRIDDINGTOP=$ENV{'VAP_GOES_GRIDDED_TOPDIR'} || 
+    croak "ENV var VAP_GOES_GRIDDED_TOPDIR undefined\n";
+
+
+    # MOVIE DEFS
+  $VapUtil::auto_movie_defs_file=$VapUtil::VAP_LIB."/auto_movie_defs.dat";
+
+    # Get the Overlay Defaults
+  $VapUtil::overlay_defs_file=$VapUtil::VAP_LIB."/overlay_defs";
+  require $VapUtil::overlay_defs_file;
+
+    # Get generic VAP processing Defaults
+  $VapUtil::vap_defs_file=$VapUtil::VAP_LIB."/vap_defs";
+  require $VapUtil::vap_defs_file;
+
+    # Check for interactivity.
+  $VapUtil::vap_is_batch = !defined($ENV{'TERM'});
+
+  my %sat_num= ( '10','8',
+		 '8','9',  
+	       );
+
+  my %sensor_dir = (
+		    '1','vis',
+		    '2','ir2',
+		    '3','ir3',
+		    '4','ir4',
+		    '5','ir5'
+		   );
+
+}
+
 sub leapyear{
 
   my $year=shift;
@@ -75,7 +120,7 @@ sub leapyear{
 
 sub doy2mday_mon{
   my $doy=shift;
-  die "DOY out of range: $doy\n" if $doy > 366;
+  croak "DOY out of range: $doy\n" if $doy > 366;
   my $year=shift;
   # cummulative number of days in the year for the end of each month
   my @doys = (31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365);
@@ -274,8 +319,8 @@ sub DeltaTime{
     # delta time is in hours
     # if you want hours and minutes, make hours a 'float.'
 
-  my $basetime = shift @_ || die "Basetime (arg 1) undefined\n";
-  my $delta = shift @_ || die "delta (arg2) undefined\n";
+  my $basetime = shift @_ || croak "Basetime (arg 1) undefined\n";
+  my $delta = shift @_ || croak "delta (arg2) undefined\n";
 
   my $base_time = vaptime2systime($basetime) + $delta*3600.;
   my $new_time = systime2vaptime(int($base_time));
@@ -322,8 +367,9 @@ sub auto_movie_defs {
   
 
   # open the file 
-  open (DEFS,"<$auto_movie_defs_file") || die "Can't open $auto_movie_defs_file\n";
-  @defs =<DEFS>;
+  open (DEFS,"<$VapUtil::auto_movie_defs_file") || 
+    croak "Can't open $VapUtil::auto_movie_defs_file\n";
+  my @defs =<DEFS>;
   close DEFS;
 
   # loop over records in the file taking the 'value' of the 'desig'
@@ -332,12 +378,12 @@ sub auto_movie_defs {
   # like { F1:X1, F2:X2, F3:X3 ... }.  So we split on the ',' then
   # find 'desig' and split on the ":"
 
-
-  foreach $r ( @defs) {
+  my @desigs = ();
+  foreach my $r ( @defs) {
     next if $r =~ /^;.*$/; # next if IDL comment line
     next if $r =~ /^\s*$/; # next if empty line
-    @tmp = split(/,/, $r);
-    $tmp = $tmp[0];
+    my @tmp = split(/,/, $r);
+    my $tmp = $tmp[0];
     @tmp = split(/:/, $tmp);
     push @desigs, $tmp[1];
   }
@@ -345,36 +391,34 @@ sub auto_movie_defs {
 }
 
 
-sub date_string {
-  @months=("Jan","Feb","Mar","Apr","May","Jun","Jul",
-	 "Aug","Sep","Oct","Nov","Dec");
+# sub date_string {
+#   my @months=("Jan","Feb","Mar","Apr","May","Jun","Jul",
+# 	 "Aug","Sep","Oct","Nov","Dec");
 
-  $file=shift;
-  ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,
-	$size,$atime,$mtime,$ctime,$junk)=stat($file);
-  ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime($ctime); 
-  $yday += 1;
-  $mon+=1;
-  if ($hour < 10) {
-    $hour = "0".$hour;
-  }
-  
-  @tmp=split("/",$file);
-  $file=$tmp[$#tmp];
-  @tmp=split(/\./,$file);
-  $basename=shift;
-  if ($basename=="") {
-    $basename=$tmp[0];
-  }
-  $more_basename=shift;
-  
-  $ext=$tmp[1];
-  $file = $basename."_".$mon.$mday.$year.$hour.$more_basename;
-  if ($ext){
-    $file .= ".".$ext;
-  }
-  $file;
-}
+#   my $file=shift;
+#   my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,
+# 	$size,$atime,$mtime,$ctime,$junk)=stat($file);
+#   my ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime($ctime); 
+#   $yday += 1;
+#   $mon+=1;
+#   if ($hour < 10) {
+#     $hour = "0".$hour;
+#   }
+#   my @tmp=split("/",$file);
+#   $file=$tmp[$#tmp];
+#   @tmp=split(/\./,$file);
+#   $basename=shift;
+#   if ($basename=="") {
+#     $basename=$tmp[0];
+#   }
+#   $more_basename=shift;
+#   $ext=$tmp[1];
+#   $file = $basename."_".$mon.$mday.$year.$hour.$more_basename;
+#   if ($ext){
+#     $file .= ".".$ext;
+#   }
+#   $file;
+# }
 
 
 sub date_index{ 
@@ -402,7 +446,7 @@ sub date_index{
   print "Current umask = $umask\n";
   print "Setting umask to 023 \n";
 
-  umask( 023 ) || die "Couldn't reset umask to 023\n";
+  umask( 023 ) || croak "Couldn't reset umask to 023\n";
   $umask = umask();
   print "New umask = $umask\n";
   my $tmp = oct("023");
@@ -412,8 +456,9 @@ sub date_index{
 	   "Aug","Sep","Oct","Nov","Dec");
   my @days=("Sun","Mon","Tue","Wed","Thu","Fri","Sat");
 
-  my $VAPIM = $VapUtil::VAP_WWW_TOP."/images";
-  $DOCROOT=$VapUtil::VAP_WWW_TOP;
+  my $DOCROOT=$ENV{VAP_WWW_TOP};
+  my $VAPIM = "$DOCROOT/images";
+
   
   my @wwwfiles = ('daily_nepac.mov',
 	       'daily_nwpac.mov',
@@ -470,7 +515,7 @@ sub date_index{
   
   
   my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
-      $atime,$mtime,$ctime,$junk);
+      $atime,$mtime,$ctime,$junk, $day, $month);
 
   while( my ($key,$value) = each %wwwhash ) {
 
@@ -490,7 +535,7 @@ sub date_index{
       
       $file_size{$key}= $tmp = sprintf( "%d Kb", int( $size*1.e-3+0.5) );
       # convert  mod time
-      ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime($mtime); 
+      my ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime($mtime); 
       $day=$days[$wday];
       $month=$months[$mon];
       $year += 1900;
@@ -508,28 +553,28 @@ sub date_index{
   #
   # Get the current time for the 'Last modified' string
   #  
-  ($sec,$min,$hour,$mday,$mon,
+  my ($sec,$min,$hour,$mday,$mon,
    $year,$wday,$yday,$isdst) = localtime(time);
   
   $day=$days[$wday];
   $month=$months[$mon];
-  $mod_date_str = sprintf( "%03s %3s %02d %02d:%02d:%02d %04d PST",
+  my $mod_date_str = sprintf( "%03s %3s %02d %02d:%02d:%02d %04d PST",
 			  $day, $month, $mday, $hour,$min,$sec, $year);
 
   open(IN ,"index.html.blank");
-  @in=<IN>;
+  my @in=<IN>;
   close(IN);
   do { print "Couldn't rename index.html\n";
        undef;} unless rename ("index.html", "index.html.old");
   do {
     print "Can't open index.html\n";
     undef; } unless open (OUT, ">index.html");
-  $search_string1 = "(hhmts|";
+  my $search_string1 = "(hhmts|";
   $search_string1 .= join("|",@wwwnames);
   $search_string1 .= ")";
 
-  for ($i=0;$i<=$#in;$i++) {
-    $rec=$in[$i];
+  for (my $i=0;$i<=$#in;$i++) {
+    my $rec=$in[$i];
     if ($rec !~ /^\s*<!--\s*<!--/) {
 #      if ($rec=~/(anim|size|goes104|goes84|gms51|hhmts){       
 #      if ($rec =~ /(anim|size|goes104nepac1|goes84nwatl1|hhmts)/) {
@@ -541,12 +586,12 @@ sub date_index{
 	  print OUT "Last Modified: $mod_date_str\n";
 	  $i += 2;
 	} else {
-	  foreach $k (@wwwnames) {
+	  foreach my $k (@wwwnames) {
 	    if ( $rec =~ /$k/ ) {
 #	    print "key = $k\n";
-	      $search_string2=$k."_size";
+	      my $search_string2=$k."_size";
 	      if ($rec =~ /.*$search_string2.*/ ) {
-		$rec =~ s/$search_string/$file_size{$k}/;
+		$rec =~ s/$search_string2/$file_size{$k}/;
 		$in[$i] = $rec;
 		last ;
 #	      print "After sub, rec = \n";
@@ -571,117 +616,96 @@ sub date_index{
 }
 
 
-sub fix_time  {
-
-  $sec=shift;
-  $min=shift;
-  $hour=shift;
-  $year=shift;
-  if ($sec < 10){
-    $sec = "0".$sec;
-  }
-  if ($min < 10) {
-    $min = "0".$min;
-  }
-  if ($hour < 10) {
-    $hour = "0".$hour;
-  }
-  $year += 1900;
-  $ret[0]=$sec;
-  $ret[1]=$min;
-  $ret[2]=$hour;
-  $ret[3]=$year;  
-  @ret;
-}
+# sub fix_time  {
+#   $_[0]_ = sprintf("%02d",$_[0]);
+#   $_[1]_ = sprintf("%02d",$_[1]);
+#   $_[2]_ = sprintf("%02d",$_[2]);
+#   $_[3]_ = sprintf("%04d",$_[3]+1900);
+#   @_;
+# }
 
 sub make_yyyymmdd {
-  $year=shift;
-  $month=shift;
-  $mday=shift;
-  if ($month < 10) {
-    $month = "0".$month;
-  }
-  if ($mday < 10) {
-    $mday = "0".$mday;
-  }
-  $yyyymmdd=$year.$month.$mday;
-  $yyyymmdd;
-
+  my ($year,$month,$mday) = @_;
+  $month = sprintf("%02d",$month);
+  $mday = sprintf("%02d",$mday);
+  my $yyyymmdd=$year.$month.$mday;
 }
 sub make_hhmm{
-    $hh=$_[0];
-    $mm=$_[1] || 0;
-    $hhmm=sprintf("%02d:%02d",$hh,$mm);
-    $hhmm;
+  my $hh=shift;
+  my $mm = shift|| 0;
+  my $hhmm=sprintf("%02d:%02d",$hh,$mm);
 }
-sub byctime {
-  $ctime{$a} <=> $ctime{$b};
-}
-sub pgl { 
-  #
-  # pgl : Parse goes log
-  #
-  #
-  $logfile=shift(@_);;
-  open( LOGFILE, "<$logfile");
-  while (<LOGFILE>) {
 
-    if ( /^Sorry, cannot find it.\s$/) {
-      $newfile = "NO_SUCH_FILE";
-      $skip_rename=1;
-    } else {
-      if (/^::[\s]+output to /){
-	@tmp=split(" ");
-	$oldfile=$tmp[$#tmp];
-	@tmp = split( /\./, $oldfile );
-	$file = $tmp[0];
-      }
+#sub byctime {
+#  $ctime{$a} <=> $ctime{$b};
+#}
+#
+#
+# sub pgl { 
+#   #
+#   # pgl : Parse goes log
+#   #
+#   #
+#   my $logfile=shift(@_);;
+#   open( LOGFILE, "<$logfile");
+#   while (<LOGFILE>) {
 
-      if (/^[\s]+minlat minlon[\s]+/){
-	@tmp=split(" ");
-	$minlat = $tmp[3];
-	$minlon = $tmp[4];
-	if ($minlon < 0) {
-	  $minlon += 360 ;
-	}
-      }
+#     if ( /^Sorry, cannot find it.\s$/) {
+#       my $newfile = "NO_SUCH_FILE";
+#       my $skip_rename=1;
+#     } else {
+#       if (/^::[\s]+output to /){
+# 	my @tmp=split(" ");
+# 	my $oldfile=$tmp[$#tmp];
+# 	@tmp = split( /\./, $oldfile );
+# 	my $file = $tmp[0];
+#       }
 
-      if (/^[\s]+maxlat maxlon[\s]+/){
-	@tmp=split(" ");
-	$maxlat = $tmp[3];
-	$maxlon = $tmp[4];
-	if ($maxlon < 0) {
-	  $maxlon += 360 ;
-	}
-      }
+#       if (/^[\s]+minlat minlon[\s]+/){
+# 	@tmp=split(" ");
+# 	$minlat = $tmp[3];
+# 	$minlon = $tmp[4];
+# 	if ($minlon < 0) {
+# 	  $minlon += 360 ;
+# 	}
+#       }
+
+#       if (/^[\s]+maxlat maxlon[\s]+/){
+# 	@tmp=split(" ");
+# 	$maxlat = $tmp[3];
+# 	$maxlon = $tmp[4];
+# 	if ($maxlon < 0) {
+# 	  $maxlon += 360 ;
+# 	}
+#       }
 
 
-      if (/precision (deg)/){
-	@tmp=split(" ");
-	$plat = $tmp[$3];
-	$plon = $tmp[$4];
-      }
+#       if (/precision (deg)/){
+# 	@tmp=split(" ");
+# 	$plat = $tmp[$3];
+# 	$plon = $tmp[$4];
+#       }
 
-      if (/^:: Now read in/) {
-	@tmp = split( " " );
-	$areafile = $tmp[$#tmp-1];
-	@tmp = split( "/", $areafile );
-	$areafile = $tmp[$#tmp];
-	$last4 = substr( $areafile, 4, 4 );
-      }
-    }
-  } # end while
-  if (!$skip_rename) {
-    $limstr = "%".$minlon.",".$minlat.",".$maxlon.",".$maxlat."%";
-    #$time=substring( $time, 0, 4 );
-    $newfile=$file."-".$last4."-".$limstr.".dat";
-    rename( $oldfile, $newfile) || die " couldn't rename $oldfile to $newfile \n";
-    chmod 0755, $newfile || print "Couldn't chmod 0755 on $newfile \n";
+#       if (/^:: Now read in/) {
+# 	@tmp = split( " " );
+# 	$areafile = $tmp[$#tmp-1];
+# 	@tmp = split( "/", $areafile );
+# 	$areafile = $tmp[$#tmp];
+# 	$last4 = substr( $areafile, 4, 4 );
+#       }
+#     }
+#   } # end while
+#   if (!$skip_rename) {
+#     $limstr = "%".$minlon.",".$minlat.",".$maxlon.",".$maxlat."%";
+#     #$time=substring( $time, 0, 4 );
+#     $newfile=$file."-".$last4."-".$limstr.".dat";
+#     rename( $oldfile, $newfile) || die " couldn't rename $oldfile to $newfile \n";
+#     chmod 0755, $newfile || print "Couldn't chmod 0755 on $newfile \n";
 
-  }
-  $newfile;
+#   }
+#   $newfile;
 
-}
+# }
 
 sub subtract_one_day{
     
@@ -690,14 +714,12 @@ sub subtract_one_day{
     # input the month as the real (1 indexed) month, not the 0 indexed
     # monster from the tm struct!
 
-  $year=shift;
-  $mon=shift;
-  $mday=shift;
-  $leap_year = ($year % 100 != 0) && ($year % 4 == 0);
+  my ($year, $mon, $mday) = @_;
+  my $leap_year = ($year % 100 != 0) && ($year % 4 == 0);
   if ($year % 400 == 0) {
     $leap_year = 1;
   }
-  @days_in_month=(31,28,31,30,31,30,31,31,30,31,30,31);
+  my @days_in_month=(31,28,31,30,31,30,31,31,30,31,30,31);
   
   $mday -=1;
   if ($mday <= 0) {
@@ -713,15 +735,11 @@ sub subtract_one_day{
       }
     }
   }
-  if ($mday < 10) {
-    $mday = "0".$mday;
-  }
-  if ($mon < 10) {
-    $mon = "0".$mon;
-  }
+  $mday = sprintf("%02d",$mday);
+  $mon = sprintf("%02d",$mon);
 
    # return modified date
-  ($year,$mon,$mday);      
+  ($year,$mon,$mday);
 }
 sub add_one_day{
     
@@ -730,14 +748,12 @@ sub add_one_day{
     # input the month as the real (1 indexed) month, not the 0 indexed
     # monster from the tm struct!
 
-  $year=shift;
-  $mon=shift;
-  $mday=shift;
-  $leap_year = ($year % 100 != 0) && ($year % 4 == 0);
+  my ($year, $mon, $mday) = @_;
+  my $leap_year = ($year % 100 != 0) && ($year % 4 == 0);
   if ($year % 400 == 0) {
     $leap_year = 1;
   }
-  @days_in_month=(31,28,31,30,31,30,31,31,30,31,30,31);
+  my @days_in_month=(31,28,31,30,31,30,31,31,30,31,30,31);
   
   $mday +=1;
   if ($mday > $days_in_month[$mon-1]) {
@@ -750,16 +766,20 @@ sub add_one_day{
       $mon += 1;
     }
   }
-  if ($mday < 10) {
-    $mday = "0".$mday;
-  }
-  if ($mon < 10) {
-    $mon = "0".$mon;
-  }
-
+  $mday = sprintf("%02d",$mday);
+  $mon = sprintf("%02d",$mon);
    # return modified date
-  ($year,$mon,$mday);      
+  ($year,$mon,$mday);
 }
+
+
+#=========================================
+# GAG:
+# 
+# GetAndGrid - get and grid a goes AREA file, depending on the input
+# paraemters
+# 
+#=========================================
 sub gag {
   # Usage: gridded_file=gag(goesnum, sensornum, time, minlon, minlat, maxlon, maxlat);
   #
@@ -779,54 +799,54 @@ sub gag {
   # 
   #
 
-  ($sec,$min,$hour,$mday,$mon,$year,$junk)=gmtime(time);
-  $yyyymmdd = make_yyyymmdd($year+1900,$mon+1,$mday);
-  $hhmm = make_hhmm($hour,$min);
-  $now = $yyyymmdd."T".$hhmm;
+  my ($sec,$min,$hour,$mday,$mon,$year,$junk)=gmtime(time);
+  my $yyyymmdd = make_yyyymmdd($year+1900,$mon+1,$mday);
+  my $hhmm = make_hhmm($hour,$min);
+  my $now = $yyyymmdd."T".$hhmm;
 
-  $satnum    = shift || "10";
-  $sensornum = shift || "4";
-  $time      = shift || $now;
+  my $satnum    = shift || "10";
+  my $sensornum = shift || "4";
+  my $time      = shift || $now;
+
+  my ($minlon, $minlat, $maxlon, $maxlat);
 
   $minlon    = shift || 0;
   $minlat    = shift || 0;
   $maxlon    = shift || 0;
   $maxlat    = shift || 0;
 
-  local($start_dir) = Cwd::cwd(); 
+  my $start_dir = Cwd::cwd();
 
-  ($host,$user,$pw) = getgoesarchive();
+  my ($host,$user,$pw) = getgoesarchive();
   do { print "Can't get goes Archive info\n";
        undef; } unless defined $pw;
 
+  # given the satellite, returns x of AREAx
+  # Goes 10 files have the name goes8, goes 8 have names AREA9
+  # $sat_num{10} = 8;
 
-    # given the satellite, returns x of AREAx
-    # Goes 10 files have the name goes8, goes 8 have names AREA9
-    # $sat_num{10} = 8;
-   %sat_num= ( '10','8', 
- 	      '8','9',  
- 	     );
+  my %sat_num= ( '10','8',
+		 '8','9',  
+	       );
 
-   %sensor_dir = (
-          '1','vis',
- 	  '2','ir2',
- 	  '3','ir3',
- 	  '4','ir4',
- 	  '5','ir5'
- 	  );
+  my %sensor_dir = (
+		    '1','vis',
+		    '2','ir2',
+		    '3','ir3',
+		    '4','ir4',
+		    '5','ir5'
+		   );
 
-  $goes_type="goes".$satnum." ".$sensor_dir{$sensornum};
+  my $goes_type="goes".$satnum." ".$sensor_dir{$sensornum};
 
-    # Get ENV variables
-  #$ARCHIVETOP=$ENV{'VAP_GOES_TOPDIR'} || "/disk2/vap/goes";
-  #$GRIDDINGTOP=$ENV{'VAP_GOES_GRIDDED_TOPDIR'} || "/disk2/vap/goes/gridded_files";
 
-  
-    # Get Current Greenwich Mean Time
-  ($gsec,$gmin,$ghour,$gmday,$gmon, $gyear,$gwday,$gyday,$gisdst) = gmtime($^T); 
+
+  # Get Current Greenwich Mean Time
+  my ($gsec,$gmin,$ghour,$gmday,$gmon, $gyear,$gwday,$gyday,$gisdst) = gmtime($^T); 
     # Construct the input time.
-  @time_parts=split "T", $time;
-
+  my @time_parts=split "T", $time;
+  my $yearmonthday;
+  my @hhmm;
   if ($#time_parts == 0) {
     $yearmonthday = make_yyyymmdd( $gyear+1900, $gmon+1, $gmday );
     @hhmm= split /:/, $time_parts[0];
@@ -837,6 +857,8 @@ sub gag {
 
     # Construct the 'test_time', i.e. the time against which the area file's time 
     # will be compared. 
+
+  my ($tyear, $tmon, $tmday, $tyday, $thour, $tmin);
 
   $tyear=substr($yearmonthday,0,4)-1900;
   $tmon=substr($yearmonthday,4,2)-1;
@@ -851,7 +873,7 @@ sub gag {
   print "Looking for a $goes_type file from around GM time $junk\n";
 
     # Convert the test time to GMT
-  $test_time = timegm( 0, $tmin, $thour, $tmday, $tmon, $tyear );
+  my $test_time = timegm( 0, $tmin, $thour, $tmday, $tmon, $tyear );
   if ($test_time == -1)
   {
     print "Can't convert test time $tyear/$tmon/$tmday $thour\n";
@@ -863,7 +885,7 @@ sub gag {
 
     # NB, this loop is reading the 'noaa_area_info' file.
     # Construct the filename for the noaa_area_info file.
-  $noaa_area_info_filename=$ARCHIVETOP."/goes".$satnum."/";
+  my $noaa_area_info_filename=$ARCHIVETOP."/goes".$satnum."/";
   $noaa_area_info_filename.=$sensor_dir{$sensornum}."/noaa_area_info";
     # Open 'info' file
   if (!open(NOAA_AREA_INFO, "<$noaa_area_info_filename") )
@@ -871,30 +893,33 @@ sub gag {
     print "Couldn't open noaa_area_info $noaa_area_info_filename file \n";
     return undef;
   }
-  @noaa_area_info = <NOAA_AREA_INFO>;
+  my @noaa_area_info = <NOAA_AREA_INFO>;
   close(NOAA_AREA_INFO);
 
-  $min_diff=1e20;
-  foreach $rec (@noaa_area_info) {
-    next if $rec =~ /^##/;
+  my (@tmp, @tmp2);
+  my ($area_file, $area_file_time, $area_file_time_string);
+  my $min_diff=1e20;
+  foreach my $rec (@noaa_area_info) {
+    next if $rec =~ /^#/;
 
     @tmp=split(" ", $rec);
-    $filename=substr( $tmp[0], 0, 8 );
-    $hour = substr( $tmp[6], 0, 2 ); 
-    $min = substr( $tmp[6], 2,2 );
+    my $filename=substr( $tmp[0], 0, 8 );
+    my $hour = substr( $tmp[6], 0, 2 ); 
+    my $min = substr( $tmp[6], 2,2 );
     @tmp2=split('/',$tmp[4] );
     if ($#tmp2 < 2) {
       print "  Corrupted data/time for $filename\n";
         # Somehow, this field (mm/dd/yyyy) in the area_info file has
         # been corrupted, so we're going to read the file itself.
-      $local_path=$ARCHIVETOP."/goes".$satnum."/".$sensor_dir{$sensornum}."/";
-      $ttmp=$local_path.$filename;
+      my $local_path=$ARCHIVETOP."/goes".$satnum."/".$sensor_dir{$sensornum}."/";
+      my $ttmp=$local_path.$filename;
       if (open( AREAFILE, "<$ttmp" )){
+	my $hdr;
 	read AREAFILE, $hdr, 64*4;
 	close AREAFILE;
-	@hdr=unpack "L4", $hdr;
-	$year=int ($hdr[3]/1000);
-	$doy=int ($hdr[3]-$year*1000);
+	my @hdr=unpack "L4", $hdr;
+	my $year=int ($hdr[3]/1000);
+	my $doy=int ($hdr[3]-$year*1000);
 	($mday, $mon) = doy2mday_mon($doy, $year);
 	$hour=int ($hdr[4]/100);
         $min=int ($hdr[4]-$hour*100);
@@ -907,12 +932,12 @@ sub gag {
       $mday=$tmp2[1];
       $year=substr($tmp2[2],0,4)
     }
-    $noaa_file_time=timegm(0,$min,$hour,$mday,$mon,$year-1900);
-    $diff=abs( $noaa_file_time-$test_time);
+    my $noaa_file_time=timegm(0,$min,$hour,$mday,$mon,$year-1900);
+    my $diff=abs( $noaa_file_time-$test_time);
     if ($diff < $min_diff) {
 	$area_file=$filename;
 	$area_file_time=$noaa_file_time; 
-        ($sec1,$min1,$hour1,$mday1,$mon1,$year1)=gmtime( $area_file_time );
+        my ($sec1,$min1,$hour1,$mday1,$mon1,$year1)=gmtime( $area_file_time );
         $area_file_time_string =
            sprintf("%04d%02d%02dT%02d:%02d:%02d",
 		   $year1+1900,$mon1+1,$mday1,$hour1,$min1,$sec1);
@@ -920,7 +945,7 @@ sub gag {
     }
 
   }
-  $diffhrs=$min_diff/3600.;
+  my $diffhrs=$min_diff/3600.;
   print "min_diff=$min_diff, diffhrs=$diffhrs\n";
   if ($diffhrs>2.)
   {
@@ -931,17 +956,17 @@ sub gag {
   print "  AREA file for this run = $area_file\n";
 
   print "    Whose Time is $area_file_time_string\n";
-  print "  Checking to see whether it's already here\n";
+  print "    Checking to see whether it's already here\n";
 
-  $off=4;
+  my $off=4;
 
-  $tmp=substr( $area_file,$off,2 );
-  $sat=substr( $area_file, $off, 2 );
-  $sen=substr( $area_file, $off+2, 1);
-  $filenum = substr( $area_file, $off+3, 2);
+  my $tmp=substr( $area_file,$off,2 );
+  my $sat=substr( $area_file, $off, 2 );
+  my $sen=substr( $area_file, $off+2, 1);
+  my $filenum = substr( $area_file, $off+3, 2);
 
   # Construct path and file name on remote server.
-  $remote_path = "goes".$satnum."/".$sensor_dir{$sensornum}."/";
+  my $remote_path = "goes".$satnum."/".$sensor_dir{$sensornum}."/";
 
   if ( $remote_path =~ m#^g# ) {
     $tmp = "/".$remote_path ;
@@ -950,27 +975,28 @@ sub gag {
   }
 
     # Construct the path and filename for the AREA file 
-    # on this (haifung) machine.
+    # on this machine.
     # While we're at it, might as well produce the path 
     # to the gridding files.
-  $local_path=$ARCHIVETOP.$tmp;
-  $gridding_path=$GRIDDINGTOP.$tmp;
-  $local_area_file=$local_path.$area_file;
-  $test2 = 1.e20;
+  my $local_path=$ARCHIVETOP.$tmp;
+  my $gridding_path=$GRIDDINGTOP.$tmp;
+  my $local_area_file=$local_path.$area_file;
+  my $test2 = 1.e20;
+  my $local_file;
   if (-e $local_area_file) {
  
         # the file exists on this machine. Make sure the local area_info
         # file is up to date by running mkai in the target
         # directory. See if the area file there is the same one.
 
-    $cwd=Cwd::getcwd();
+    my $cwd=Cwd::getcwd();
     do { print "Couldn't cd to $local_path to run mkai\n";
 	 undef;} unless  chdir $local_path; 
-    $t=Cwd::getcwd();
+    my $t=Cwd::getcwd();
     print "Now in $t\n";
-    $exe_str = "/usr/people/vapuser/bin/mkai ";
+    my $exe_str = "/usr/people/vapuser/bin/mkai ";
     if ($user =~ /root/){
-      ($name,$passwd,$uid,$gid,$quota,$comment,$gcos,$dir,$shell) = 
+      my ($name,$passwd,$uid,$gid,$quota,$comment,$gcos,$dir,$shell) = 
 	  getpwnam( "vapuser") ;
       if ($uid && $gid ) {
 	chown $uid,$gid, 'area_info' || 
@@ -982,7 +1008,7 @@ sub gag {
     }
 
     print "Running mkai with exe string $exe_str\n";
-    $r=system( $exe_str )/256;
+    my $r=system( $exe_str )/256;
     if ($r != 0) {
       print "   Some kind of error in mkai\n";
     }
@@ -993,13 +1019,13 @@ sub gag {
         # read the local area_info file, see if the area file we have
         # is from the same time.
 
-    $local_ainf = $local_path."/area_info";
+    my $local_ainf = $local_path."/area_info";
     do {print "Couldn't open $local_ainf\n";
 	undef;} unless open ( INF, "<$local_ainf") ;
-    @ainf=<INF>;
+    my @ainf=<INF>;
     close (INF);
 
-    foreach $r (@ainf) {
+    foreach my $r (@ainf) {
       next if $r =~ /^##/;
       @tmp=split(" ", $r);
       next if substr($tmp[0],0,8) !~ /$area_file/;
@@ -1013,11 +1039,11 @@ sub gag {
       $mon=$tmp2[0]-1;
       $mday=$tmp2[1];
       $year=substr($tmp2[2],0,4);
-      $local_area_file_time=timegm(0,0,$hour,$mday,$mon,$year-1900);      
+      my $local_area_file_time=timegm(0,0,$hour,$mday,$mon,$year-1900);      
       $test2 = abs($local_area_file_time - $area_file_time);
       last;
     }
-  }  
+  }
 
     # test2 is in seconds
   if ( $test2 >= 3600 ) { # more than 1 hour difference.
@@ -1026,10 +1052,9 @@ sub gag {
       # go to the archive are retrieve it.
 
     print "   Not here! Retrieving $area_file from the NOAA archive \n";
-    $file=getgoesfile( $area_file);
+    my $file=getgoesfile( $area_file);
 
-    if (!$file) 
-    { 
+    if (!$file){
       print "Error retrieving $area_file\n";
       return undef;
     }
@@ -1038,9 +1063,9 @@ sub gag {
         # If we're running this as root, change owner/group and
         # permissions
 
-    $user=$ENV{'USER'};
+    my $user=$ENV{'USER'};
     if ($user =~ /root/){
-      ($name,$passwd,$uid,$gid,$quota,$comment,$gcos,$dir,$shell) = 
+      my ($name,$passwd,$uid,$gid,$quota,$comment,$gcos,$dir,$shell) = 
 	  getpwnam( "vapuser") ;
         # Change uid/gid to vapuser
       if ($uid && $gid ) {
@@ -1056,32 +1081,34 @@ sub gag {
       
       print "  $area_file already exists in our archive\n";
       print "  Checking to see if a grid file exists also\n";
+      my ($iminlon, $iminlat, $imaxlon, $imaxlat);
+
       $iminlon=int $minlon;
       $iminlat=int $minlat;
       $imaxlon=int $maxlon;
       $imaxlat=int $maxlat;
       if ($iminlon==0 && $iminlat==0 && $imaxlon==0 && $imaxlat==0) {
 	  if ($satnum == 10) {
-	      $iminlon=160;
-	      $iminlax=0;
-	      $imaxlon=-70;
-	      $imaxlat=70;
+	      my $iminlon=160;
+	      my $iminlax=0;
+	      my $imaxlon=-70;
+	      my $imaxlat=70;
 	  } elsif ($satnum == 8) {
 	      # Don't know what then limits are on Goes 8 files.
 	  } else {
 	      #Job security
 	  }
       }
-      $goes_type=$satnum.$sensornum;
-      $tyear=$year;
-      $tmonth=$month+1;
-      $grid_file_name=sprintf( 
+      my $goes_type=$satnum.$sensornum;
+      my $tyear=$year;
+      my $tmonth=$month+1;
+      my $grid_file_name=sprintf( 
 	    "GOES%03d-%04d%02d%02d%02d-%%%04d,%03d,%04d,%03d%%.dat", 
 			      $goes_type, $tyear, $tmonth, $mday, $hour, 
 			      $iminlon, $iminlat, $imaxlon, $imaxlat );
       
       
-      $local_gridded_file=$gridding_path.$grid_file_name;
+      my $local_gridded_file=$gridding_path.$grid_file_name;
 
 
       # construct the name of the gridded file.
@@ -1103,7 +1130,7 @@ sub gag {
     # Then run the gridding program.
     #
     #-------------------------------------------------------
-  $local_gridded_file=grid_goes( $gridding_path, $area_file, 
+  my $local_gridded_file=grid_goes( $gridding_path, $area_file, 
 				$minlon, $minlat, $maxlon, $maxlat );
   print "local gridded_file = $local_gridded_file\n";
   if (!$local_gridded_file) 
@@ -1114,28 +1141,36 @@ sub gag {
   $local_gridded_file;
 
 } # End GAG
+
+#===================================================
+# getgoesarchive
+#
+# 
+#===================================================
 sub getgoesarchive{ 
 
-  local($start_dir) = Cwd::cwd(); 
-
-  $goes_info_file=shift || "/usr/people/vapuser/Qscat/Library/goes_archive";
-  open(ARCHIVE_INFO, "<$goes_info_file") || die "Can't open $goes_info_file file\n";
-  @info=<ARCHIVE_INFO>;
-  $host=$info[0];
-  chop $host;
-  $user=$info[1];
-  chop $user;
-  $pw=$info[2];
-  chop $pw;
-  # return the info.
-  ($host, $user, $pw);
+  my $start_dir = Cwd::cwd();
+  my $goes_info_file=shift or croak "Need name of goes_archive file!\n";
+  open(ARCHIVE_INFO, "<$goes_info_file") || croak "Can't open $goes_info_file file\n";
+  my $host = chomp <ARCHIVE_INFO>;
+  my $user = chomp <ARCHIVE_INFO>;
+  my $pw   = chomp <ARCHIVE_INFO>;
+  {HOST=>$host, USER=>$user, PW=>$pw};
 }
+
+
+#===================================================
+# getgoesarchive
+#
+#
+#===================================================
+
 sub getgoesfile{
 
-  require Net::FTP;
-  local($start_dir) = Cwd::cwd(); 
-  ($host,$user,$pw) = getgoesarchive();
-  die "Can't get goes Archive info\n" unless defined $pw;
+  use Net::FTP;
+  my $start_dir = Cwd::cwd(); 
+  my ($host,$user,$pw) = getgoesarchive();
+  croak "Can't get goes Archive info\n" unless defined $pw;
 
   %sat_num= ( '8', '10', # AREA8* are goes 10 files !
 	     '9',  '8',   # AREA9* are goes 8 files !
@@ -1148,24 +1183,20 @@ sub getgoesfile{
 		 '5','ir5'
 		 );
   
-  $area_file=shift;
-  if ($area_file =~ /^A/) {
-    ;
-  } else {
-    $area_file="AREA".$area_file
-      }
-  $off=4;
-  $tmp=substr( $area_file,$off,2 );
-  $sat=substr( $area_file, $off, 1 );
-  $sen=substr( $area_file, $off+1, 1);
-  $filenum = substr( $area_file, $off+2, 2);
+  my $area_file=shift;
+  $area_file="AREA".$area_file unless $area_file =~ /^A/
+  my $off=4;
+  my $tmp=substr( $area_file,$off,2 );
+  my $sat=substr( $area_file, $off, 1 );
+  my $sen=substr( $area_file, $off+1, 1);
+  my $filenum = substr( $area_file, $off+2, 2);
 
-  $remote_path = "goes".$sat_num{$sat}."/".$sensor_dir{$sen}."/";
-  $remote_file = $remote_path.$area_file;
+  my $remote_path = "goes".$sat_num{$sat}."/".$sensor_dir{$sen}."/";
+  my $remote_file = $remote_path.$area_file;
   
   print "remote_path = $remote_path\n";
   print "remote_file = $remote_file\n";
-  $local_path = shift;
+  my $local_path = shift;
   if (!$local_path) {
     if ( $remote_path =~ m#^g# ) {
 	$tmp = "/".$remote_path ;
@@ -1175,39 +1206,47 @@ sub getgoesfile{
     print "tmp = $tmp\n";
     $local_path=$ARCHIVETOP.$tmp;
   }
-  $local_file=$local_path.$area_file;
+  my $local_file=$local_path.$area_file;
 
   
-  $ftp = Net::FTP->new( $host ) || die "  Can't open new \n";
-  $ftp->login ($user, $pw )     || die "  Can't login\n";
-  $ftp->binary                  || die "  Can't go to binary\n";
+  my $ftp = Net::FTP->new( $host ) || croak "  Can't open new \n";
+  $ftp->login ($user, $pw )     || croak "  Can't login\n";
+  $ftp->binary                  || croak "  Can't go to binary\n";
   print "  Getting $remote_file and sending it to $local_file\n";
-  $ftp->get($remote_file,$local_file) || die "  Can't get file\n";
-  $ftp->quit                          || die "  Can't close\n";
+  $ftp->get($remote_file,$local_file) || croak "  Can't get file\n";
+  $ftp->quit                          || croak "  Can't close\n";
   $local_file;
   
 }
+
+#=================================================
+# grid_goes
+#
+#=================================================
+
+
 sub grid_goes {
 
-  local($start_dir) = Cwd::cwd(); 
+  my $start_dir = Cwd::cwd(); 
 
-  $grid_path = shift @_ || 
-      die "Usage grid_goes path area_file [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";
-  $area_file = shift @_ ||
-      die "Usage grid_goes path area_file [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";;
-  $minlon = shift @_ || 0;
-  $minat  = shift @_ || 0 ;
-  $maxlon = shift @_ || 0 ;
-  $maxat  = shift @_ || 0 ;
+  my $grid_path = shift @_ || 
+      croak "Usage grid_goes path area_file [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";
+  my $area_file = shift @_ ||
+      croak "Usage grid_goes path area_file [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";;
+  my $minlon = shift @_ || 0;
+  my $minat  = shift @_ || 0 ;
+  my $maxlon = shift @_ || 0 ;
+  my $maxat  = shift @_ || 0 ;
 
-  chdir $grid_path || die "   Can't CD to $grid_path\n";
+  chdir $grid_path || croak "   Can't CD to $grid_path\n";
   print "  Preparing to grid area file $area_file\n";
 
+  my $exe_string;
   if ($minlon != 0 || $minlat != 0 || $maxlon != 0 || $maxlat != 0) {
-    $minlon2=$minlon;
-    $maxlon2=$maxlon;
-    $minlon2 -= 360 if ($minlon >= 180);
-    $maxlon2 -= 360 if ($maxlon >= 180);
+    my $minlon2=$minlon;
+    my $maxlon2=$maxlon;
+    my $minlon2 -= 360 if ($minlon >= 180);
+    my $maxlon2 -= 360 if ($maxlon >= 180);
     $exe_string=sprintf( "grid_goes -f %s -l %04d,%03d,%04d,%03d", 
 	    $area_file, $minlon2, $minlat, $maxlon2, $maxlat );
   } else {
@@ -1216,24 +1255,27 @@ sub grid_goes {
   print "About to open gridding processes with exe string\n";
   print "$exe_string\n";
   open ( GRIDDING_PROCESS, "$exe_string |" );
-  @gridding_output = <GRIDDING_PROCESS>;
+  my @gridding_output = <GRIDDING_PROCESS>;
   print join "\n", @gridding_output;
-  @errors=grep(/^ *ERROR.*/, @gridding_output);
+  my @errors=grep(/^ *ERROR.*/, @gridding_output);
   close GRIDDING_PROCESS;
-  die "  Bad return from goes gridding software\n" if ($#errors gt -1);
+  croak "  Bad return from goes gridding software\n" if ($#errors gt -1);
   print "  Done Gridding!\n";
-  $local_gridded_file=$grid_path.$gridding_output[$#gridding_output];
-  chop $local_gridded_file;
+  my $local_gridded_file=$grid_path.$gridding_output[$#gridding_output];
+  chomp $local_gridded_file;
   chdir $start_dir  || print "  Couldn't go back to initial dir $start_dir\n";
   $local_gridded_file;
 }
 
-
+#=====================================================
+# parsegoesfilename
+# 
+#=====================================================
 sub parsegoesfilename {
 
-  local($start_dir) = Cwd::cwd(); 
+  my $start_dir = Cwd::cwd(); 
 
-  $goesfile=shift || die "Can't get goes file name\n";
+  my $goesfile=shift || croak "Can't get goes file name\n";
   
   # old format (stranded, for now)
   #          1         2         3         4
@@ -1241,19 +1283,20 @@ sub parsegoesfilename {
   #GOES94_970140700-8403-%185,25,245,65%.dat
   #
 
-  # new format
+  # Qscat/Seawinds era format
   #          1         2         3         4
   #01234567890123456789012345678901234567890
   #GOES094-1998060320-%185,025,245,065%.dat
   #
 
-  $satnum = substr( $goesfile, 4,  2);
-  $sensor = substr( $goesfile, 6,  1);
-  $year   = substr( $goesfile, 8,  4);
-  $month  = substr( $goesfile, 12, 2);
-  $dom    = substr( $goesfile, 14, 2);
-  $hh     = substr( $goesfile, 16, 2);
-  $limit  = substr( $goesfile, 19, 19);
+  
+  my $satnum = substr( $goesfile, 4,  2);
+  my $sensor = substr( $goesfile, 6,  1);
+  my $year   = substr( $goesfile, 8,  4);
+  my $month  = substr( $goesfile, 12, 2);
+  my $dom    = substr( $goesfile, 14, 2);
+  my $hh     = substr( $goesfile, 16, 2);
+  my $limit  = substr( $goesfile, 19, 19);
   # return info
   ($satnum, $sensor, $year, $month, $dom, $hh, $limit);
   
@@ -1264,12 +1307,13 @@ sub ParseWindFileNames{
     # a two references to the start time and end time of the files.
     # Each of these times is in 'vaptime' format, i.e. yyyymmddThh:mm
 
-  foreach $file (@_) {
-    ($base,$start,$end) = split( '.',$file);
+  my (@files, @start_time, @end_time);
+  foreach my $file (@_) {
+    my ($base,$start,$end) = split( '.',$file);
     next if !$start;
-    $yyyymmdd = substr($base,length($base)-8,8);
-    $start = substr( $start, 1,4);
-    $end = substr( $end, 1, 4 );
+    my $yyyymmdd = substr($base,length($base)-8,8);
+    my $start = substr( $start, 1,4);
+    my $end = substr( $end, 1, 4 );
     $start = $yyyymmdd."T".$start;
     $end = $yyyymmdd."T".$end;
     $start_time = vaptime2systime($start);
@@ -1283,7 +1327,7 @@ sub ParseWindFileNames{
     push @end_time, $end;
   }
 
-  @retarray = \(@files, @start_time, @end_time);
+  my @retarray = \(@files, @start_time, @end_time);
   @retarray;
 }
 
@@ -1293,24 +1337,26 @@ sub GetWindFiles{
     # and stop time. Times are in 'vaptime' format yyyymmddThh:mm
     # Since we're usually interested in finding the files in some
     # interval preceeding some particular time (e.g. the previous 24 hours)
-    # the first passed parameter is the 'end time' of the time period
+    # the second passed parameter is the 'end time' of the time period
     # and the second, optional, parameter, the begining, defaulting to
     # 24 hours. If there are no parameters, the end time defaults to now.
+  my $filter = shift @_ || croak "usage files=GetWindFiles(file_filter [endtime startime])\n";
+  my $end_time= shift @_ || GetNow() ;
+  my $start_time = shift @_ || DeltaTime( $end_time, -24 );
+  opendir WINDDIR, $WINDS_DIR || croak "Couldn't open $WINDS_DIR\n";
+  my @allfiles=readdir WINDDIR;
+  my @windfiles=grep( /^Q*\.*.\*/, @allfiles );
+  croak "grep didn't find any wind files \n" if !$windfiles;
 
-  $end_time= shift @_ || GetNow() ;
-  $start_time = shift @_ || DeltaTime( $end_time, -24 );
-  opendir WINDDIR, $VAP_WINDS || die "Couldn't open $VAP_WINDS\n";
-  @allfiles=readdir WINDDIR;
-  @windfiles=grep( /^Q*\.*.\*/, @allfiles );
-  die "grep didn't find any wind files \n" if !$windfiles;
+  my @junk=ParseWindFileNames(@windfiles);
+  my @windfiles   = \$junk[0];
+  my @file_starts = \$junk[1];
+  my @file_ends   = \$junk[2];
 
-  @junk=ParseWindFileNames(@windfiles);
-  @windfiles   = \$junk[0];
-  @file_starts = \$junk[1];
-  @file_ends   = \$junk[2];
-
-  $start_time_sys=vaptime2systime(start_time);
-  $end_time_sys=vaptime2systime(end_time);
+  my $start_time_sys=vaptime2systime($start_time);
+  my $end_time_sys=vaptime2systime($end_time);
+  my ($test_start_time, $test_end_time);
+  my @ret_file_array;
 
   for ($i=0 ; $i<=$#windfiles ; $i++ ){
     $test_start_time=vaptime2systime( $file_starts[$i] );
@@ -1323,29 +1369,14 @@ sub GetWindFiles{
   }
 
   @ret_file_array;
-  
-
 }
-sub DeltaTime{
 
-    # take a base time and add a delta to it. 
-    # base time (arg 1) is in 'vaptime' format (yyyymmddThhmm)
-    # delta time is in hours
-    # if you want hours and minutes, make hours a 'float.'
 
-  $basetime = shift @_ || die "Basetime (arg 1) undefined\n";
-  $delta = shift @_ || die "delta (arg2) undefined\n";
-
-  $base_time = vaptime2systime($basetime) + $delta*3600.;
-  $new_time = systime2vaptime(int($base_time));
-  $new_time;
-
-}
 sub VapMailErrorMsg{
-  if ($vap_is_batch){
-    $errmsg=$_[0] || "Generic Error\n";
-    $subject=$_[1] || "<Generic Vap Error>\n";
-    $addresses=join ", ", @{$vap_perl::vap_defs{'Error_Mail_Address'}};
+  if ($VapUtil::vap_is_batch){
+    my $errmsg=$_[0] || "Generic Error\n";
+    my $subject=$_[1] || "<Generic Vap Error>\n";
+    my $addresses=join ", ", @{$vap_perl::vap_defs{'Error_Mail_Address'}};
     open MAIL_MESSAGE, "|mailx -s \'$subject\' $addresses";
     print MAIL_MESSAGE $errmsg;
     close MAIL_MESSAGE;
