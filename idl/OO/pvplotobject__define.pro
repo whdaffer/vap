@@ -63,6 +63,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/28 23:35:37  vapuser
+; ??
+;
 ; Revision 1.1  1998/10/26 22:09:44  vapuser
 ; Initial revision
 ;
@@ -76,12 +79,17 @@
 ; Init
 ;============================================
 
-FUNCTION PvPlotObject::Init, data
+FUNCTION PvPlotObject::Init, data, $
+                     Filename=Filename
   status = 1
   self.PlotFlag = 1
   self.AlreadyPlotted = 0
   self.SelectedOnly = 0
   self.InRegion = -1 ; Don't know
+
+  IF N_Elements(Filename) NE 0 THEN $
+    self.Filename = Filename
+
   IF obj_valid( data ) THEN BEGIN 
     s = data-> Get(data=tdata)
     IF s THEN BEGIN 
@@ -152,13 +160,14 @@ PRO PvPlotObject::SetAlreadyPlotted, AlreadyPlotted
 END
 
 ;============================================
-; SetAlreadyPlotted Routine
+; Set Routine
 ;============================================
 
 PRO PvPlotObject::Set, $
                 AlreadyPlotted = AlreadyPlotted,$
-                InRegion   = InRegion, $
-                PlotFlag       = PlotFlag
+                InRegion       = InRegion, $
+                PlotFlag       = PlotFlag,$
+                Filename       = Filename
 
 
   IF N_Elements(AlreadyPlotted) NE 0 THEN $
@@ -169,6 +178,9 @@ PRO PvPlotObject::Set, $
 
   IF N_Elements(Plotflag) NE 0 THEN $
      self.Plotflag = Plotflag
+
+  IF N_Elements(Filename) NE 0 THEN $
+     self.Filename = Filename
 
 
                 
@@ -222,7 +234,8 @@ PRO PvPlotObject::Get, $
                 PlotFlag        = PlotFlag, $
                 AlreadyPlotted  = AlreadyPlotted, $
                 SelectedOnly    = SelectedOnly, $
-                InRegion        = InRegion
+                InRegion        = InRegion, $
+                Filename        = Filename
 
    IF Arg_Present( Data ) THEN data = self.data
    IF Arg_Present( SelectedOnly ) THEN $
@@ -233,6 +246,9 @@ PRO PvPlotObject::Get, $
       AlreadyPlotted = self.AlreadyPlotted
    IF Arg_Present( InRegion ) THEN $
       InRegion = self.InRegion
+   IF Arg_Present( Filename ) THEN $
+      Filename = self.Filename
+   
 END
 
 
@@ -334,6 +350,7 @@ END
 
 PRO PvPlotObject__define
   junk = { PVPLOTOBJECT, $
+          filename       : '',$
           AlreadyPlotted : 0L, $
           PlotFlag       : 0L,$
           SelectedOnly   : 0l ,$
