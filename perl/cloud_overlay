@@ -18,6 +18,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.6  1998/11/04 19:37:58  vapuser
+# Added a 'die'
+#
 # Revision 1.5  1998/10/22 21:37:52  vapuser
 # Took out '-d' switch
 #
@@ -42,8 +45,7 @@
 use vap_perl;
 
 use Getopt::Long;
-
-
+use File::Copy ;
 
   $usage =  "\nUsage:\n";
   $usage .= " cloud_overlay --region REGION_DESIGNATION\n";
@@ -128,6 +130,9 @@ use Getopt::Long;
 
   die "Error parsing options\n" if !result;
   die $usage if $help;
+
+    # Set the IDL starup file to get '24 bit true' color
+  $ENV{'IDL_STARTUP'}="/disk4/vapuser/idl-startup-true24";
 
   if ($region) {
     # Get the defaults for overlays.
@@ -375,8 +380,11 @@ use Getopt::Long;
 
   $file=$vap_perl::VAP_OVERLAY_ARCHIVE."/".$fileroot."-".$regionname.".gif";
   print "Renaming $gif to $file\n";
-  rename( $gif,$file ) ||
-      die "Couldn't rename $gif to $file, error = $!\n";
+#  rename( $gif,$file ) ||
+#      die "Couldn't rename $gif to $file, error = $!\n";
+  copy($gif,$file) ||
+    die "Couldn't rename $gif to $file, error = $!\n";
+  unlink $gif;
   chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
 
     # create name of file in images archive to be linked to it.
@@ -403,6 +411,9 @@ use Getopt::Long;
 
     # make sure it's readible.
   chmod 0755, "index.html" ||  die "Couldn't chmod index.html to a+r\n";
+  $tottime=time-$^T;
+
+  print "Total Time: $tottime\n";
 
 exit;
 
