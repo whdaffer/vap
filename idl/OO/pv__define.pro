@@ -90,6 +90,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.9  1998/10/28 23:28:12  vapuser
+; More work on adding pvplotobject.
+; More stable now.
+;
 ; Revision 1.8  1998/10/26 22:09:37  vapuser
 ; In process of changing Datalist to list of PvPlotObjects. Not done yet.
 ;
@@ -710,6 +714,7 @@ FUNCTION pv::Init, $
            decimate_by   = decimate_by,$
            CRDecimate_by = CRDecimate_by,$
            ExcludeCols   = ExcludeCols,$
+
            InputPath     = InputPath ,$     
            InputFilter   = InputFilter,$    
            OutputPath    = OutputPath,$     
@@ -721,7 +726,8 @@ FUNCTION pv::Init, $
            Thickness     = Thickness,$      
            MinSpeed      = MinSpeed,$       
            MaxSpeed      = MaxSpeed,$       
-           Help          = Help             
+           Help          = Help, $
+           Verbose      = Verbose
    
 
 
@@ -739,6 +745,8 @@ FUNCTION pv::Init, $
   self.Sensitivity = 1 ; Make sure we can operate on the widget.
 
   self.MinMaxSpeed = [ 1.e10, -1.e10 ] 
+
+  self.Verbose = keyword_set( Verbose )
 
   IF N_Elements(xsize)       EQ 0 THEN xsize = 640 
   IF N_Elements(ysize)       EQ 0 THEN ysize = 480 
@@ -1290,9 +1298,11 @@ FUNCTION Pv::Read,files
         ; It may be a q2b file or a model file.
         attr = hdfgetattr( files(f), attr='SHORTNAME' )
         IF VarType( attr ) EQ 'STRUCTURE' THEN BEGIN 
-          CASE *attr.value OF 
+          CASE (*attr.value)[0] OF 
             'QSCATVAPMODEL': q = Obj_New('qmodel',filename=files(f) )
-            'QSCATL2B'     : q = Obj_New('q2b',filename=files(f) )
+            'QSCATL2B'     : q = Obj_New('q2b',$
+                                         filename=files(f),$
+                                         verbose=self.verbose)
             ELSE           : BEGIN 
               Message,"Can't identify type of HDF file ",/cont
               print,'  Attribute "ShortName" must be either QSCATL2B or QSCATVAPMODEL'
@@ -1306,14 +1316,15 @@ FUNCTION Pv::Read,files
         ENDELSE 
       ENDIF ELSE BEGIN 
           ; q2b can read some non-HDF formats, too.
-        q = Obj_New('q2b',filename=files(f) )
+        q = Obj_New('q2b',filename=files(f), verbose=self.verbose)
       ENDELSE 
        
       IF Obj_Valid( q ) THEN BEGIN 
         s =  q-> Set(Decimate = self.decimate_by,$
                      CRDecimate = self.CRdecimate_by, $
                      ExcludeCols= self.ExcludeCols )
-        po = Obj_New('PvPlotObject',q)
+        s = q-> Get(filename=filename)
+        po = Obj_New('PvPlotObject',q,file=filename)
         IF Obj_Valid( po ) THEN BEGIN 
           status =  self.DataList->append(po)
           n = self.DataList-> GetCount()
@@ -2105,6 +2116,7 @@ PRO Pv__define
                                  ; requires redrawing.
             Sensitivity  : 0l, $ ; flag for sensitivity s
                                  ; tate of widget.
+            Verbose      : 0l, $ ; Verbosity flag.
             Annotation   : Obj_New(),$ ; for titles, and such
 
  ;------------- Widget quantities ---------------
