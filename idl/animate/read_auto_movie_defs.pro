@@ -81,6 +81,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/05 20:09:41  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -103,7 +106,10 @@ FUNCTION read_auto_movie_defs, desig
     rec =  ''
     REPEAT BEGIN 
       readf, rlun, rec
-      found =  (strpos( rec, desig ) NE -1 )
+      trec = strtrim(strcompress(rec,/remove_all),2)
+      found =0
+      IF strpos(trec,';') NE 0 THEN $
+        found =  (strpos( rec, desig ) NE -1 )
     ENDREP UNTIL found OR eof( rlun )
     IF eof(rlun)  AND NOT found THEN BEGIN 
       ret =  {desig:'ERRORNOSUCHROI'}
