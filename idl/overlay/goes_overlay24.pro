@@ -104,6 +104,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1998/11/25 22:37:04  vapuser
+; Use Errorf to scale cloudmask
+;
 ; Revision 1.1  1998/11/20 19:49:34  vapuser
 ; Initial revision
 ;
@@ -356,7 +359,10 @@ COMMON goes_overlay_cmn, landel
     lati = 0
 
     ; cloudmask = bytscl(sqrt(1.0*(minpix>data<1024 )/1024),top=200) 
-    cloudmask = byte( 255*( 0.5*(errorf(4.d*scale(data,max=1024,/double)-2) +1) ) )
+    IF IR THEN $
+      cloudmask = byte( 255*( 0.5*(errorf(4.d*scale(data,max=1024,/double)-2) +1) ) ) ELSE $
+      cloudmask =  bytscl(data,min=0)
+
     data = 0
 
 
