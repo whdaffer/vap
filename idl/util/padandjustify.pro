@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/21 23:10:04  vapuser
+; Convert numbers to long
+;
 ; Revision 1.2  1998/10/21 23:06:37  vapuser
 ; took out 'selecting right...' message
 ;
@@ -97,7 +100,8 @@ FUNCTION PadAndJustify, number, ndigits, pad=pad,right=right, left=left
 
  IF n_params() EQ 2 THEN BEGIN 
    nnum = n_elements(number)
-   retarr = strarr(nnum)
+   IF nnum EQ 1 THEN retarr = '' ELSE $
+     retarr = strarr(nnum)
    tnum = long(number)
    FOR i=0,nnum-1 DO BEGIN 
      str = strtrim( tnum[i], 2 ) 
