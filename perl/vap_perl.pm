@@ -1,11 +1,14 @@
 #!/usr/bin/perl5  
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <99/08/20 16:28:30 vapuser>
+# Time-stamp: <99/09/08 14:15:44 vapuser>
 # $Id$
 #
 # Modification History:
 #
 # $Log$
+# Revision 1.6  1999/08/21 00:06:48  vapuser
+# added hurricane alley targets
+#
 # Revision 1.5  1999/04/02 22:29:22  vapuser
 # More changes than I care to even think about.
 #
@@ -37,8 +40,9 @@ BEGIN {
     # Get ENV variables
 
   $VAP_LIB=$ENV{'VAP_LIB'}                  || "/usr/people/vapuser/Qscat/Library";
-  $VAP_ROOT   = $ENV{'VAP_ROOT'}            || "/disk2/vap";
-  $VAP_WINDS  = $ENV{'VAP_WINDS'}           ||  "/disk3/qscat_winds";
+  $VAP_DISK=$ENV{'VAP_DISK'}                || "/disk5/vap";
+  $VAP_ROOT   = $ENV{'VAP_ROOT'}            || $VAP_DISK."/vap";
+  $VAP_WINDS  = $ENV{'VAP_WINDS'}           || $VAP_DISK."/winds/qscat/Rnoaa";
   $VAP_ANIM   = $ENV{'VAP_ANIM'}            || $VAP_ROOT."/anim";
   $VAP_OVERLAY = $ENV{'VAP_OVERLAY'}        || $VAP_ROOT."/overlay";
   $VAP_WWW_TOP = $ENV{'VAP_WWW_TOP'}        || $VAP_ROOT."/www/htdocs";
