@@ -3,6 +3,9 @@
 #
 #
 # $Log$
+# Revision 1.2  1999/04/09 23:28:43  vapuser
+# Added kprimes.so to default list
+#
 # Revision 1.1  1999/04/09 23:12:03  vapuser
 # Initial revision
 #
@@ -41,11 +44,11 @@ SO_OBJS = \
 
 default: land_mask.so succor.so kprimes.so
 
-#isanumber.so: isanumber.o isanumber.c \
-#	$(RSIINC)/export.h
-#	echo Makeing isnumber.so
-#	$(CC) $(CFLAGS) -c isanumber.c
-#	$(LD) $(LDFLAGS) -o isanumber.so isanumber.o  $(CLIBS)
+isanumber.so: isanumber.o isanumber.c \
+	$(RSIINC)/export.h
+	echo Makeing isnumber.so
+	$(CC) $(CFLAGS) -c isanumber.c
+	$(LD) $(LDFLAGS) -o isanumber.so isanumber.o  $(CLIBS)
 
  
 kprimes.so: kprimes.o kprimes.c \
