@@ -18,11 +18,22 @@
 # See the perl programs 'cloud_overlay' or 'gms5getall' for examples of its use.
 #
 #
+# This package assumes that all the gms data is in a series of
+# subdirectories of a common parent, given in the $LOCAL_TOPDIR
+# variable. That is, the structure of the data tree is 
 #
+#  $LOCAL_TOPDIR/{cal,doc,grid,grida,ir1,ir2,ir3,vis}
+#
+
 # Modifications:
 # $Log$
+# Revision 1.1  1999/04/02 18:29:10  vapuser
+# Initial revision
+#
 #
 # $Id$
+#
+#
 #
 package Gms5;
 require Exporter;
@@ -55,11 +66,14 @@ BEGIN {
 sub GetIntersection {
 
   # Given a gms type (which defaults to Ir1) get the intersection of
-  # all the archive lists. type must be specified as 'ir1','ir2','ir3'
-  # or 'vis', or the routine fails.
+  # all the archive lists, i.e. all the files mentioned in
+  # 'archive.filelist' file in each of the directories searched. Type
+  # must be specified as 'ir1','ir2','ir3' or 'vis', or the routine
+  # fails.
 
   # It is advisable that the user call 'getallfilelists' prior to
-  # calling this routine.
+  # calling this routine as this routine assumes the 'archive.filelist' 
+  # files are current.
 
   
   $type=$_[0] || "ir1";
@@ -76,7 +90,7 @@ sub GetIntersection {
     $filecnt{$tmp}++;
   }
 
-  @dirs=('grid','grida','doc','cal');
+  @dirs=('grid','grida'); #removed cal and doc from list
   foreach $dir (@dirs) {
     chdir $dir || die "Can't CD to $dir\n";
     open ARCHIVE, "<archive.filelist";
@@ -103,17 +117,17 @@ sub GetAllFileLists {
 
   Open() unless defined ($ftp);
 
-  CdDoc();
-  @list=List("*.Z");
-  open FILE, ">archive.filelist";
-  print FILE @list;
-  close FILE;
+#   CdDoc();
+#   @list=List("*.Z");
+#   open FILE, ">archive.filelist";
+#   print FILE @list;
+#   close FILE;
 
-  CdCal();
-  @list=List("*.Z");
-  open FILE, ">archive.filelist";
-  print FILE @list;
-  close FILE;
+#   CdCal();
+#   @list=List("*.Z");
+#   open FILE, ">archive.filelist";
+#   print FILE @list;
+#   close FILE;
 
 
   CdGrid();
@@ -169,18 +183,18 @@ sub GetAll {
   if ($test) {
 
     Open() unless defined ($ftp);
-    CdDoc();
-    @list=List("$datetime*");
-    carp "No Doc files found for $datetime\n" if $#list<0;
-    $file="$datetime.txt.Z";
-    GetDoc( $file);
+#     CdDoc();
+#     @list=List("$datetime*");
+#     carp "No Doc files found for $datetime\n" if $#list<0;
+#     $file="$datetime.txt.Z";
+#     GetDoc( $file);
 
 
-    CdCal();
-    @list=List("$datetime*");
-    carp "No Cal files found for $datetime\n" if $#list<0;
-    $file="$datetime.cal.Z";
-    GetCal( $file);
+#     CdCal();
+#     @list=List("$datetime*");
+#     carp "No Cal files found for $datetime\n" if $#list<0;
+#     $file="$datetime.cal.Z";
+#     GetCal( $file);
 
 
     CdGrid();
@@ -364,20 +378,20 @@ sub CheckAll {
   Open() unless defined ($ftp);
 
 
-  CdDoc();
-  @list=List("$datetime*");
-  if (!$list[0]) {
-    carp "No Doc files found for $datetime\n";
-    $ret=0;
-  }
+#   CdDoc();
+#   @list=List("$datetime*");
+#   if (!$list[0]) {
+#     carp "No Doc files found for $datetime\n";
+#     $ret=0;
+#   }
 
 
-  CdCal();
-  @list=List("$datetime*");
-  if (!$list[0]) {
-    carp "No Cal files found for $datetime\n";
-    $ret=0;
-  }
+#   CdCal();
+#   @list=List("$datetime*");
+#   if (!$list[0]) {
+#     carp "No Cal files found for $datetime\n";
+#     $ret=0;
+#   }
 
 
 
