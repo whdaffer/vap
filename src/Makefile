@@ -8,6 +8,9 @@
 # Change Log:
 #
 # $Log$
+# Revision 1.4  2003/01/28 19:05:55  vapdev
+# Added schop
+#
 # Revision 1.3  2002/08/09 23:47:17  vapdev
 # changed '(' to '{'
 #
@@ -22,16 +25,23 @@
 #.SUFFIXES : .o .c .f
 
 
-OBJ = grid_goes.o navig_goes.o pair_goes.o doy2date.o
-SRC = grid_goes.c doy2date.c navig_goes.f pair_goes.f
+OBJ = grid_goes.o navig_goes.o pair_goes.o doy2date.o qchop.o schop.o
+SRC = grid_goes.c doy2date.c navig_goes.f pair_goes.f qchop.c qchop.c
 
-CFLAGS = -c -g -o32 $(DEBUG)
+GRIDOBJ = grid_goes.o navig_goes.o pair_goes.o doy2date.o 
+GRIDSRC = grid_goes.c doy2date.c navig_goes.f pair_goes.f 
+
+CFLAGS = -g -o32 $(DEBUG)
 CC     = cc $(CFLAGS)
 LD     = cc -o32 -o 
 F77    = f77 -g -o32 -c
 
+
+INSTALLDIR = ../bin
+
 #LIBS   =  -lF77 -lm  -lc
-LIBS   =  -lftn -lm  -lc
+LIBS   =  -lm  -lc
+FLIBS = -lftn 
 
 .c.o: 
 	${CC} ${CFLAGS} $<
@@ -49,12 +59,12 @@ clean:
 	-/sbin/rm *.o
 
 
-grid_goes: ${OBJ}
-	${LD} grid_goes ${OBJ} ${LIBS}
+grid_goes: ${GRIDOBJ} 
+	${CC} -o grid_goes ${GRIDSRC} ${FLIBS} ${LIBS}
 	echo Done!
 
 grid_goes.o: grid_goes.c
-	${CC} ${CFLAGS} grid_goes.c
+	${CC} ${CFLAGS} -c grid_goes.c
 
 doy2date.o: doy2date.c
 	${CC} ${CFLAGS} doy2date.c
@@ -65,11 +75,11 @@ navig_goes.o: navig_goes.f
 pair_goes.o: pair_goes.f
 	${F77} pair_goes.f # may use -d_lines  to get aditional output
 
-qchop: qchop.o qchop
-	${CC} -g -o32 -o qchop qchop.c
+qchop: qchop.o
+	${CC} -g -o qchop qchop.c ${LIBS}
 
-schop: schop.o schop
-	${CC} -g -o32 -o schop schop.c
+schop: schop.o
+	${CC} -g -o schop schop.c ${LIBS}
 
 
 install: grid_goes qchop schop
