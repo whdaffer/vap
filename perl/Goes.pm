@@ -1,4 +1,3 @@
-#!/usr/bin/perl
 #
 # $Id$
 #
@@ -9,6 +8,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.4  2002/08/07 23:38:46  vapdev
+# Changed some constants
+#
 # Revision 1.3  2002/05/07 20:40:36  vapdev
 # Set -w and `use strict' and then fixing bugs. Start trying to standardize
 # the methods used.
@@ -31,7 +33,7 @@ use Time::Local;
 use Net::FTP;
 use Carp;
 use VapUtil;
-use Vapdefs;
+#use Vapdefs;
 
 
 BEGIN {
