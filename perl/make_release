@@ -21,24 +21,34 @@ my @files;
 
   # ---------- The IDL files! ---------
 
-
+my $r;
 if (! -d "./idl") {
   my $exe="mv ./vap/idl .";
-  my $r=system($exe)/256;
+  $r=system($exe)/256;
   die "$!\n" unless $r==0;
 }
 
-
+print "Getting util/idl/*.pro";
+@files = glob("util/idl/*.pro");
+$newpath = "./idl";
+foreach my $f (@files){
+  ($name, $path) = fileparse($f);
+  my $newname = "$newpath/$name";
+  print "Copying $f to $newname\n";
+  rename($f, $newname) or die "$!\n";
+}
 
 
   # --------- Perl -------------
 
+print "Getting Perl files from vap/perl\n";
 mkdir "perl" or die "$!\n" unless (-d "perl") ;
 @files = glob('vap/perl/*');
 $newpath="./perl";
 foreach my $f (@files){
   ($name, $path) = fileparse($f);
   my $newname = "$newpath/$name";
+  print "cp $f $newname\n";
   rename($f, $newname) or die "$!\n";
   if ($newname =~ /\.pm$/){
     chmod 0640, $newname or die "$!\n";
@@ -47,10 +57,12 @@ foreach my $f (@files){
   }
 }
 
+print "Getting Perl files from util/perl\n";
 @files = glob('util/perl/*');
 foreach my $f (@files){
   ($name, $path) = fileparse($f);
   my $newname = "$newpath/$name";
+  print "cp $f $newname\n";
   rename($f, $newname) or die "$!\n";
   if ($newname =~ /\.pm$/){
     chmod 0640, $newname or die "$!\n";
@@ -61,38 +73,43 @@ foreach my $f (@files){
 
 
   # --------- Library ------------
-
+print "mv ./Library .\n";
 if (! -d "./Library") {
   my $exe="mv ./vap/Library .";
   #`mv ./vap/Library .` or die "$!\n";
-  my $r=system($exe)/256;
+  $r=system($exe)/256;
   die "$!\n" unless $r==0;
 }
 
   # ---- config files -----------
 
+print "mv ./config .\n";
 if (! -d "./config") {
   my $exe="mv ./vap/config .";
   #`mv ./vap/Library .` or die "$!\n";
-  my $r=system($exe)/256;
+  $r=system($exe)/256;
   die "$!\n" unless $r==0;
 }
 
   # --------- source ------------
 
 mkdir "src" or die "$!\n" unless (-d "src") ;
+print "moving files from vap/src to ./src\n";
 @files=glob('vap/src/*');
 $newpath="./src";
 foreach my $f (@files){
   ($name, $path) = fileparse($f);
   my $newname = "$newpath/$name";
+  print "cp $f $newname\n";
   rename($f, $newname) or die "$!\n";
 }
 
+print "moving files from util/src to ./src\n";
 @files=glob('util/src/*');
 foreach my $f (@files){
   ($name, $path) = fileparse($f);
   my $newname = "$newpath/$name";
+  print "cp $f $newname\n";
   rename($f, $newname) or die "$!\n";
 }
 
@@ -100,25 +117,46 @@ foreach my $f (@files){
 
 
 mkdir "scr" or die "$!\n" unless (-d "scr") ;
+print "moving files from vap/scr to ./scr\n";
 @files=glob('vap/scr/*');
 $newpath="./scr";
 foreach my $f (@files){
   ($name, $path) = fileparse($f);
   my $newname = "$newpath/$name";
   rename($f, $newname) or die "$!\n";
+  print "cp $f $newname\n";
   chmod 0750, $newname or die "$!\n";
 }
 
 @files=glob('util/scr/*');
+print "moving files from util/src to ./src\n";
 foreach my $f (@files){
   ($name, $path) = fileparse($f);
   my $newname = "$newpath/$name";
+  print "cp $f $newname\n";
   rename($f, $newname) or die "$!\n";
   chmod 0750, $newname or die "$!\n";
 }
 
+print "Removing ./vap and ./util\n";
 `rm -rf ./vap` and die "$!\n";
 `rm -rf ./util` and die "$!\n";
+
+print "------ Running make in src ---- \n";
+chdir "./src" or die "$!\n"; 
+$r=system("make")/256;
+die "$!\n" if $r;
+$r=system("make install")/256;
+die "$!\n" if $r;
+chdir ".." or die "$!\n";
+
+print "------ Running make in idl/linkimage ---- \n";
+chdir "idl/linkimage" or die "$!\n";
+$r=system("make")/256;
+die "$!\n" if $r;
+$r=system("make install")/256;
+die "$!\n" if $r;
+chdir "../.." or die "$!\n";
 
 print "Done!\n";
 exit;
