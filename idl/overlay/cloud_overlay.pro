@@ -33,6 +33,16 @@
 ;                      wpath = wpath, $ ; path to wind files (def=$VAP_WINDS)
 ;                      overlay_path = overlay_path,$ ; path to output overlay file
 ;                                       ; def = $VAP_ROOT/overlay
+;                      decimate=decimate,$ ; (I), scalar, decimate=n
+;                                          ; means take every n-th vector
+;                      CRDecimate=CRDecimate,$ ; (I), 2-vector,
+;                                              ; CRDecimate=[p,q
+;                                              ; means take every p-th
+;                                              ; column of every q-th row
+;                      ExcludeCols=ExcludeCols,$ ; (I) string,
+;                                             ; excludeCols='0,38:40,75'
+;                                             ; means exclude columns 
+;                                             ; 0, 38,39,40 and 75.
 ;                      ps =  ps         ; make a postscript instead of a gif
 ;
 ;
@@ -60,6 +70,15 @@
 ;                      Default=$VAP_WINDS
 ;        overlay_path- path to output overlay files,
 ;                     Default=$VAP_ROOT/overlay/
+;        Decimate    - (I) scalar, decimate=n means take
+;                      every n-th vector. Default=1, take every
+;                      vector. Decimate is ignored if CRDecimate is
+;                      present.
+;        CRDecimate  - (I), 2-vector, CRDecimate=[p,q] means take
+;                      every p-th column from every q-th row.
+;                      Default=[1,1] meaning, take every vector.
+;        ExcludeCols - (I) string, ExcludeCols='0,38:40,75' means
+;                      exclude columns 0, 38,39,40 and 75
 ;        ps          - Make Postscript file instead of gif.
 ;        pid         - used with cronjobs
 ;
@@ -96,6 +115,9 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.3  1998/10/06 00:21:57  vapuser
+; Added DeEnvVar
+;
 ; Revision 1.2  1998/09/09 17:49:41  vapuser
 ; Just added some RCS Header Macros
 ;
@@ -114,6 +136,17 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                       wpath = wpath, $ ; path to wind files (def=$VAP_WINDS)
                       overlay_path = overlay_path,$ ; path to output overlay file
                                        ; def = $VAP_OVERLAY
+                      decimate=decimate,$ ; (I), scalar, decimate=n
+                                          ; means take every n-th vector
+                      CRDecimate=CRDecimate,$ ; (I), 2-vector,
+                                              ; CRDecimate=[p,q
+                                              ; means take every p-th
+                                              ; column of every q-th row
+                      ExcludeCols=ExcludeCols,$ ; (I) string,
+                                             ; excludeCols='0,38:40,75'
+                                             ; means exclude columns 
+                                             ; 0, 38,39,40 and 75.
+
                       ps =  ps,$       ; make a postscript instead of a gif
                       pid=pid          ; Used with cron jobs
                       
@@ -123,17 +156,22 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
   auto_cloud_overlay = keyword_set(pid) ; flag for cronjob runs.
   user = getenv('USER')
-  IF (user NE "" ) THEN BEGIN 
+  IF (user NE "" ) AND auto_cloud_overlay THEN BEGIN 
     lockfile = (findfile('/tmp/' + user + '.cloud_overlay.lock', count=n))(0)
-    openr, lun, lockfile, /get, error=err
-    IF err ne 0 THEN BEGIN 
-      Message,!error_state.msg,/cont
+    IF n NE 0 THEN BEGIN 
+      openr, lun, lockfile, /get, error=err
+      IF err ne 0 THEN BEGIN 
+        Message,!error_state.msg,/cont
+        return
+      ENDIF 
+      ppid = 0L
+      readf, lun, ppid
+      free_lun, lun
+      IF ppid ne pid THEN auto_cloud_overlay = 0 ; not our lock file.
+    ENDIF ELSE BEGIN 
+      Message,'ERROR: No lock file!',/cont
       return
-    ENDIF 
-    ppid = 0L
-    readf, lun, ppid
-    free_lun, lun
-    IF ppid ne pid THEN auto_cloud_overlay = 0 ; not our lock file.
+    ENDELSE 
   ENDIF 
 
   catch, error_status
@@ -156,10 +194,15 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
 
   ps =  keyword_set( ps );
+  gif = ps NE 1;
 
   IF N_elements( time_inc ) EQ 0 THEN time_inc = 3
   IF n_elements( wpath ) EQ 0 THEN wpath =  '$VAP_WINDS'
   IF n_elements( overlay_path ) EQ 0 THEN overlay_path =  '$VAP_OVERLAY'
+
+  IF n_elements(CRDecimate) NE 2 THEN BEGIN 
+    IF n_elements(decimate) EQ 0 THEN CRDecimate = [1,1]
+  ENDIF 
 
   cd,current=cur_dir
 
@@ -234,6 +277,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
   wf = GetWindFiles( date_time, delta=time_inc, path= wpath, filter='Q*')
   nf = n_elements(wf)
+
+  
   IF strlen(wf[0]) EQ 0 AND nf EQ 1 THEN BEGIN 
     str = 'ERROR: No wind files in dir ' + WPATH
     Message,str,/cont
@@ -243,19 +288,37 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     ENDIF 
     return 
   ENDIF ELSE BEGIN
+
+
+    str = 'INFO: Found ' + strtrim(nf,2) + ' wind files'
+    Message,str,/info
+    IF auto_cloud_overlay THEN $
+      printf,llun,"INFO: " + str
+    FOR ff=0,nf-1 DO BEGIN 
+      str = 'INFO: ' + wf[ff]
+      Message,str,/info
+      IF auto_cloud_overlay THEN $
+        printf,llun,"INFO: " + str
+    ENDFOR 
+          
+
     CASE grid_type OF 
       'GOES': BEGIN 
-        IF ps THEN  BEGIN 
-          GOES_OVERLAY, cloud_file, wfiles=wf, $
-            minspeed=2, maxspeed=20, thick=2, $
-             len=2,getoutfile=ofile, /ps,/z
-        ENDIF ELSE BEGIN 
-          GOES_OVERLAY, cloud_file, wfiles=wf, $
-            minspeed=2, maxspeed=20, thick=2, $
-             len=2,xsiz=960,ysiz=800,getoutfile=ofile, /gif,/z
-        ENDELSE 
+        GOES_OVERLAY, cloud_file, wfiles=wf, $
+          minspeed=2, maxspeed=20, thick=2, $
+          len=2,getoutfile=ofile, $
+          Decimate=decimate, CRDecimate=CRDecimate, $
+          ExcludeCols=ExcludeCols, ps=ps, gif=gif,/z
+         
       END
-      'GMS' : BEGIN 
+       'GMS' : BEGIN 
+         str = 'ERROR: GMS not implemented yet'
+        Message,str,/cont
+        IF auto_cloud_overlay THEN BEGIN 
+          printf,llun,str
+          free_lun,llun
+       ENDIF 
+       return
       END
     ENDCASE 
     IF auto_cloud_overlay THEN BEGIN 
