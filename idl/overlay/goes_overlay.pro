@@ -45,7 +45,9 @@
 ;                    rainflag      = rainflag, $
 ;                    rf_action   = rf_action, $
 ;                    rf_color    = rf_color, $
-;                    status      = status
+;                    status      = status, $
+;                    oplot       = oplot, $
+;                    help        = help
 ;
 ;
 ;
@@ -162,9 +164,71 @@
 ;                    brown. It's index 12 in the pv colortable. Much
 ;                    more visible and 'dirty' looking.
 ;
+;    oplot         : (I), array of structures (can be singleton)
+;                    having the following form (NB, only those
+;                    quantities marked *required* are ... um.. well
+;                    required. Everything else takes default values if
+;                    absent.)
+;
+;                    { lon        : float array (*required*); 
+;                         (The 'x' locations where to
+;                          plot symbol, data cordinates)
+;                      lat        : float array (*required*) ; 
+;                         (The 'y' location where to
+;                          plot symbol, data cordinates)
+;                      psym: int    
+;                            (the symbol to use, between 0 and
+;                               7, default=1 a '+')
+;                      symsize: float 
+;                               (size of symbol, def=1)
+;                      title      : string array,  
+;                                 (annotation for for (each) symbol)
+;                                 (default = '', which means (see note
+;                                 below, 'no annotation')
+;                      x_title    : float array, 
+;                                  (x location for annotation, 
+;                                   `data' corrds unless normal=1,
+;                                   default=lon, which will most
+;                                   likely be wrong, if you've set normal=1)
+;                      y_title    : float array, 
+;                                   (y location for annotation, 
+;                                   `data' corrds unless normal=1
+;                                   default=lat, see note for x_title)
+;                      alignment  : float array,    
+;                                  (justification of `title'
+;                                   on [xy]_title, 0=left, 1=right,
+;                                   0.5 is center, between 0 and 1,
+;                                   default=1)
+;                      orientation: float array 
+;                                  (degrees CCW from
+;                                           horizontal of title,
+;                                   default=0.0)
+;                      normal: 0|1 
+;                              depending on whether [x|y]_title
+;                              are data or normal
+;                              coordinates. default=0 => [x|y]_title
+;                              are in data corrdinates.
+;                      charsize: float (size of characters, def=1)
+;                      charthick: int (character thickness, def=1) }
+;
+;                    
+;                      No annotation is done when oplot[i].title is a
+;                      null string. The 'alignments' and
+;                      'orientations' will be reused, i.e. if there
+;                      are 5 titles but only 3 orientations, the 4-th
+;                      title will have the same orientation as the
+;                      first. Siimilarly for 'alignment.' To be most
+;                      sure of the results, the 'title', 'x_title',
+;                      'y_title', 'alignment', 'orientation' arrays
+;                      should all be the same size, with null strings
+;                      in the 'title' array where you don't want any
+;                      annotation.
+;
+;                      If psym is less than 0 the points are connected
+;                      by a line.
 ;
 ;
-;
+;     Help:   emit a help message.
 ;
 ;
 ; OUTPUTS:  A file, either a .gif, .jpeg (the default) or a .ps file,
@@ -190,26 +254,15 @@
 ;
 ; OPTIONAL OUTPUTS:  None
 ;
-;
-;
 ; COMMON BLOCKS:  goes_overlay_cmn
-;
-;
 ;
 ; SIDE EFFECTS:  Vast reduction of memory, as this program uses ALOT.
 ;
-;
-;
 ; RESTRICTIONS:  
-;
-;
 ;
 ; PROCEDURE:  Way to complicated to describe here.
 ;
-;
-;
 ; EXAMPLE:  
-;
 ;
 ; MODIFICATION HISTORY:
 ;
@@ -276,7 +329,9 @@ PRO goes_overlay, goesfile, $
                     rainflag    = rainflag, $
                     rf_action   = rf_action, $
                     rf_color    = rf_color , $
-                    maplimits   = maplimits
+                    maplimits   = maplimits, $
+                    oplot       = oplot, $
+                    help        = help
 
 
 ; COMMON goes_overlay_cmn, landel
@@ -284,11 +339,13 @@ PRO goes_overlay, goesfile, $
 
   status = 1
   savedevice = !d.name
-  IF n_elements(goesfile) EQ 0 AND n_elements(windfiles) EQ 0 THEN BEGIN 
-    Message,'Usage: goes_overlay, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec,rainflag=0|1,rf_action=0|1,rf_color=24bitnumber,mapLimits=mapLimits ] ',/cont
+  IF (n_elements(goesfile) EQ 0 AND n_elements(windfiles) EQ 0) OR $
+     keyword_set(help) EQ 1 THEN BEGIN 
+    Message,'Usage: goes_overlay, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec,rainflag=0|1,rf_action=0|1,rf_color=24bitnumber,mapLimits=mapLimits, oplot=oplot, help=help ] ',/cont
     status = 0
     return
   ENDIF 
+
   clouddata = 1
   winddata = n_elements(windfiles) NE 0 
   clouddata =  isa(goesfile,/string,/nonempty)
@@ -460,6 +517,45 @@ PRO goes_overlay, goesfile, $
   IF n_elements(rf_color) EQ 0 THEN rf_color =  0l
 
 
+  IF n_elements(oplot) NE 0 THEN BEGIN 
+    IF vartype(oplot) NE 'STRUCTURE' THEN BEGIN 
+      Message,"<oplot> must be a STRUCTURE, ignoring it!",/info
+    ENDIF ELSE BEGIN 
+      tags =  tag_names(oplot)
+      x1 = where( tags EQ 'LON' OR tags EQ 'LAT',nx1)
+      IF nx1 EQ 0 THEN BEGIN 
+        Message,"Structure OPLOT MUST have the two field 'LON' and 'LAT'! -- ignoring it!",/info
+      ENDIF ELSE BEGIN 
+        checkfor =  ['PSYM','SYMSIZE','CHARSIZE','CHARTHICK',$
+                     'TEXTCOLOR','SYMCOLOR','ALIGNMENT','ORIENTATION',$
+                     'TITLE', 'X_TITLE', 'Y_TITLE', 'NORMAL']
+        FOR i=0,n_elements(checkfor)-1 DO BEGIN 
+          x = where(strpos(tags,checkfor[i]) NE -1, nx )
+          IF nx EQ 0 THEN BEGIN 
+            CASE checkfor[i] OF 
+              'PSYM': PSYM = 1
+              'SYMSIZE': symsize = 1
+              'CHARSIZE': charsize = 1
+              'CHARTHICK': charthick = 1
+              'TEXTCOLOR': textcolor = 255
+              'SYMCOLOR': symcolor = 255
+              'ALIGNMENT': alignment =  1.
+              'ORIENTATION': orientation = 0.
+              'TITLE': title = replicate('',n_elements(oplot.lon) )
+              'X_TITLE': x_title = oplot.lon
+              'Y_TITLE': y_title = oplot.lat
+              'NORMAL': normal = 0
+            ENDCASE 
+          ENDIF ELSE s = execute( checkfor[i] + ' = oplot.' + checkfor[i] )
+        ENDFOR 
+        toplot = { lon: oplot.lon, lat: oplot.lat, symcolor: symcolor, $
+                   psym: psym, symsize: symsize, $
+                   title: title, x_title: x_title, y_title: y_title, $
+                   alignment: alignment, orientation: orientation, normal:normal , $
+                   textcolor: textcolor, charsize: charsize, charthick: charthick }
+      ENDELSE 
+    ENDELSE 
+  ENDIF 
 
 
     ; ============ Start the processing ==================
@@ -865,7 +961,7 @@ PRO goes_overlay, goesfile, $
       PlotVect,u,v,lon,lat,len=length,$
        thick=thick,start_index=WIND_START,ncolors=N_WIND_COLORS, $
          minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec
-
+      
     IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
       TVLCT,rf_color AND 'ff'xl,$
        ishft(rf_color,-8) AND 'ff'xl, $
@@ -874,6 +970,42 @@ PRO goes_overlay, goesfile, $
        thick=thick,minspeed=minspeed, maxspeed=maxspeed, $
        scale=scaleVec,color=1
     ENDIF 
+
+    FOR ii=0,n_elements(toplot)-1 DO BEGIN 
+      IF toplot[ii].psym LT 0 THEN BEGIN 
+        Plots,toplot[ii].lon, toplot[ii].lat, psym=toplot[ii].psym, $
+           symsize=toplot[ii].symsize,color=toplot[ii].symcolor
+      ENDIF ELSE BEGIN 
+        FOR jj=0,n_elements(toplot[ii].lon)-1 DO BEGIN 
+          Plots,toplot[ii].lon[jj], toplot[ii].lat[jj], psym=toplot[ii].psym, $
+            symsize=toplot[ii].symsize ,color=toplot[ii].symcolor
+        ENDFOR 
+      ENDELSE 
+      xx = where( strlen(toplot[ii].title) NE 0,nxx)
+      IF nxx NE 0 THEN BEGIN 
+        FOR jj=0,nxx-1 DO BEGIN 
+          nal = n_elements(toplot[ii].alignment)
+          nor = n_elements(toplot[ii].orientation)
+          IF toplot[ii].normal THEN BEGIN 
+             xyouts, toplot[ii].x_title[xx[jj]], $
+                toplot[ii].y_title[xx[jj]],$
+                 toplot[ii].title[xx[jj]], $
+                align=toplot[ii].alignment[xx[jj] MOD nal ], $
+                  orient=toplot[ii].orientation[xx[jj] MOD nor ], $
+                    charsize=toplot[ii].charsize, $
+                       charthick=toplot[ii].charthick,color=toplot[ii].textcolor,/normal
+           ENDIF ELSE BEGIN 
+             xyouts, toplot[ii].x_title[xx[jj]], $
+                toplot[ii].y_title[xx[jj]],$
+                 toplot[ii].title[xx[jj]], $
+                align=toplot[ii].alignment[xx[jj]], $
+                  orient=toplot[ii].orientation[xx[jj]], $
+                    charsize=toplot[ii].charsize, $
+                       charthick=toplot[ii].charthick,color=toplot[ii].textcolor,/data
+          ENDELSE 
+        ENDFOR 
+      ENDIF 
+    ENDFOR 
     IF gridlines THEN $
       Map_Set,0,loncent,$
         limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],$
@@ -908,8 +1040,7 @@ PRO goes_overlay, goesfile, $
 
 
     ENDIF 
-
-      tvlct,orig_red,orig_green,orig_blue
+    tvlct,orig_red,orig_green,orig_blue
   ENDIF ELSE BEGIN 
 
       ; Here we do the gif/jpeg processing. Since the device we're
@@ -945,8 +1076,44 @@ PRO goes_overlay, goesfile, $
             thick=thick,minspeed=minspeed, maxspeed=maxspeed, $
               scale=scaleVec, color=rf_color
         ENDIF 
-      ENDIF  
+      ENDIF 
 
+      FOR ii=0,n_elements(toplot)-1 DO BEGIN 
+        IF toplot[ii].psym LT 0 THEN BEGIN 
+          Plots,toplot[ii].lon, toplot[ii].lat, psym=toplot[ii].psym, $
+             symsize=toplot[ii].symsize, color=toplot[ii].symcolor
+        ENDIF ELSE BEGIN 
+          FOR jj=0,n_elements(toplot[ii].lon)-1 DO BEGIN 
+            Plots,toplot[ii].lon[jj], toplot[ii].lat[jj], $
+               psym=toplot[ii].psym, $
+                symsize=toplot[ii].symsize , color=toplot[ii].symcolor
+          ENDFOR 
+        ENDELSE 
+        xx = where( strlen(toplot[ii].title) NE 0,nxx)
+        IF nxx NE 0 THEN BEGIN 
+          FOR jj=0,nxx-1 DO BEGIN 
+            nal = n_elements(toplot[ii].alignment)
+            nor = n_elements(toplot[ii].orientation)
+            IF toplot[ii].normal EQ 1 THEN BEGIN 
+               xyouts, toplot[ii].x_title[xx[jj]], $
+                  toplot[ii].y_title[xx[jj]],$
+                   toplot[ii].title[xx[jj]], $
+                  align=toplot[ii].alignment[xx[jj] MOD nal ], $
+                    orient=toplot[ii].orientation[xx[jj] MOD nor ], $
+                      charsize=toplot[ii].charsize, $
+                         charthick=toplot[ii].charthick,color=toplot[ii].textcolor,/normal
+             ENDIF ELSE BEGIN 
+               xyouts, toplot[ii].x_title[xx[jj]], $
+                  toplot[ii].y_title[xx[jj]],$
+                   toplot[ii].title[xx[jj]], $
+                  align=toplot[ii].alignment[xx[jj]], $
+                    orient=toplot[ii].orientation[xx[jj]], $
+                      charsize=toplot[ii].charsize, $
+                         charthick=toplot[ii].charthick,color=toplot[ii].textcolor, /data
+             ENDELSE 
+          ENDFOR 
+        ENDIF 
+      ENDFOR 
 
       col = bytarr(3,n_elements(ct[0,*]))
       col[0,*] =  ct[i,*]
