@@ -58,6 +58,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/07 00:08:25  vapuser
+; fixed a bug
+;
 ; Revision 1.1  1998/10/05 21:30:43  vapuser
 ; Initial revision
 ;
@@ -74,7 +77,7 @@ FUNCTION idldt2vaptime, idldt
   retarray = ''
   nn = n_elements(idldt)
   IF nn EQ 0 THEN BEGIN 
-    idldt =  today()            ;
+    idldt =  (today())[0]
     nn = 1
   ENDIF 
 
@@ -82,9 +85,9 @@ FUNCTION idldt2vaptime, idldt
 
     IF Tag_Names( idldt, /STRUCTURE_NAME ) EQ 'IDLDT' THEN BEGIN 
 
-      retarray = strarr(nn)
+      IF nn GT 1 THEN retarray = strarr(nn) ELSE retarray = ''
       FOR i=0,nn-1 DO BEGIN 
-        year   = strtrim(      idldt[i].year    ,2 )
+        year   = strtrim( idldt[i].year ,2 )
         month  = fix( idldt[i].month  )
         day    = fix( idldt[i].day    )
         hour   = fix( idldt[i].hour   )
