@@ -4,6 +4,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.5  2002/12/06 00:39:22  vapdev
+# Continuing work
+#
 # Revision 1.4  2002/11/22 22:31:32  vapdev
 # Ongoing work
 #
@@ -177,15 +180,16 @@ sub new {
 
 =head2 Usage: $obj->Report(message,severity)
 
- Send message to $self->{INFO_HANDLE} (by default STDOUT unless
- overridden in the call to `new') if `severity' == info|INFO,
- otherwise send it to ERROR_HANDLE (by default STDERR)
+  if `severity' == info|INFO, send message to $self->{INFO_HANDLE} (by
+  default STDOUT unless overridden in the call to `new') otherwise
+  send it to ERROR_HANDLE (by default STDERR)
 
 =cut
 
 sub Report{
   my $self=shift;
   my $message=shift or carp "Need Message!\n";
+  $message = join("",@{$message}) if ref($message) eq 'ARRAY';
   my $severity = shift || "ERROR";
   $severity = uc $severity;
   my $handle= $severity."_HANDLE";

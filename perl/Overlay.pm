@@ -123,6 +123,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.5  2002/12/09 23:39:23  vapdev
+# Continuing work
+#
 # Revision 1.4  2002/12/06 22:54:03  vapdev
 # Continuing work
 #
@@ -294,11 +297,19 @@ sub new {
   my $class = shift;
   my $self;
 
-  #my $defsfile = $ENV{VAP_LIBRARY} . "/overlay_defs_oo";
   my $defsfile = "overlay_defs_oo";
-  croak "Can't find defaults file $defsfile!\n" unless (! -e $defsfile );
-  do { require "$defsfile"; } or croak "Can't `require $defsfile\n";
+  my $msgdefsfile = $ENV{VAP_LIBRARY} . "/overlay_defs_oo";
   $self = {@_};
+  $self->{ERROROBJ} = VapError->new() or 
+    croak "Error creating VapError Object!\n";
+
+  $self->_croak("Can't find defaults file $msgdefsfile!\n",
+		"CAN'T FIND DEFS FILE!") unless (! -e $msgdefsfile );
+  do { require "$defsfile"; } or 
+    $self->_croak("Can't `require $msgdefsfile\n",
+		  "ERROR in `REQUIRE' of DEFS!");
+
+
   my $minusage = "*** Minimally, I need either (REGION,WINDFILTER)\n";
   $minusage .= "or TIME, SATNUM, SENSORNUM, WINDFILTER, LONLIM and LATLIM\n";
   if ($self->{HELP}) {
@@ -370,9 +381,7 @@ sub new {
   }
   $self->{IMAGEDELTA} = 3 unless $self->{IMAGEDELTA};
   $self->{ABSFLAG} = 0 unless $self->{ABSFLAG};
-  bless $self, ref($class) || $class;
-  $self->{ERROROBJ} = VapError->new() or 
-    croak "Error creating VapError Object!\n";
+
   $self->{DELTA} = 4 unless $self->{DELTA};
   $self->{SECS} = idltime2systime($self->{TIME});
   return $self;
@@ -676,7 +685,8 @@ sub deliver{
 sub _moveOutput{
   my $self=shift;
   my $outputname = $self->{OUTPUTNAME};
-  my $thumbnail = $self->{THUMBNAIL}
+  my $thumbnail = $self->{THUMBNAIL};
+    
   1;
 }
 #=============================================================

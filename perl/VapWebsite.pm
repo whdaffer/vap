@@ -57,14 +57,16 @@ BEGIN {
 
 use lib $ENV{VAP_SFTWR_PERL};
 use lib $ENV{VAP_LIBRARY};
-require "VapWebsite";
+require "VapWebsite_defs" or die "Can't `require' VapWebsite_defs\n";
 use VapUtil;
 use VapError;
 
+@VapWebsite::ISA = qw/VapError/;
 
 sub new{
   my $class = shift;
   my $self={@_};
+  $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
   return bless $self, ref($class) || $class;
 }
 
@@ -77,9 +79,23 @@ sub UpdateWebsite{
   my @fields=();
   if ($ext =~ /(jpeg|jpg)/i){
     if ($name =~ /-(TYP|DEP|STO)-/) {
-      # It's a tropical storm image.
-      my ($region, $type, $name, $date) = 
-	($name =~ /(\w+)-(\w+)-(\w+)-(\d+)\..*/);
+
+        # ---- It's a tropical storm image ----------
+        # The format for these files is 
+        #
+        #      SAT-STORMTYPE-NAME-DATE-TYPE.jpg
+        #
+        #    where 
+        #
+        #        SAT = GOES(8|10) or GMS5
+        #        STORMTYPE = TYP|DEP|STO
+        #        NAME = the storm's name
+        #        DATE = the date of the data used
+        #        TYPE = Q|S Q=QuikSCAT.
+        #
+
+      my ($region, $stormtype, $name, $date,$insttype) = 
+	($name =~ /(\w+)-(\w+)-(\w+)-(\d+)-(\w+)\..*/);
       $item = $region unless $item;
     } else {
       # A regular overlay!
