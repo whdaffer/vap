@@ -7,7 +7,7 @@
 ;
 ; CATEGORY:  General array manipulation
 ;
-; CALLING SEQUENCE:  scaled_array=scale(array[,minv,maxv,/double])
+; CALLING SEQUENCE:  scaled_array=scale(array,minv=minv,maxv=maxv,/double])
 ; 
 ; INPUTS:  
 ;
@@ -15,12 +15,12 @@
 ;   then used in all manipulations.
 ;
 ; OPTIONAL INPUTS:  
-;
-;    MinV: The value (possible existing in the input array) that gets mapped to 0.
-;    MaxV: The value (possible existing in the input array) that gets mapped to 1.
 ;       
 ; KEYWORD PARAMETERS:  
 ;
+;
+;   MinV: The value (possible existing in the input array) that gets mapped to 0.
+;   MaxV: The value (possible existing in the input array) that gets mapped to 1.
 ;   Double: If set, manipulations are to a double array.
 ;
 ; OUTPUTS:  
@@ -46,6 +46,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1998/11/25 19:11:31  vapuser
+; Took 'scale' out of call to Usage
+;
 ; Revision 1.1  1998/11/25 19:06:34  vapuser
 ; Initial revision
 ;
@@ -53,12 +56,12 @@
 ;Copyright (c) 1998, William Daffer
 ;-
 
-FUNCTION scale, array, minv, maxv, double=double
+FUNCTION scale, array, minv=minv, maxv=maxv, double=double
 
   double =  keyword_set(double)
 
   IF n_params() LT 1 THEN BEGIN 
-    Usage, 'scaled_array=scale( array [, minv, maxv, /double] )'
+    Usage, 'scaled_array=scale( array [, minv=minv, maxv=maxv, /double] )'
     return,''
   ENDIF 
 
