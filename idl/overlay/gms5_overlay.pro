@@ -207,6 +207,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/02 17:49:47  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -458,7 +461,7 @@ PRO gms5_overlay, datetime, gmsType, $
 
   allData = Gms5ReadAll(datetime,gmsType,lonpar=lonpar)
   image = allData.imagedata.image
-  calTemps = allData.CalData.ir[0].Temps
+  ;calTemps = allData.CalData.ir[0].Temps
   xloc = allData.griddata.xloc
   yloc = allData.griddata.yloc
   minlon = allData.griddata.minlon
