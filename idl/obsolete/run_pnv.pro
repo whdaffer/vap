@@ -1,2 +1,0 @@
-pnv
-exit

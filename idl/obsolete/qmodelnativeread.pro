@@ -1,1 +1,0 @@
-FUNCTION QmodelNativeRead, filename

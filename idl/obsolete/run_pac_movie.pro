@@ -1,2 +1,0 @@
-pac_movie
-exit
