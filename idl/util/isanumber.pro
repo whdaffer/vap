@@ -34,6 +34,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  1999/06/29 03:13:22  daffer
+; Took out call to `call_external'
+;
 ; Revision 1.2  1999/06/17 19:59:35  vapuser
 ; Now able to do vectors.
 ;
@@ -84,6 +87,7 @@ FUNCTION isanumber, field,verbose=verbose
     ENDELSE 
 
   ENDFOR 
+  IF n_elements(result) EQ 1 THEN result = result[0]
 RETURN, result
 END
 
