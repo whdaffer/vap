@@ -95,6 +95,9 @@
 ;                    Files.
 ;   EndTime: (O) - the Latesest time which appears in the Wind
 ;                  Files.
+;   Ofile: (I/O) - If set on input, this will be the name of the
+;                  output file. If present as a return argument, it
+;                  will return the name of the output file.
 ;   Nscat: (I) flag. If set, expect Nscat data.
 ;
 ;
@@ -165,6 +168,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/07 18:30:54  vapuser
+; Some Comment work
+;
 ; Revision 1.1  1998/10/07 00:08:33  vapuser
 ; Initial revision
 ;
@@ -220,6 +226,15 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                          Nscat     = Nscat, $     ; (I) flag, if set, expect 
                                                   ;  Nscat data
                          NoFile = NoFile, $       ; (I), flag, if set, don't write file.
+                         Ofile = Ofile ,$         ; (I/O). If present on input, this will
+                                                  ; be the name of the
+                                                  ; output file. If
+                                                  ; present as a
+                                                  ; return argument,
+                                                  ; the name of the
+                                                  ; output file will
+                                                  ; be returned in it.
+
                          Decimate = Decimate, $   ; See Explanation above
                          CRDecimate=CRDecimate,$  ; See Explanation above
                          ExcludeCols=ExcludeCols  ; See Explanation above
@@ -286,23 +301,23 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     ; Well, we've made it here, so the field must be okay. 
 
 
-  IF N_Elements(Ofile) THEN outfile = Ofile ELSE BEGIN 
-    Outfile = 'QIF-'
+  IF N_Elements(Ofile) NE 0 THEN outfile = Ofile ELSE BEGIN 
+    Ofile = 'QIF-'
     tmp = str_sep( EndTime,'/' )
     nn = n_elements(tmp)
-    FOR i=0,nn-1 DO Outfile = Outfile + tmp[i]
-    Outfile = Outfile + '.hdf'
+    FOR i=0,nn-1 DO Ofile = Ofile + tmp[i]
+    Ofile = Ofile + '.hdf'
   ENDELSE 
 
   IF NOT keyword_set( NoFile) THEN BEGIN 
       ; Let's write it out.
-    Message,' Writing file to ' + Outfile,/info
-    s = qmodelhdfwrite( Outfile,Ui,Vi, lonpar=lonpar, latpar=Latpar, $
+    Message,' Writing file to ' + Ofile,/info
+    s = qmodelhdfwrite( Ofile,Ui,Vi, lonpar=lonpar, latpar=Latpar, $
                         Version=Versionid, Longname=Longname, $
                         CreationTime=CreationTime, StartTime=StartTime, $
                         EndTime=EndTime )
     IF s NE 1 THEN $
-      Message,'Failure writing model to file ' + Outfile,/cont
+      Message,'Failure writing model to file ' + Ofile,/cont
   ENDIF 
 
     ; return the field.
