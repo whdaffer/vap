@@ -234,6 +234,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.13  2000/03/01 16:40:08  vapuser
+; Uncommented 'catch', added a few 'status = 0's in case of
+; failure.
+;
 ; Revision 1.12  2000/02/29 23:34:05  vapuser
 ; Added colorbar for rain flagged data.
 ;
@@ -325,13 +329,13 @@ PRO gms5_overlay, datetime, gmsType, $
   status = 1
 
   genv,/save
-  tvlct,orig_red,orig_green,orig_blue,/get
-  loadct,0,/silent
+;  tvlct,orig_red,orig_green,orig_blue,/get
+;  loadct,0,/silent
 
   IF n_Params() EQ 0 THEN BEGIN 
     Usage, 'gms5_overlay, datetime, gmsType,windfiles = windfiles, xsize = xsize, ysize = ysize, CRDecimate = CRDecimate, Decimate = Decimate, ExcludeCols = ExcludeCols, verbose = verbose, minpix  = minpix, minspeed  = minspeed, maxspeed  = maxspeed,length  = length,thick = thick, title = title,subtitle = subtitle, outfile = outfile,BrightMin = BrightMin, BrightMax = BrightMax, SatMin = SatMin, SatMax = SatMax, LandHue = LandHue,WaterHue = WaterHue,LandRGB=landRGB, WaterRGB=WaterRGB, gif = gif, ps = ps, scalefac = scalefac, jpeg = jpeg,quality = quality, ScaleVec=ScaleVec'
-    tvlct,orig_red,orig_green,orig_blue
-    genv,/restore
+;    tvlct,orig_red,orig_green,orig_blue
+;    genv,/restore
     status = 0
     return
   ENDIF 
@@ -429,8 +433,8 @@ PRO gms5_overlay, datetime, gmsType, $
      ps AND jpeg OR $
      jpeg AND gif THEN BEGIN 
     Message,'Only one of PS or GIF or JPEG may be set',/cont
-    tvlct,orig_red,orig_green,orig_blue
-    genv,/restore
+;    tvlct,orig_red,orig_green,orig_blue
+;    genv,/restore
     status = 0
     return
   ENDIF 
@@ -491,7 +495,7 @@ PRO gms5_overlay, datetime, gmsType, $
   IF error NE 0 THEN BEGIN 
     catch,/cancel
     Message,!error_state.msg,/cont
-    tvlct,orig_red,orig_green,orig_blue
+;    tvlct,orig_red,orig_green,orig_blue
 ;    genv,/restore
     status = 0
     return
@@ -523,8 +527,8 @@ PRO gms5_overlay, datetime, gmsType, $
   ENDELSE 
   IF NOT Ptr_Valid(ptr) THEN BEGIN 
     Message,'Error Reading ColorTable!',/cont
-    tvlct,orig_red,orig_green,orig_blue
-    genv,/restore
+;    tvlct,orig_red,orig_green,orig_blue
+;    genv,/restore
     status = 0
     return
   ENDIF 
@@ -973,7 +977,7 @@ PRO gms5_overlay, datetime, gmsType, $
 
   ENDCASE
   Outfile = OutputFileName
-  genv,/restore
+;  genv,/restore
    
 END
 
