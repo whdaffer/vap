@@ -18,6 +18,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.1  1998/10/02 20:09:40  vapuser
+# Initial revision
+#
 #
 #
 
@@ -25,7 +28,7 @@
 require vap_perl;
 use Getopt::Long;
 
-$rcsid="$Id:";
+$rcsid="$Id$";
 
   $usage =  "\nUsage:\n";
   $usage .= " cloud_overlay --region REGION_DESIGNATION\n";
