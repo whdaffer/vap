@@ -9,21 +9,31 @@
 # Mods:
 #
 # $Log$
+# Revision 1.1  2001/02/09 19:44:34  vapuser
+# Initial revision
+#
 #
 if ("$1" == "") then 
-  echo usage: DMCONVERT outputfile \[type\]
+  echo usage: DMCONVERT outputfile \[template type\]
   exit
 endif
 echo Starting DMCONVERT; date
 echo DISPLAY = $DISPLAY
 set outputfile=$1
 if ("$2" == "") then 
+  set template="wind.0\#\#.jpg"
+else 
+  set template="$2"
+endif 
+
+if ("$3" == "") then 
   set type=qt
 else
-  set type="$2"
+  set type="$3"
 endif
 
-dmconvert -f $type -p video,comp=qt_cvid,squal=0.9,tqual=0.9,rate=30 -n gwind.0\#\#,start=1,end=60,step=1 gwind.0\#\# $outputfile >&! /tmp/DMCONVERT.LOG
+
+dmconvert -f $type -p video,comp=qt_cvid,squal=0.9,tqual=0.9,rate=30 -n $template,start=1,end=60,step=1 $template $outputfile >&! /tmp/DMCONVERT.LOG
 cat /tmp/DMCONVERT.LOG
 rm /tmp/DMCONVERT.LOG
 echo Done\!; date
