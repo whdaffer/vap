@@ -2,6 +2,7 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
                     rainf=rainf, $
                     ermax=ermax, $
                     ofile=ofile, $
+                    reuse=reuse,$
                     help=help
 ;+
 ; NAME:   RunSuccor
@@ -17,7 +18,7 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 ;
 ; CALLING SEQUENCE:  status=runsuccor(u,v,lon,lat,[ui,vi | ofile=ofile],
 ;                                     [lonpar,latpar, rainf=rainf,
-;                                       ermax=ermax, help=help] )
+;                                       ermax=ermax, help=help,reuse==reuse] )
 ;
 ;
 ; 
@@ -56,6 +57,11 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 ;            _ANIMATE_WIND_FIELD_ in addition to being output to the
 ;            variables UI/VI, if they are present.
 ;              
+;        reuse (I) flag, if set, reuse the UI/VI in the call to
+;            succor. Requires UI/VI be passed in and have the correct
+;            dimensionality
+;
+;        help: prints a help message
 ;
 ;
 ; OUTPUTS:  
@@ -64,6 +70,9 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 ;            dimensionality determined by lonpar/latpar.
 ;        VI: V component of interpolated field (array with
 ;            dimensionality determined by lonpar/latpar.
+;
+;            These arrays can also be passed in and reused in a second
+;            call to succor, by setting the 'reuse' flag. 
 ;
 ;        RETURN_VALUE: 2=couldn't write to file but did output data to
 ;            UI/VI variables. 1=success, 0=failure. 
@@ -102,6 +111,9 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/06 00:16:09  vapuser
+; Changed some comments
+;
 ; Revision 1.1  1998/09/30 19:10:48  vapuser
 ; Initial revision
 ;
@@ -148,6 +160,8 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
   hstr = hstr + "  ERMAX: The 'Maximum difference' between the data and " + LF
   hstr = hstr + "    model field allowed " + lf
   hstr = hstr + "    (Def=[50.,20.,10,.5] " + lf
+  hstr = hstr + "  REUSE: Flag, if set, use the UI/VI that are passed in directly"+lf
+  hstr = hstr + "    in the call to succor, rather than creating them." + lf
   hstr = hstr + "  HELP: this message" + lf + lf
   hstr = hstr + "  The interpolated field is returned in the variables " + lf
   hstr = hstr + "  UI and VI, and optionally written to the file given " + lf
@@ -197,9 +211,30 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 
     nu = (lonpar[1]-lonpar[0])/lonpar[2] + 1
     nv = (latpar[1]-latpar[0])/latpar[2] + 1 
-    ui = fltarr(nu,nv)
-    vi = fltarr(nu,nv)
+    IF keyword_set( reuse ) THEN BEGIN 
+      IF n_elements(ui) EQ 0 OR n_elements(vi) EQ 0 THEN BEGIN 
+        Message,'UI/VI must be defined when using REUSE',/cont
+        print,' Required dimensionality: ',nu,nv
+        return,0
+      ENDIF 
+      su = size( ui, /dimensions )
+      sv = size( vi, /dimensions )
+      x = where( su-sv,nx )
+      IF nx NE 0 OR (su[0] NE nu AND su[1] NE nv) THEN BEGIN 
+        Message,'(Reuse) Incompatible Dimensions',/cont
+        print,'UI has dimensions ',su
+        print,'VI has dimensions ',sv
+        print,'Calculated Dimensions: ',nu,nv
+        return,0
+      ENDIF 
+    ENDIF ELSE BEGIN 
+      ui = fltarr(nu,nv)
+      vi = fltarr(nu,nv)
+    ENDELSE 
+    t1 = systime(1)
+    Message,'Beginning SUCCOR Run',/info
     Succor, llon,llat,uu,vv,ui,vi,lonpar,latpar,ermax,rainf
+    print,'  Execution time ',systime(1)-t1, ' seconds'
     status = 1
     IF n_elements(ofile) THEN BEGIN 
       openw, lun, ofile, /get, error=err
