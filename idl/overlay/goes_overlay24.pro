@@ -29,6 +29,8 @@
 ;                    BrightMax   = BrightMax, $
 ;                    SatMin      = SatMin, $
 ;                    SatMax      = SatMax, $
+;                    LandRGB     = LandRGB,$
+;                    WaterRGB    = WaterRGB,$
 ;                    LandHue     = LandHue,$
 ;                    WaterHue    = WaterHue,$
 ;                    outfile     = outfile,$
@@ -106,21 +108,30 @@
 ;                   function for abscissa greater than this one are ;
 ;                   set to 0. Input as a float between 0 and
 ;                   1. (Default=0.55)
-;     LandHue     : The 3-vector containing the RGB values for the
+;     LandRGB     : The 3-vector containing the RGB values for the
 ;                   Land color
-;     WaterHue    : The 3-vector containing the RGB values for the
+;     WaterRGB    : The 3-vector containing the RGB values for the
 ;                   Water color
 ;
-;     gif         : output as Gif file (the default)
+;     LandHue     : the Hue value for land (from a Hue/Brightness/Saturation
+;                   triple )
+;     WaterHue    : the Hue value for water (from a
+;                   Hue/Brightness/Saturation triple
+;
+;
+;     gif         : output as Gif file 
 ;     scalefac    : scale factor to be used in making Postscript files.
 ;                   (def=0.05)
 ;     ps          : output as Postscript file
-;     jpeg        : output file as Jpeg file 
+;     jpeg        : output file as Jpeg file (the default)
 ;     Quality     : Use this quality when making Jpeg files (def=75)
 ;     verbose     : flag, if set, emit many messages
+;     thumbnail   : if present, this will contain the bytarr with a
+;                   thumbnail (30% of the size of the full image)
+;                   Not applicable in the case of Postscript output.
 ;
 ;
-
+;
 ;
 ;
 ; OUTPUTS:  A file, either a .gif, .jpeg (the default) or a .ps file,
@@ -129,7 +140,7 @@
 ;          whatever is passed in via the 'outfile' keyword. The
 ;          default output format is Gif and the default name is :
 ; 
-;          GOES_nn_mmm_yyyymmddThh:mm-%aaaa,bbb,cccc,ddd%.gif
+;          GOES_nn_mmm_yyyymmddThh:mm-%aaaa,bbb,cccc,ddd%.ext (ext=gif,jpeg,ps)
 ;
 ;          where 
 ;          nn = 8 or 10
@@ -170,6 +181,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.4  1998/12/07 20:10:31  vapuser
+; Implemented new method of making overlays, using Lightness/Saturation. Added
+; new keywords to control this, as well as some other keywords. Updated
+; documentation.
+;
 ; Revision 1.3  1998/12/02 00:32:33  vapuser
 ; New cloudmask for non-IR data.
 ;
@@ -204,31 +220,39 @@ PRO goes_overlay24, goesfile, $
                     BrightMax   = BrightMax, $
                     SatMin      = SatMin, $
                     SatMax      = SatMax, $
+                    LandRGB     = LandRGB,$
+                    WaterRGB    = WaterRGB,$
                     LandHue     = LandHue,$
                     WaterHue    = WaterHue,$
                     gif         = gif,$        
                     ps          = ps, $        
                     scalefac    = scalefac, $
                     jpeg        = jpeg,$
-                    quality     = quality
+                    quality     = quality, $
+                    thumbnail   = thumbnail
 
-COMMON goes_overlay_cmn, landel
+; COMMON goes_overlay_cmn, landel
 
 
-  Default_WaterHue = [31,  33, 129]
-  Default_LandHue =  [25, 110,   0]
+  Default_WaterRGB = [31,  33, 129]
+  Default_LandRGB =  [25, 110,   0]
+
+  Color_Convert, Default_WaterRGB[0],Default_WaterRGB[1],Default_WaterRGB[2],$
+   Default_WaterHue,l,s,/rgb_hls
+  Color_Convert, Default_LandRGB[0],Default_LandRGB[1],Default_LandRGB[2],$
+   Default_LandHue,l,s,/rgb_hls
 
   genv,/save
   tvlct,orig_red,orig_green,orig_blue,/get
   loadct,0,/silent
-  catch, error
-  IF error NE 0 THEN BEGIN 
-    catch,/cancel
-    Message,!error_state.msg,/cont
-    tvlct,orig_red,orig_green,orig_blue
-    genv,/restore
-    return
-  END
+;  catch, error
+;  IF error NE 0 THEN BEGIN 
+;    catch,/cancel
+;    Message,!error_state.msg,/cont
+;    tvlct,orig_red,orig_green,orig_blue
+;    genv,/restore
+;    return
+;  END
 
   FOR i=0,1 DO BEGIN 
     device,get_visual_name= this_visual
@@ -245,7 +269,7 @@ COMMON goes_overlay_cmn, landel
     ENDIF 
   ENDFOR 
   IF n_elements(goesfile) EQ 0 THEN BEGIN 
-    Message,'Usage: goes_overlay24, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandHue=LandHue,WaterHue=WaterHue ] ',/cont
+    Message,'Usage: goes_overlay24, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue ] ',/cont
     tvlct,orig_red,orig_green,orig_blue
     genv,/restore
     return
@@ -266,8 +290,8 @@ COMMON goes_overlay_cmn, landel
   ENDIF 
 
   IF NOT (ps OR gif OR jpeg) THEN BEGIN 
-    Message,' Defaulting to gif output ',/info
-    gif = 1
+    Message,' Defaulting to jpeg output ',/info
+    jpeg = 1
   ENDIF 
 
   IF n_elements( Quality ) EQ 0 THEN Quality = 75
@@ -284,7 +308,7 @@ COMMON goes_overlay_cmn, landel
 
   IF n_Elements(minspeed) EQ 0 THEN minspeed = 2
   IF n_Elements(maxspeed) EQ 0 THEN maxspeed = 25
-  IF n_elements(length)   EQ 0 THEN length = 2
+  IF n_elements(length)   EQ 0 THEN length = 2.5
   IF n_elements(thick)    EQ 0 THEN thick = 1
   IF n_elements(BrightMin) EQ 0 THEN BrightMin = 0.
   IF n_elements(BrightMax) EQ 0 THEN BrightMax = 0.8
@@ -297,24 +321,38 @@ COMMON goes_overlay_cmn, landel
   SatMin = 0> float(SatMin) < 1.
   SatMax = SatMin+.01> SatMax < 1.
 
-  IF n_Elements(LandHue) NE 3 THEN BEGIN 
-    IF n_Elements(LandHue) NE 0 THEN $
-      Message,'LandHue must be a 3-vector',/cont
-    Message,'  Taking default Land Hue ' + strtrim( Default_LandHue,2),/cont
-    LandHue = Default_Landhue
+  IF n_elements(LandHue) EQ 0 THEN BEGIN 
+    IF n_Elements(LandRGB) NE 3 THEN BEGIN 
+      IF n_Elements(LandRGB) NE 0 THEN $
+        Message,'LandRGB must be a 3-vector',/cont
+      Message,'  Taking default Land Hue = ' + $
+       '[' + strjoin( strtrim( Default_LandRGB,2)," ") + ']',/cont
+      LandRGB = Default_LandRGB
+    ENDIF 
+    Color_Convert, LandRGB[0], LandRGB[1], LandRGB[2], LandHue,l,s,/rgb_hls
   ENDIF 
 
-  IF n_Elements(WaterHue) NE 3 THEN BEGIN 
-    IF n_Elements(WaterHue) NE 0 THEN $
-      Message,'WaterHue must be a 3-vector',/cont
-    Message,'  Taking default Water Hue ' + strtrim( Default_WaterHue,2),/cont
-    WaterHue = Default_WaterHue
+  IF n_elements(WaterHue) EQ 0 THEN BEGIN 
+    IF n_Elements(WaterRGB) NE 3 THEN BEGIN 
+      IF n_Elements(WaterRGB) NE 0 THEN $
+        Message,'WaterRGB must be a 3-vector',/cont
+      Message,'  Taking default Water Hue= ' + $
+       '[' + strjoin( strtrim( Default_WaterRGB,2)," ") + ']',/cont
+      WaterRGB = Default_WaterRGB
+    ENDIF 
+    Color_Convert, WaterRGB[0], WaterRGB[1], WaterRGB[2], WaterHue,l,s,/rgb_hls
   ENDIF 
-
+  
+  LandHue =  0> LandHue < 360.
+  WaterHue =  0> WaterHue < 360.
   
   start_time = systime(1)
-  Read_PCGoes,goesfile,limits,data,hdr=hdr, status=status
+  Read_PCGoes,goesfile,limits,GoesData,hdr=hdr, status=status
 
+  IF NOT status THEN BEGIN 
+    Message,'ERROR Reading Goesfile ' + goesfile,/cont
+    return
+  ENDIF 
 
     ; Make sure the longitude range is monotonic
   lonrange = FixLonRange( [ limits[0],limits[2] ])
@@ -354,7 +392,7 @@ COMMON goes_overlay_cmn, landel
 
     IR =  ( sensornum GT 1 )
 
-    IF ir THEN data = 1024-temporary(data)
+    IF ir THEN GoesData = 1024-temporary(GoesData)
     IF N_elements(minpix) EQ 0 THEN minpix = 0
 
     ptr = ReadColorTable($
@@ -369,7 +407,7 @@ COMMON goes_overlay_cmn, landel
     ptr_free,ptr
 
     WIND_START = 1
-    N_WIND_COLORS = 26
+    N_WIND_COLORS = 25
     N_COLORS = 27
 
     IF n_elements(Windfiles) NE 0 THEN BEGIN 
@@ -407,13 +445,31 @@ COMMON goes_overlay_cmn, landel
               v = v[good]
               lon = lon[good]
               lat = lat[good]
-              speed = seepd[good]
+              speed = speed[good]
             ENDIF 
-            veccol = BytScl( speed, min=minspeed, $
-                             max=maxspeed, $
-                             top=N_COLORS-WIND_START-1) + $
-                             WIND_START
-            col24 = color24( veccol, colortable=ct)
+            good = where( lon GE lonrange[0] AND $
+                          lon LE lonrange[1] AND $
+                          lat GE limits[1] AND $
+                          lat LE limits[3], ngood )
+            IF ngood NE 0 THEN BEGIN 
+              u = u[good]
+              v = v[good]
+              lon = lon[good]
+              lat = lat[good]
+              speed = speed[good]
+              veccol = BytScl( speed, min=minspeed, $
+                               max=maxspeed, $
+                               top=N_WIND_COLORS-1) + $
+                                  WIND_START
+              col24 = color24( veccol, colortable=ct)
+            ENDIF ELSE BEGIN 
+              u = 0
+              v = 0
+              lon = 0
+              lat = 0
+              speed = 0
+              col24 = 0
+            ENDELSE 
             t0 = systime(1)
             
           ENDIF 
@@ -423,21 +479,21 @@ COMMON goes_overlay_cmn, landel
     ENDIF   
 
       ; read the land elevation file, if it isn't in the common
-    IF n_elements(landel) EQ 0 THEN BEGIN 
-      openr,lun,'$VAP_ROOT/animate/land_elevations.bin',/get,error=err
-      IF err NE 0 THEN BEGIN 
-        Message,'Error reading Land Elevation Database ',/cont
-        tvlct,orig_red,orig_green,orig_blue
-        genv,/restore
-        return
-      ENDIF 
-      landel =  intarr( 12l*360, 12l*180 + 1 )
-      readu,lun, landel
-      free_lun,lun
-    ENDIF 
+;    IF n_elements(landel) EQ 0 THEN BEGIN 
+;      openr,lun,'$VAP_ROOT/animate/land_elevations.bin',/get,error=err
+;      IF err NE 0 THEN BEGIN 
+;        Message,'Error reading Land Elevation Database ',/cont
+;        tvlct,orig_red,orig_green,orig_blue
+;        genv,/restore
+;        return
+;      ENDIF 
+;      landel =  intarr( 12l*360, 12l*180 + 1 )
+;      readu,lun, landel
+;      free_lun,lun
+;    ENDIF 
 
 
-    sz = size(data,/dimensions)
+    sz = size(GoesData,/dimensions)
     nlon = 1.0*sz[0]
     nlat = 1.0*sz[1]
 
@@ -449,17 +505,14 @@ COMMON goes_overlay_cmn, landel
     lati = replicate(1.,nlon)#(findgen(nlat)*latinc+latmin)
 
     t0 = systime(1)
-    landmask = runLandMask(loni,lati)
-    land = where(landmask)
-    water = where(landmask EQ 0)
-    landmask = 0
+    land = where( runLandMask(loni,lati) )
     t1 = systime(1) 
     IF verbose THEN print,'Time for Landmask : ',t1-t0, ' Seconds '
     t0 = t1
 
-    x = where(loni LT 0, nx )
-    IF nx NE 0 THEN loni[x] =  loni[x] + 360.
-    topoIm = landel[ loni*12, (lati+90)*12 ]
+;    x = where(loni LT 0, nx )
+;    IF nx NE 0 THEN loni[x] =  loni[x] + 360.
+;    topoIm = landel[ loni*12, (lati+90)*12 ]
 
     t1 = systime(1) 
     IF verbose THEN print,'Time for TopoIm : ',t1-t0, ' Seconds '
@@ -549,66 +602,94 @@ COMMON goes_overlay_cmn, landel
 
     IF ps THEN device,filename=OutputFilename
 
+;    ;tmpGoesData = bytscl(GoesData)
+;    cloudmask =   scale( map_image( temporary(GoesData), $
+;                           xs,ys,xsize,ysize,$
+;                            lonmin=lonrange[0],$
+;                             latmin=limits[1],$
+;                               lonmax=lonrange[1],$
+;                                 latmax=limits[3],$
+;                                   scale=scalefac, /compress, /bilinear ))
 
-    cloudmask =   scale( map_image( bytscl(temporary(data)), $
-                           xs,ys,xsize,ysize,$
-                            lonmin=lonrange[0],$
-                             latmin=limits[1],$
-                               lonmax=lonrange[1],$
-                                 latmax=limits[3],$
-                                   scale=scalefac, /compress, /bilinear ))
+;    FOR channel=0,2 DO BEGIN 
+;      image = intarr(nlon,nlat)+WaterRGB[channel]
+;      image[land] =  LandRGB[channel]
+;;      image[land] = reform( $
+;;          
+;;           CT[ channel, $
+;;                       LAND_START>(topoIm[land]+LAND_START)<(WIND_START-1) ] )
+;;      commented out, 98/11/25, whd
+;;      image = 0> (image-cloudmask)
+;;      image = image + cloudmask
+;;      image =  byte(image <  255)
 
-    FOR channel=0,2 DO BEGIN 
-      image = intarr(nlon,nlat)+WaterHue[channel]
-      image[land] =  LandHue[channel]
-;      image[land] = reform( $
-;          
-;           CT[ channel, $
-;                       LAND_START>(topoIm[land]+LAND_START)<(WIND_START-1) ] )
-;      commented out, 98/11/25, whd
-;      image = 0> (image-cloudmask)
-;      image = image + cloudmask
-;      image =  byte(image <  255)
+;;      m = max(cloudmask)
+;;      image = image-m/4.
+;;      image = byte( 0> (image + cloudmask) < 255)
 
-;      m = max(cloudmask)
-;      image = image-m/4.
-;      image = byte( 0> (image + cloudmask) < 255)
+;      tmpIm =   map_image( image, xs,ys,xsize,ysize,$
+;                         lonmin=lonrange[0],$
+;                         latmin=limits[1],$
+;                         lonmax=lonrange[1],$
+;                         latmax=limits[3],$
+;                         scale=scalefac, /compress, /bilinear )
+;      IF channel EQ 0 THEN BEGIN 
+;        imsz = size(tmpIm,/dim)
+;        mapIm = bytarr(imsz[0],imsz[1],3)
+;      ENDIF 
+;      mapIm[*,*,channel] = tmpIm
+;      tmpIm = 0l
+;    ENDFOR 
 
-      tmpIm =   map_image( image, xs,ys,xsize,ysize,$
+;      ; scale cloud mask into [0,1]
+;;    cloudmask =  scale( data, min=0, max=1024)*100
+;      ; Convert mapIm to HLS
+;    Color_Convert, mapIm[*,*,0],mapIm[*,*,1],mapIm[*,*,2],h,l,s,/rgb_hls
+;    mapIm = 0; free some memory
+
+
+   cloudmask = scale( temporary(GoesData) )*99
+   Hue = fltarr(nlon,nlat)+WaterHue
+   Hue[land] = LandHue
+
+      ; Define the new Brightness/Saturation mappings
+    xx=findgen(100)/99.
+
+    bi = 0> interpol( [0.,1], [BrightMin, BrightMax], xx ) < 1
+    si = 0> interpol( [1.,0], [SatMin,    SatMax],xx ) < 1
+
+      ; Use 'cloudmask' to create new Brightness/Saturation values
+
+    b2=bi[cloudmask]
+    s2=si[temporary(cloudmask)]
+    cloudmask = 0
+
+      ; Substitute these new Brightness/Saturation values in for those in
+      ; mapIm and convert back to RGB 
+
+    Color_Convert, Hue,b2,s2, imr, img, imb, /hls_rgb
+    Hue = 0
+    b2 = 0
+    s2 = 0
+    Im = [ [[temporary(imr)]], [[temporary(img)]], [[temporary(imb)]] ]
+
+    FOR i=0,2 DO BEGIN 
+      tmpIm = Map_Image( Im[*,*,i], $
+                         xs,ys,xsize,ysize,$
                          lonmin=lonrange[0],$
                          latmin=limits[1],$
                          lonmax=lonrange[1],$
                          latmax=limits[3],$
                          scale=scalefac, /compress, /bilinear )
-      IF channel EQ 0 THEN BEGIN 
-        imsz = size(tmpIm,/dim)
-        mapIm = bytarr(imsz[0],imsz[1],3)
+
+      
+      IF i EQ 0 THEN BEGIN 
+        dim = size(tmpIm,/dim)
+        mapIm = bytarr(dim[0], dim[1], 3)
       ENDIF 
-      mapIm[*,*,channel] = tmpIm
-      tmpIm = 0l
+      mapIm[*,*,i] =  temporary(tmpIm)
     ENDFOR 
-
-      ; scale cloud mask into [0,1]
-;    cloudmask =  scale( data, min=0, max=1024)*100
-      ; Convert mapIm to HLS
-    Color_Convert, mapIm[*,*,0],mapIm[*,*,1],mapIm[*,*,2],h,l,s,/rgb_hls
-    mapIm = 0; free some memory
-
-      ; Define the new Brightness/Saturation mappings
-    xx=findgen(100)/99.
-
-    bi = 0> interpol( [0.,1], [brightmin, brightMax], xx ) < 1
-    si = 0> interpol( [1.,0], [Satmin, SatMax],xx ) < 1
-
-      ; Use 'cloudmask' to create new L,S values
-    b2=bi[cloudmask*100]
-    s2=si[cloudmask*100]
-
-      ; Substitute these new Lightness/Saturation values in for those in
-      ; mapIm and convert back to RGB 
-
-    Color_Convert, h,b2,s2, imr, img, imb, /hls_rgb
-    mapIm = [ [[temporary(imr)]], [[temporary(img)]], [[temporary(imb)]] ]
+    im = 0
 
       ; Tv the final PS image 
     IF ps THEN $
@@ -688,6 +769,12 @@ COMMON goes_overlay_cmn, landel
 
         Write_Gif, OutputFilename, im, r,g,b
         t1 = systime(1)
+        IF arg_present(thumbnail) THEN  BEGIN 
+          dims = size(im,/dimension)
+          thumbnail = OutputFilename + '.TN'
+          thumbnailIm =  congrid( im, dims[0]*0.3, dims[1]*0.3)
+          Write_Gif, thumbnail, temporary(thumbnailIm), r,g,b
+        ENDIF 
         IF verbose THEN print,' Write_Gif took: ', t1-t0,' Seconds '
         t0 = t1
       END
@@ -696,6 +783,13 @@ COMMON goes_overlay_cmn, landel
         tmpim = tvrd(true=3)
         Write_Jpeg, OutputFilename, tmpim, $
                quality=quality, true=3
+        IF arg_present(thumbnail) THEN  BEGIN 
+          dims = size(tmpim,/dimen)
+          thumbnailIm = congrid( tmpim,  dims[0]*0.3, dims[1]*0.3,dims[2] )
+          thumbnail = OutputFilename + '.TN'
+          Write_Jpeg, thumbnail, temporary(thumbnailIm), $
+           quality=quality, true=3
+        ENDIF 
       END
 
       ps: device,/close
