@@ -65,6 +65,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1999/04/02 18:00:31  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -81,8 +84,8 @@ IF n_elements( gms5grid_defined ) eq 0 THEN BEGIN
                 filename: '',$
                 date: '',$
                 minlon: 0., $  ; for use in distinguishing grida from grid files
-                xloc: fltarr(241,241),$
-                yloc: fltarr(241,241) }
+                xloc: ptr_new(),$
+                yloc: ptr_new()}
   gms5grid_defined = 1
   gms5grid_size = TotSize(gms5grid)
 
