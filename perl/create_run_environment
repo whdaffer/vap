@@ -7,6 +7,9 @@
 # bestiary of environmental variables be defined.
 #
 # $Log$
+# Revision 1.1  2003/01/27 16:15:03  vapdev
+# Initial revision
+#
 #
 #
 
@@ -22,7 +25,7 @@ mkdir -p $VAP_RESOURCES
 mkdir -p $VAP_COLORTABLES
 mkdir -p $VAP_BITMAPS
 
-# -- Work directories
+# --- Work directories
 mkdir -p $VAP_OPS_ANIM
 mkdir -p $VAP_OPS_OVERLAY
 mkdir -p $VAP_OPS_TS_OVERLAY
@@ -34,7 +37,7 @@ mkdir -p $VAP_GOES_TOP
 mkdir -p $VAP_GOES_GRIDDED_TOP
 mkdir -p $VAP_GMS_TOP
 
-# WWW directories
+# --- WWW directories
 mkdir -p $VAP_WWW_TOP
 mkdir -p $VAP_OVERLAY_ARCHIVE
 mkdir -p $VAP_TS_ARCHIVE

@@ -1175,6 +1175,7 @@ sub startPage{
 		 -title=>$title,
 		 -meta=>{"Keywords" => $keywords},
 		 -background=>"/images/fuji7.gif",
+			    -bgcolor=>'FCF6F4',
 		 -style=>{
 		      -code=>'A:link {text-decoration:none;},A:visited {text-decoration:none;}'
 		     },
@@ -1236,20 +1237,17 @@ sub startPage{
   $outsidetable->setCell(2,1,$leftnavtable->getTable);
   $outsidetable->setCellVAlign(2,1,'top');
   $outsidetable->setCell(3,1,$self->{BOTTOMTABLE}->getTable);
-  $outsidetable->setCellColSpan(3,1,2);
   delete $self->{BOTTOMTABLE};
   $outsidetable->setCellColSpan(3,1,2);
   $outsidetable->setCellVAlign(3,1,'TOP');
   $outsidetable->setCellAlign(3,1,'CENTER');
-  #$outsizetable->setCellStyle();
 
   my $font=$q->font({-face=>"Helvetica",-size=>'-3'},
-		    "Last Modified: " . localtime());
+ 		    "Last Modified: " . localtime());
   $outsidetable->setCell(4,1,$font);
   $outsidetable->setCellColSpan(4,1,3);
   $font=$q->font({-face=>"Helvetica",-size=>'-3'},
-		    "CL 02-2959");
-
+ 		    "CL 02-2959");
   $outsidetable->setCell(5,1,$font);
   $outsidetable->setCellColSpan(4,1,3);
 
@@ -1277,9 +1275,20 @@ sub endPage{
   my ($self,$body) = @_;
   $self->setBody($body);
   my $html = $self->{HTML} . $self->{OUTSIDETABLE}->getTable;
-  $html .= $self->imagemaps;
+  $html .= $self->imagemaps . "\n";
   my $q = $self->{CGI};
-  $html .= $q->end_html;
+
+
+#   $html .= $self->{BOTTOMTABLE}->getTable()  . "\n";
+#
+#
+#   $html .= "\n". $q->font({-face=>"Helvetica",-size=>'-3'},
+# 		    "Last Modified: " . localtime());
+#   $html .= "\n" . $q->font({-face=>"Helvetica",-size=>'-3'},
+# 		    "CL 02-2959");
+
+
+  $html .= "\n" . $q->end_html;
 }
 
 
