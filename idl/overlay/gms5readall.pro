@@ -49,6 +49,9 @@
 ; MODIFICATION LOG:
 ;
 ; $Log$
+; Revision 1.2  1999/04/02 17:48:49  vapuser
+; Removed cal data. Not required
+;
 ; Revision 1.1  1999/04/02 17:48:07  vapuser
 ; Initial revision
 ;
@@ -79,7 +82,7 @@ FUNCTION Gms5ReadAll, datetime, type, lonpar=lonpar
     tlonpar = fixlonrange(lonpar)
     IF tlonpar[0] LT 80 THEN BEGIN 
       grid = 'grida'
-      vetted =  Gms5VetMe( type, /grida)
+      vetted =  Gms5VetMe( type, /agrid)
     ENDIF ELSE BEGIN 
       grid = 'grid'
       vetted =  Gms5VetMe( type, /grid)
