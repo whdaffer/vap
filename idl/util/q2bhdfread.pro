@@ -62,6 +62,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.10  1999/08/12 16:33:17  vapuser
+; Fixed short int  problem in directions, added some
+; keywords and such.
+;
 ; Revision 1.9  1999/07/07 20:12:18  vapuser
 ; fixed a sign problem in Q2B Longitude.
 ; May have to revisit this when we upgrade to 5.2
@@ -279,6 +283,11 @@ FUNCTION q2bhdfread, filename, $
       dir =  float(dir*cal.cal + cal.offset)
 
 
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_dir: ', t2-t1
+      t1 = systime(1)
+
       r = hdf_sd_nametoindex(fileid, 'wvc_selection')
       r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
@@ -326,6 +335,10 @@ FUNCTION q2bhdfread, filename, $
         hdf_sd_endaccess,r
       ENDIF 
 
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_row_time: ', t2-t1
+      t1 = systime(1)
 
 
       r = hdf_sd_nametoindex(fileid, 'model_speed')
@@ -352,17 +365,10 @@ FUNCTION q2bhdfread, filename, $
       ENDIF 
       mdir =  float(mdir*cal.cal + cal.offset)
 
-      t2 = systime(1)
-      IF Verbose THEN $
-        print,'Time to extract wvc_dir: ', t2-t1
-      t1 = systime(1)
 
       hdf_sd_end,fileid
 
-      t2 = systime(1)
-      IF Verbose THEN $
-        print,'Time to extract wvc_row_time: ', t2-t1
-      t1 = systime(1)
+
 
       t2 = systime(1)
       IF Verbose THEN $
@@ -414,6 +420,17 @@ FUNCTION q2bhdfread, filename, $
         print,'Time to get selected vectors ',t2-t11
       t1 = t2
 
+
+      fileid = hdf_open(tfilename,/read) 
+      vidx = hdf_vd_find(fileid,'wvc_row_time')
+      vid = hdf_vd_attach(fileid,vidx)
+      nn = hdf_vd_read(vid,row_time)
+      retstruct.rowtime = string(row_time)
+
+      hdf_vd_detach,vid
+      hdf_close,fileid
+
+      
       print,'Time to load structure ',systime(1)-t1
       print,'Total time ', systime(1)-t0
 
