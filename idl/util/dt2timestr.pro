@@ -63,6 +63,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/15 22:17:58  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -99,39 +102,37 @@ FUNCTION Dt2TimeStr, DT, separator=separator
    IF nn GT 1 THEN retarray = strarr(nn) ELSE retarray = ''
 
    FOR i=0,nn-1 DO BEGIN 
-      FOR i=0,nn-1 DO BEGIN 
+     year   = strtrim( dt[i].year ,2 )
+     month  = fix( dt[i].month  )
+     day    = fix( dt[i].day    )
+     hour   = fix( dt[i].hour   )
+     minute = fix( dt[i].minute )
+     
+     IF month LT 10 THEN $
+       month = '0'+strtrim(month,2) $
+     ELSE $
+       month=strtrim(month,2)
+     
+     IF day LT 10 THEN $
+       day = '0'+strtrim(day,2) $
+     ELSE $
+       day=strtrim(day,2)
+        
+     IF hour LT 10 THEN $
+       hour = '0'+strtrim(hour,2) $
+     ELSE $
+       hour=strtrim(hour,2)
 
-        year   = strtrim( dt[i].year ,2 )
-        month  = fix( dt[i].month  )
-        day    = fix( dt[i].day    )
-        hour   = fix( dt[i].hour   )
-        minute = fix( dt[i].minute )
+     IF minute LT 10 THEN $
+       minute = '0'+strtrim(minute,2) $
+     ELSE $
+       minute=strtrim(minute,2)
 
-        IF month LT 10 THEN $
-          month = '0'+strtrim(month,2) $
-        ELSE $
-          month=strtrim(month,2)
-
-        IF day LT 10 THEN $
-          day = '0'+strtrim(day,2) $
-        ELSE $
-          day=strtrim(day,2)
-
-        IF hour LT 10 THEN $
-          hour = '0'+strtrim(hour,2) $
-        ELSE $
-          hour=strtrim(hour,2)
-
-        IF minute LT 10 THEN $
-          minute = '0'+strtrim(minute,2) $
-        ELSE $
-          minute=strtrim(minute,2)
-
-        retarray[i] =  year + separator + $
-                        month + separator + $
-                         day + separator + $
-                          hour + separator + $
-                           minute
+     retarray[i] =  year + separator + $
+                     month + separator + $
+                      day + separator + $
+                       hour + separator + $
+                        minute
 
    ENDFOR 
   return, retarray
