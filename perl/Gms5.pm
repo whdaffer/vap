@@ -27,6 +27,11 @@
 
 # Modifications:
 # $Log$
+# Revision 1.4  2000/03/09 16:20:55  vapuser
+# Took Vis out of 'GETALL' and 'CHECKALL'.
+# Put archive info in 'required' file
+# $VAP_LIB/gms5_archive. Oh, and a time kludge.
+#
 # Revision 1.3  1999/04/02 22:29:38  vapuser
 # Many many changes
 #
@@ -50,32 +55,27 @@ require Exporter;
 	   CdIr1, CdIr2, CdIr3, CdVis, 
 	   GetCal, GetGrid, GetGrida,
 	   GetDoc, GetIr1, GetIr2, GetIr3, GetVis,
-	   GetAllFileLists, GetAll );
+	   GetAllFileLists, GetAll GetClosest CheckLocal );
 
 use Net::FTP;
 use Cwd 'chdir', 'getcwd';
 use Carp;
 use Time::Local;
-    
+use VapUtil;    
 
 BEGIN {
-  $startdir=Cwd::getcwd();
+  $startdir=getcwd();
   $user=$ENV{'USER'};
   $local_host="$ENV{'HOST'}.jpl.nasa.gov";
 
-  $VAP_LIB=$ENV{'VAP_LIB'}                  || "/usr/people/vapuser/Qscat/Library";
-
-#   Put these in $VAP_LIB/gms5_archive, so 
-#   that we could change quickly. (whd 2000/03/09)
-#   
-#  $remote_host="explorer.arc.nasa.gov";
-#  $remote_host="rsd.gsfc.nasa.gov";
-#  $REMOTE_TOPDIR="/pub/Weather/GMS-5";
+  $VAP_LIB=$ENV{'VAP_LIB'} || "/usr/people/vapuser/Qscat/Library";
 
   require $VAP_LIB."/gms5_archive";
 
-  $LOCAL_TOPDIR= $ENV{'VAP_GMS_TOPDIR'} || $ENV{'VAP_ROOT'}."/gms5" || "/disk5/vap/gms5";
-  #$LOCAL_TOPDIR="/disk4/vap/gms5";
+  $LOCAL_TOPDIR= $ENV{'VAP_GMS_TOPDIR'} || 
+      "$ENV{'VAP_ROOT'}/gms5" || 
+	  "/disk5/vap/gms5";
+
   
 }
 
@@ -93,8 +93,8 @@ sub GetIntersection {
 
   
   $type=$_[0] || "ir1";
-  chdir $LOCAL_TOPDIR || die "Can't cd to $LOCAL_TOPDIR\n";
-  chdir $type || die "Can't CD to $type\n";
+  chdir $LOCAL_TOPDIR || croak "Can't cd to $LOCAL_TOPDIR\n";
+  chdir $type || croak "Can't CD to $type\n";
   open ARCHIVE, "<archive.filelist";
   @files= <ARCHIVE>;
   close ARCHIVE;
@@ -106,9 +106,9 @@ sub GetIntersection {
     $filecnt{$tmp}++;
   }
 
-  @dirs=('grid'); #removed cal and doc from list
+  @dirs=('grid', 'grida'); #removed cal and doc from list
   foreach $dir (@dirs) {
-    chdir $dir || die "Can't CD to $dir\n";
+    chdir $dir || croak "Can't CD to $dir\n";
     open ARCHIVE, "<archive.filelist";
     @files= <ARCHIVE>;
     close ARCHIVE;
@@ -193,7 +193,7 @@ sub GetAllFileLists {
 sub GetAll {
 
   $datetime=shift;
-  die "Need datetime!\n" unless $datetime;
+  croak "Need datetime!\n" unless $datetime;
 
   $test = CheckAll($datetime);
 #  if ($test) {
@@ -244,11 +244,11 @@ sub GetAll {
 #     $file="$datetime.hdf.Z";
 #     GetVis( $file);
 
-#      CdGrida();
-#      @list=List("$datetime*");
-#      carp"No Grida files found for $datetime\n" if $#list<0;
-#      $file="$datetime.hdr.Z";
-#      GetGrida( $file);
+      CdGrida();
+      @list=List("$datetime*");
+      carp"No Grida files found for $datetime\n" if $#list<0;
+      $file="$datetime.hdf.Z";
+      GetGrida( $file);
 
     Close();
 #  }
@@ -261,16 +261,16 @@ sub Open  {
   # Open remote connection
   $machine= shift || $remote_host;
   $ftp = Net::FTP->new( $machine );
-  die "Can't create ftp object!\n" unless $ftp;
+  croak "Can't create ftp object!\n" unless $ftp;
   $ftp->login("anonymous","$user\@catspaw.jpl.nasa.gov") || 
-      die "Can't open connection to $machine\n";
+      croak "Can't open connection to $machine\n";
   # CD to topdir 
   $ftp->binary;
-  $ftp->cwd($remote_top_gms_dir) || die "Can't remote cd to $remote_top_cms_dir\n" ;
+  $ftp->cwd($remote_top_gms_dir) || croak "Can't remote cd to $remote_top_cms_dir\n" ;
 }
 
 sub Close {
-  $ftp->quit || die "Can't close connection to $remote_host\n";
+  $ftp->quit || croak "Can't close connection to $remote_host\n";
 }
 
 
@@ -283,48 +283,48 @@ sub List {
 
 sub Get {
   $file = shift;
-  die "Gms5::Get No file!\n" unless $file;
+  croak "Gms5::Get No file!\n" unless $file;
   $ftp->get( $file );
 
 }
 
 sub CdDoc   { $ftp->cwd("$REMOTE_TOPDIR/doc") || 
-		    die "Can't CD to $REMOTE_TOPDIR/doc\n";  
+		    croak "Can't CD to $REMOTE_TOPDIR/doc\n";  
 		     chdir "$LOCAL_TOPDIR/doc" || 
-                       die "Cant CD to $LOCAL_TOPDIR/doc\n"; }
+                       croak "Cant CD to $LOCAL_TOPDIR/doc\n"; }
 sub CdCal   { $ftp->cwd("$REMOTE_TOPDIR/calib") ||
-		    die "Can't CD to $REMOTE_TOPDIR/calib\n";
+		    croak "Can't CD to $REMOTE_TOPDIR/calib\n";
 		chdir "$LOCAL_TOPDIR/cal" || 
-		  die "Can't CD to $LOCAL_TOPDIR/cal\n"; }
+		  croak "Can't CD to $LOCAL_TOPDIR/cal\n"; }
 sub CdGrid  { $ftp->cwd("$REMOTE_TOPDIR/hdf/grid" ) ||
-		    die "Can't CD to $REMOTE_TOPDIR/hdf/grid\n" ;
+		    croak "Can't CD to $REMOTE_TOPDIR/hdf/grid\n" ;
 		    chdir "$LOCAL_TOPDIR/grid" ||
-		      die "Can't CD to $LOCAL_TOPDIR/grid\n";}
+		      croak "Can't CD to $LOCAL_TOPDIR/grid\n";}
 sub CdGrida { $ftp->cwd("$REMOTE_TOPDIR/hdf/grida") ||
-		    die "Can't CD to $REMOTE_TOPDIR/hdf/grida\n";
+		    croak "Can't CD to $REMOTE_TOPDIR/hdf/grida\n";
 		chdir "$LOCAL_TOPDIR/grida" ||
-		    die "Can't CD to $LOCAL_TOPDIR/grida\n";}
+		    croak "Can't CD to $LOCAL_TOPDIR/grida\n";}
 sub CdIr1   { $ftp->cwd("$REMOTE_TOPDIR/hdf/ir1/4km"  ) ||
-		    die "Can't CD to $REMOTE_TOPDIR/hdf/ir1/4km\n" ;
+		    croak "Can't CD to $REMOTE_TOPDIR/hdf/ir1/4km\n" ;
 		    chdir "$LOCAL_TOPDIR/ir1" ||
-		      die "Can't CD to $LOCAL_TOPDIR/ir1\n";}
+		      croak "Can't CD to $LOCAL_TOPDIR/ir1\n";}
 sub CdIr2   { $ftp->cwd("$REMOTE_TOPDIR/hdf/ir2/4km"  ) ||
-		    die "Can't CD to $REMOTE_TOPDIR/hdf/ir2/4km\n" ;
+		    croak "Can't CD to $REMOTE_TOPDIR/hdf/ir2/4km\n" ;
 		    chdir "$LOCAL_TOPDIR/ir2" ||
-		      die "Can't CD to $LOCAL_TOPDIR/ir2\n";}
+		      croak "Can't CD to $LOCAL_TOPDIR/ir2\n";}
 sub CdIr3   { $ftp->cwd("$REMOTE_TOPDIR/hdf/ir3/4km"  ) ||
-		    die "Can't CD to $REMOTE_TOPDIR/hdf/ir3/4km\n" ;
+		    croak "Can't CD to $REMOTE_TOPDIR/hdf/ir3/4km\n" ;
 		    chdir "$LOCAL_TOPDIR/ir3" ||
-		      die "Can't CD to $LOCAL_TOPDIR/ir3\n";}
+		      croak "Can't CD to $LOCAL_TOPDIR/ir3\n";}
 sub CdVis   { $ftp->cwd("$REMOTE_TOPDIR/hdf/vis/4km"  ) ||
-		    die "Can't CD to $REMOTE_TOPDIR/hdf/vis/4km\n" ;
+		    croak "Can't CD to $REMOTE_TOPDIR/hdf/vis/4km\n" ;
 		    chdir "$LOCAL_TOPDIR/vis" ||
-		      die "Can't CD to $LOCAL_TOPDIR/vis\n";}
+		      croak "Can't CD to $LOCAL_TOPDIR/vis\n";}
 
 
 sub GetDoc { 
   $file=shift;
-  die "No File\n" unless $file;
+  croak "No File\n" unless $file;
   CdDoc();
   Get $file unless (-e $file);
   
@@ -333,7 +333,7 @@ sub GetDoc {
 
 sub GetCal {
   $file=shift;
-  die "No File\n" unless $file;
+  croak "No File\n" unless $file;
   CdCal();
   Get $file unless (-e $file);
 }
@@ -341,41 +341,41 @@ sub GetCal {
 
 sub GetGrid {
   $file=shift;
-  die "No File\n" unless $file;
+  croak "No File\n" unless $file;
   CdGrid();
   Get $file unless (-e $file);
 }
 
 sub GetGrida {
   $file=shift;
-  die "No File\n" unless $file;
+  croak "No File\n" unless $file;
   CdGrida();
   Get $file unless (-e $file);
 }
 
 sub GetIr1 {
   $file=shift;
-  die "No File\n" unless $file;
+  croak "No File\n" unless $file;
   CdIr1();
   Get $file unless (-e $file);
 }
 
 sub GetIr2 {
   $file=shift;
-  die "No File\n" unless $file;
+  croak "No File\n" unless $file;
   CdIr2();
   Get $file unless (-e $file);
 }
 sub GetIr3 {
   $file=shift;
-  die "No File\n" unless $file;
+  croak "No File\n" unless $file;
   CdIr3;
   Get $file unless (-e $file);
 }
 
 sub GetVis {
   $file=shift;
-  die "No File\n" unless $file;
+  croak "No File\n" unless $file;
   CdVis;
   Get $file unless (-e $file);
 }
@@ -384,10 +384,11 @@ sub CheckAll {
 
   # returns 1 if all the default files for a particular datetime are
   # there, 0 otherwise currently, this include doc/cal/grid/grida/ir1
-  # and vis.  
+  # and vis.  It' checks the local archive first, then the remote.
 
-  $datetime=shift; die "No datetime\n" unless $datetime;
+  $datetime=shift; croak "No datetime\n" unless $datetime;
 
+  return 1 if CheckLocal($datetime);
   $ret=1;
 
   Open(); # unless defined ($ftp);
@@ -418,12 +419,12 @@ sub CheckAll {
   }
 
 
-#   CdGrida();
-#   @list=List("$datetime*");
-#   if (!$list[0]) {
-#     carp"No Grida files found for $datetime\n";
-#     $ret=0 ;
-#   }
+   CdGrida();
+   @list=List("$datetime*");
+   if (!$list[0]) {
+     carp"No Grida files found for $datetime\n";
+     $ret=0 ;
+   }
  
 
   CdIr1();
@@ -459,7 +460,7 @@ sub CheckAll {
 
 sub Gms5DateTime2SysTime{
 
-  die "Need datetime!\n" if !$_[0];
+  croak "Need datetime!\n" if !$_[0];
   $year=substr($_[0],0,2);
   $year += 2000 if $year < 90; # kludge
   $month=substr($_[0],2,2);
@@ -469,5 +470,37 @@ sub Gms5DateTime2SysTime{
   $timegm=timegm( 0, $min, $hour, $day, $month-1, $year);
   $timegm;
 }
+
+sub GetClosest{
+  $idltime = shift || croak "<param1> yyyy/mm/dd/hh/mm is REQUIRED\n";
+  $absflag=shift || 0;
+  $time=idltime2systime($idltime);
+  GetAllFileLists();
+  @datetimes=GetIntersection();
+  if (@datetimes) {
+    $mindiff=1.e10;
+    for (@datetimes) {
+      $gmstime=Gms5DateTime2SysTime($_);
+      $diff=$time-$gmstime;
+      $diff = abs($diff) if $absflag;
+      if ($diff > 0 && $diff < $mindiff ) {
+	$mindiff = $diff;
+	$datetime=$_;
+      }
+    }
+  }
+  ($datetime, $mindiff);
+}
+
+sub CheckLocal {
+  local( $datetime, $absflag, @datetimes, $gmstime, $diff, $mindiff);
+
+  $datetime = shift || croak "<param1> yymmddhhmm is REQUIRED\n";
+  @datetimes = GetIntersection();
+  @there = grep/$datetime/,@datetimes;
+  return 1 if @there;
+  0;
+
+  }
 1;
 
