@@ -29,6 +29,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/06 19:15:43  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -37,8 +40,8 @@ FUNCTION mkformat, x, float=float, $
                    int=int, double=double
   int =  keyword_set(int)
   double = keyword_set(double)
-  float =  ( (NOT int AND $
-              NOT double ) OR $
+  float =  ( ((int EQ 0) AND $
+              (double EQ 0) ) OR $
               keyword_set(float) )
   CASE 1 OF 
   float EQ 1 OR double EQ 1: BEGIN 
