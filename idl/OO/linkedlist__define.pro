@@ -56,6 +56,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/10/23 22:23:59  vapuser
+; Can't remember
+;
 ; Revision 1.3  1998/10/01 17:53:09  vapuser
 ; Modified 'version' method so that it will report
 ; the versions of member classes. Put in some error handling
@@ -579,6 +582,21 @@ FUNCTION LinkedList::Version
 
    Catch,/cancel
   return,versions(uniq(versions,sort(versions)))
+END
+
+
+;----------------------------------------
+; WhichNode - returns which node the list 
+; is currently set to.
+;----------------------------------------
+
+FUNCTION LinkedList::WhichNode
+  nodenum = 0
+  IF NOT self->IsEmpty() THEN BEGIN 
+    REPEAT nodenum = nodenum+1 UNTIL NOT Ptr_Valid(self->GetPrev())
+    s = self-> GotoNode(nodenum)
+  ENDIF 
+  return,nodenum
 END
 
 ;----------------------------------------
