@@ -13,6 +13,11 @@
  *
  * Modifications:
  * $Log$
+ * Revision 1.2  2000/06/08 19:35:39  vapuser
+ * Added code to exit with error if nudging_method = "Highest-ambiguity
+ * initialization", i.e. the VAN model field wasn't used to initialize
+ * the matrix for some reason or other.
+ *
  * Revision 1.1  2000/02/10 21:02:24  vapuser
  * Initial revision
  *
@@ -45,8 +50,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 void main( int argc,char **argv ) {
+
+  int c;
+  extern char *optarg;
+  extern int optind;
+  int noavnok=0;
+
+
   int i,j,k,rec=0;
   FILE *ip,*op;
   char *p,*p1, *p2, *m,*w,*t;
@@ -73,9 +86,13 @@ void main( int argc,char **argv ) {
     } rnoaa;
   } ior ;
 
+  c = getopt(argc, argv, "n");
+  if (c == 'n')
+    noavnok=1;
+
   if (argc<2) 
     {
-      fprintf(stdout,"Usage: qchop QS_NRT_FILE\n");
+      fprintf(stdout,"Usage: qchop [-n] QS_NRT_FILE\n");
       exit(1);
     }
 
@@ -86,37 +103,37 @@ void main( int argc,char **argv ) {
     }
 
 
-  /* Check the `nudging_method'.
-   * Throw the file out if it's the 
-   * `Highest-ambiguity initialization'
-   * This means the the AVN model field wasn't available!
+  /* Check the `nudging_method'.  Throw the file out if it's the
+   * `Highest-ambiguity initialization' (this means the the AVN model
+   * field wasn't available!) unless the noavnok flag is set.  
    */
 
-  p=buf1;
-  do {
-    p=fgets(p,80,ip);
-    if (p == NULL) {
-      fprintf(stderr, "<nudging_method> Truncated File! Exiting\n");
-      exit(1);
-    }
-    p1 = strstr(p, "nudging_method" );
-    p2 = strstr(p,"spare_metadata_element");
-  } while (p1 == NULL && p2 == NULL);
-
-  if (p2 != NULL) 
-  {
-    fprintf(stderr,"Can't find nudging_method" );
-    fclose(ip);
-    exit(1);
+  if (!noavnok) {
+    p=buf1;
+    do {
+      p=fgets(p,80,ip);
+      if (p == NULL) {
+	fprintf(stderr, "<nudging_method> Truncated File! Exiting\n");
+	exit(1);
+      }
+      p1 = strstr(p, "nudging_method" );
+      p2 = strstr(p,"spare_metadata_element");
+    } while (p1 == NULL && p2 == NULL);
+    
+    if (p2 != NULL) 
+      {
+	fprintf(stderr,"Can't find nudging_method" );
+	fclose(ip);
+	exit(1);
+      }
+    p2=strstr(p,"Highest-ambiguity");
+    if (p2 != NULL) 
+      {
+	fprintf(stderr,"nudging_method = Highest-ambiguity initialization\n");
+	fclose(ip);
+	exit(1);
+      }
   }
-  p2=strstr(p,"Highest-ambiguity");
-  if (p2 != NULL) 
-  {
-    fprintf(stderr,"nudging_method = Highest-ambiguity initialization\n");
-    fclose(ip);
-    exit(1);
-  }
-
 
   fseek( ip, 0, SEEK_SET);
   p=buf1;
