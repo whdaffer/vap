@@ -90,6 +90,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.18  1999/09/02 18:43:04  vapuser
+; Added Over plotting and orbit propagation.
+; fixed a bug in Colorbar/Map_set interaction.
+;
 ; Revision 1.17  1999/08/30 15:46:01  vapuser
 ; Took Colorbar out of Annotation. Put it in it's own
 ; object and put an instance of that object in the PV object.
@@ -847,8 +851,8 @@ FUNCTION pv::Init, $
          self.ambiguities[0] = 1
        ENDELSE 
   ENDELSE 
-  IF N_Elements(decimate_by) EQ 0 THEN decimate_by = 5
-  IF N_Elements(CRDecimate_by) NE 2 THEN CRDecimate_by = [0,0] 
+  IF N_Elements(decimate_by) EQ 0 THEN decimate_by = 1
+  IF N_Elements(CRDecimate_by) NE 2 THEN CRDecimate_by = [2,2] 
   IF N_Elements(ExcludeCols) EQ 0 THEN ExcludeCols = '' ELSE BEGIN 
     IF VarType(ExcludeCols) NE 'STRING' THEN BEGIN 
       Message,'ExcludeCols must be of type STRING',/cont
@@ -910,10 +914,10 @@ FUNCTION pv::Init, $
     IF VarType(LatRange) NE 'FLOAT' THEN LatRange = float(LatRange)  
   ENDELSE 
 
-  IF N_Elements(Length)      EQ 0 THEN Length = 1
+  IF N_Elements(Length)      EQ 0 THEN Length = 2
   IF N_Elements(Thickness)   EQ 0 THEN Thickness = 1
-  IF N_Elements(MinSpeed)   EQ 0 THEN MinSpeed = 2
-  IF N_Elements(MaxSpeed)   EQ 0 THEN MaxSpeed =  37
+  IF N_Elements(MinSpeed)   EQ 0 THEN MinSpeed = 1
+  IF N_Elements(MaxSpeed)   EQ 0 THEN MaxSpeed =  20
 
   self.xsize         = xsize      
   self.ysize         = ysize      
