@@ -1,0 +1,11 @@
+; IDL startup file for vapdev
+;
+!x.style=2 ; puts a 10% border on x axis
+!y.style=2 ; puts a 10% border on y axis
+device,retain=2
+compile_opt strictarr
+dir=getenv('VAP_SFTWR_IDL')
+linkimage,'land_mask',DIR+'/linkimage/land_mask.so'
+linkimage,'succor',dir+'/linkimage/succor.so' 
+;linkimage,'kprimes',dir+'/linkimage/kprimes.so',1
+;linkimage,'fillnorm',dir +'/linkimage/fillnorm.so'
