@@ -1,21 +1,22 @@
 INSTALLATION
 
-  You must check to make sure the \$VAP_CONFIG/.vaprc and
- \$VAP_CONFIG/.vapidlrc files have all the variables are 
+  You must check to make sure the $VAP_CONFIG/.vaprc and
+ $VAP_CONFIG/.vapidlrc files have all the variables 
   defined correctly
+
+  In particular, make sure $VAP_CONFIG points to the right place,
+  since it's what defines all the other variables.
 
   Variables to look out for:
 
-  -- \$VAP_SFTWR_IDL_EXTERNAL
-  -- \$VAP_SFTWR_IDL_COMMON
+  -- $VAP_SFTWR_IDL_EXTERNAL
+  -- $VAP_SFTWR_IDL_COMMON
 
-  These point to areas of IDL code that weren't stored in; the CVS
-  archives, so they aren't under configuration management, they're
+  These point to areas of IDL code that weren stored in the CVS
+  archives, so they aren't under configuration management. They're
   just code I've accumulated over the years and didn't have heart to
   go through and figure out what I didn't want to keep.
 
-  In particular, make sure \$VAP_CONFIG points to the right place,
-  since it's what defines all the other variables.
 
   Also, have a care for the file $VAP_CONFIG/release. That's defines
   where the software tree starts (except for ...IDL_COMMON and
@@ -28,14 +29,17 @@ INSTALLATION
   are going to have the contents of that file included in their
   definitions, provided the file exists and is non-empty. If this
   isn't true, the default `release' is 'default', unless you
-  eliminiate this from the \$VAP_CONFIG/.vaprc file.
+  eliminiate this from the $VAP_CONFIG/.vaprc file.
 
   When you've done these things, run
-  release/create_run_environment. This will create all the working
-  directories and the WWW directories, as defined by the enbironmental
-  variables contained in \$VAP_CONFIG/.vaprc. It will also populate
-  the part of the website that's relatively static, i.e. the images
-  directory and the various static webpages.
+  
+  `release'/scr/create_run_environment. 
+
+  This will create all the working directories and the WWW
+  directories, as defined by the enbironmental variables contained in
+  $VAP_CONFIG/.vaprc. It will also populate the part of the website
+  that's relatively static, i.e. the images directory and the various
+  static webpages.
 
    Then the only thing you need to do is start up the processing by
   setting up the crontab files.

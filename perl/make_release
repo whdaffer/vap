@@ -139,10 +139,18 @@ foreach my $f (@files){
 }
 
 #-------- the html directories -----------
-print "mv ./html .\n";
+print "mv ./vap/html .\n";
 if (! -d "./html") {
   my $exe="mv ./vap/html .";
-  #`mv ./vap/Library .` or die "$!\n";
+  $r=system($exe)/256;
+  die "$!\n" unless $r==0;
+}
+
+
+#-------- the documents -----------
+print "mv ./vap/Documents ./Documents.\n";
+if (! -d "./Documents") {
+  my $exe="mv ./vap/Documents .";
   $r=system($exe)/256;
   die "$!\n" unless $r==0;
 }
@@ -167,9 +175,10 @@ $r=system("make install")/256;
 die "$!\n" if $r;
 chdir "../.." or die "$!\n";
 
-`cat ./Documents/README.vapsetup`;
 
-print "Done!;
+print "\n\n==================================\n\n Read \n./Documents/README and \n./Documents/INSTALL \nto complete installation!\n\n========================================\n\n";
+
+print "Done!\n";
 exit;
 
 sub findidl{
