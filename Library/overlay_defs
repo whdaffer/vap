@@ -3,6 +3,9 @@
 #
 # Modification History
 # $Log$
+# Revision 1.5  1998/12/09 17:55:19  vapuser
+# added GMS5 stuff
+#
 # Revision 1.4  1998/10/29 17:27:08  vapuser
 # Added some more comments
 #
@@ -82,12 +85,12 @@
 		    LatLim     => [25,65],       # Min/Max Latitude 
 		    SatNum     => 10,            # Goes 10
 		    SensorNum  => 4,             # Ir4
-		    AscTime    => "07:00",       # Ascending Time is 07:00 GMT
-		    DescTime   => "20:00" },     # Descending time is 20:00 GMT
+		    AscTime    => "18:00",       # Ascending Time 
+		    DescTime   => "06:00" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
 		    CRDecimate => [2,3],         # Take every other row, every third col
-		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		    ExcludeCols => ""}           # Exclude none
 		},
 
                # GOES 10 Visible, NE Pacific
@@ -99,12 +102,12 @@
 		    LatLim     => [25,65],       # Min/Max Latitude 
 		    SatNum     => 10,            # Goes 10
 		    SensorNum  => 1,             # Visible
-		    AscTime    => "07:00",       # Ascending Time is 07:00 GMT
-		    DescTime   => "20:00" },     # Descending time is 20:00 GMT
+		    AscTime    => "18:00",       # Ascending Time 
+		    DescTime   => "06:00" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
 		    CRDecimate => [2,3],         # Take every other row, every third col
-		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		    ExcludeCols => ""}           # Exclude none
 		},
 
                # Goes 8, ir4, NW Atlantic
@@ -116,12 +119,12 @@
 		    LatLim     => [25,52],       # Min/Max Latitude 
 		    SatNum     => 8,             # Goes 8
 		    SensorNum  => 4,             # Ir4
-		    AscTime    => "03:00",       # Ascending Time is 03:00 GMT
-		    DescTime   => "16:00" },     # Descending time is 16:00 GMT
+		    AscTime    => "01:00",       # Ascending Time 
+		    DescTime   => "13:00" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
 		    CRDecimate => [2,3],         # Take every other row, every third col
-		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		    ExcludeCols => ""}      # Exclude none
 		},
 
                # Goes 8, Visible, NW Atlantic
@@ -133,13 +136,13 @@
 		    LatLim     => [25,52],       # Min/Max Latitude 
 		    SatNum     => 8,             # Goes 8
 		    SensorNum  => 1,             # Visible
-		    AscTime    => "03:00",       # Ascending Time is 03:00 GMT
-		    DescTime   => "16:00" },     # Descending time is 16:00 GMT
+		    AscTime    => "01:00",       # Ascending Time 
+		    DescTime   => "13:00" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
 		    CRDecimate => [2,3],         # Take every other row, every third col
-		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
-		}
+		    ExcludeCols => ""}           # Exclude none
+		},
 
 		# Gms 5, Ir1, West Pacific
 		GMS_5_1_WPAC_1 => {
@@ -147,16 +150,16 @@
 		  CloudData => {
 		    Satellite  => "GMS",        # Satellite Name
 		    LonLim     => [100,175],     # Min/Max Longitude
-		    LatLim     => [22,45],       # Min/Max Latitude 
+		    LatLim     => [0,55],       # Min/Max Latitude 
 		    SatNum     => 5,             # Gms 5
 		    SensorNum  => 1,             # Ir1
-		    AscTime    => "03:00",       # Ascending Time is 03:00 GMT
-		    DescTime   => "16:00" },     # Descending time is 16:00 GMT
+		    AscTime    => "01:00",       # Ascending Time 
+		    DescTime   => "13:00" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
 		    CRDecimate => [2,3],         # Take every 2nd row, every 3rd col
-		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
-		}
+		    ExcludeCols => ""}      # Exclude middle 8 columns.
+		},
 
 		# Gms 5, Ir1, Japan 
 		GMS_5_1_JAPAN_1 => {
@@ -167,13 +170,13 @@
 		    LatLim     => [20,47],       # Min/Max Latitude 
 		    SatNum     => 5,             # Gms 5
 		    SensorNum  => 1,             # Ir1
-		    AscTime    => "03:00",       # Ascending Time is 03:00 GMT
-		    DescTime   => "16:00" },     # Descending time is 16:00 GMT
+		    AscTime    => "23:30",       # Ascending Time 
+		    DescTime   => "11:00" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
 		    CRDecimate => [2,3],         # Take every 2nd row, every 3rd col
-		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
-		}
+		    ExcludeCols => ""}           # Exclude none
+		},
 
 		# Gms 5, Ir1, Far East
 		GMS_5_1_FAREAST_1 => {
@@ -184,14 +187,15 @@
 		    LatLim     => [-20,32],       # Min/Max Latitude 
 		    SatNum     => 5,             # Gms 5
 		    SensorNum  => 1,             # Ir1
-		    AscTime    => "03:00",       # Ascending Time is 03:00 GMT
-		    DescTime   => "16:00" },     # Descending time is 16:00 GMT
+		    AscTime    => "00:30",       # Ascending Time 
+		    DescTime   => "12:30" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
 		    CRDecimate => [2,3],         # Take every 2nd row, every 3rd col
-		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		    ExcludeCols => ""}           # Exclude none
 		}
 
  );
+
 
 
