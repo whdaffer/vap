@@ -26,7 +26,9 @@
 ;             start_index = start_index ,$
 ;             ncolors = ncolors, $
 ;             thick =  thick, $
-;             Dots=Dots 
+;             Dots=Dots , $
+;             Table=Table, $
+;             trueColor=trueColor
 ; 
 ; INPUTS:  
 ;
@@ -47,7 +49,7 @@
 ;	
 ; KEYWORD PARAMETERS:  
 ;
-;    skip        : Take those vector = 0 mod skip
+;    skip        : Take those vectors whose location == 0 mod skip
 ;    minspeed    : Only plot those vectors whose speed >= minspeed
 ;    maxspeed    : Only plot those vectors whose speed <= minspeed
 ;    Length      : Make them this long 
@@ -59,11 +61,14 @@
 ;                  color index as the starting index
 ;    ncolors     : And use this many colors.
 ;    Dots        : Flag, if set, don't plot vectors, plot dots.
+;    Truecolor   : convert Colors 'indices' to 24 bit values.
+;    Table       : and use this table, if truecolor=1.
 ;
 ;   
 ;
 ;
-; OUTPUTS:  A pretty picture
+; OUTPUTS:  A pretty picture, hopefully ;->
+;
 ;
 ;
 ;
@@ -79,7 +84,10 @@
 ;
 ;
 ;
-; RESTRICTIONS:  None
+; RESTRICTIONS: 
+;
+;  The true color stuff probably only works with decomposed color. I
+;  haven't figured out color when decomposed=0.  
 ;
 ;
 ;
@@ -93,6 +101,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/11/20 20:03:32  vapuser
+; Accomidate 24bit color
+;
 ; Revision 1.2  1998/10/28 23:34:22  vapuser
 ; added 'dots' keyword. Took out norm calculation.
 ;
@@ -131,7 +142,9 @@ PRO plotvect,u,v,x,y, $
      '               color = color ,$' + lf + $
      '                start_index = start_index ,$' + lf + $
      '                 ncolors = ncolors, $' + lf + $
-     '                   thick =  thick ' 
+     '                   thick =  thick, $'  + lf + $
+     '                    truecolor=truecolor, $' + lf + $
+     '                      table=table'
     Message,str,/cont
   ENDIF  
 
@@ -142,6 +155,8 @@ PRO plotvect,u,v,x,y, $
   IF N_Elements( minspeed )    EQ 0 THEN minspeed =  2
   IF N_Elements ( maxspeed )   EQ 0 THEN maxspeed =  37
   IF N_elements( thick )       EQ 0 THEN thick =  0
+  truecolor = keyword_set(truecolor)
+
   Dots = Keyword_set(Dots)
   skip = skip > 1
     
@@ -162,15 +177,15 @@ PRO plotvect,u,v,x,y, $
   ENDELSE 
   speed =  minspeed >  speed < maxspeed
 
-  IF keyword_set(TrueColor) THEN BEGIN 
-    IF NOT(keyword_set(Table)) THEN BEGIN 
+  IF TrueColor THEN BEGIN 
+    IF n_elements(Table) EQ 0 THEN BEGIN 
       tvlct,r,g,b,/get
       table = transpose([ [r],[g],[b]])
     ENDIF 
     veccol = BytScl( speed, min=minspeed, $
                      max=maxspeed, $
                      top=NCOLORS-1) + start_index
-    col = color24(veccol, Colortable=table)
+    col = Rgb2True(veccol, Colortable=table)
   ENDIF ELSE BEGIN 
     IF NOT( keyword_set(color ) ) THEN  BEGIN
       col = bytscl( speed, min=minspeed,max=maxspeed, $
@@ -192,21 +207,25 @@ PRO plotvect,u,v,x,y, $
   ct = r * cos(angle)
   ;
 
-  keep =  Lindgen( n_elements(x2)/skip )*skip
-  x2 = x2[keep]
-  dx = dx[keep]
-  y2 = y2[keep]
-  dy = dy[keep] &  keep=0
-
-  x0 = x2-dx/2.
-  x1 = x0+dx
-  y0 = y2-dy/2.
-  y1 = y0+dy
-  nn = N_Elements(x0)
+  IF skip NE 1 THEN BEGIN 
+    keep =  Lindgen( n_elements(x2)/skip )*skip
+    x2 = x2[keep]
+    dx = dx[keep]
+    y2 = y2[keep]
+    dy = dy[keep] &  keep=0
+  ENDIF 
 
   IF Dots THEN BEGIN 
     plots,x2,y2,psym=3, color=col
   ENDIF ELSE BEGIN 
+
+    x0 = x2-dx/2.
+    x1 = x0+dx
+    y0 = y2-dy/2.
+    y1 = y0+dy
+    nn = N_Elements(x0)
+
+
     FOR i=0l,nn-1 DO BEGIN     ;Each point
         Plots,[x0[i],x1[i],$
                x1[i]-(ct*dx[i]-st*dy[i]),$
