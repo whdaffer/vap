@@ -31,6 +31,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.12  2000/02/23 21:58:52  vapuser
+; Added code to handle the rain flags.
+;
 ; Revision 1.11  2000/01/11 20:37:59  vapuser
 ; Fixed a few minor bugs.
 ;
@@ -116,25 +119,25 @@ FUNCTION pv_config_annot_events, event
         Annotation-> Set,Maintitle = event.value[0]
         (*info).redraw = 1
       ENDIF 
-    ENDIF 
+    END
     (*info).XTitleId: BEGIN 
       IF Xtitle NE event.value[0] THEN BEGIN 
         Annotation-> Set,Xtitle = event.value[0]
         (*info).redraw = 1
       ENDIF 
-    ENDIF 
+    END
     (*info).YTitleId: BEGIN 
       IF Ytitle NE event.value[0] THEN BEGIN 
         Annotation-> Set,Ytitle = event.value[0]
         (*info).redraw = 1
       ENDIF 
-    ENDIF 
+    END
     (*info).SubTitleId: BEGIN 
       IF subtitle[0] NE event.value[0] THEN BEGIN 
         Annotation-> Set,Subtitle = event.value[0]
         (*info).redraw = 1
       ENDIF 
-    ENDIF 
+    END
     (*info).AnnotCharSizeId: BEGIN 
       IF event.value NE Charsize THEN BEGIN 
         Annotation-> Set,Charsize = event.value[0]
@@ -842,9 +845,9 @@ PRO PV_CONFIG_Events, Event
   CASE Descript OF 
     'RAINFLAG': BEGIN 
       Widget_Control, (*info).RainFlagId, Get_Value=newRainFlag
-      self-> get,rain_flag = rain_flag, rf_action=rf_a
+      self-> get,rainflag = rain_flag, rf_action=rf_a
       IF rain_flag NE newRainFlag THEN BEGIN 
-        self-> set,use_rf = newRainFlag
+        self-> set,rainflag = newRainFlag
         Widget_Control,(*info).RFActColId,map=newRainFlag NE 0
       ENDIF 
     END 
@@ -1001,9 +1004,9 @@ PRO PV_CONFIG_Events, Event
       Widget_Control, (*info).RainFlagColorId, Get_Value=NewRainFlagColor
 
     
-      self-> get,rain_flag = rain_flag, rf_action=rf_a,rf_color=rf_c
+      self-> get,rainflag = rain_flag, rf_action=rf_a,rf_color=rf_c
       IF rain_flag NE newRainFlag THEN BEGIN 
-        self-> set,use_rf = newRainFlag
+        self-> set,rainflag = newRainFlag
         Widget_Control,(*info).RFActColId,map=newRainFlag NE 0
         (*info).redraw = 1
       ENDIF 
@@ -1515,17 +1518,17 @@ PRO pv_config, GROUP=Group
                                 Title='Rows',$
                                 Uvalue='DECIMATE_2D_ROWS')
 
-  self-> get,rain_flag = rain_flag, rf_action=rf_a,rf_color=rf_c
+  self-> get,rainflag = rain_flag, rf_action=rf_a,rf_color=rf_c
   IF rf_c GT 255 THEN BEGIN 
      v = "'" + string(rf_c,form='(z6.6)') + "'x"
   ENDIF ELSE rf_c = strtrim(rf_c,2)
 
   junkId = Widget_Base(DecAndRFBase,row=2)
-  RainFlagID = cw_bgroup(junkid, ['None','MP','NOF'],row=1,$
+  RainFlagID = cw_bgroup(junkid, ["No","Yes"],row=1,$
                          /exclusive,/return_index,/no_release,$
                          set_value=rain_flag,$
                         UVALUE='RAINFLAG',$
-                        Label_Top='Rain Flagging Option')
+                        Label_Top='Use Rain Flagging?')
   RFActColId = widget_base(junkid,col=1,map=rain_flag NE 0)
   RainFlagActionID = CW_Bgroup(RFActColId,["Don't Plot","Plot with Color..."],/exclusive,$
                                /return_index,/no_release,$
