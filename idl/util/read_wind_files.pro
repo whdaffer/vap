@@ -82,6 +82,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.9  2002/05/03 01:11:34  vapdev
+; Changed these support files to use multiple paths/filters (in case
+; we want to segregate QuikSCAT/ADEOS streams). Modifed env variables to
+; reflect new schema. Just cosmetic work on the swath routines.
+;
 ; Revision 1.8  2001/12/08 00:02:37  vapdev
 ; Getting rid of obsolete RSI routines and fixing ENV vars
 ;
@@ -151,7 +156,7 @@ FUNCTION read_wind_files, files, $
    hstr2 = hstr2 + "   ending columns. Example: ExcludeCols='0,34:42,75 will " + lf 
    hstr2 = hstr2 + "   exclude Columns 0, 34,35,36,37,38,39,40,41,42 and 75" + lf 
    hstr2 = hstr2 + "   (def='')" + lf
-   hstr3 = hstr3 + " Help  - flag, if set, emit this message and exit. " + lf 
+   hstr3 =         " Help  - flag, if set, emit this message and exit. " + lf 
    hstr4 =         " Returns an array of data if successful, a scaler 0 if not." + lf
    hstr4 = hstr4 + "   The returned array has the form [nrecs,4] " + lf
    hstr4 = hstr4 + "   where u=[*,0], v=[*,1], lon=[*,2] and " + lf
