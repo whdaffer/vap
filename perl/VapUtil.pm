@@ -31,6 +31,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.10  2002/08/13 20:14:23  vapdev
+# Added subroutine 'deenvvar'
+#
 # Revision 1.9  2002/08/09 23:39:28  vapdev
 # Add auto_movie_defs to export list
 #
@@ -1600,5 +1603,8 @@ sub deenvvar{
   $thingy = join("/",@parts);
 }
 
+sub RedoHTML{
+  1;
+}
 1;
 

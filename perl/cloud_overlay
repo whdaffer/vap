@@ -20,6 +20,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.17  2002/08/08 23:32:14  vapdev
+# Problem with Gms5.pm, still working.
+#
 # Revision 1.16  2002/08/08 00:17:55  vapdev
 # Added 'use strict' and general updating/cleanup
 #
@@ -616,7 +619,7 @@ do {VapUtil::VapMailErrorMsg(
 
   # update the dates in that file
 print "Updating index.html\n";
-VapUtil::date_index();
+VapUtil::RedoHTML();
 
   # make sure it's readible.
 do {VapUtil::VapMailErrorMsg("cloud_overlay: Couldn't chmod index.html to 0644\n",

@@ -1,0 +1,4 @@
+2002-08-21  SeaWinds VAP Developer  <vapdev@catspaw.jpl.nasa.gov>
+
+	* Overlay.pm (Module): Created object to encapsulate code in cloud_overlay
+
