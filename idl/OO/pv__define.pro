@@ -51,7 +51,6 @@
 ;           Thickness    : Thickness of Vector (0.1 to 5)
 ;           MinSpeed     : Minimum speed to plot (0,37)
 ;           MaxSpeed     : Maximum speed to plot (0,37)
-;           Help         : a Message 
 ;
 ;
 ;
@@ -90,6 +89,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.20  1999/10/21 23:02:40  vapuser
+; Added code to support config files and
+; cw_pvfinfo.
+;
 ; Revision 1.19  1999/10/05 16:39:13  vapuser
 ; Changed the values of some defaults.
 ;
@@ -164,6 +167,359 @@
 ;Copyright (c) YYYY, California Institute of Technology
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
+
+;====================================================
+;
+;  Init: Initializes the PV object
+;
+;====================================================
+
+FUNCTION pv::Init, $
+           files         = files, $
+           data          = data, $ 
+           xsize         = xsize, $
+           ysize         = ysize, $
+           color         = color, $
+           ambiguities   = ambiguities, $
+           decimate_by   = decimate_by,$
+           CRDecimate_by = CRDecimate_by,$
+           ExcludeCols   = ExcludeCols,$
+           InputPath     = InputPath ,$     
+           InputFilter   = InputFilter,$    
+           OutputPath    = OutputPath,$     
+           HCType        = HCType, $    
+           HCFile        = HCFile,$
+           LonRange      = LonRange, $      
+           LatRange      = LatRange ,$      
+           Length        = Length, $        
+           Thickness     = Thickness,$      
+           MinSpeed      = MinSpeed,$       
+           MaxSpeed      = MaxSpeed,$       
+           Verbose       = Verbose, $
+           doColorBar    = doColorBar, $
+           doAnnotations = doAnnotations
+   
+
+
+  Catch, Error
+  IF Error NE 0 THEN BEGIN 
+    ok = Dialog_Message(!Error_State.msg)
+    Message,!error_state.msg,/cont
+    self-> set, Sensitivity = 1
+    return,0
+  ENDIF 
+
+
+  read_cfgfile = 0
+  cfgname = 'pv.cfg'
+  cfgpath = deenvvar('$HOME/.idlcfg/')
+  ff = findfile(cfgpath + cfgname,count=nf)
+  IF nf NE 0 THEN BEGIN 
+    read_cfgfile = 1
+  ENDIF ELSE BEGIN 
+    IF getenv('VAP_LIB') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIB')
+      ff = findfile(cfgpath + cfgname,count=nf)      
+      read_cfgfile = (nf NE 0)
+    ENDIF
+  ENDELSE   
+
+  IF read_cfgfile THEN BEGIN 
+    print,' Reading CFG file ' + cfgname
+    read_cfgfile,cfgname, cfg,path=cfgpath
+    IF n_elements(cfg) NE 0 THEN BEGIN 
+      print,'CFG found! Details follow:'
+      help,cfg,/st
+    ENDIF 
+  ENDIF 
+  
+
+
+    ; Set the pseudo 8 bit class. It may not take, since the visual
+    ; class may already been set and a connection to the X-server may
+    ; already have been created, in which case, we'll find out when we
+    ; get the visual name in the 2nd call.
+
+  Device, pseudo=8
+  device,get_visual_name= visual_name
+  self.visual = strupcase(visual_name)
+  
+
+  self.Sensitivity = 1 ; Make sure we can operate on the widget.
+
+  self.MinMaxSpeed = [ 1.e10, -1.e10 ] 
+
+  self.Verbose = keyword_set( Verbose )
+
+  self.doAnnotations =  keyword_set(doAnnotations)
+  self.doColorBar =  keyword_set(doColorBar)
+
+  chkcfg,'XSIZE',xsize,cfg
+  chkcfg,'YSIZE',Ysize,cfg
+
+  IF N_Elements(xsize)       EQ 0 THEN xsize = 640 
+  IF N_Elements(ysize)       EQ 0 THEN ysize = 480 
+
+  n_ambigs = N_Elements(self.ambiguities)
+  IF N_Elements(ambiguities) EQ 0 THEN BEGIN 
+    ambiguities = lonarr(n_ambigs)
+    ambiguities[0] = 1
+   ENDIF ELSE BEGIN 
+     IF N_Elements(ambiguities) EQ 1 THEN BEGIN 
+       self.ambiguities[ambiguities < (n_ambigs-1) ] =  1
+     ENDIF ELSE $
+       IF N_Elements(ambiguities) EQ n_ambigs THEN $
+         self.ambiguities = ambiguities $
+       ELSE BEGIN 
+         Message,"Ambiguities must be either 1 or " + $
+            strtrim( n_ambigs,2) + " elements, if anything",/cont
+         Message,"Using 'Selected' Ambiguity",/cont
+         self.ambiguities[0] = 1
+       ENDELSE 
+  ENDELSE 
+
+  chkcfg,'DECIMATE_BY',decimate_by,cfg
+  chkcfg,'CRDECIMATE_BY',crdecimate_by,cfg
+  chkcfg,'EXCLUDECOLS',excludecols,cfg
+
+  IF N_Elements(decimate_by) EQ 0 THEN decimate_by = 1
+  IF N_Elements(CRDecimate_by) NE 2 THEN CRDecimate_by = [2,2] 
+  IF N_Elements(ExcludeCols) EQ 0 THEN ExcludeCols = '' ELSE BEGIN 
+    IF VarType(ExcludeCols) NE 'STRING' THEN BEGIN 
+      Message,'ExcludeCols must be of type STRING',/cont
+      ExcludeCols = '' 
+    ENDIF 
+  ENDELSE 
+
+  chkcfg,'INPUTPATH',inputpath,cfg
+  IF N_Elements(InputPath)   EQ 0 THEN BEGIN 
+    path = getenv('VAP_WINDS') 
+    IF path NE '' THEN InputPath = path ELSE InputPath ='./' 
+  ENDIF ELSE BEGIN 
+    IF VarType(InputPath) NE 'STRING' THEN BEGIN 
+      Message,'InputPath must be of type STRING',/cont
+      InputPath = './' 
+    ENDIF 
+  ENDELSE 
+
+  chkcfg,'INPUTFILTER',inputfilter,cfg
+  IF N_Elements(InputFilter) EQ 0 THEN InputFilter = 'QS*S*E* *.hdf' ELSE BEGIN 
+    IF VarType(InputFilter) NE 'STRING' THEN BEGIN 
+      Message,'InputFilter must be of type STRING',/cont
+      InputFilter = 'QS*S*E* *.hdf' 
+    ENDIF 
+  ENDELSE 
+
+  chkcfg,'OUTPUTPATH',outputpath,cfg
+  IF N_Elements(OutputPath)  EQ 0 THEN OutputPath = './' ELSE BEGIN 
+    IF VarType(OutputPath) NE 'STRING' THEN BEGIN 
+      Message,'OutputPath must be of type STRING',/cont
+      OutputPath = './' 
+    ENDIF 
+    IF rstrpos( OutputPath,'/') LT strlen(OutputPath)-1 THEN $
+      OutputPath = OutputPath + '/'
+  ENDELSE 
+
+  chkcfg,'OUTPUTFILTER',outputfilter,cfg
+  IF N_Elements(OutputFilter) EQ 0 THEN OutputFilter = '*.dat' ELSE BEGIN 
+    IF VarType(OutputFilter) NE 'STRING' THEN BEGIN 
+      Message,'OutputFilter must be of type STRING',/cont
+      OutputFilter = '*.dat'
+    ENDIF 
+  ENDELSE 
+
+  chkcfg,'HCTYPE',hctype,cfg
+  IF N_Elements(HCType)  EQ 0 THEN HCType = 'ps' ELSE BEGIN 
+    IF VarType(HCType) NE 'STRING' THEN BEGIN 
+      Message,'HCType must be of type STRING',/cont
+      HCType = 'ps'
+    ENDIF 
+  ENDELSE 
+
+  chkcfg,'HCFILE',hcfile,cfg
+  IF N_Elements(HCFile)  EQ 0 THEN $
+    HCFile = 'pv_out' +self.HCType ELSE BEGIN 
+      IF VarType(HCFile) NE 'STRING' THEN BEGIN 
+        Message,'HCFile must be of type STRING',/cont
+        HCFile = 'pv_out'+self.HCType
+      ENDIF 
+  ENDELSE 
+
+  junk = '.' + self.HCType &  junklen=strlen(junk)
+  IF strpos( self.HCFile, junk ) EQ -1 THEN $
+   self.HCFile = self.HCFile+'.' + self.HCType
+
+  chkcfg,'LONRANGE',lonrange,cfg
+  IF N_Elements(LonRange)   NE 2 THEN LonRange = [0.,359] ELSE BEGIN 
+    IF VarType(LonRange) NE 'FLOAT' THEN LonRange = float(LonRange)  
+  ENDELSE 
+
+  chkcfg,'LATRANGE',latrange,cfg
+  IF N_Elements(LatRange)    EQ 0 THEN LatRange = [-90,90.] ELSE BEGIN 
+    IF VarType(LatRange) NE 'FLOAT' THEN LatRange = float(LatRange)  
+  ENDELSE 
+
+  chkcfg,'LENGTH',length,cfg
+  chkcfg,'THICKNESS',thickness,cfg
+  chkcfg,'MINSPEED',minspeed,cfg
+  chkcfg,'MAXSPEED',maxspeed,cfg
+
+  IF N_Elements(Length)      EQ 0 THEN Length = 2
+  IF N_Elements(Thickness)   EQ 0 THEN Thickness = 1
+  IF N_Elements(MinSpeed)   EQ 0 THEN MinSpeed = 1
+  IF N_Elements(MaxSpeed)   EQ 0 THEN MaxSpeed =  20
+
+  self.xsize         = xsize      
+  self.ysize         = ysize      
+  self.ExcludeCols   = ExcludeCols
+  self.ambiguities   = ambiguities 
+  self.InputPath     = DeEnvVar(InputPath)
+  self.InputFilter   = InputFilter   
+  self.OutputPath    = OutputPath  
+  self.HCType        = HCType  
+  self.HCFile        = HCFile  
+  self.Length        = Length      
+  self.Thickness     = Thickness   
+  self.MinSpeed      = MinSpeed    
+  self.MaxSpeed      = MaxSpeed    
+  self.decimate_by   = decimate_by
+  self.CRdecimate_by = CRdecimate_by
+
+  junk = where(CRDecimate_by, njj )
+  self.Decimate_flag = (njj NE 0)
+
+;   ColorMapping =  { Name: ' ', $
+;                      ColorTriple: bytarr(3),$
+;                      ColorIndex : 0l }
+
+     ; These are the possible plotting colors available in the
+     ; colortable file loaded (pv.ct). If that file is changed, these
+     ; will have to change also. I have yet to come up with a general
+     ; way of doing this.
+   colors = replicate({ColorMapping},8)
+
+   colors[0].Name = 'Speed'
+   colors[0].colorTriple =  [-1b, -1,  -1  ]
+   colors[0].ColorIndex = -1 
+
+   colors[1].Name = 'Red'
+   colors[1].ColorTriple =   [255b, 0,   0  ]
+
+   colors[2].Name = 'Green'
+   colors[2].ColorTriple =   [0b,   255, 0  ]
+
+   colors[3].Name = 'Blue'
+   colors[3].ColorTriple =    [0b,   0,   255]
+
+   colors[4].Name        = 'Yellow'
+   colors[4].ColorTriple =  [255b, 255, 0  ]
+
+   colors[5].Name        = 'Magenta'
+   colors[5].ColorTriple = [255b, 0,   255]
+
+   colors[6].Name         = 'Aqua'
+   colors[6].ColorTriple  = [0b,   255, 255]
+
+   colors[7].Name         = 'White'
+   colors[7].ColorTriple  =   [255b, 255, 255]
+
+
+   self.Water0    = 1         ; Start of Water indices
+   self.Land0     = 7         ; Start of Land Colors in Color table
+   self.Cloud0    = 27        ; Start of Cloud Indicies
+   self.Wind0     = 47        ; Start of Wind Indicies
+   self.Ambig0    = 92        ; Start of Ambiguity Color Indicies
+                              ; (Red is the top of the Wind colors, so
+                              ; there is some overlap)
+   self.NWind     = 45        ; Number of Wind Colors.
+
+  FOR i=1,n_elements(colors)-1 DO colors[i].ColorIndex = self.Ambig0+i-1
+
+  self.AmbigColorMapping = colors
+
+    ; These are the ACTUAL colors we will use.
+  self.ambigColorNames = [ 'Speed',$  ; default 'selected' color
+                           'Red',$    ; default 1st
+                           'Green',$  ; default 2nd
+                           'Blue',$   ; default 3rd
+                           'Yellow',$ ; default 4th
+                           'Magenta',$; default model
+                           'White']   ; default DIRTH
+
+    ; find the indices from the ColorMapping array of structures.
+  FOR i=0,N_Elements(self.AmbigColorNames)-1 DO $
+      self.AmbigColors[i] =  self->GetColorIndex( self.AmbigColorNames[i] )
+
+
+  dims                 = Obj_New('MapDims',LonRange,LatRange,/fix )
+    ; Linked List of Plot Dimensions
+  self.DimsList        = Obj_New('linkedlist',dims) 
+    ; Linked List of Data Objects (roughly of 'files')
+  self.DataList        = Obj_New('linkedlist')      
+    ; 'Speed' Histogram object
+  self.SpeedHisto      = Obj_New('ObHisto', nBins=200, Min=0, Max=37)  
+
+
+    ; Get Pointer to color table.
+  CT = GetEnv('PV_COLORTABLE')
+  IF strlen(CT) NE 0 THEN $
+    PtrToColorTable = ReadColorTable(CT[0]) $
+  ELSE $
+    PtrToColorTable = ReadColorTable($
+                     '/usr/people/vapuser/Qscat/Resources/Color_Tables/pv.ct.2')
+
+  self.PtrToCt = PtrToColorTable
+  CT =  *PtrToColorTable
+  self.Ncolors = N_elements( CT[0,*] )
+  self.PsInfo = Obj_New('PSFORM') ;
+  self.Annotation = Obj_new('ANNOTATION')
+  self.ColorBar =  Obj_New('ColorBar', $
+                       table=ct,ncolors=self.nwind,title='Wind Speed (m/s)',$
+                            bottom=self.wind0,$
+                            true= (self.visual NE 'PSEUDOCOLOR'), $
+                           min=self.minspeed, max=self.maxspeed, $
+                            divisions=4,position=[0.25,0.93,0.75,0.95], $
+                           format='(f5.0)', color=n_elements(ct[0,*]) )
+
+  self.Oplot =  obj_new('ObPlot',psym=2,/plots)
+
+  status = 1
+  IF n_elements( files ) NE 0 THEN BEGIN 
+    status = self-> Read( files )
+  ENDIF ELSE IF n_elements( data ) NE 0 THEN BEGIN 
+    IF Obj_Valid( data ) THEN BEGIN 
+      IF obj_isa( data, 'PVPLOTOBJECT') THEN $
+        status = self.DataList-> Append(data) ELSE BEGIN 
+        p =  Obj_new('PvPlotObject',DATA)
+        status = self.DataList-> Append(p)
+      ENDELSE 
+    ENDIF ELSE BEGIN 
+      Structure_Name = STRUPCASE(Tag_Names( data, /structure_name) )
+      CASE Structure_Name OF 
+        'Q2BDATA'    : q = Obj_New('Q2B'   , data=data)
+        'RQ2BDATA'   : q = Obj_New('Q2B'   , data=data)
+        'QMODELDATA' : q = Obj_New('QMODEL', data=data)
+        ELSE     : BEGIN 
+          Message,"Can't identify data type ",/cont        
+          return,0
+        END
+      ENDCASE 
+      p =  Obj_new('PvPlotObject',q)
+      status = self.DataList-> Append(p)
+    ENDELSE 
+  ENDIF 
+
+  status =  status AND $
+            Ptr_Valid(PtrToColorTable) AND $
+            Obj_Valid(Self.Annotation) AND $
+            Obj_Valid( self.PsInfo)
+
+
+  IF status THEN BEGIN
+    self->Draw
+  ENDIF 
+  RETURN,status
+END
 
 ;====================================================
 ;
@@ -685,442 +1041,6 @@ PRO Pv::CopytoPixmap
 END
 
 
-
-;====================================================
-;
-; Create_help_msg: Creates the Help message.
-;
-;====================================================
-
-PRO Pv::SelfHelp
-    ; Create the help array 
-  IF NOT Ptr_Valid( self.help ) THEN BEGIN 
-    help_array =  strarr(500) &  i=0
-    help_array[i] =  ' ---------- Help for PlotVector Object  --------------'
-    i = i+1 &  help_array[i] =  '' 
-    i = i+1 &  help_array[i] =  ' This Object has the following data members' 
-    i = i+1 &  help_array[i] =  ' Data member may be Set using "obj->Set,item=item" if ' 
-    i = i+1 &  help_array[i] =  ' "(Set..." is included in description. '
-    i = i+1 &  help_array[i] =  ' Data Member may be retrieved using "obj->Get,item=item" if '
-    i = i+1 &  help_array[i] =  '  "(Get..." is included in description.'
-    i = i+1 &  help_array[i] =  ' '
-    i = i+1 &  help_array[i] =  ' Xsize - X Size of display in pixels (Get/Set)'
-    i = i+1 &  help_array[i] =  '    Default = 640. This quantity can also be set '
-    i = i+1 &  help_array[i] =  '    by "dragging" the corner of the window. The '
-    i = i+1 &  help_array[i] =  '    widget will resize itself accordingly '
-    i = i+1 &  help_array[i] =  ' Ysize - Y Size of display in pixels (Get/Set)'
-    i = i+1 &  help_array[i] =  '    Default = 480. May be set by dragging window '
-    i = i+1 &  help_array[i] =  '    corner, as with Xsize '
-    i = i+1 &  help_array[i] =  ' Ambiguities - The Ambiguities to plot (Get/Set)'
-    i = i+1 &  help_array[i] =  '    This is an array, where ...'
-    i = i+1 &  help_array[i] =  '     Ambiguities[0] =1 means plot the "selected" ambiguitiy '
-    i = i+1 &  help_array[i] =  '     Ambiguities[1] = 1 means plot the first ambiguitiy '
-    i = i+1 &  help_array[i] =  '    ... Etc. '
-    i = i+1 &  help_array[i] =  '    default = Ambiguities[0]=1 (the Selected Ambiguity) '
-    i = i+1 &  help_array[i] =  '  Ncolors -  Number of colors in the color table '
-    i = i+1 &  help_array[i] =  '     Currently equals 94, or which 87 are for mapping '
-    i = i+1 &  help_array[i] =  '       speed into color table and the last 6 are solid '
-    i = i+1 &  help_array[i] =  '        colors for plotting the individual ambiguities '
-    i = i+1 &  help_array[i] =  '          not modifiable. '
-    i = i+1 &  help_array[i] =  '  Length - the "Length" of the vectors (Get/Set)'
-    i = i+1 &  help_array[i] =  '     Default = 2.0 '
-    i = i+1 &  help_array[i] =  '  Thickness - The "Thickness" of the vectors (Get/Set)'
-    i = i+1 &  help_array[i] =  '     Default=1.0 '
-    i = i+1 &  help_array[i] =  '  Decimate_by  - Take Every "n-th" Vector (Get/Set)'
-    i = i+1 &  help_array[i] =  '     2 means take every other vector '
-    i = i+1 &  help_array[i] =  '     Default = 2.0 '
-    i = i+1 &  help_array[i] =  '  Min_Speed - If color=-1, the minimum speed to plot (Get/Set) '
-    i = i+1 &  help_array[i] =  '     Default = 2'
-    i = i+1 &  help_array[i] =  '  Max_Speed - - If color=-1, the maximum speed to plot (Get/Set) '
-    i = i+1 &  help_array[i] =  '     Default = 37.0'
-    i = i+1 &  help_array[i] =  '  Ambig_Colors - 5 element array to store the colors used '
-    i = i+1 &  help_array[i] =  '     to plot the individual ambiguities'
-    i = i+1 &  help_array[i] =  '      Not Modifiable through Get/Set'
-    i = i+1 &  help_array[i] =  '  DataList - A linked list containing the Data to be '
-    i = i+1 &  help_array[i] =  '     plotted (Get/Set) '
-    i = i+1 &  help_array[i] =  '     Nominally, the data member would be modified through the '
-    i = i+1 &  help_array[i] =  '     widget. Provision is made to modify it through the ' 
-    i = i+1 &  help_array[i] =  '     "Set" object method call. '
-    i = i+1 &  help_array[i] =  ' '
-    i = i+1 &  help_array[i] =  '     This is considered and "Expert" option and should '
-    i = i+1 &  help_array[i] =  '     be used with due caution!'
-    i = i+1 &  help_array[i] =  '  '
-    i = i+1 &  help_array[i] =  ' Example of setting color, ambiguities and length '
-    i = i+1 &  help_array[i] =  '   IDL> pv_obj->Set, color=-1, ambguity=1, length=1.5 '
-    i = i+1 &  help_array[i] =  ' '
-    i = i+1 &  help_array[i] =  ' ---------- Initialization ----------------- '
-    i = i+1 &  help_array[i] =  ' '
-    i = i+1 &  help_array[i] =  ' The "constructor" may be called with a filename, a structure'
-    i = i+1 &  help_array[i] =  '   of type Q2B containing the data or a linkedlist of structures'
-    i = i+1 &  help_array[i] =  '   of type Q2B containing the data '
-    i = i+1 &  help_array[i] =  '   For Example: '
-    i = i+1 &  help_array[i] =  '     IDL> PV_OBJ = Obj_New("pv" '
-    i = i+1 &  help_array[i] =  '         [, filename=filename | ,data=data ] ) '
-    i = i+1 &  help_array[i] =  ' -------------- Methods ----------------------- '
-    i = i+1 &  help_array[i] =  ' '
-    i = i+1 &  help_array[i] =  ' Get/Set - already covered '
-    i = i+1 &  help_array[i] =  ' Help - Prints out this method '
-    i = i+1 &  help_array[i] =  ' whatever else I come up with' 
-    help_array = help_array[0:i]
-    self.help =  ptr_new(help_array) &  help_array=0
-  ENDIF 
-  SaveDevice = !d.Name
-  set_plot,'X'
-  XDisplayFile,'',*self.help
-  Set_plot,  SaveDevice
-
-END
-;====================================================
-;
-;  Init: Initializes the PV object
-;
-;====================================================
-
-FUNCTION pv::Init, $
-           files         = files, $
-           data          = data, $ 
-           xsize         = xsize, $
-           ysize         = ysize, $
-           color         = color, $
-           ambiguities   = ambiguities, $
-           decimate_by   = decimate_by,$
-           CRDecimate_by = CRDecimate_by,$
-           ExcludeCols   = ExcludeCols,$
-           InputPath     = InputPath ,$     
-           InputFilter   = InputFilter,$    
-           OutputPath    = OutputPath,$     
-           HCType        = HCType, $    
-           HCFile        = HCFile,$
-           LonRange      = LonRange, $      
-           LatRange      = LatRange ,$      
-           Length        = Length, $        
-           Thickness     = Thickness,$      
-           MinSpeed      = MinSpeed,$       
-           MaxSpeed      = MaxSpeed,$       
-           Help          = Help, $
-           Verbose       = Verbose, $
-           doColorBar    = doColorBar, $
-           doAnnotations = doAnnotations
-   
-
-
-  Catch, Error
-  IF Error NE 0 THEN BEGIN 
-    ok = Dialog_Message(!Error_State.msg)
-    Message,!error_state.msg,/cont
-    self-> set, Sensitivity = 1
-    return,0
-  ENDIF 
-
-
-  read_cfgfile = 0
-  cfgname = 'pv.cfg'
-  cfgpath = deenvvar('$HOME/.idlcfg/')
-  ff = findfile(cfgpath + cfgname,count=nf)
-  IF nf NE 0 THEN BEGIN 
-    read_cfgfile = 1
-  ENDIF ELSE BEGIN 
-    IF getenv('VAP_LIB') NE '' THEN BEGIN 
-      cfgpath = deenvvar('$VAP_LIB')
-      ff = findfile(cfgpath + cfgname,count=nf)      
-      read_cfgfile = (nf NE 0)
-    ENDIF
-  ENDELSE   
-
-  IF read_cfgfile THEN BEGIN 
-    print,' Reading CFG file ' + cfgname
-    read_cfgfile,cfgname, cfg,path=cfgpath
-    IF n_elements(cfg) NE 0 THEN BEGIN 
-      print,'CFG found! Details follow:'
-      help,cfg,/st
-    ENDIF 
-  ENDIF 
-  
-
-  IF keyword_set( help ) THEN self-> SelfHelp
-
-
-    ; Set the pseudo 8 bit class. It may not take, since the visual
-    ; class may already been set and a connection to the X-server may
-    ; already have been created, in which case, we'll find out when we
-    ; get the visual name in the 2nd call.
-
-  Device, pseudo=8
-  device,get_visual_name= visual_name
-  self.visual = strupcase(visual_name)
-  
-
-  self.Sensitivity = 1 ; Make sure we can operate on the widget.
-
-  self.MinMaxSpeed = [ 1.e10, -1.e10 ] 
-
-  self.Verbose = keyword_set( Verbose )
-
-  self.doAnnotations =  keyword_set(doAnnotations)
-  self.doColorBar =  keyword_set(doColorBar)
-
-  chkcfg,'XSIZE',xsize,cfg
-  chkcfg,'YSIZE',Ysize,cfg
-
-  IF N_Elements(xsize)       EQ 0 THEN xsize = 640 
-  IF N_Elements(ysize)       EQ 0 THEN ysize = 480 
-
-  n_ambigs = N_Elements(self.ambiguities)
-  IF N_Elements(ambiguities) EQ 0 THEN BEGIN 
-    ambiguities = lonarr(n_ambigs)
-    ambiguities[0] = 1
-   ENDIF ELSE BEGIN 
-     IF N_Elements(ambiguities) EQ 1 THEN BEGIN 
-       self.ambiguities[ambiguities < (n_ambigs-1) ] =  1
-     ENDIF ELSE $
-       IF N_Elements(ambiguities) EQ n_ambigs THEN $
-         self.ambiguities = ambiguities $
-       ELSE BEGIN 
-         Message,"Ambiguities must be either 1 or " + $
-            strtrim( n_ambigs,2) + " elements, if anything",/cont
-         Message,"Using 'Selected' Ambiguity",/cont
-         self.ambiguities[0] = 1
-       ENDELSE 
-  ENDELSE 
-
-  chkcfg,'DECIMATE_BY',decimate_by,cfg
-  chkcfg,'CRDECIMATE_BY',crdecimate_by,cfg
-  chkcfg,'EXCLUDECOLS',excludecols,cfg
-
-  IF N_Elements(decimate_by) EQ 0 THEN decimate_by = 1
-  IF N_Elements(CRDecimate_by) NE 2 THEN CRDecimate_by = [2,2] 
-  IF N_Elements(ExcludeCols) EQ 0 THEN ExcludeCols = '' ELSE BEGIN 
-    IF VarType(ExcludeCols) NE 'STRING' THEN BEGIN 
-      Message,'ExcludeCols must be of type STRING',/cont
-      ExcludeCols = '' 
-    ENDIF 
-  ENDELSE 
-
-  chkcfg,'INPUTPATH',inputpath,cfg
-  IF N_Elements(InputPath)   EQ 0 THEN BEGIN 
-    path = getenv('VAP_WINDS') 
-    IF path NE '' THEN InputPath = path ELSE InputPath ='./' 
-  ENDIF ELSE BEGIN 
-    IF VarType(InputPath) NE 'STRING' THEN BEGIN 
-      Message,'InputPath must be of type STRING',/cont
-      InputPath = './' 
-    ENDIF 
-  ENDELSE 
-
-  chkcfg,'INPUTFILTER',inputfilter,cfg
-  IF N_Elements(InputFilter) EQ 0 THEN InputFilter = 'QS*S*E* *.hdf' ELSE BEGIN 
-    IF VarType(InputFilter) NE 'STRING' THEN BEGIN 
-      Message,'InputFilter must be of type STRING',/cont
-      InputFilter = 'QS*S*E* *.hdf' 
-    ENDIF 
-  ENDELSE 
-
-  chkcfg,'OUTPUTPATH',outputpath,cfg
-  IF N_Elements(OutputPath)  EQ 0 THEN OutputPath = './' ELSE BEGIN 
-    IF VarType(OutputPath) NE 'STRING' THEN BEGIN 
-      Message,'OutputPath must be of type STRING',/cont
-      OutputPath = './' 
-    ENDIF 
-    IF rstrpos( OutputPath,'/') LT strlen(OutputPath)-1 THEN $
-      OutputPath = OutputPath + '/'
-  ENDELSE 
-
-  chkcfg,'OUTPUTFILTER',outputfilter,cfg
-  IF N_Elements(OutputFilter) EQ 0 THEN OutputFilter = '*.dat' ELSE BEGIN 
-    IF VarType(OutputFilter) NE 'STRING' THEN BEGIN 
-      Message,'OutputFilter must be of type STRING',/cont
-      OutputFilter = '*.dat'
-    ENDIF 
-  ENDELSE 
-
-  chkcfg,'HCTYPE',hctype,cfg
-  IF N_Elements(HCType)  EQ 0 THEN HCType = 'ps' ELSE BEGIN 
-    IF VarType(HCType) NE 'STRING' THEN BEGIN 
-      Message,'HCType must be of type STRING',/cont
-      HCType = 'ps'
-    ENDIF 
-  ENDELSE 
-
-  chkcfg,'HCFILE',hcfile,cfg
-  IF N_Elements(HCFile)  EQ 0 THEN $
-    HCFile = 'pv_out' +self.HCType ELSE BEGIN 
-      IF VarType(HCFile) NE 'STRING' THEN BEGIN 
-        Message,'HCFile must be of type STRING',/cont
-        HCFile = 'pv_out'+self.HCType
-      ENDIF 
-  ENDELSE 
-
-  junk = '.' + self.HCType &  junklen=strlen(junk)
-  IF strpos( self.HCFile, junk ) EQ -1 THEN $
-   self.HCFile = self.HCFile+'.' + self.HCType
-
-  chkcfg,'LONRANGE',lonrange,cfg
-  IF N_Elements(LonRange)   NE 2 THEN LonRange = [0.,359] ELSE BEGIN 
-    IF VarType(LonRange) NE 'FLOAT' THEN LonRange = float(LonRange)  
-  ENDELSE 
-
-  chkcfg,'LATRANGE',latrange,cfg
-  IF N_Elements(LatRange)    EQ 0 THEN LatRange = [-90,90.] ELSE BEGIN 
-    IF VarType(LatRange) NE 'FLOAT' THEN LatRange = float(LatRange)  
-  ENDELSE 
-
-  chkcfg,'LENGTH',length,cfg
-  chkcfg,'THICKNESS',thickness,cfg
-  chkcfg,'MINSPEED',minspeed,cfg
-  chkcfg,'MAXSPEED',maxspeed,cfg
-
-  IF N_Elements(Length)      EQ 0 THEN Length = 2
-  IF N_Elements(Thickness)   EQ 0 THEN Thickness = 1
-  IF N_Elements(MinSpeed)   EQ 0 THEN MinSpeed = 1
-  IF N_Elements(MaxSpeed)   EQ 0 THEN MaxSpeed =  20
-
-  self.xsize         = xsize      
-  self.ysize         = ysize      
-  self.ExcludeCols   = ExcludeCols
-  self.ambiguities   = ambiguities 
-  self.InputPath     = DeEnvVar(InputPath)
-  self.InputFilter   = InputFilter   
-  self.OutputPath    = OutputPath  
-  self.HCType        = HCType  
-  self.HCFile        = HCFile  
-  self.Length        = Length      
-  self.Thickness     = Thickness   
-  self.MinSpeed      = MinSpeed    
-  self.MaxSpeed      = MaxSpeed    
-  self.decimate_by   = decimate_by
-  self.CRdecimate_by = CRdecimate_by
-
-  junk = where(CRDecimate_by, njj )
-  self.Decimate_flag = (njj NE 0)
-
-;   ColorMapping =  { Name: ' ', $
-;                      ColorTriple: bytarr(3),$
-;                      ColorIndex : 0l }
-
-     ; These are the possible plotting colors available in the
-     ; colortable file loaded (pv.ct). If that file is changed, these
-     ; will have to change also. I have yet to come up with a general
-     ; way of doing this.
-   colors = replicate({ColorMapping},8)
-
-   colors[0].Name = 'Speed'
-   colors[0].colorTriple =  [-1b, -1,  -1  ]
-   colors[0].ColorIndex = -1 
-
-   colors[1].Name = 'Red'
-   colors[1].ColorTriple =   [255b, 0,   0  ]
-
-   colors[2].Name = 'Green'
-   colors[2].ColorTriple =   [0b,   255, 0  ]
-
-   colors[3].Name = 'Blue'
-   colors[3].ColorTriple =    [0b,   0,   255]
-
-   colors[4].Name        = 'Yellow'
-   colors[4].ColorTriple =  [255b, 255, 0  ]
-
-   colors[5].Name        = 'Magenta'
-   colors[5].ColorTriple = [255b, 0,   255]
-
-   colors[6].Name         = 'Aqua'
-   colors[6].ColorTriple  = [0b,   255, 255]
-
-   colors[7].Name         = 'White'
-   colors[7].ColorTriple  =   [255b, 255, 255]
-
-
-   self.Water0    = 1         ; Start of Water indices
-   self.Land0     = 7         ; Start of Land Colors in Color table
-   self.Cloud0    = 27        ; Start of Cloud Indicies
-   self.Wind0     = 47        ; Start of Wind Indicies
-   self.Ambig0    = 92        ; Start of Ambiguity Color Indicies
-                              ; (Red is the top of the Wind colors, so
-                              ; there is some overlap)
-   self.NWind     = 45        ; Number of Wind Colors.
-
-  FOR i=1,7 DO colors[i].ColorIndex = self.Ambig0+i-1
-
-  self.AmbigColorMapping = colors
-
-    ; These are the ACTUAL colors we will use.
-  self.ambigColorNames = [ 'Speed','Red','Green','Blue','Yellow','Magenta']
-
-    ; find the indices from the ColorMapping array of structures.
-  FOR i=0,N_Elements(self.AmbigColorNames)-1 DO $
-      self.AmbigColors[i] =  self->GetColorIndex( self.AmbigColorNames[i] )
-
-
-  dims                 = Obj_New('MapDims',LonRange,LatRange,/fix )
-    ; Linked List of Plot Dimensions
-  self.DimsList        = Obj_New('linkedlist',dims) 
-    ; Linked List of Data Objects (roughly of 'files')
-  self.DataList        = Obj_New('linkedlist')      
-    ; 'Speed' Histogram object
-  self.SpeedHisto      = Obj_New('ObHisto', nBins=200, Min=0, Max=37)  
-
-
-    ; Get Pointer to color table.
-  CT = GetEnv('PV_COLORTABLE')
-  IF strlen(CT) NE 0 THEN $
-    PtrToColorTable = ReadColorTable(CT[0]) $
-  ELSE $
-    PtrToColorTable = ReadColorTable($
-                     '/usr/people/vapuser/Qscat/Resources/Color_Tables/pv.ct.2')
-;  PtrToColorTable = ReadColorTable($
-;                     '/home/daffer/idl5/OO/pv.ct')
-  self.PtrToCt = PtrToColorTable
-  CT =  *PtrToColorTable
-  self.Ncolors = N_elements( CT[0,*] )
-  self.PsInfo = Obj_New('PSFORM') ;
-  self.Annotation = Obj_new('ANNOTATION')
-  self.ColorBar =  Obj_New('ColorBar', $
-                       table=ct,ncolors=self.nwind,title='Wind Speed (m/s)',$
-                            bottom=self.wind0,$
-                            true= (self.visual NE 'PSEUDOCOLOR'), $
-                           min=self.minspeed, max=self.maxspeed, $
-                            divisions=4,position=[0.25,0.93,0.75,0.95], $
-                           format='(f5.0)', color=n_elements(ct[0,*]) )
-
-  self.Oplot =  obj_new('ObPlot',psym=2,/plots)
-
-  status = 1
-  IF n_elements( files ) NE 0 THEN BEGIN 
-    status = self-> Read( files )
-  ENDIF ELSE IF n_elements( data ) NE 0 THEN BEGIN 
-    IF Obj_Valid( data ) THEN BEGIN 
-      IF obj_isa( data, 'PVPLOTOBJECT') THEN $
-        status = self.DataList-> Append(data) ELSE BEGIN 
-        p =  Obj_new('PvPlotObject',DATA)
-        status = self.DataList-> Append(p)
-      ENDELSE 
-    ENDIF ELSE BEGIN 
-      Structure_Name = STRUPCASE(Tag_Names( data, /structure_name) )
-      CASE Structure_Name OF 
-        'Q2BDATA'    : q = Obj_New('Q2B'   , data=data)
-        'RQ2BDATA'   : q = Obj_New('Q2B'   , data=data)
-        'QMODELDATA' : q = Obj_New('QMODEL', data=data)
-        ELSE     : BEGIN 
-          Message,"Can't identify data type ",/cont        
-          return,0
-        END
-      ENDCASE 
-      p =  Obj_new('PvPlotObject',q)
-      status = self.DataList-> Append(p)
-    ENDELSE 
-  ENDIF 
-
-  status =  status AND $
-            Ptr_Valid(PtrToColorTable) AND $
-            Obj_Valid(Self.Annotation) AND $
-            Obj_Valid( self.PsInfo)
-
-
-  IF status THEN BEGIN
-    self->Draw
-  ENDIF 
-  RETURN,status
-END
-
 ;====================================================
 ;
 ; CreateWidget - Creates a new widget window
@@ -1567,23 +1487,12 @@ PRO Pv::Cleanup
   If Obj_Valid(self.SpeedHisto)      THEN obj_Destroy, self.SpeedHisto
   IF Obj_valid(self.PsInfo )         THEN Obj_Destroy, self.PsInfo
   IF Obj_valid(self.Annotation )     THEN Obj_Destroy, self.Annotation
-  Ptr_Free, self.help
   Ptr_Free, self.PtrToCT
 
   IF Widget_Info( self.tlb, /valid ) THEN $
     Widget_Control, self.tlb, /destroy
 END
 
-;====================================================
-;
-; Prints the Help message
-;
-;====================================================
-
-
-PRO Pv::SelfHelp
-  XdisplayFile,'',text=*self.help
-END
 
 
 ;====================================================
@@ -2452,7 +2361,6 @@ PRO Pv__define
    junk = { PV, $
 
  ;----------- General Object Quantities ---------------------
-            Help         : Ptr_New(), $
             Redraw       : 0l ,$ ; if something changes that 
                                  ; requires redrawing.
             Sensitivity  : 0l, $ ; flag for sensitivity s
@@ -2495,7 +2403,7 @@ PRO Pv__define
 
   ;------------ Vector plotting quantities ---------------
 
-            Ambiguities    : intarr(6),$ ; Ambiguities[i]=1 means plot i-th 
+            Ambiguities    : intarr(7),$ ; Ambiguities[i]=1 means plot i-th 
                                        ; ambiguity. Ambiguities[0] is 
                                        ; 'selected' vector, ambiguities[1] 
                                 ; is 1st ...
@@ -2515,14 +2423,15 @@ PRO Pv__define
             MinMaxSpeed  : fltarr(2) ,$ ; Store minmax speed for 
                                         ; pv_config widget
             SpeedHisto   : Obj_New(),$ ; Histogram Object for Speed Histogram
-            AmbigColors  : lonarr(6),$ ; Latest colors indices used for each ambig.
+            AmbigColors  : lonarr(7),$ ; Latest colors indices used for each ambig.
                                        ; AmbigColors[0] = color index
                                        ; for  selected ambiguity,
                                        ; AmbigColors[1] for 1st
                                        ; Ambig, ... AmbigColors[5] is
                                        ; color index for 'model' or
                                        ; 'error', should there be such.
-           AmbigColorNames: strarr(6) ,$ ; The respective names.
+                                       ; [6] for 'DIRTH' vectors, if there.
+           AmbigColorNames: strarr(7) ,$ ; The respective names.
            AmbigColorMapping: colors ,$ ; The color mapping (future use)
            DimsList     : Obj_New(),$ ; Linked list of map dimensions
 
