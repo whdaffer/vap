@@ -5,6 +5,9 @@
  *    Modification Log: (After RCS)
  *
  *    $Log$
+ *    Revision 1.4  2002/08/09 23:48:41  vapdev
+ *    Greatly simplified argument processing.
+ *
  *    Revision 1.3  2002/05/14 15:54:50  vapuser
  *    General cleanup
  *
@@ -126,6 +129,7 @@ int main( int argc, char **argv) {
 
   int paras[17];
 
+  char *p1,*p2;
   /* 
   for pair_goes.f:
     0: SLIN0, 1: SELE0, 2: SLIN, 3: SELE, 4: RESL, 5: RESE, 6: SCALA, 7: SCALO,  
@@ -147,17 +151,17 @@ int main( int argc, char **argv) {
     filetype_set, goestype_set, sensortype_set, limit_set, outputfile_set;
 
   int ijunk;
-  int areafileno,       /* the number, as parsed from cmdline */
+  int areafileno,       /* the number, as parsed from cmdline or appearing in filename*/
     areafile_dirno,     /* the directory portion (i.e. 1st digit) */
     areafile_sensorno,  /* the sensor portion (2n digit) */
     areafile_areano;    /* the area number portion (last 2 digits)*/
 
-  int goestype=10;   /* currently 8 or 10, Note that this it the type
+  int goestype=-1;   /* currently 8 or 10, Note that this it the type
                       *  specified on the command line, not the type as
                       *  given in the AREA file. 
 		      */
 
-  int sensortype=4;  /* sensor type (1=vis, 2=ir2, 3=ir3, 4=ir4 ) */
+  int sensortype=-1;  /* sensor type (1=vis, 2=ir2, 3=ir3, 4=ir4 ) */
   char fullfilename[MAX_PATH_LEN+MAX_FILE_LEN+1], 
     outputfilename[MAX_PATH_LEN+MAX_FILE_LEN+1]; 
 
@@ -248,6 +252,7 @@ int main( int argc, char **argv) {
           printf("-d dir: Specify directory\n");
 	  printf("   Both -n and -d must be present if one is\n");
           printf("-f filename: Specify the FULLY QUALIFIED FILE NAME\n");
+	  printf("      Note: the filename must be of the form /a/b/AREAxxyy!\n");
 	  printf("-l lon0,lat0,lon1,lat1: Map limits.\n");
 	  printf("    NO Spaces!! or it won't parse right\n");
 	  printf("    West Longitude must be < 0, lon0,lat0 is lower left corner\n");
@@ -336,6 +341,33 @@ int main( int argc, char **argv) {
       exit(1);
     }
     strncpy( fullfilename, filename, MAX_PATH_LEN+MAX_FILE_LEN+1 );
+    p1 = strrchr(fullfilename,(int)'/');
+    if (p1==NULL)
+      p1=fullfilename;
+
+    p2 = strstr(p1,"AREA");
+    if (p2 == NULL) {
+      fprintf(stderr,"filename passed using -f MUST be of form /a/b/c/AREAxxyy!\n"
+	      "Aborting!\n");
+      exit(1);
+    }
+    p2+=4; /* Now it should point at the begining of the number! */
+    
+    areafileno     = atoi(p2);
+    areafile_dirno = areafileno/1000;
+    sensortype     = (areafileno - areafile_dirno*1000)/100;
+
+    switch (areafile_dirno){
+    case 8:
+      goestype=10;
+      break;
+    case 9:
+      goestype=8;
+      break;
+    }
+    
+      
+    
   }
 
   /* Well, after all that, we should know the full name of the file we
@@ -371,6 +403,12 @@ int main( int argc, char **argv) {
   f=fread((int *)dat_nav,4,640,fin);
 
 
+  if (goestype == -1 || sensortype == -1){
+    fprintf(stderr,"goestype/sensortype not set!\n"
+	    "goestype: %d, sensortype: %d\n"
+	    "Aborting!\n",goestype, sensortype);
+    exit(1);
+  }
   goes_type = goestype*10 + sensortype; 
 
   dat_bytes=dat_head[10]; /* image data in 16-bit or 8-bit */
