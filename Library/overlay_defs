@@ -3,6 +3,9 @@
 #
 # Modification History
 # $Log$
+# Revision 1.3  1998/10/17 00:18:01  vapuser
+# Added some notes
+#
 #
 #
 # Current Regions are:
@@ -55,9 +58,11 @@
 # goes/gms file which is closest to whichever of these two times
 # preceeds the current time. For example, if this software is called thusly,
 #
+# Note 3: All times are in GMT!
+#
 # auto_goes_overlay --region GOES10_4_NEPAC_1 
 #
-#  at anytime between 07:01 and 19:59 hours, the software will use the time 
+#  at anytime between 07:01 and 19:59 hours (GMT), the software will use the time 
 #  contained in AscTime, otherwise it will use DescTime.
 #
 #
