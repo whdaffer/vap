@@ -26,6 +26,9 @@
 
 # Modifications:
 # $Log$
+# Revision 1.7  2002/08/07 23:16:41  vapdev
+# Put in 'use strict' pragma and made required changes
+#
 # Revision 1.6  2002/05/07 20:40:36  vapdev
 # Set -w and `use strict' and then fixing bugs. Start trying to standardize
 # the methods used.
@@ -54,20 +57,20 @@
 #
 #
 package Gms5;
-require Exporter;
 use strict;
-use vars qw/@ISA @EXPORT $startdir $user $local_host $REMOTE_HOST 
+require Exporter;
+use vars qw/@ISA @EXPORT_OK $startdir $user $local_host $REMOTE_HOST 
 	    $LOCAL_TOPDIR $REMOTE_TOPDIR $ftp/;
 
-use subs qw/Open, Close, List, Get, Pwd,
-	   CdTop, CdDoc, CdCal, CdGrid, CdGrida, 
-	   CdIr1, CdIr2, CdIr3, CdVis, 
-	   GetCal, GetGrid, GetGrida,
-	   GetDoc, GetIr1, GetIr2, GetIr3, GetVis,
-	   GetAllFileLists, GetAll, GetClosest, CheckLocal/;
+use subs qw/Open Close List Get Pwd
+	   CdTop CdDoc CdCal CdGrid CdGrida 
+	   CdIr1 CdIr2 CdIr3 CdVis 
+	   GetCal GetGrid GetGrida
+	   GetDoc GetIr1 GetIr2 GetIr3 GetVis
+	   GetAllFileLists GetAll GetClosest CheckLocal/;
 
 @ISA =qw(Exporter);
-@EXPORT= ($REMOTE_TOPDIR, $LOCAL_TOPDIR,
+@EXPORT_OK= ($REMOTE_TOPDIR, $LOCAL_TOPDIR,
 	   &Open, &Close, &List, &Get, &Pwd,
 	   &CdTop, &CdDoc, &CdCal, &CdGrid, &CdGrida, 
 	   &CdIr1, &CdIr2, &CdIr3, &CdVis, 
@@ -79,21 +82,31 @@ use Net::FTP;
 use Cwd 'chdir', 'getcwd';
 use Carp;
 use Time::Local;
-use VapUtil;
 
 BEGIN {
+  
   $REMOTE_HOST = "";
   $REMOTE_TOPDIR="";
   $startdir=getcwd();
   $user=$ENV{'USER'};
   $local_host=$ENV{'HOST'} . ".jpl.nasa.gov";
 
-  $Gms5::VAP_LIB=$ENV{'VAP_LIBRARY'} || croak "ENV var VAP_LIBRARY is undefined!\n";
+  croak "ENV var VAP_LIBRARY is undefined!\n" 
+    unless $ENV{'VAP_LIBRARY'};
 
-  require $Gms5::VAP_LIB."/gms5_archive";
+  croak "ENV var VAP_GMS_TOPDIR is undefined\n" unless 
+    $LOCAL_TOPDIR= $ENV{'VAP_GMS_TOP'};
 
-  $LOCAL_TOPDIR= $ENV{'VAP_GMS_TOP'} || croak "ENV var VAP_GMS_TOPDIR is undefined\n";
+  croak "ENV var VAP_SFTWR_PERL is undefined\n" unless 
+    $ENV{VAP_SFTWR_PERL};
+
 }
+
+use lib $ENV{VAP_SFTWR_PERL};
+use lib $ENV{VAP_LIBRARY};
+require $ENV{VAP_LIBRARY}."/gms5_archive";
+use VapUtil;
+
 
 sub GetIntersection {
 
@@ -208,6 +221,7 @@ sub GetAllFileLists {
   1;
 
 }
+
 sub GetAll {
 
   my $datetime=shift;
@@ -215,7 +229,6 @@ sub GetAll {
 
   my $test = CheckAll($datetime);
   my @list;
-#  if ($test) {
 
     Open(); #unless defined ($ftp);
 #     CdDoc();
@@ -270,20 +283,16 @@ sub GetAll {
   GetGrida( $file);
 
   Close();
-#  }
   $test;
-  
 } # GetAll
 
 
 sub Open  {
   # Open remote connection
   my $machine= shift || $REMOTE_HOST;
-  $ftp = Net::FTP->new( $machine ) ||
-    croak "Can't create ftp object!\n";
+  $ftp = Net::FTP->new( $machine )||  croak "Can't create ftp object!\n";
   $ftp->login("anonymous","$user\@catspaw.jpl.nasa.gov") || 
     croak "Can't log on to $machine\n";
-  # CD to topdir 
   $ftp->binary;
 }
 
@@ -300,10 +309,8 @@ sub List {
 }
 
 sub Get {
-  my $file = shift;
-  croak "Gms5::Get No file!\n" unless $file;
+  my $file = shift || croak "Gms5::Get No file!\n";
   $ftp->get( $file );
-
 }
 
 sub CdDoc   { $ftp->cwd("$REMOTE_TOPDIR/doc") || 
@@ -341,59 +348,50 @@ sub CdVis   { $ftp->cwd("$REMOTE_TOPDIR/hdf/vis/4km"  ) ||
 
 
 sub GetDoc { 
-  my $file=shift;
-  croak "No File\n" unless $file;
+  my $file=shift || croak "GetDoc: No File\n";
   CdDoc();
   Get $file unless (-e $file);
-  
 }
 
 
 sub GetCal {
-  my $file=shift;
-  croak "No File\n" unless $file;
+  my $file=shift || croak "GetCal: No File\n";
   CdCal();
   Get $file unless (-e $file);
 }
 
 
 sub GetGrid {
-  my $file=shift;
-  croak "No File\n" unless $file;
+  my $file=shift || croak "GetGrid: No File\n";
   CdGrid();
   Get $file unless (-e $file);
 }
 
 sub GetGrida {
-  my $file=shift;
-  croak "No File\n" unless $file;
+  my $file=shift || croak "GetGrida: No File\n";
   CdGrida();
   Get $file unless (-e $file);
 }
 
 sub GetIr1 {
-  my $file=shift;
-  croak "No File\n" unless $file;
+  my $file=shift || croak "GetIr1: No File\n";
   CdIr1();
   Get $file unless (-e $file);
 }
 
 sub GetIr2 {
-  my $file=shift;
-  croak "No File\n" unless $file;
+  my $file=shift || croak "GetIr2: No File\n";
   CdIr2();
   Get $file unless (-e $file);
 }
 sub GetIr3 {
-  my $file=shift;
-  croak "No File\n" unless $file;
+  my $file=shift || croak "GetIr3: No File\n";
   CdIr3;
   Get $file unless (-e $file);
 }
 
 sub GetVis {
-  my $file=shift;
-  croak "No File\n" unless $file;
+  my $file=shift || croak "GetVis: No File\n";
   CdVis;
   Get $file unless (-e $file);
 }
@@ -486,7 +484,7 @@ sub Gms5DateTime2SysTime{
   $day=substr($_[0],4,2);
   $hour=substr($_[0],6,2);
   $min=substr($_[0],8,2);
-  my $timegm=timegm( 0, $min, $hour, $day, $month-1, $year);
+  $timegm=timegm( 0, $min, $hour, $day, $month-1, $year);
   $timegm;
 }
 
@@ -521,6 +519,6 @@ sub CheckLocal {
   return 1 if @there;
   0;
 
-  }
+}
 1;
 

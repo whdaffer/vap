@@ -1,4 +1,3 @@
-#/usr/bin/perl -w
 #
 # $Id$
 #
@@ -10,6 +9,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.4  2002/08/07 23:42:34  vapdev
+# Wrap up conversion to OO
+#
 # Revision 1.3  2002/07/03 22:37:18  vapdev
 # Continued upgrade work
 #
@@ -47,18 +49,22 @@
 #
 package OGoes;
 use strict;
-use vars qw(@ISA $VERSION);
+use vars qw($VERSION);
 use Cwd 'chdir', 'getcwd';
 use Time::Local;
 use Net::FTP;
 use Carp;
 use File::Basename;
+
+BEGIN {
+  $VERSION = "0.9";
+  croak "ENV var VAP_LIBRARY is undefined\n" 
+    unless $ENV{VAP_LIBRARY};
+  croak "ENV var VAP_SFTWR_PERL is undefined\n" 
+    unless $ENV{VAP_SFTWR_PERL};
+}
+
 use VapUtil;
-
-
-$OGoes::VERSION = "0.9";
-
-
 
 #----------------------------------------------------------
 #
@@ -69,8 +75,7 @@ sub new {
   my $class = shift;
 
   my $self = {@_};
-  $self->{VAP_LIB}=$ENV{'VAP_LIBRARY'}  || 
-      croak "Environmental variable VAP_LIBRARY is UNDEFINED\n";
+  $self->{VAP_LIB}=$ENV{'VAP_LIBRARY'};
 
     # Get the Overlay Defaults
 
@@ -82,12 +87,6 @@ sub new {
 #      open FILE, "$overlay_defs_file" or croak "Can't open $overlay_defs_file: $!\n";
 #      eval {require $overlay_defs_file} || croak "require $overlay_defs_file FAILED!: $!\n";
 #    }
-
-  my %vap_defs = ();
-    # Get generic VAP processing Defaults
-  $self->{VAP_DEFS_FILE} ="$VapUtil::VAP_LIBRARY/vap_defs";
-  eval {require $self->{VAP_DEFS_FILE} } || 
-    croak "require of ".$self->{VAP_DEFS_FILE} ." FAILED!: $!\n";
 
     # Check for interactivity.
   $self->{_IS_BATCH} = !defined($ENV{'TERM'});
@@ -148,7 +147,8 @@ sub gag{
 sub grid{ 
   my $self=shift;
   my $areafile = shift @_ ||
-      croak "Usage: grid areafile [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";;
+  croak "Usage: grid areafile [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";
+#      $self->{ERROROBJ}->ReportAndDie("Usage: grid areafile [ minlon [ minlat [ maxlon [ maxlat ]]]]\n");
   my $minlon = shift @_ || 0 ;
   my $minlat  = shift @_ || 0 ;
   my $maxlon = shift @_ || 0 ;
@@ -173,6 +173,8 @@ sub grid{
     print join "\n", @gridding_output;
     my @errors=grep(/^ *ERROR.*/, @gridding_output);
     close GRIDDING_PROCESS;
+#    $self->{ERROROBJ}->ReportAndDie("GAG Failed!",
+#				    "  Bad return from goes gridding software\n")
     croak "  Bad return from goes gridding software\n" if ($#errors gt -1);
     print "  Done Gridding!\n";
     $local_gridded_file="$gridding_output[$#gridding_output]";
