@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl 
 #
 # $Id$
 #
@@ -20,6 +20,10 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.12  2000/05/15 23:21:52  vapuser
+# Changed some '||'s to '&&' in calls to VapMailErrorMsg. Did some
+# other stuff too, but I can't remember what.
+#
 # Revision 1.11  2000/02/11 16:47:10  vapuser
 # Added calls to vap_perl::VarMailErrorMsg
 #
@@ -341,7 +345,8 @@ if (abs($latlim[0]) > 90 || abs($latlim[1]) > 90) {
   # create lock file (for IDL session)
 
 $user=$ENV{'USER'};
-$lock_file="/tmp/".$user.".cloud_overlay.lock";
+$overlay_dir=$vap_perl::VAP_OVERLAY;
+$lock_file="$overlay_dir/$user.cloud_overlay.$$.lock";
 open (LOCK,">$lock_file") || 
 { vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't open $lock_file\n", 
 			 "OPENERR <LOCKFILE>") && 
@@ -353,9 +358,10 @@ $minlon=$lonlim[0];
 $maxlon=$lonlim[1];
 $minlat=$latlim[0];
 $maxlat=$latlim[1];
+$mapLimits ="[ $minlon, $minlat, $maxlon, $maxlat ]";
 
 if ($satname =~ /GMS/) {
-  $mapLimits ="[ $minlon, $minlat, $maxlon, $maxlat ]";
+
  Gms5::GetAllFileLists() || 
      {vap_perl::VapMailErrorMsg(
 	"cloud_overlay:Can't Get all Gms5 archives listings!\n",
@@ -379,27 +385,38 @@ if ($satname =~ /GMS/) {
     }
   }
   if ($mindif > 7200){ 
-    vap_perl::VapMailErrorMsg(
-	  "cloud_overlay: No Files closer than 2 hours! <$mindir>\n",
-			      "GMS5 MINDIFF");
-      die "No Files closer than 2 hours!<$mindif>\n";
-    } 
+    $gridded_file="";
+      # Don't fail if there isn't a file close enough!
+      # But don't bother to FTP all the requisite files either!
 
-  Gms5::GetAll($gridded_file) || 
-     do { vap_perl::VapMailErrorMsg(
-           "cloud_overlay: Can't GetAll for datetime $gridded_file\n", 
-		  "GMS5 GRIDDEDFILE") ;
-        die "Can't GetAll for datetime $gridded_file\n"; }
+#     vap_perl::VapMailErrorMsg(
+# 	  "cloud_overlay: No Files closer than 2 hours! <$mindir>\n",
+# 			      "GMS5 MINDIFF");
+#       die "No Files closer than 2 hours!<$mindif>\n";
+  }  else {
+
+    Gms5::GetAll($gridded_file) || 
+       do { vap_perl::VapMailErrorMsg(
+             "cloud_overlay: Can't GetAll for datetime $gridded_file\n", 
+	  	    "GMS5 GRIDDEDFILE") ;
+          die "Can't GetAll for datetime $gridded_file\n"; }
+    }
+
 } else {
+
   # Supposedly we can now get and grid the AREA file 
   $gridded_file = vap_perl::gag( $satnum, $sensornum, $time, 
 				$minlon, $minlat, $maxlon, $maxlat );
-  if (!$gridded_file) {
-    vap_perl::VapMailErrorMsg(
-	 "cloud_overlay: Unsuccessful call to vap_perl::gag, gridded_file=NULL\n",
-			      "GOES BADGAG");
-      die "Unsuccessful call to vap_perl::gag, gridded_file=NULL\n";
-  }
+
+    # New mode. Don't fail if the gridding didn't work. Just continue
+    # and let it plot the vectors anyway.
+
+#   if (!$gridded_file) {
+#     vap_perl::VapMailErrorMsg(
+# 	 "cloud_overlay: Unsuccessful call to vap_perl::gag, gridded_file=NULL\n",
+# 			      "GOES BADGAG");
+#       die "Unsuccessful call to vap_perl::gag, gridded_file=NULL\n";
+#   }
       
   
 }
@@ -408,14 +425,7 @@ if ($satname =~ /GMS/) {
 # The IDL routines like time as yyyy/mm/dd/hh/mm. 
 # So, construct this time string.
 $idl_time_string=vap_perl::vaptime2idltime($time);
-print "CDing to $vap_perl::VAP_OVERLAY\n";
-chdir $vap_perl::VAP_OVERLAY || 
-    {vap_perl::VapMailErrorMsg(
-     "cloud_overlay: Can't chdir to overlay dir $vap_perl::VAP_OVERLAY\n",
-	  "BAD CD TO OVERLAY DIR") && 
-	 die "Can't chdir to overlay dir $vap_perl::VAP_OVERLAY\n"};
-
-$idl_tmp_file="idl_called_by_perl.pro";
+$idl_tmp_file="$overlay_dir/idl_called_by_perl_$$.pro";
 print "Writing IDL tmp file $idl_tmp_file\n";
 open(IDLFILE,">$idl_tmp_file") || 
     {vap_perl::VapMailErrorMsg(
@@ -426,14 +436,12 @@ open(IDLFILE,">$idl_tmp_file") ||
 
 $exe_str = "cloud_overlay,\'$gridded_file\',\'$idl_time_string\'";
 $exe_str .= ",$delta,wpath = \'$vap_perl::VAP_WINDS\'";
-$exe_str .= ",pid=$$,length=$length";
+$exe_str .= ",lockfile=\'$lock_file\',length=$length";
 $exe_str .= ",CRDecimate=[".join(",",@$crdecimate)."]";
 $exe_str .= ",ExcludeCols=\'$excludecols\'";
 $exe_str .= ",rainflag=1,rf_action=1";
-
-
-
-$exe_str .= ",mapLimits=$mapLimits,gmsType=\'$gms5sensornames[$sensornum-1]\'" 
+$exe_str .= ",mapLimits=$mapLimits";
+$exe_str .= ",gmsType=\'$gms5sensornames[$sensornum-1]\'" 
     if ($satname =~ /GMS/);
   
 print IDLFILE "$exe_str\nexit\n" || 
@@ -477,29 +485,38 @@ foreach $r (@idlout) {
   }
 }
 
-unlink $idl_tmp_file || 
-    {vap_perl::VapMailErrorMsg(
-	       "cloud_overlay: Couldn't unlink $idl_tmp_file\n",
-	     "TMPFILE UNLINK ERROR") && 
-	  die "Couldn't unlink $idl_tmp_file\n"};
+# unlink $idl_tmp_file || 
+#     {vap_perl::VapMailErrorMsg(
+# 	       "cloud_overlay: Couldn't unlink $idl_tmp_file\n",
+# 	     "TMPFILE UNLINK ERROR") && 
+# 	  die "Couldn't unlink $idl_tmp_file\n"};
+
 unlink $lock_file  ||  print "Couldn't delete $lock_file \n";
 
   # goes_overlay gives the output gif file a name based on the input
   # grid file name get that name and rename the file to the standard
   # 'pac_overlay_$type.gif'
 
-open (PICTURENAME,"</tmp/auto_cloud_overlay_output_file") || 
+$output_file_name_file="$overlay_dir/auto_cloud_overlay_output_file.$$";
+
+chdir $overlay_dir || 
+    {vap_perl::VapMailErrorMsg(
+	       "cloud_overlay: Couldn't CD to $overlay_dir\n",
+	     "CD TO OVERLAY_DIR ERROR") && 
+	  die " Couldn't CD to $overlay_dir\n\n"};
+
+open (PICTURENAME,"<$output_file_name_file") || 
  {vap_perl::VapMailErrorMsg(
-     "cloud_overlay: Can't open /tmp/auto_cloud_overlay_output_file\n",
+     "cloud_overlay: Can't open $output_file_name_file\n",
        "AUTO CLOUD OVERLAY OUTPUT FILE OPEN ERROR") && 
-	   die "Can't open /tmp/auto_cloud_overlay_output_file\n"};
+	   die "Can't open $output_file_name_file\n"};
 @picturefile=<PICTURENAME>;
 close(PICTURENAME);
-#  unlink "/tmp/auto_cloud_overlay_output_file" || 
-#      print "Couldn't delete /tmp/auto_goes_overlay_output_file\n";
+  unlink "$output_file_name_file" || 
+      print "Couldn't delete $output_file_name_file\n";
 
   # Read the picture name
-$picture = $picturefile[0];
+$picture = "$picturefile[0]";
 chop($picture);
 @tmp = split("/",$picture);
 $picture = $tmp[$#tmp];
