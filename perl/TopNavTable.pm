@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.2  2002/12/04 23:56:20  vapdev
+# Ongoing work
+#
 # Revision 1.1  2002/12/04 00:59:41  vapdev
 # Ongoing work
 #
@@ -44,7 +47,7 @@ sub new {
     #   i.e. The little 'navbar' stuff (home, earth, solar system, ... etc)
   my $topnavbar = HTML::Table->new(-border=>"0",-spacing=>"0",-padding=>"0");
 
-  $topnavbar->setCell(1,1,$q->img({-src=>"file:///usr/people/vapdev/development/vap/html/images/blackbar_left.jpg",-width=>"217",
+  $topnavbar->setCell(1,1,$q->img({-src=>"/images/blackbar_left.jpg",-width=>"217",
 		   -height=>"19",-border=>"0", -alt=>"JPL Navbar"}));
   $topnavbar->setCellAlign(1,1,"LEFT");
   $topnavbar->setCellVAlign(1,1,"TOP");
@@ -54,7 +57,7 @@ sub new {
   $topnavbar->setCellPadding("0");
 
     # The JPL Home pick
-  $img = $q->img({-SRC=>"file:///usr/people/vapdev/development/vap/html/images/blackbar_jplhome_off.jpg", -WIDTH=>"65",
+  $img = $q->img({-SRC=>"/images/blackbar_jplhome_off.jpg", -WIDTH=>"65",
 		  -HEIGHT=>"19",
 		  -BORDER=>"0",-ALT=>"JPL Home"});
   $content = $q->a({-href=>"http://www.jpl.nasa.gov",-target=>"_new"},$img);
@@ -64,7 +67,7 @@ sub new {
   $topnavbar->setCellWidth(1,2,"65");
 
     # The Earth pick
-  $img = $q->img({-SRC=>"file:///usr/people/vapdev/development/vap/html/images/blackbar_earth_off.jpg", -WIDTH=>"48", 
+  $img = $q->img({-SRC=>"/images/blackbar_earth_off.jpg", -WIDTH=>"48", 
 		  -HEIGHT=>"19",
 		  -BORDER=>"0",-ALT=>"Earth"});
   $content = $q->a({-href=>"http://www.jpl.nasa.gov/earth/earth_index.html",-target=>"_new"},$img);
@@ -74,7 +77,7 @@ sub new {
   $topnavbar->setCellWidth(1,3,"48");
 
     # The Solar system pick
-  $img = $q->img({-SRC=>"file:///usr/people/vapdev/development/vap/html/images/blackbar_solarsys_off.jpg", -WIDTH=>"86", 
+  $img = $q->img({-SRC=>"/images/blackbar_solarsys_off.jpg", -WIDTH=>"86", 
 		  -HEIGHT=>"19",
 		  -BORDER=>"0",-ALT=>"Solar System"});
   $content = $q->a({-href=>"http://www.jpl.nasa.gov/solar_system/solar_system_index.html",
@@ -86,7 +89,7 @@ sub new {
 
 
     # The Stars pick
-  $img = $q->img({-SRC=>"file:///usr/people/vapdev/development/vap/html/images/blackbar_starsgal_off.jpg", -WIDTH=>"103", 
+  $img = $q->img({-SRC=>"/images/blackbar_starsgal_off.jpg", -WIDTH=>"103", 
 		  -HEIGHT=>"19",
 		  -BORDER=>"0",-ALT=>"Stars &amp Galaxies"});
   $content = $q->a({-href=>"http://www.jpl.nasa.gov/stars_galaxies/stars_galaxies_index.html",
@@ -97,7 +100,7 @@ sub new {
   $topnavbar->setCellWidth(1,5,"103");
 
 
-  $img = $q->img({-SRC=>"file:///usr/people/vapdev/development/vap/html/images/blackbar_tech_off.jpg", -WIDTH=>"80", 
+  $img = $q->img({-SRC=>"/images/blackbar_tech_off.jpg", -WIDTH=>"80", 
 		  -HEIGHT=>"19",
 		  -BORDER=>"0",-ALT=>"Technology"});
   $content = $q->a({-href=>"http://www.jpl.nasa.gov/technology/technology_index.html",
@@ -107,13 +110,13 @@ sub new {
   $topnavbar->setCellVAlign(1,6,"TOP");
   $topnavbar->setCellWidth(1,6,"80");
 
-  $topnavbar->setCell(1,7,$q->img({-src=>"file:///usr/people/vapdev/development/vap/html/images/spacer.gif",-width=>"150",
+  $topnavbar->setCell(1,7,$q->img({-src=>"/images/spacer.gif",-width=>"150",
 		   -height=>"19",-border=>"0", -alt=>"JPL Navbar"}));
   $topnavbar->setCellVAlign(1,7,"TOP");
   $topnavbar->setCellWidth(1,7,"150");
   $topnavbar->setCellBGColor(1,7, "#000000");
 
-  $topnavbar->setCell(1,8,$q->img({-src=>"file:///usr/people/vapdev/development/vap/html/images/blackbar_right1.jpg",-width=>"80",
+  $topnavbar->setCell(1,8,$q->img({-src=>"/images/blackbar_right1.jpg",-width=>"80",
 		   -height=>"19",-border=>"0", -alt=>"JPL Navbar"}));
   $topnavbar->setCellVAlign(1,8,"TOP");
   $topnavbar->setCellAlign(1,8,"RIGHT");
@@ -126,7 +129,7 @@ sub new {
 
 
     # The 'winds' logo
-  $img=$q->img({-src=>"file:///usr/people/vapdev/development/vap/html/images/winds_banner_left.jpg", -WIDTH=>"415",
+  $img=$q->img({-src=>"/images/winds_banner_left.jpg", -WIDTH=>"415",
 		-HEIGHT=>"90",-BORDER=>"0",
 		-ALT=>"Winds: Measuring Ocean Winds from Space",
 		-USEMAP=>"#nasa-home"});
@@ -136,7 +139,7 @@ sub new {
   $banner->setCellVAlign(1,1,"top");
 
     # A spacer
-  $img=$q->img({-src=>"file:///usr/people/vapdev/development/vap/html/images/spacer.gif", -WIDTH=>"150",
+  $img=$q->img({-src=>"/images/spacer.gif", -WIDTH=>"150",
 		-HEIGHT=>"90",-BORDER=>"0",
 		-ALT=>"Winds: Measuring Ocean Winds from Space"});
   $banner->setCell(1,2,$img);
@@ -146,7 +149,7 @@ sub new {
   $banner->setCellVAlign(1,2,"top");
 
     # Another spacer/gradient
-  $img=$q->img({-src=>"file:///usr/people/vapdev/development/vap/html/images/winds_banner_middle.jpg", -WIDTH=>"103",
+  $img=$q->img({-src=>"/images/winds_banner_middle.jpg", -WIDTH=>"103",
 		-HEIGHT=>"90",-BORDER=>"0",
 		-ALT=>"Winds: Measuring Ocean Winds from Space"});
   $banner->setCell(1,3,$img);
@@ -156,7 +159,7 @@ sub new {
 
     # The ADEOS-II spacecraft and caltech imagemap.
 
-  $img=$q->img({-src=>"file:///usr/people/vapdev/development/vap/html/images/winds_banner_right1.jpg", -WIDTH=>"161",
+  $img=$q->img({-src=>"/images/winds_banner_right1.jpg", -WIDTH=>"161",
 		-HEIGHT=>"90",-BORDER=>"0",
 		-ALT=>"Winds: Measuring Ocean Winds from Space",
 		-USEMAP=>"#jpl-caltech"});
@@ -171,7 +174,7 @@ sub new {
   my $bottom = HTML::Table->new(-border=>"0",-spacing=>"0",-padding=>"0");
 
 
-  $img=$q->img({-SRC=>"file:///usr/people/vapdev/development/vap/html/images/winds_divider_left.jpg",
+  $img=$q->img({-SRC=>"/images/winds_divider_left.jpg",
 	    -WIDTH=>"415",-HEIGHT=>"5",-BORDER=>"0",
 	-ALT=>"Winds: Measuring Ocean Winds from Space"});
   $bottom->setCell(1,1,$img);
@@ -179,7 +182,7 @@ sub new {
   $bottom->setCellAlign(1,1,"left");
   $bottom->setCellVAlign(1,1,"top");
 
-  $img=$q->img({-SRC=>"file:///usr/people/vapdev/development/vap/html/images/winds_divider_middle.gif",
+  $img=$q->img({-SRC=>"/images/winds_divider_middle.gif",
 	     -WIDTH=>"150",-HEIGHT=>"5",-border=>"0",
 		-ALT=>"Winds: Measuring Ocean Winds from Space"});
 
@@ -189,7 +192,7 @@ sub new {
   $bottom->setCellAlign(1,2,"left");
   $bottom->setCellVAlign(1,2,"top");
 
-  $img=$q->img({-SRC=>"file:///usr/people/vapdev/development/vap/html/images/winds_divider_right.jpg" ,
+  $img=$q->img({-SRC=>"/images/winds_divider_right.jpg" ,
 		-WIDTH=>"264",-HEIGHT=>"5",-BORDER=>"0",
 		-ALT=>"Winds: Measuring Ocean Winds from Space"});
   $bottom->setCell(1,3,$img);

@@ -467,9 +467,12 @@ sub updateWebsite{
 
       # Tropical Storm.
     my @order = @{$order->{TROPICAL_STORM}};
+
+
   } elsif ($type =~ /OVERLAY/i) {
 
-      # Regular overlay
+      #------------- Regular overlay -------------------------
+
 
     my $re = $self->{WHICH_SEAWINDS} . "\\.(?:jpg|JPG|jpeg|JPEG)\$";
 
@@ -540,8 +543,9 @@ sub updateWebsite{
 
 
 	my $content = $q->p({-align=>'left'}, "$string $linelink");
-	$content .= $q->p({-align=>'left'},$createstring);
-	$content .= $q->p({-align=>'left'},$sizestring);
+	#$content .= $q->p({-align=>'left'},$createstring);
+	#$content .= $q->p({-align=>'left'},$sizestring);
+	$content .= "$createstring\n$sizestring";
 	$content .= $q->p({-align=>'left'}, $clickableimage);
 
 	$bodytable->setCell($row++, 1, $content);
@@ -550,7 +554,8 @@ sub updateWebsite{
 
   } else {
 
-      # Animation!
+      # ================= Animation! =======================
+
 
     my @movies = grep(/mov$/i, @imagedir_files);
     my @first_frames = grep(/.*\.001\..*/,@imagedir_files);
@@ -616,8 +621,9 @@ sub updateWebsite{
 
 
 	my $content = $q->p({-align=>'left'}, $string . $linelink);
-	$content .= $q->p({-align=>'left'},$createstring);
-	$content .= $q->p({-align=>'left'},$sizestring);
+	#$content .= $q->p({-align=>'left'},$createstring);
+	#$content .= $q->p({-align=>'left'},$sizestring);
+	$content .= "$createstring\n$sizestring";
 	$content .= $q->p({-align=>'left'}, $clickableimage);
 	$bodytable->setCell($row++, 1, $content);
       }
@@ -840,7 +846,7 @@ sub startPage{
   my $html = $q->start_html(
 		 -title=>$title,
 		 -meta=>{"Keywords" => $keywords},
-		 -background=>"/images/fuji7.gif",
+		# -background=>"/images/fuji7.gif",
 		 -style=>{
 		      -code=>'A:link {text-decoration:none;},A:visited {text-decoration:none;}'
 		     },

@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.9  2003/01/16 23:47:53  vapdev
+# Continuing work
+#
 # Revision 1.8  2002/12/20 23:45:26  vapdev
 # Ongoing ... well, you know.
 #
@@ -93,7 +96,7 @@ sub new {
   }
 
 
-  $self->setStyle( "{ font-family: Verdana, sans-serif; font-size: 500% }");
+  $self->setStyle( "{ font-family: Verdana, sans-serif; font-size: 50% }");
 
 
   #
@@ -129,7 +132,7 @@ sub new {
 
   my $overlay_table = HTML::Table->new(-rows=>2,-cols=>1);
   $overlay_table->setCaption("Cloud Overlays",'TOP');
-  $overlay_table->setStyle("{ font: Garamond, 'Times New Roman', serif; font: 10% }");
+  $overlay_table->setStyle("{ font: Garamond, 'Times New Roman', serif; font: 50% }");
   my @order = @{$self->{ORDER}->{OVERLAY}};
   my ($overlay_sw_table, $overlay_qs_table);
 
@@ -247,7 +250,7 @@ sub new {
 
   my $anim_table = HTML::Table->new(-rows=>9,-cols=>1);
   $anim_table->setCaption("Animations",'TOP');
-  $anim_table->setStyle("{ font: Garamond, 'Times New Roman', serif; size: 500%}");
+  $anim_table->setStyle("{ font: Garamond, 'Times New Roman', serif; size: 50%}");
   @order = @{$self->{ORDER}->{ANIMATION}};
 
   $row=0;
@@ -281,7 +284,7 @@ sub new {
   my $ts_table = HTML::Table->new(-caption=>"Tropical Storms", 
 				  -rows=>2,-col=>1);
   $ts_table->setCaption("Tropical Storms",'TOP');
-  $ts_table->setStyle(" { font: Garamond, 'Times New Roman', serif; size: 10%}");
+  $ts_table->setStyle(" { font: Garamond, 'Times New Roman', serif; size: 50%}");
 
   my ($ts_sw_table, $ts_qs_table);
   @order = @{$self->{ORDER}->{TROPICAL_STORM}};
