@@ -135,6 +135,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.12  2002/05/08 16:01:09  vapdev
+; Removed variables that will now be defined in environment.
+; Changed email addresses
+; Changed ENV variables to reflect new scenario
+;
 ; Revision 1.11  2002/05/03 01:06:25  vapdev
 ; Changes environmental variables to reflect new vapdev/vaprun env variables.
 ; Also made sure that all the various env variable routines were being
@@ -232,13 +237,13 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
 
   tdate_time = regularizeVapTime(date_time, /max)
 
-  FOR i=0,n_elements(interp_path) DO BEGIN 
+  FOR i=0,n_elements(interp_path)-1 DO BEGIN 
     IF  strpos(Interp_Path[i],'/',/reverse_search)  NE strlen(Interp_Path[i])-1 THEN $
        Interp_Path[I] = Interp_Path[I] + '/'
   ENDFOR 
   IF n_Elements(Wpath) EQ 0 THEN Wpath = GetEnv('VAP_DATA_TOP')
 
-  FOR i=0,n_elements(wpath[i])-1 DO BEGIN 
+  FOR i=0,n_elements(wpath)-1 DO BEGIN 
     IF  strpos(Wpath[I],'/',/reverse_search)  NE strlen(Wpath[I])-1 THEN $
      Wpath[I] = Wpath[I] + '/'
   ENDFOR 
@@ -248,21 +253,23 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
 
   FOR p=0,n_elements(interp_path)-1 DO BEGIN 
     FOR i=0,n_elements(interp_filter)-1 DO BEGIN 
-      tmpfiles = vfindfile(interp_filter[i],interp_path[p],count)
+      tmpfiles = vfindfile(interp_filter[i],interp_path[p],count=count)
       IF count NE 0 THEN BEGIN 
         tmpfiles = interp_path + tmpfiles;
         IF n_elements(interp_files) EQ 0 THEN $
            interp_files = tmpfiles ELSE $
            interp_files = [interp_files, tmpfiles]
         tmpfiles = 0
+      ENDIF 
     ENDFOR 
   ENDFOR 
 
   good = where(strlen(interp_files) GT 0,cnt)
-  interp_files = interp_files[good]
-  make_interp_file =  0 
 
   IF cnt NE 0 THEN BEGIN 
+
+    interp_files = interp_files[good]
+    make_interp_file =  0 
 
     junk = ( strpos( interp_files[0], '/',/reverse_search) )[0] + 1
     len = strlen(interp_files[0])

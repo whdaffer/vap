@@ -209,6 +209,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.18  2002/05/03 01:06:25  vapdev
+; Changes environmental variables to reflect new vapdev/vaprun env variables.
+; Also made sure that all the various env variable routines were being
+; called correctly.
+;
 ; Revision 1.17  2001/12/10 23:31:25  vapdev
 ; replace obsolete RSI routines
 ;
@@ -347,7 +352,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
 
 
   rcsid = "$Id$"
-
+  lf = string(10b)
   LongName = "QSCAT_VAP_SUCCOR_INTERP_FIELD"
   VersionID=rcsid
   CreationTime =  (idldt2Vaptime(today()))[0]
@@ -396,6 +401,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
       IF n_elements(wpath) GT 1 THEN twpath = strjoin(wpath,',')
       tfilter = filter
       IF n_elements(filter) GT 1 THEN tfilter = strjoin(filter,',')
+
       Message,'Calling GetWindfiles: ' + lf + $
               ' date_time: '+ date_time + lf + $
               ' time_inc: ' + strtrim(time_inc,2) + lf + $
