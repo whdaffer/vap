@@ -33,6 +33,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.1  2001/02/09 19:07:56  vapuser
+# Initial revision
+#
 #
 # 
 package VapUtil;
@@ -63,7 +66,8 @@ sub doy2mday_mon{
   $doy=shift;
   $year=shift;
   # cummulative number of days in the year for the end of each month
-  @doys = (31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365) ;
+  @doys = (31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365);
+  $doy2=$doy;
   $doy2=$doy-leapyear($year) if ($doy > 59);
   $i=1;
   $mday=$doy2;
