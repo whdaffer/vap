@@ -1,5 +1,6 @@
 ;+
 ; NAME:  obhisto__define.pro
+; $Id$
 ; PURPOSE:  Defines an object useful in manipulating and storing
 ;          histogram data.
 ;
@@ -34,12 +35,12 @@
 ;	
 ; KEYWORD PARAMETERS:  
 ;
-;                BinSize : The binsize, default=1
-;                Min     : The Minimum for the histogram to consider, def=min(data)
-;                Max     : The Maximum for the histogram to consider, def=max(data)
-;                NBins   : The Number of bins in the histogram, an
-;                          alternative to binsize
-;                Help    : a Help message.
+;   BinSize : The binsize, default=1
+;   Min     : The Minimum for the histogram to consider, def=min(data)
+;   Max     : The Maximum for the histogram to consider, def=max(data)
+;   NBins   : The Number of bins in the histogram, an
+;             alternative to binsize
+;   Help    : a Help message.
 ;
 ;
 ;
@@ -76,6 +77,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/01 17:53:19  vapuser
+; Modified 'version' method so that it will report
+; the versions of member classes. Put in some error handling
+; so that it'll ignore calls to undefined 'version' methods.
+;
 ; Revision 1.1  1998/10/01 16:46:09  vapuser
 ; Initial revision
 ;
@@ -253,10 +259,13 @@ PRO ObHisto::Set, $
        self.BinSize = range/(self.nBins> 1)
        recalc = 1
      ENDIF
+
+
      IF Keyword_Set(Append) THEN BEGIN 
        IF NOT Ptr_Valid( self.Data ) THEN BEGIN 
-           ; Nothing to accumlate.
-         self.Data =  Ptr_New( Data )
+           ; Nothing to accumlate. Just set the pointer
+           ; to the new data.
+         self.Data = Ptr_New(Data)
          self->Histo
        ENDIF ELSE BEGIN 
            ; Object already has a valid data pointer. How about a
@@ -278,22 +287,31 @@ PRO ObHisto::Set, $
            ENDIF ELSE BEGIN 
                ; Something's Changed! Append the two data arrays and
                ; calculate from scratch
-             *self.Data =  [*self.Data, Data]             
+             olddata =  *self.Data
+             *self.Data = Data
+               ; Now, concatenate the two data arrays
+             *self.Data =  [olddata, *self.Data]
              self-> Histo
            ENDELSE 
 
          ENDIF ELSE BEGIN 
              ; No Valid Histogram Pointer. Append the two arrays and
              ; do it from scratch
-           *self.Data =  [*self.Data, Data]             
+           olddata =  *self.Data
+           *self.Data = Data
+             ; Now, concatenate the two data arrays
+           *self.Data =  [olddata, *self.Data]
            self-> Histo
          ENDELSE 
        ENDELSE 
      ENDIF ELSE BEGIN 
          ; Not Appending
-       IF Ptr_Valid(self.Data) THEN $
-        *self.Data = Data ELSE $
+       IF Ptr_Valid(self.Data) THEN BEGIN 
+         Ptr_Free,self.Data
          self.Data = Ptr_New(Data)
+       ENDIF ELSE BEGIN 
+         self.Data = Ptr_New(Data)
+       ENDELSE 
        self->Histo
      ENDELSE 
    ENDIF ELSE BEGIN 
@@ -446,8 +464,10 @@ FUNCTION ObHisto::Version
    rcsid = "$Id$"
 
      ; Find version number for member objects.
-   Tags = Tag_Names(self)
+   s=execute( 'tags=tag_names({' + 'OBHISTO' + '})' ) 
    n_tags = n_elements(Tags)
+   i = 0
+
    WHILE i LE n_tags-1 DO BEGIN 
 
      catch, error
@@ -461,11 +481,13 @@ FUNCTION ObHisto::Version
      ENDIF 
      
      IF VarType( self.(i) ) EQ 'OBJECT' THEN BEGIN 
-       V =  Call_Method( "VERSION", self.(i) )
-       nv = N_Elements(V)
-       IF exist(member_versions) THEN $
-          member_versions =  [ member_versions, v ] ELSE $
-          member_versions =  v
+       IF obj_valid( self.(i) ) THEN BEGIN 
+         V =  Call_Method( "VERSION", self.(i) )
+         nv = N_Elements(V)
+         IF exist(member_versions) THEN $
+            member_versions =  [ member_versions, v ] ELSE $
+            member_versions =  v
+       ENDIF 
      ENDIF 
      i =  i+1
    ENDWHILE 
@@ -482,7 +504,10 @@ FUNCTION ObHisto::Version
                     "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
            error = 0
            i = i+1
-         ENDIF ELSE return,''
+         ENDIF ELSE BEGIN 
+           Message,!error_state.msg,/cont
+           return,''
+         ENDELSE 
        ENDIF 
 
        V  = call_method("VERSION",super[i])
@@ -504,7 +529,25 @@ FUNCTION ObHisto::Version
       versions =  [versions, member_versions ] 
 
    Catch,/cancel
-  return,versions
+  return,versions(uniq(versions,sort(versions)))
+END
+
+
+;============================================
+; ClearAll - delete all pointers
+;============================================
+
+PRO ObHisto::ClearAll
+   IF Ptr_Valid(self.Data) THEN BEGIN 
+     Ptr_Free, self.Data 
+     self.Data =  Ptr_New()
+   ENDIF 
+   IF Ptr_Valid( self.Histo) THEN BEGIN 
+     Ptr_Free, self.Histo
+     self.Histo = Ptr_New()
+   ENDIF 
+   self.min = 1e6
+   self.max = -1e6
 END
 
 ;============================================
