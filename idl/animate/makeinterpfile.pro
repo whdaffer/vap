@@ -183,6 +183,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.13  1999/11/05 17:38:36  vapuser
+; Corrected some errors in format strings.
+;
 ; Revision 1.12  1999/10/21 22:45:04  vapuser
 ; Added some Messages to relate info about input argument/keywords.
 ;
@@ -414,7 +417,9 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     s = qmodelhdfwrite( OutFile,Ui,Vi, lonpar=lonpar, latpar=Latpar, $
                         Version=Versionid, Longname=Longname, $
                         CreationTime=CreationTime, StartTime=StartTime, $
-                        EndTime=EndTime )
+                        EndTime=EndTime, rainf=rainf, ermax=ermax, $
+                        crdecimate=crdecimate, decimate=decimate, $
+                        exclude_cols=exclude_cols )
     IF s NE 1 THEN $
       Message,'Failure writing model to file ' + OutFile,/cont
   ENDIF 
