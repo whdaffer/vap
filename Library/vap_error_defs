@@ -5,29 +5,37 @@
 # Modification History
 #
 # $Log$
+# Revision 1.1  2002/05/08 16:20:16  vapdev
+# Error handling/reporting object
+#
 #
 #
 # 
 #
-# When I'm on vacation, send mail to 
-# Mike Spencer, vapuser and me@yahoo
+
 #
+# Hash containing defaults for Error processing.
+# At the moment, the only default is Email addresses. 
 #
 #%vap_defs=( Error_Mail_Address =>
 #   ["vapuser\@catspaw.jpl.nasa.gov", 
 #     "michael.spencer\@jpl.nasa.gov,
 #	     "whdaffer\@yahoo.com"] );
 #
-# If you don't want the email messages, Mike, just 
-# change that hash to:
+# When I'm on vacation, send mail to 
+# Mike Spencer, vapuser and me@yahoo
 #
-#%vap_defs=( Error_Mail_Address =>
-#   ["vapuser\@catspaw.jpl.nasa.gov", 
-#	     "whdaffer\@yahoo.com"] );
 #
-# Hash containing defaults for Error processing.
-# At the moment, the only default is Email addresses. 
-#
-%vap_error_defs=( ERROR_MAIL_ADDRESS =>
-	    ["William.Daffer\@jpl.nasa.gov",
-	     "whdaffer\@attbi.com.net"]);,
+# $vap_error_defs= {INFO_HANDLE=> *STDOUT,
+# 		  ERROR_HANDLE=> *STDERR,
+# 		  ERROR_MAIL_ADDRESSES =>
+# 		  ["michael.spencer\@jpl.nasa.gov",
+# 		   "whdaffer\@attbi.com.net",
+# 		   $ENV{USER}."\@".$ENV{HOSTNAME}] };
+
+$vap_error_defs= {INFO_HANDLE=> *STDOUT,
+		  ERROR_HANDLE=> *STDERR,
+		  ERROR_MAIL_ADDRESSES =>
+		  ["William.Daffer\@jpl.nasa.gov",
+		   "whdaffer\@attbi.com.net",
+		   $ENV{USER}."\@".$ENV{HOSTNAME}] };
