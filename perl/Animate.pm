@@ -86,6 +86,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.9  2003/01/16 23:47:53  vapdev
+# Continuing work
+#
 # Revision 1.8  2003/01/04 00:16:21  vapdev
 # Continuing work
 #
@@ -156,6 +159,10 @@ sub new {
 
   if ($self->{GET_REGIONS}) {
     return keys(%{$self->{ROIS}});
+  }
+
+  if ($self->{GET_DEFS}) {
+    return $self->{ROIS};
   }
 
   croak $usage unless $self->{REGION};
@@ -311,7 +318,7 @@ sub ReadDefsFile{
   # record MUST BE one one line. If it isn't, the IDL will break!
   
   foreach (@lines) {
-    s/\s*//g;
+    #s/\s*//g;
     next unless /^\s*desig/i;
     my @t=split/:/;
 
@@ -320,23 +327,34 @@ sub ReadDefsFile{
 
     my ($roi,$k) = split /,/,$t[1];
     $roi =~ s/'//g;
+    $roi =~ s/\s+//g;
+    $roi = uc($roi);
+    $k =~ s/\s+//g;
     my ($kk,$v);
     for (my $i=2; $i<@t; $i++){
-      # Now $t[i] = value[i], keyword[i+1] We want to assign value[i]
-      # to keyword[i], not keyword[i+1], that's why I saved it before
-      # entering the loop and set it at the end. It's a bit
-      # convoluted, but it works.
 
-      $t[$i] =~ s/\s+//g;
+        # Now $t[i] = "value[i], keyword[i+1]". value[i] may be an
+        # array, which would have a comma in it, so we have to be
+        # careful about that. We want to assign value[i] to
+        # keyword[i], not keyword[i+1], that's why I saved it before
+        # entering the loop and set it at the end. It's a bit
+        # convoluted, but it works.
+
+      #$t[$i] =~ s/\s+//g;
       my $tt=reverse($t[$i]);
       my $ii=index $tt, ",";
       $kk=reverse(substr($tt,0,$ii));
+      $kk =~ s/\s+//g;
       $v=reverse(substr($tt,$ii+1));
+      $v =~ s/}$//g;
+      $v =~ s/\s+(.*)\s*/$1/g;
+      $v =~ s/'//g;
       $v = eval $v if (index($v,'[') > -1);
       if ($v=~/\$/) {
 	$v = deenvvar($v);
       }
-      $self->{ROIS}->{uc($roi)}->{uc($k)} = $v;
+
+      $self->{ROIS}->{$roi}->{uc($k)} = $v;
       $k=$kk;
     }
   }

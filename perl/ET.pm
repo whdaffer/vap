@@ -14,6 +14,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.4  2002/08/08 16:42:24  vapdev
+# (Module): Finished work on 'use strict' and tightened up OO.
+#
 # Revision 1.3  2002/05/07 20:40:36  vapdev
 # Set -w and `use strict' and then fixing bugs. Start trying to standardize
 # the methods used.
@@ -30,7 +33,7 @@
 package ET;
 use strict;
 use lib $ENV{VAP_SFTWR_PERL};
-use VapUtil;
+#use VapUtil;
 #use Vapdefs;
 use Cwd;
 use Time::Local;
@@ -50,7 +53,7 @@ sub new {
   $self->{PROCESSING_TOPDIR} = "/disk7/vap/earth-today/testbed";
   $self->{PICKUP_TOPDIR} = $self->{PROCESSING_TOPDIR}."/pickup";
   $self->{PID} = $$;
-  $self->{FILETIME}=timegm(gmtime($^T));
+  $self->{FILETIME}=$^T;
   $self->{STARTTIME} = $^T;
   $self->{ENDTIME} = 0;
   $self->{STATUS} = 0;

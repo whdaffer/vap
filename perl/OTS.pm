@@ -8,6 +8,9 @@ package OTS;
 # Modification Log:
 #
 # $Log$
+# Revision 1.7  2003/01/25 00:38:08  vapdev
+# Continuing work
+#
 # Revision 1.6  2003/01/16 23:47:53  vapdev
 # Continuing work
 #
@@ -173,19 +176,23 @@ sub new {
   bless $self, ref($class) || $class;
   $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
 
+  my $tropical_storm_defs_file = "tropical_storm_defs_oo";
+  my $foo=$ENV{VAP_LIBRARY}. "/tropical_storm_defs_oo";
+  require "tropical_storm_defs_oo" ||
+    $self->{ERROROBJ}->_croak("Can't require $foo\n:$!",
+		  "ERROR IN `REQUIRE'");
+  $self->{DEFAULTS} = $tsoo_defs; # Load the tropical storm defaults.
+  if ($self->{GET_DEFS}){
+    return $self->{DEFAULTS};
+  }
+
   $self->{ERROROBJ}->_croak("No WINDFILTER!\n",
 			    "Error OTS::new. No WINDFILTER!\n") unless
 			      $self->{WINDFILTER};
   $self->{ERROROBJ}->_croak("REGION is REQUIRED\n",
 		"NO REGION!\n") unless exists $self->{REGION};
 
-  my $tropical_storm_defs_file = "tropical_storm_defs_oo";
-  my $foo=$ENV{VAP_LIBRARY}. "/tropical_storm_defs_oo";
-  require "tropical_storm_defs_oo" ||
-    $self->{ERROROBJ}->_croak("Can't require $foo\n:$!",
-		  "ERROR IN `REQUIRE'");
 
-  $self->{DEFAULTS} = $tsoo_defs; # Load the tropical storm defaults.
 
   chdir $self->{DEFAULTS}->{TS_OVERLAY_DIR} || 
     $self->{ERROROBJ}->_croak(["Can't CD to working dir",

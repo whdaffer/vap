@@ -81,6 +81,7 @@ use Cwd;
 use File::Copy;
 use File::Basename;
 use Time::Local;
+use Data::Dumper;
 
 use vars qw/$VERSION $usage $website_defs $tsoo_defs $overlay_defs/;
 
@@ -145,12 +146,15 @@ EOF
 
 use lib $ENV{VAP_SFTWR_PERL};
 use lib $ENV{VAP_LIBRARY};
-require "VapWebsite_defs" or die "Can't `require' VapWebsite_defs\n";
+#require "VapWebsite_defs" or die "Can't `require' VapWebsite_defs\n";
 use VapCGI;
 use HTML::Table;
 use LeftNavTable;
 use TopNavTable;
 use BottomNavTable;
+use Overlay;
+use Animate;
+use OTS;
 use VapUtil;
 use VapError;
 
@@ -160,19 +164,81 @@ sub new{
   $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
   bless $self, ref($class) || $class;
 
-  if ($self->{UPDATE} =~ /OVERLAY|TROPICAL/) {
-    $self->{ERROROBJ}->_croak("OVERLAY|TROPICAL_STORM: Need windfilter!\n",
-	    "VapWebsite::new (update) No windfilter for overlay products!") 
-      unless $self->{WINDFILTER};
+  my $defs = "VapWebsite_defs";
+  my $defsfile = $ENV{VAP_LIBRARY} . "/$defs";
+  open DEFSFILE, "<$defsfile" or 
+    $self->{ERROROBJ}->_croak("Can't open $defsfile\n", 
+				 "VapWebsite: open ERROR");
+  do {
+    local $/=undef;
+    my $lines = <DEFSFILE>;
+    eval $lines;
+  };
+  close DEFSFILE;
+
+  $self->{WEB}->{DEFS} = $website_defs;
+  $self->{CGI} = VapCGI->new(-nodebug=>1);
+  $self->{BOTTOMTABLE}= BottomNavTable->new;
+
+  if ($self->{UPDATE}){
+
     my $update = $self->{UPDATE};
-    if ($update =~ /OVERLAY/) {
-    } elsif ($update =~ /TROPICAL_STORM/) {
-    } elsif ($update =~ /ANIMATION/) {
-    } else {
-      $self->{ERROROBJ}->_croak("Unknown update product: <$update>!\n",
-	       "VapWebsite::new (update) Unknown update product!");
+
+    if ($update =~ /OVERLAY|TROPICAL/ && !$self->{WINDFILTER}) {
+      $self->{ERROROBJ}->_croak("OVERLAY|TROPICAL_STORM: Need windfilter!\n",
+	   "VapWebsite::new (update) No windfilter for overlay products!") 
     }
 
+    my %type2webpage = %{$self->{WEB}->{DEFS}->{TYPE2WEBPAGE}};
+
+    if ($update =~ /OVERLAY/) {
+      my $insttype = $self->{WINDFILTER};
+      my $overlay_defs = Overlay->new(GET_DEFS => 1,
+				     ERROROBJ => $self->{ERROROBJ});
+      $self->{OVERLAY}->{DEFS} = $overlay_defs;
+      $self->{WHICH_SEAWINDS} = $insttype;
+      $self->{TYPE} = "OVERLAY";
+      $self->{DESTINATION} = $ENV{VAP_OVERLAY_ARCHIVE};
+      $self->{WEBPAGE} = $type2webpage{$self->{TYPE}} . "_$insttype.html";
+
+    } elsif ($update =~ /TROPICAL_STORM/) {
+
+
+      my $insttype = $self->{WINDFILTER};
+      my $tsdefs = OTS->new(GET_DEFS => 1,
+			   ERROROBJ=>$self->{ERROROBJ});
+      $self->{WHICH_SEAWINDS} = $insttype;
+      $self->{TROPICAL_STORM}->{DEFS} = $tsdefs;
+
+      my ($sec,$min,$hour,$month,$year) = localtime(time);
+      $year += 1900;
+      $self->{YEAR} = $year;
+	$self->{TYPE} = "TROPICAL_STORM";
+      $self->{DESTINATION} = $ENV{VAP_TS_ARCHIVE} . "/$year";
+      $self->{WHICH_SEAWINDS} = $insttype;
+	$self->{WEBPAGE} = 
+	  $type2webpage{$self->{TYPE}} . "_" . $insttype . ".html";
+
+      $self->read_ts_manifest;
+
+    } elsif ($update =~ /ANIMATION/) {
+
+      my $animdefs = Animate->new(GET_DEFS => 1,
+				 ERROROBJ=>$self->{ERROROBJ});
+      $self->{ANIMATION}->{DEFS} = $animdefs;
+      $self->{TYPE} = "ANIMATION";
+      $self->{DESTINATION} = $ENV{VAP_ANIM_ARCHIVE};
+      $self->{WEBPAGE} = $type2webpage{$self->{TYPE}} .".html";
+
+    } elsif ($update =~ /INDEX/){
+
+      $self->{TYPE} = "INDEX";
+      $self->{WEBPAGE} = $type2webpage{$self->{TYPE}} . ".html";
+
+    } else {
+      $self->{ERROROBJ}->_croak("Unknown update product: <$update>!\n",
+		   "VapWebsite::new (update) Unknown update product!");
+    }
 
   } else {
 
@@ -201,23 +267,6 @@ sub new{
     $self->parseFilename;
 
   }
-
-  my $defs = "VapWebsite_defs";
-  my $defsfile = $ENV{VAP_LIBRARY} . "/$defs";
-  open DEFSFILE, "<$defsfile" or 
-    $self->{ERROROBJ}->_croak("Can't open $defsfile\n", 
-				 "VapWebsite: open ERROR");
-  do {
-    local $/=undef;
-    my $lines = <DEFSFILE>;
-    eval $lines;
-  };
-  close DEFSFILE;
-
-  $self->{WEB}->{DEFS} = $website_defs;
-  $self->{CGI} = VapCGI->new(-nodebug=>1);
-  $self->{BOTTOMTABLE}= BottomNavTable->new;
-
 
   return $self;
 }
@@ -280,8 +329,8 @@ sub parseFilename{
       my $active_time = $self->{WEB}->{DEFS}->{TS_ACTIVE_TIME};
       $self->read_ts_manifest;
 
-      $self->{ALSO_CHECK} = $year-1 
-	if (($^T - $startofyear) <= $active_time);
+      #$self->{ALSO_CHECK} = $year-1 
+	#if (($^T - $startofyear) <= $active_time);
 
       $self->{TYPE} = "TROPICAL_STORM";
       $self->{DESTINATION} = $ENV{VAP_TS_ARCHIVE} . "/$year";
@@ -519,22 +568,28 @@ sub redoSymlink{
 
 sub updateWebsite{
   my $self=shift;
-  my $ext = shift || $self->{EXT};
-  my $file=$self->{FILE};
 
-    # Move the file to the website, update the links.
+  if (!$self->{UPDATE}) {
+    my $ext = shift || $self->{EXT};
+    my $file=$self->{FILE};
 
-  my $status = $self->moveFile();
-  my $msg = "Unable to move $file to webspace!\n";
+      # Move the file to the website, update the links.
 
-  my $msg2 = $self->{ERROROBJ}->{MSG};
-  if ($msg2) {
-    if (ref($msg2) eq 'ARRAY') {
-      $msg2 = join("\n", @{$msg});
-    } 
-    $msg .= $msg2;
+    my $status = $self->moveFile();
+    my $msg = "Unable to move $file to webspace!\n";
+
+    my $msg2 = $self->{ERROROBJ}->{MSG};
+    if ($msg2) {
+      if (ref($msg2) eq 'ARRAY') {
+	$msg2 = join("\n", @{$msg});
+      } 
+      $msg .= $msg2;
+    }
+    $self->{ERROROBJ}->_croak($msg, "VapWebsite: CP ERROR") unless $status;
+
   }
-  $self->{ERROROBJ}->_croak($msg, "VapWebsite: CP ERROR") unless $status;
+
+    # +++ CD to the images directory +++
 
   my $dir=$ENV{VAP_WWW_TOP} . "/images";
   chdir $dir || 
@@ -575,10 +630,12 @@ sub updateWebsite{
 				  -width=>"80\%");
     my $q=$self->{CGI};
     my $title=$self->{WEB}->{DEFS}->{TROPICAL_STORM}->{TITLE};
-    my $keywords =$self->{WEB}->{DEFS}->{TROPICAL_STORM}->{META}->{KEYWORDS};
+    my $keywords =join ",", @{$self->{WEB}->{DEFS}->{TROPICAL_STORM}->{META}->{KEYWORDS}};
     my $h1=$self->{WEB}->{DEFS}->{TROPICAL_STORM}->{HEADING1};
+    my $h2=$self->{WHICH_SEAWINDS} =~ /Q/? "QuikSCAT data":"Data from SeaWinds on ADEOS-II ";
 
-    $self->startPage($title,$keywords,$h1,$type,$order);
+
+    $self->startPage($title,$keywords,$h1,$type,$order,$h2);
     my $row=1;
     my ($table_this_storm,$table_this_region);
 
@@ -622,26 +679,25 @@ sub updateWebsite{
 	    my $alt = "$sat2 $storm_type2 $name2 $date2 $type2";
 	    my $createstring = "Created: " . scalar(localtime($mtime));
 	    my $sizestring .= "Size: $size (Kb)";
+	    my $infostring = $q->font({-size=>'-1'},
+				      $createstring . $q->br() . $sizestring);
 	    my $linelink = $q->a({-href=>"/images/storms_archive/$year2/$f",
 #				 -name=>"$_",
-				 -align=>'right'},
+				 -align=>'top'},
 				 $string);
 	    my $img = $q->img({-src=>"/images/storms_archive/$year2/$f",
-			      -valign=>'top',
+			      -align=>'left',
 			       -width=>'200',
 			       -height=>'150'});
 	    my $clickableimage = $q->a({-href=>"/images/storms_archive/$year2/$f",
 					-alt=>"$alt",
-					-valign=>'top',
+					-valign=>'middle',
 					-width=>'200',
 					-height=>'150'}, $img);
 
 
-	    my $content = $q->p({-align=>'left'}, "$linelink");
-	    #$content .= $q->p({-align=>'left'},$createstring);
-	    #$content .= $q->p({-align=>'left'},$sizestring);
-	    $content .= $createstring . $sizestring;
-	    $content .= $q->p({-align=>'left'}, $clickableimage);
+	    my $content = $q->br() . $q->p({-align=>'left'}, "$linelink\n$clickableimage");
+	    $content .= $infostring;
 	    $table_this_storm->setCellVAlign($storm_row,1,'top');
 	    $table_this_storm->setCell($storm_row++,1,$content);
 
@@ -696,15 +752,15 @@ sub updateWebsite{
     my $q=$self->{CGI};
     my @order = @{$order->{OVERLAY}};
 
-	      
     my $title=$self->{WEB}->{DEFS}->{OVERLAY}->{TITLE};
-    my $keywords =$self->{WEB}->{DEFS}->{OVERLAY}->{META}->{KEYWORDS};
+    my $keywords = join ",", @{$self->{WEB}->{DEFS}->{OVERLAY}->{META}->{KEYWORDS}};
     my $h1=$self->{WEB}->{DEFS}->{OVERLAY}->{HEADING1};
+    my $h2=$self->{WHICH_SEAWINDS} =~ /Q/? "QuikSCAT data":"Data from SeaWinds on ADEOS-II ";
 
       #### ===== here we start building the page ======= ###
 
 
-    $self->startPage($title,$keywords,$h1,$type,$order);
+    $self->startPage($title,$keywords,$h1,$type,$order,$h2);
 
 
     my $nrows = @order;
@@ -721,36 +777,40 @@ sub updateWebsite{
       if ($self->{WEBSPACE}->{$_}){
 	my ($file,$size,$mtime)=@{$self->{WEBSPACE}->{$_}};
 	my $name = $self->{OVERLAY}->{DEFS}->{$_}->{WEB}->{NAME};
-	my $string = "Overlay for the ";
+	#my $string = "Overlay for the ";
 	my $createstring = "Created: " . scalar(localtime($mtime));
 	my $sizestring .= "Size: $size (Kb)";
+	my $infostring = $q->font({-size=>'-1'},"$createstring" . $q->br() . "$sizestring");
 	my $linelink = $q->a({-href=>"/images/$file",
 			     -name=>"$_",
-			     -align=>'left'},
+			     -align=>'top'},
 			     $name );
 	my $img = $q->img({-src=>"/images/$file",
-			  -valign=>'top',
+			  -align=>'left',
 			   -width=>'200',
 			   -height=>'150'});
 	my $alt = join( " ", split(/_/,$_));
 	my $clickableimage = $q->a({-href=>"/images/$file",
 				    -alt=>"$alt",
-				    -valign=>'top',
+				    -valign=>'middle',
 				    -width=>'200',
 				    -height=>'150'}, $img);
 
 
-	my $content = $q->p({-align=>'left'}, "$string $linelink");
+	#my $content = $q->p({-align=>'left'}, "$linelink\n$clickableimage$infostring\n");
+	#$content .= $q->br() . $q->br();
+	my $content = $q->br() . $q->p({-align=>'left'}, "$linelink\n$clickableimage\n");
+	$content .= $infostring;
 	#$content .= $q->p({-align=>'left'},$createstring);
 	#$content .= $q->p({-align=>'left'},$sizestring);
-	$content .= "$createstring\n$sizestring";
-	$content .= $q->p({-align=>'left'}, $clickableimage);
+	#$content .= "$createstring\n$sizestring\n$clickableimage";
+	#$content .= $q->p({-align=>'left'}, $clickableimage);
 
 	$bodytable->setCell($row++, 1, $content);
       }
     }
 
-  } else {
+  } elsif ($type =~ /ANIMATION/) {
 
       # ================= Animation! =======================
 
@@ -788,7 +848,7 @@ sub updateWebsite{
 
     my $q=$self->{CGI};
     my $title=$self->{WEB}->{DEFS}->{ANIMATION}->{TITLE};
-    my $keywords =$self->{WEB}->{DEFS}->{ANIMATION}->{META}->{KEYWORDS};
+    my $keywords = join ",", @{$self->{WEB}->{DEFS}->{ANIMATION}->{META}->{KEYWORDS}};
     my $h1=$self->{WEB}->{DEFS}->{ANIMATION}->{HEADING1};
 
       #### ===== here we start building the page ======= ###
@@ -800,32 +860,103 @@ sub updateWebsite{
 
       if ($self->{WEBSPACE}->{$_}) {
 	my ($file,$size,$mtime, $first_frame)=@{$self->{WEBSPACE}->{$_}};
-
-	my $string = "Animation for the ";
+	s/'//g;
+	#my $string = "Animation for the ";
 	my $createstring = "Created: " . scalar(localtime($mtime));
 	my $sizestring = "Size: $size (Kb)";
+	my $infostring = $q->font({-size=>'-1'}, 
+				  "$createstring" . $q->br() . "$sizestring");
 	my $name = $self->{ANIMATION}->{DEFS}->{$_}->{WEBNAME};
+	$name =~ s/'//g;
 	my $linelink = $q->a({-href=>"/images/$file",
-			     -name=>"$_",
-			     -align=>'left'},
-			     $name );
+					 -name=>"$_",
+					 -align=>'top'},
+					$name );
 	my $img = $q->img({-src=>"/images/$first_frame",
-			  -valign=>'top'});
+			  -align=>'left'});
 
 	my $alt = join( " ", split(/_/,$_));
 	my $clickableimage = $q->a({-href=>"/images/$file",
 				    -alt=>"$alt",
-				    -valign=>'top'}, $img);
+				    -valign=>'middle'}, $img);
 
 
-	my $content = $q->p({-align=>'left'}, $string . $linelink);
-	#$content .= $q->p({-align=>'left'},$createstring);
-	#$content .= $q->p({-align=>'left'},$sizestring);
-	$content .= "$createstring\n$sizestring";
-	$content .= $q->p({-align=>'left'}, $clickableimage);
+	my $content = $q->br() . $q->p({-align=>'left'}, "$linelink\n$clickableimage");
+	$content .= $infostring;
 	$bodytable->setCell($row++, 1, $content);
       }
     }
+  } elsif ($type =~ /INDEX/){
+
+    $self->startPage("SeaWinds Daily Wind Report",
+		     "Scatterometry, cloud_imagery, overlay, animation," . 
+		     "SeaWinds, QuikSCAT, ADEOS-II",
+		     "", "OVERLAY",$order);
+
+    $bodytable = HTML::Table->new(-rows => 1, 
+				  -cols=>1,
+				 -width=>"80\%");
+    my $body= <<"EOF";
+
+<p>Welcome to the Value Added Products webpage for QuikSCAT and SeaWinds
+on ADEOS-II. This page is merely a filler, you should probably bookmark
+the pages you want to view routinely, so that you can go directly there.
+I'll present a short explanation on this page for those who've never been
+here. There's more specific information concerning the products on this
+webpage located on the <a href="/info.html">information</a> page
+and more information on the SeaWinds instruments and the two missions carrying
+them can be perused at the <a href="http://winds.jpl.nasa.gov">Scatterometer
+Project homepage</a> . If we encounter any item of particular interest,
+we may put it on the <a href="/disk5/vapdev/www/htdocs/special.html">special
+projects</a> page. The status of the various instruments can be found
+on the <a href="/disk5/vapdev/www/htdocs/status.html">status</a>
+page.
+<br>
+<br>
+<br>
+<h2>Synopsis</h2>
+This collection of pages contain the output from several processors of
+two broad types: 'overlays' and 'animations.'
+<br>
+<h3>Overlays</h3>
+
+The 'overlays' combine the cloud imagery from several geosynchronous
+satellites with SeaWinds scatterometry. They fall into two seperate
+types, the simple overlay, which is region specific and 'tropical
+storm,' were we try to follow cyclonic storms a little more
+closely. Since the geosyncrhonous satellites from which we get our
+cloud imagery are region specific, all of the overlays, regardless of
+type, have some region dependency. These regions are, roughly: North
+Atlantic (GOES8) , North-Eastern Pacific (GOES10) and, in the western
+Pacific (GMS5). We'll occasionally experience outages from these
+satellites, sometimes extended outages. The general rule is: if either
+the wind or the cloud data exists, an overlay will be made.
+
+
+
+<p>The overlays are further divided by the source of the scatterometry
+data used in the overlay, e.g., there's an <a href="http://overlay_Q.html">QuikSCAT overlay</a>page and an <a href="http://overlay_S.html">SeaWinds overlay page</a>
+
+<h3>Animations</h3>
+
+The animations take data from both scatterometers, create a <a
+href="/glossary.html#synoptic">synoptic</a> <a
+href="/glossary.html#interpolated">interpolated</a>
+field and then create an animation from that field. In this animation,
+the windspeed is conveyed by the color of the backgroup, blue is low
+windspeed and magenta high, and the direction of the wind by the
+motion of the arrows in the animation.  Despite the fact that this
+animation shows things moving, this is not a 'time series.' The wind
+field here is static, in the sense that at each location in the
+picture the direction and speed of the wind doesn't change.
+
+EOF
+
+    $bodytable->setCell(1, 1, $body);    
+
+  } else {
+    $self->{ERROROBJ}->_croak("Unknown type! ($type)",
+			      "VapWebsite: updateWebsite: unknown type!");
   }
 
   $self->{HTML} = $self->endPage($bodytable);
@@ -1037,13 +1168,13 @@ sub Overlayfilename2region{
 
 
 sub startPage{
-  my ($self, $title, $keywords, $h1,$type, $order) = @_;
+  my ($self, $title, $keywords, $h1,$type, $order, $h2) = @_;
   my $q=$self->{CGI};
 
   my $html = $q->start_html(
 		 -title=>$title,
 		 -meta=>{"Keywords" => $keywords},
-		# -background=>"/images/fuji7.gif",
+		 -background=>"/images/fuji7.gif",
 		 -style=>{
 		      -code=>'A:link {text-decoration:none;},A:visited {text-decoration:none;}'
 		     },
@@ -1081,10 +1212,11 @@ sub startPage{
   my $outsidetable = HTML::Table->new(-rows=>3,
 				      -cols=>2,
 				      -align=>"left",
-				      -width=>"100\%",
-				     -border=>1);
+				      -width=>"100\%");
 
-  $outsidetable->setColWidth(1,"20\%");
+
+  $outsidetable->setColWidth(1,"15\%");
+  $outsidetable->setCellHeight(2,1,"300");
 
     # For the top navbar
   my $topnavtable=TopNavTable->new();
@@ -1097,17 +1229,29 @@ sub startPage{
 
   my $toptablehtml = $topnavtable->getTable;
   $toptablehtml .=  $q->h1($h1);
+  $toptablehtml .= $q->h2($h2) if $h2;
   $toptablehtml .= $q->a({-name=>"TOP"},"");
   $outsidetable->setCell(1,1,$toptablehtml);
   $outsidetable->setCellColSpan(1,1,2);
   $outsidetable->setCell(2,1,$leftnavtable->getTable);
   $outsidetable->setCellVAlign(2,1,'top');
   $outsidetable->setCell(3,1,$self->{BOTTOMTABLE}->getTable);
+  $outsidetable->setCellColSpan(3,1,2);
   delete $self->{BOTTOMTABLE};
   $outsidetable->setCellColSpan(3,1,2);
   $outsidetable->setCellVAlign(3,1,'TOP');
-  $outsidetable->setCellVAlign(3,1,'CENTER');
+  $outsidetable->setCellAlign(3,1,'CENTER');
   #$outsizetable->setCellStyle();
+
+  my $font=$q->font({-face=>"Helvetica",-size=>'-3'},
+		    "Last Modified: " . localtime());
+  $outsidetable->setCell(4,1,$font);
+  $outsidetable->setCellColSpan(4,1,3);
+  $font=$q->font({-face=>"Helvetica",-size=>'-3'},
+		    "CL 02-2959");
+
+  $outsidetable->setCell(5,1,$font);
+  $outsidetable->setCellColSpan(4,1,3);
 
     # We can't convert to the table to HTML just yet, because we have
     # to put the `body' table in it first. So we save it in the hash for later.
@@ -1232,6 +1376,28 @@ sub goodLink{
   return 1;
 }
 
+sub write_ts_manifest{
+  my $self=shift;
+  my $manifest = $self->{TROPICAL_STORM}->{MANIFEST};
+  my $dumper = Data::Dumper->new([$manifest],[qw(manifest)]);
+  my $manifest_file = $self->{WEB}->{DEFS}->{TS_MANIFEST};
+  my $dir=getcwd;
+  my ($name, $path ) = fileparse($manifest_file);
+  chdir $path or 
+    $self->{ERROROBJ}->_croak(["Trying to write TS manifest file",
+			       "Couldn't CD to $path!"],
+			      "VapWebsite: TS, CD error");
+  rename $name, "$name.old";
+  open MANIFEST, ">$name" or 
+    $self->{ERROROBJ}->_croak(["Error opening TS manifest file for write",
+			       "$manifest_file\n"],
+			     "VapWebsite:TS. Write TS manifest error!");
+  print MANIFEST $dumper->Dump;
+  close MANIFEST;
+  chdir $dir;
+  1;
+}
+
 sub read_ts_manifest{
   my $self=shift;
   my $manifest_file = $self->{WEB}->{DEFS}->{TS_MANIFEST};
@@ -1274,19 +1440,32 @@ sub getTSlist{
     # return the list of storms which will make up the webpage.
 
   my $self=shift;
-  my $type_re = ".*-" . $self->{WHICH_SEAWINDS} . "\.jpeg";
   my $manifest = $self->{TROPICAL_STORM}->{MANIFEST};
   my $active_time = $self->{WEB}->{DEFS}->{TS_ACTIVE_TIME};
-  my $file = $self->{NAME};
-  my ($sat, $storm_type, $name, $date,$year, $type) = 
-    parsename($file);
+  my $type_re = ".*-" . $self->{WHICH_SEAWINDS} . "\.jpeg";
+  if (!$self->{UPDATE}){
+    my $file = $self->{NAME};
+    my ($sat, $storm_type, $name, $date,$year, $type) = 
+      parsename($file);
+    if ($manifest->{$year}->{$name}->{FILES}){
+      my @files=@{$manifest->{$year}->{$name}->{FILES}};
+      push @files, $file . ".jpeg";
+      @files = sort bydate, @files;
+      @{$manifest->{$year}->{$name}->{FILES}} = @files;
+    } else {
+      push @{$manifest->{$year}->{$name}->{FILES}}, $file . ".jpeg";
+    }
+    $manifest->{$year}->{$name}->{LAST_SEEN} = $self->{MTIME};
+    $manifest->{$year}->{$name}->{LAST_SEEN_DATETIME} = 
+      scalar(localtime($self->{MTIME}));
+    $manifest->{$year}->{ACTIVE}=1;
+    $manifest->{$year}->{$name}->{ACTIVE} = 1;
 
-  push @{$manifest->{$year}->{$name}->{FILES}}, $file . ".jpeg";
-  $manifest->{$year}->{$name}->{LAST_SEEN} = $self->{MTIME};
-  $manifest->{$year}->{$name}->{LAST_SEEN_DATETIME} = 
-    scalar(localtime($self->{MTIME}));
-  $manifest->{$year}->{ACTIVE}=1;
-  $manifest->{$year}->{$name}->{ACTIVE} = 1;
+      # We've added the new files ot the manifest. Now save the manifest
+      # back to the disk file.
+
+    $self->write_ts_manifest;
+  }
 
   my $storms_hash = ();
 

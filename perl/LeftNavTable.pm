@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.11  2003/01/25 00:38:08  vapdev
+# Continuing work
+#
 # Revision 1.10  2003/01/17 18:40:09  vapdev
 # Continuing work
 #
@@ -99,7 +102,7 @@ sub new {
   }
 
 
-  $self->setStyle( "{ font-family: Verdana, sans-serif; font-size: 50% }");
+  $self->setStyle( "{ font-family: Verdana, sans-serif; font-size: 75% }");
 
 
   #
@@ -163,26 +166,30 @@ sub new {
     # Cell 4,1 goes the 'Status' page.
   #$q=CGI->new(-no_debug=>1);
   $link=$q->a({-href=>"status.html"},"Status");
-  $content=$q->p({-align=>"RIGHT"},$link);
+  $content=$q->p({-align=>"LEFT"},$link);
   $self->setCell($outermostrow++,1,$content);
 
     # Cell 5,1 goes to 'Specials', if any.
   #$q=CGI->new(-no_debug=>1);
   $link=$q->a({-href=>"special.html"},"Special Products");
-  $content=$q->p({-align=>"RIGHT"},$link);
+  $content=$q->p({-align=>"LEFT"},$link);
   $self->setCell($outermostrow++,1,$content);
 
     # Cell 6,1 is for "information" about the website, 
   #$q=CGI->new(-no_debug=>1);
   $link=$q->a({-href=>"info.html"},"Information");
-  $content=$q->p({-align=>"RIGHT"},$link);
+  $content=$q->p({-align=>"LEFT"},$link);
+  $self->setCell($outermostrow++,1,$content);
+
+  $link=$q->a({-href=>"http://winds.jpl.nasa.gov"},"SeaWinds project");
+  $content=$q->p({-align=>"LEFT"},$link);
   $self->setCell($outermostrow++,1,$content);
 
     # Cell 7,1 is the mailto url.
   #$q=CGI->new(-no_debug=>1);
   my $webhost = $self->{WEBHOST}? $self->{WEBHOST}: "haifung.jpl.nasa.gov";
   $link=$q->a({-href=>"mailto: webmaster\@" . $webhost},"Contact us!");
-  $content=$q->p({-align=>"RIGHT"},$link);
+  $content=$q->p({-align=>"LEFT"},$link);
   $self->setCell($outermostrow++,1,$content);
 
   return bless $self, ref($class) || $class;
@@ -258,10 +265,11 @@ sub OverlayTable{
     # Construct the table that will hold the overlay part of the nav
     # bar. 
 
-  my $overlay_table = HTML::Table->new(-rows=>2,-cols=>1);
+  my $overlay_table = HTML::Table->new(-rows=>2,-cols=>2);
   $overlay_table->setCaption("Cloud Overlays",'TOP');
-  $overlay_table->setStyle("{ font: Garamond, 'Times New Roman', serif; font: 50% }");
+  $overlay_table->setStyle("{ font: Garamond, 'Times New Roman', serif; font: 75% }");
   my @order = @{$self->{ORDER}->{OVERLAY}};
+  my $nrows=@order+1;
   my ($overlay_sw_table, $overlay_qs_table);
 
 
@@ -290,11 +298,15 @@ sub OverlayTable{
 
 
   if ($self->anyOverlays('QS')) {
-    $overlay_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $overlay_qs_table=HTML::Table->new(-rows=>$nrows,-col=>2,-align=>'RIGHT');
     my $caption = $q->a({-href=>"overlay_Q.html"},
 			 "QuikSCAT");
-    $overlay_qs_table->setCaption($caption,'TOP');
     my $row=1;
+
+    #$overlay_qs_table->setCaption($caption,'TOP');
+    $overlay_qs_table->setCell($row,1,$caption);
+#    $overlay_qs_table->setCellColSpan($row,1,2);
+    $overlay_qs_table->setCellAlign($row++,1,'LEFT');
     foreach (@order) {
       my $key = $_;
       my $value = $overlay_defs->{$key};
@@ -308,10 +320,12 @@ sub OverlayTable{
 #       next if $skip;
       next if !$value->{WEB}->{ACTIVE};
       #$q=CGI->new(-no_debug=>1);
+      my $name = $value->{WEB}->{NAME};
+      my $font = $q->font({-face=>'Helvetica',-size=>'-1'},$name);
       my $link = $q->a({-href=>"overlay_Q.html#$key"},
-		    $value->{WEB}->{NAME});
-      my $content=$q->p({-align=>'LEFT'},$link);
-      $overlay_qs_table->setCell($row++, 1, $content);
+		    $font);
+      my $content=$q->p({-align=>'RIGHT'},$link);
+      $overlay_qs_table->setCell($row++, 2, $content);
     }
   }
 
@@ -323,11 +337,15 @@ sub OverlayTable{
 
 
   if ($self->anyOverlays('SW')) {
-    $overlay_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $overlay_sw_table=HTML::Table->new(-rows=>$nrows,-col=>1,-align=>'RIGHT');
     my $caption = $q->a({-href=>"overlay_S.html"},
 			 "SeaWinds");
-    $overlay_sw_table->setCaption($caption,'TOP');
+    #$overlay_sw_table->setCaption($caption,'TOP');
     my $row=1;
+    $overlay_sw_table->setCell($row,1,$caption);
+#    $overlay_sw_table->setCellColSpan($row,1,2);
+    $overlay_sw_table->setCellAlign($row++,1,'LEFT');
+
     @order = keys %{$overlay_defs} unless @order;
     foreach (@order) {
       my $key = $_;
@@ -345,10 +363,12 @@ sub OverlayTable{
       next if !$value->{WEB}->{ACTIVE};
 
       #$q=CGI->new(-no_debug=>1);
+      my $name = $value->{WEB}->{NAME};
+      my $font = $q->font({-face=>'Helvetica',-size=>'-1'},$name);
       my $link = $q->a({-href=>"overlay_S.html#$key"},
-		    $value->{WEB}->{NAME} );
-      my $content=$q->p({-align=>'LEFT'},$link);
-      $overlay_sw_table->setCell($row++, 1, $content);
+		    $font);
+      my $content=$q->p({-align=>'RIGHT'},$link);
+      $overlay_sw_table->setCell($row++, 2, $content);
     }
   }
 
@@ -379,25 +399,31 @@ sub AnimTable{
     # bar. The animations won't split QS from SW, so there's no need
     # for the additional layer of tables as is the case with the
     # overlays.
-
-  my $anim_table = HTML::Table->new(-rows=>9,-cols=>1);
+  my @order = @{$self->{ORDER}->{ANIMATION}};
+  my $nrows=@order+1;
+  my $anim_table = HTML::Table->new(-rows=>$nrows,-cols=>2);
   my $caption = $q->a({-href=>"anim.html"},
 			 "Animations");
-  $anim_table->setCaption($caption,'TOP');
-  $anim_table->setStyle("{ font: Garamond, 'Times New Roman', serif; size: 50%}");
-  my @order = @{$self->{ORDER}->{ANIMATION}};
+  #$anim_table->setCaption($caption,'TOP');
+  my $row=1;
 
-  my $row=0;
+  $anim_table->setStyle("{ font: Garamond, 'Times New Roman', serif; size: 50%}");
+  $anim_table->setCell($row,1,$caption);
+#  $anim_table->setCellColSpan($row,1,2);
+  $anim_table->setCellAlign($row++,1,'LEFT');
+
+
   my $roi_hash = $self->{ANIM_DEFS};
 
   foreach (@order) {
     my $key = $_;
     my $value = $roi_hash->{$key};
-    $row++;
     #$q=CGI->new(-no_debug=>1);
-    my $link = $q->a({-href=>"anim.html#$key"},$value);
-    my $content=$q->p({-align=>'LEFT'},$link);
-    $anim_table->setCell($row, 1, $content);
+    my $font = $q->font({-face=>'Helvetica',-size=>'-1'},$value);
+    my $link = $q->a({-href=>"anim.html#$key"},
+		     $font);
+    my $content=$q->p({-align=>'RIGHT'},$link);
+    $anim_table->setCell($row++, 2, $content);
   }
 
 
@@ -417,7 +443,7 @@ sub Tropical_Storms_Table{
     # tropical_storm_defs_oo hash.
 
   my $ts_table = HTML::Table->new(-caption=>"Tropical Storms", 
-				  -rows=>3,-col=>1);
+				  -rows=>2,-col=>1);
   my $caption = $q->a({-href=>"ts_Q.html"},
 			 "QuikSCAT");
   $ts_table->setCaption("Tropical Storms",'TOP');
@@ -429,11 +455,16 @@ sub Tropical_Storms_Table{
     # ============= Seawinds on QuikSCAT  =================
 
   if ($self->anyTSOverlays('QS')) {
-    $ts_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    my $nrows=@order+1;
+    my $row=1;
+    $ts_qs_table=HTML::Table->new(-rows=>$nrows,-col=>2,-align=>'RIGHT');
     my $caption = $q->a({-href=>"ts_Q.html"},
 			 "QuikSCAT");
-    $ts_qs_table->setCaption($caption,'TOP');
-    my $row=0;
+    #$ts_qs_table->setCaption($caption,'TOP');
+    $ts_qs_table->setCell($row,1,$caption);
+#    $ts_qs_table->setCellColSpan($row,1,2);
+    $ts_qs_table->setCellAlign($row++,1,'LEFT');
+
     @order = @{$tsoo_defs->{SATELLITES}} unless @order;
     foreach my $sat (@order) {
 #
@@ -450,25 +481,29 @@ sub Tropical_Storms_Table{
 #    }
 #       next if $skip;
 
-      $row++;
-      #$q=CGI->new(-no_debug=>1);
+
       my $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
+      $webname = $q->font({-face=>'Helvetica',-size=>'-1'},
+			  $webname);
       my $link = $q->a({-href=>"ts_Q.html#$sat"},
 		       "$webname");
       my $content=$q->p({-align=>'LEFT'},$link);
-      $ts_qs_table->setCell($row, 1, $content);
+      $ts_qs_table->setCell($row++, 2, $content);
     }
   }
 
     # ============= Seawinds on ADEOS-II =================
 
   if ($self->anyTSOverlays('SW')) {
-
-    $ts_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    my $nrows=@order+1;
+    $ts_sw_table=HTML::Table->new(-rows=>$nrows,-col=>1,-align=>'RIGHT');
     my $caption = $q->a({-href=>"ts_S.html"},
 			 "SeaWinds");
-    $ts_sw_table->setCaption($caption,'TOP');
-    my $row=0;
+    #$ts_sw_table->setCaption($caption,'TOP');
+    my $row=1;
+    $ts_sw_table->setCell($row,1,$caption);
+#    $ts_sw_table->setCellColSpan($row,1,2);
+    $ts_sw_table->setCellAlign($row++,1,'LEFT');
 
     @order = @{$tsoo_defs->{SATELLITES}} unless @order;
     foreach my $sat (@order) {
@@ -480,13 +515,14 @@ sub Tropical_Storms_Table{
 # 	}
 #    }
 #      next if $skip;
-      $row++;
       #$q=CGI->new(-no_debug=>1);
       my $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
+      $webname = $q->font({-face=>'Helvetica',-size=>'-1'},
+			  $webname);
       my $link = $q->a({-href=>"ts_S.html#$sat"},
 		    "$webname");
       my $content=$q->p({-align=>'LEFT'},$link);
-      $ts_sw_table->setCell($row, 1, $content);
+      $ts_sw_table->setCell($row++, 2, $content);
     }
     
   }

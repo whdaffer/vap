@@ -149,6 +149,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.9  2003/01/16 23:47:53  vapdev
+# Continuing work
+#
 # Revision 1.8  2003/01/04 00:16:21  vapdev
 # Continuing work
 #
@@ -355,6 +358,11 @@ sub new {
   if ($self->{GET_REGIONS}){
     my @regions = $self->getRegions;
     return @regions;
+  }
+
+
+  if ($self->{GET_DEFS}){
+    return $self->{OVERLAY_DEFAULTS};
   }
 
   $self->{TMPDIR} = $ENV{VAP_OPS_TMPFILES};
