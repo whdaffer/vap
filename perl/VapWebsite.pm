@@ -444,7 +444,11 @@ sub moveFile{
 
   $self->{WWWFILE} = $destination;
   my $src = $self->{FILE};
-  copy $src, $destination || 
+  my $save_umask = umask(022);
+  mkdir($self->{DESTINATION},0755) unless ( -d $self->{DESTINATION} ) ;
+  umask $save_umask;
+
+  copy($src, $destination) || 
     $self->{ERROROBJ}->_croak( "Error copying $src to  $destination",
 		   "VapWebside::moveFile. Copy Error!");
 
@@ -553,7 +557,7 @@ sub redoSymlink{
   my $relpath = join "/", @filepathcomponents[ @symlinkpathcomponents .. $#filepathcomponents ];
   $file = "./$relpath/$filename";
 
-  symlink $file,$symlink || 
+  symlink($file,$symlink) || 
     $self->{ERROROBJ}->_croak($self->{NAME0} . ": Can't symlink $symlink to $file!:$!\n",
 		  $self->{NAME0} . ": SYMLINK ERROR!");
   1;
@@ -603,10 +607,10 @@ sub updateWebsite{
     # +++ CD to the images directory +++
 
   my $dir=$ENV{VAP_WWW_TOP} . "/images";
-  chdir $dir || 
+  chdir($dir) || 
     $self->{ERROROBJ}->_croak("Can't CD to $dir!\n",
 			      "VapWebsite: CD error!");
-  opendir DIR, "." ||
+  opendir(DIR, ".") ||
     $self->{ERROROBJ}->_croak("VapWebsite: Can't open images directory!\n",
 		  "Error opening directory!");
   my @imagedir_files = grep(!/^\.\.?/, readdir(DIR));
@@ -976,13 +980,13 @@ sub updateWebsite{
   # page with the new one!
 
   my $newwebpage = $ENV{VAP_WWW_TOP} . "/" . $self->{WEBPAGE} . ".tmp";
-  open WEBPAGE,">$newwebpage" || 
+  open(WEBPAGE,">$newwebpage") || 
     $self->{ERROROBJ}->_croak("Can't open $newwebpage!",
 			      "VapWebsite::updateWebpage -- OPEN ERROR!");
   print WEBPAGE $self->{HTML} . "\n";
   close WEBPAGE;
   my $oldwebpage = $ENV{VAP_WWW_TOP} . "/" . $self->{WEBPAGE};
-  rename $newwebpage, $oldwebpage ||
+  rename($newwebpage, $oldwebpage) ||
     $self->{ERROROBJ}->_croak("Can't rename $newwebpage ot $oldwebpage!",
 			      "VapWebsite::updateWebpage -- RENAME ERROR!");
   1;
@@ -1430,17 +1434,21 @@ sub write_ts_manifest{
 sub read_ts_manifest{
   my $self=shift;
   my $manifest_file = $self->{WEB}->{DEFS}->{TS_MANIFEST};
-  my $manifest;
-  open MANIFEST, "<$manifest_file" or 
-    $self->{ERROROBJ}->_croak(["Error reading TS manifest file",
-			       "$manifest_file\n"],
-				 "Error reading TS MANIFEST");
-  do {
-    local $/=undef;
-    my $lines = <MANIFEST>;
-    eval $lines;
-  };
-
+  my $manifest=();
+  if (-e $manifest_file){
+    open MANIFEST, "<$manifest_file" or 
+      $self->{ERROROBJ}->_croak(["Error reading TS manifest file",
+				 "$manifest_file\n"],
+				"Error reading TS MANIFEST");
+    do {
+      local $/=undef;
+      my $lines = <MANIFEST>;
+      eval $lines;
+    };
+  } else {
+      $self->{ERROROBJ}->Report(["No manifest file, must be first time!",
+				 "$manifest_file\n"],'INFO');
+  }
   $self->{TROPICAL_STORM}->{MANIFEST} = $manifest;
   1;
 }

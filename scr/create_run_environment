@@ -7,6 +7,9 @@
 # bestiary of environmental variables be defined.
 #
 # $Log$
+# Revision 1.4  2003/01/30 22:55:37  vapdev
+# GOES/GMS5 work directories
+#
 # Revision 1.3  2003/01/30 19:56:59  vapdev
 # some other nigglies
 #
@@ -50,25 +53,33 @@ mkdir -p $VAP_GMS_TOP/vis
 mkdir -p $VAP_GMS_TOP/{grid,grida}
 
 # --- WWW directories
+
+# these directories have to be group/world readible and searchible, so
+# save the umask, then set it to 022 and set the directories
+# permission to 0755.
+
+saveumask=`umask`
+umask 022;
 echo WWW top
 if [ ! -d $VAP_WWW_TOP ]; then
-    mkdir -p $VAP_WWW_TOP
+    mkdir  -p $VAP_WWW_TOP
 fi
 
 echo overlay archive
 if [ ! -d $VAP_OVERLAY_ARCHIVE ]; then 
-    mkdir -p $VAP_OVERLAY_ARCHIVE
+    mkdir -m 0755 -p $VAP_OVERLAY_ARCHIVE
 fi
 
 echo TS archives
 if [ ! -d $VAP_TS_ARCHIVE ]; then 
-    mkdir -p $VAP_TS_ARCHIVE
+    mkdir -m 0755 -p $VAP_TS_ARCHIVE
 fi
 
 echo anim archive
 if [ ! -d $VAP_ANIM_ARCHIVE ]; then 
-    mkdir -p $VAP_ANIM_ARCHIVE
+    mkdir -m 0755 -p $VAP_ANIM_ARCHIVE
 fi
 
-chmod -R go=rx $VAP_WWW_TOP
+chmod -R u=rwx,go=rx $VAP_WWW_TOP
+umask `echo $saveumask`
 

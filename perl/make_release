@@ -138,6 +138,15 @@ foreach my $f (@files){
   chmod 0750, $newname or die "$!\n";
 }
 
+#-------- the html directories -----------
+print "mv ./html .\n";
+if (! -d "./html") {
+  my $exe="mv ./vap/html .";
+  #`mv ./vap/Library .` or die "$!\n";
+  $r=system($exe)/256;
+  die "$!\n" unless $r==0;
+}
+
 print "Removing ./vap and ./util\n";
 `rm -rf ./vap` and die "$!\n";
 `rm -rf ./util` and die "$!\n";
@@ -158,7 +167,9 @@ $r=system("make install")/256;
 die "$!\n" if $r;
 chdir "../.." or die "$!\n";
 
-print "Done!\n";
+`cat ./Documents/README.vapsetup`;
+
+print "Done!;
 exit;
 
 sub findidl{
