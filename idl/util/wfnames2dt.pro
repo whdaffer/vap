@@ -63,6 +63,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/05 18:53:39  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -112,8 +115,10 @@ FUNCTION wfnames2dt, windfiles, nscat=nscat
       day        = fix( strmid( basetime, 6, 2 ) )
       IF nscat THEN year =  year + 1900
       retstruct[ff].name = windfiles[f]
-      retstruct[ff].start_time = var_to_dt( year,month,day,start_hour,start_min)
-      retstruct[ff].end_time = var_to_dt( year,month,day,end_hour,end_min)
+      t = var_to_dt( year,month,day,start_hour,start_min)
+      retstruct[ff].start_time = t
+      t =var_to_dt( year,month,day,end_hour,end_min)
+      retstruct[ff].end_time = t
       ff = ff+1
     END
   ENDFOR 
