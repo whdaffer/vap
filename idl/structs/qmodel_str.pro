@@ -66,6 +66,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/12 22:21:31  vapuser
+; Added lon and lat
+;
 ; Revision 1.2  1998/10/07 18:29:36  vapuser
 ; Took out lon and lat arrays. Added some CreationTime,
 ; StartTime, EndTime and Lonpar, to make it like the
@@ -90,7 +93,7 @@ FUNCTION qmodel_str
   IF n_elements( qmodel_defined ) eq 0 THEN BEGIN
 
     hdr={ QMODELHDR, $
-          LongName     : bytarr(48),$
+          LongName     : bytarr(256),$
           ShortName    : bytarr(24),$ 
           NLon         : 0l        ,$
           NLat         : 0l        ,$
