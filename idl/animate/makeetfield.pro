@@ -57,8 +57,8 @@
 ;   OutFile: (I/O) if this keyword is a string, it is taken to be the
 ;            fully qualified output file name. If it is not set then
 ;            the field will be output to a file with the standard name
-;            formula (i.e. QIF-yyyymmddhh.hdf) Q=Qscat,IF=Interpolated
-;            field. yyyymmddhh is the end time of the field.
+;            formula (i.e. IF-yyyymmddhh.hdf) IF=Interpolated
+;            Field. yyyymmddhh is the end time of the field.
 ;
 ;
 ;              See 'file format' below for the format of the file.
@@ -174,6 +174,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  2002/05/03 01:06:25  vapdev
+; Changes environmental variables to reflect new vapdev/vaprun env variables.
+; Also made sure that all the various env variable routines were being
+; called correctly.
+;
 ; Revision 1.1  2001/02/07 19:15:29  vapuser
 ; Initial revision
 ;

@@ -14,7 +14,7 @@
 ; AUTHOR: William Daffer
 ;
 ;
-; CATEGORY:  Qscat Vap Processing
+; CATEGORY:  SeaWinds Vap Processing
 ;
 ;
 ;
@@ -135,6 +135,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.11  2002/05/03 01:06:25  vapdev
+; Changes environmental variables to reflect new vapdev/vaprun env variables.
+; Also made sure that all the various env variable routines were being
+; called correctly.
+;
 ; Revision 1.10  2001/12/10 23:31:25  vapdev
 ; replace obsolete RSI routines
 ;

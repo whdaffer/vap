@@ -2,7 +2,7 @@
 ; NAME:  showqmodels
 ; $Id$
 ; PURPOSE:  Wrap the QMS (Qscat Model Show) object to make displaying
-;          lots of QIF files easier.
+;          lots of Interpolated Fields (IF) files easier.
 ;
 ;
 ; AUTHOR:  whd
@@ -34,14 +34,14 @@
 ;   Group: The group leader ID of whatever widget hierarchy you want
 ;          to tie this widget to.
 ;
-;   files: filename vector. List of QIF files you want to display.
+;   files: filename vector. List of IF files you want to display.
 ;
 ;   path: The path to use if you want to read more files (defaults to
 ;         whatever path is on the files appearing in the 'files'
 ;         keyword or to './' if those aren't present.
 ;  
 ;   filter: The filter to use when the file picking widget is
-;           called. Def='QIF*.hdf'
+;           called. Def='IF*.hdf'
 ;   
 ;   speedrange: 2-vector: floats. [min,max] speed to consider when
 ;               making the filled contour. def=[1, 25]
@@ -89,6 +89,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  2002/05/03 01:06:25  vapdev
+; Changes environmental variables to reflect new vapdev/vaprun env variables.
+; Also made sure that all the various env variable routines were being
+; called correctly.
+;
 ; Revision 1.2  2001/12/08 00:02:36  vapdev
 ; Getting rid of obsolete RSI routines and fixing ENV vars
 ;
@@ -303,7 +308,7 @@ PRO showqmodels, GROUP=Group, $
   latrange   = n_elements(latrange)   NE 2 ? [-90.,90.] : latrange
 
   path = n_elements(path) EQ 0 ? deenvvar('$VAP_OPS_ANIM') : path
-  filter =  n_elements(filter) EQ 0? "QIF*.hdf": filter
+  filter =  n_elements(filter) EQ 0? "IF*.hdf": filter
 
   plotvect = keyword_set(plotvect)
   cf = "$VAP_COLORTABLES/vap-animation.ct" 
@@ -359,7 +364,7 @@ PRO showqmodels, GROUP=Group, $
 
   LABEL29 = WIDGET_LABEL( BASE3, $
       UVALUE='LABEL29', $
-      VALUE='Path to Qmodel (QIF*hdf) files')
+      VALUE='Path to Qmodel (IF*hdf) files')
 
   PathId = Widget_Text( BASE3,VALUE=path, $
       editable=1, $
@@ -367,7 +372,7 @@ PRO showqmodels, GROUP=Group, $
 
   LABEL29 = WIDGET_LABEL( BASE3, $
       UVALUE='LABEL29', $
-      VALUE='Filter for (QIF*hdf) files')
+      VALUE='Filter for (IF*hdf) files')
 
   filterId = Widget_Text( BASE3,VALUE=filter, $
       editable=1, $
