@@ -3,6 +3,9 @@
 # Modification Log;
 #
 # $Log$
+# Revision 1.5  2003/01/04 00:16:21  vapdev
+# Continuing work
+#
 # Revision 1.4  2002/12/20 23:45:26  vapdev
 # Ongoing ... well, you know.
 #
@@ -45,8 +48,11 @@
 # 		    LATLIM     => [minlat,maxlat],# Min/Max Lat (lower left, upper right)
 # 		    SATNUM     => x,     # e.g. goes '10', should match x in reg.desc.
 # 		    SENSORNUM  => y,     # e.g. 4 for ir4, should matcy y in reg.desc.
-# 		    ASCTIME    => "hh:mm",  # Note 2
-# 		    DESCTIME   => "HH:MM" },# Note 2
+# 		    TIME=>{QS=>{ASCTIME    => "hh:mm",  # Note 2
+# 		                DESCTIME   => "HH:MM" },# Note 2
+#                         {SW=>{ASCTIME    => "hh:mm",  # Note 2
+# 		                DESCTIME   => "HH:MM" } # Note 2
+#                         }
 # 		  WINDS => {                   
 # 		    NVECTORS => xx,         # Need this many vector to continue
 # 		    CRDECIMATE => [x,y],    # Take every y-th row, every x-th col
@@ -62,7 +68,7 @@
 #                   RF_COLOR => n, # Color to use when plotting ranflagged data. 
 #                                 # An index if using pseudo color, 
 #                                 a 24 bit true color if not.
-#                   INSTRUMENT => qw/QS SW/ }, # A reference to an
+#                   INSTRUMENTS => qw/QS SW/ }, # A reference to an
 #                                             array (possibly null, or
 #                                             of only one element)
 #                                             containing the names of
@@ -73,7 +79,7 @@
 #                                             ADEOS-II. To make
 #                                             overlays of only
 #                                             SeaWinds data, use
-#                                             INSTRUMENT=>qs/SW/
+#                                             INSTRUMENTS=>qs/SW/
 #
 #                 WEB=>{
 #                    NAME => 'name to use on website',
@@ -97,16 +103,26 @@
 #         viewer directly to that portion of the overlay page with
 #         QuikSCAT data data with the N.E. Pacific Goes 10, ir4 view.
 #
+#
 # Note 2: The asctime/desctime are the default times for this
 # overlay. In the abscence of any other time info, i.e. the option
 # --time is not included on input, the software will retrieve the
 # goes/gms file which is closest to whichever of these two times
-# preceeds the current time. For example, if this software is called thusly,
+# preceeds the current time, unless ABSFLAG is set in the initial
+# call, in which case the interval searched for GOES/GMS data is
+# symetric about whichever time is used/defaulted. For instance, if the call is
+#
+# make_overlay --region GOES10_4_NEPAC_1
+#
+#  at anytime between 07:01 and 19:59 hours (GMT), the software will
+#  use the time contained in ASCTIME, otherwise it will use DESCTIME.
+#
+#
 #
 # Note 3: All times are in GMT!
 # 
 #
-# Note 4: The meaning of the WEB->{ACTIVE} and {INSTRUMENT} fields. 
+# Note 4: The meaning of the WEB->{ACTIVE} and {INSTRUMENTS} fields. 
 #
 #         Since the webpage is completely rewritten each time a new
 #         product is created, some way is required to convey
@@ -130,7 +146,7 @@
 #         navigation bar or the webpage devoted to that region for
 #         either SeaWinds on QuikSCAT or ADEOS-II. 
 #
-#         Finer control is gained using the hash->{INSTRUMENT}
+#         Finer control is gained using the hash->{INSTRUMENTS}
 #         array. Here you can turn off the creation of this slot on
 #         the webpage for the overlay of this particular region, but
 #         only for, say, SeaWinds on QuikSCAT data, while still
@@ -139,7 +155,7 @@
 #
 #         The {WEB}->{ACTIVE} key is primarily meant to communicate
 #         the usefulness of the cloud data associated with this view,
-#         while the {INSTRUMENT} key is meant to communicate which
+#         while the {INSTRUMENTS} key is meant to communicate which
 #         wind data to use. Generally one would expect the information
 #         used in these keywords will be more `global,' i.e. if we
 #         decide not to make an overlay of a particular region using
@@ -174,12 +190,6 @@
 #         these fields.
 #
 #
-# auto_goes_overlay --region GOES10_4_NEPAC_1 
-#
-#  at anytime between 07:01 and 19:59 hours (GMT), the software will use the time 
-#  contained in AscTime, otherwise it will use DescTime.
-#
-#
 
 
 
@@ -193,19 +203,23 @@ $overlay_defs= {
 		    LATLIM     => [25,65],       # Min/Max Latitude 
 		    SATNUM     => 10,            # Goes 10
 		    SENSORNUM  => 4,             # Ir4
-		    ASCTIME    => "18:00",       # Ascending Time 
-		    DESCTIME   => "07:00" },     # Descending time
+		    TIME=> {QS => {ASCTIME    => "18:00",       # Ascending Time for Qscat
+				   DESCTIME   => "07:00" },     # Descending time
+			    SW => {ASCTIME    => "18:00",       # Ascending Time for SeaWinds
+				   DESCTIME   => "07:00" }     # Descending time
+			   }
+                  },
 		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
-		    CRDECIMATE => [1,1],         # Take all data
+		    CRDECIMATE => [2,2],         # everyother row/col
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
                     RF_COLOR => 0,
-		    INSTRUMENT => [qw/QS SW/]},
+		    INSTRUMENTS => [qw/QS SW/]},
 		 WEB => {
 		    NAME => "N.E. Pac (ir4)",
 		    ACTIVE => 1}
@@ -220,22 +234,26 @@ $overlay_defs= {
 		    LATLIM     => [25,65],       # Min/Max Latitude 
 		    SATNUM     => 10,            # Goes 10
 		    SENSORNUM  => 1,             # Visible
-		    ASCTIME    => "18:00",       # Ascending Time 
-		    DESCTIME   => "07:00" },     # Descending time
+		    TIME => {QS => {ASCTIME    => "18:00",       # Ascending Time 
+				    DESCTIME   => "07:00" },     # Descending time
+			     SW=>{ASCTIME    => "18:00",       # Ascending Time 
+				  DESCTIME   => "07:00" }     # Descending time
+			    }
+		  },
 		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
-		    CRDECIMATE => [1,1],         # Take all data
+		    CRDECIMATE => [2,2],         # everyother row/col
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
                     RF_COLOR => 0,
-		    INSTRUMENT => [qw/QS SW/]},
+		    INSTRUMENTS => [qw/QS SW/]},
 		 WEB => {
 		    NAME => "N.E. Pac (vis)",
-		    ACTIVE => 1}
+		    ACTIVE => 0}
 		},
                # GOES 10 Visible, Pacific Hurricane
 		GOES_10_4_PACHURR_1 => {  #<-------------------------------|
@@ -246,19 +264,23 @@ $overlay_defs= {
 		    LATLIM     => [0,60],       # Min/Max Latitude 
 		    SATNUM     => 10,            # Goes 10
 		    SENSORNUM  => 4,             # Ir4
-		    ASCTIME    => "16:00",       # Ascending Time 
-		    DESCTIME   => "05:00" },     # Descending time
+		    TIME=> {QS=>{ASCTIME    => "16:00",       # Ascending Time 
+				 DESCTIME   => "05:00" },     # Descending time
+			    SW=>{ASCTIME    => "16:00",       # Ascending Time 
+				 DESCTIME   => "05:00" }     # Descending time
+			   }
+		  },
 		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
-		    CRDECIMATE => [2,2],         # Take all data
+		    CRDECIMATE => [2,2],         # everyother row/col
 		    LENGTH => 2,                 # Vector Length
 		    DELTA => 5,                  # Delta Time
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
                     RF_COLOR => 0,
-		    INSTRUMENT => [qw/QS SW/]},
+		    INSTRUMENTS => [qw/QS SW/]},
 		 WEB => {
 		    NAME => "Pac. Hurr.(ir4)",
 		    ACTIVE => [qw/QS SW/]}
@@ -273,19 +295,23 @@ $overlay_defs= {
 		    LATLIM     => [25,52],       # Min/Max Latitude 
 		    SATNUM     => 8,             # Goes 8
 		    SENSORNUM  => 4,             # Ir4
-		    ASCTIME    => "12:00",       # Ascending Time 
-		    DESCTIME   => "00:10" },     # Descending time
+		    TIME => {QS=>{ASCTIME    => "12:00",       # Ascending Time 
+				  DESCTIME   => "00:10" },     # Descending time
+			     SW=>{ASCTIME    => "12:00",       # Ascending Time 
+				  DESCTIME   => "00:10" }     # Descending time
+			    }
+		  },
 		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,       # Need this many vector to continue
-		    CRDECIMATE => [1,1],    # Take every row and col
+		    CRDECIMATE => [2,2],    # Take every row and col
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
                     RF_COLOR => 0,
-		    INSTRUMENT => [qw/QS SW/]},
+		    INSTRUMENTS => [qw/QS SW/]},
 		 WEB => {
 		    NAME => "N.W. Atl (ir4)",
 		    ACTIVE => [qw/QS SW/]}
@@ -300,19 +326,23 @@ $overlay_defs= {
 		    LATLIM     => [25,52],       # Min/Max Latitude 
 		    SATNUM     => 8,             # Goes 8
 		    SENSORNUM  => 1,             # Visible
-		    ASCTIME    => "12:00",       # Ascending Time 
-		    DESCTIME   => "00:10" },     # Descending time
+		    TIME => {QS=>{ASCTIME    => "12:00",       # Ascending Time 
+				  DESCTIME   => "00:10" },     # Descending time
+			     SW=>{ASCTIME    => "12:00",       # Ascending Time 
+				  DESCTIME   => "00:10" }     # Descending time
+			     }
+		  },
 		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
-		    CRDECIMATE => [1,1],         # Take all data
+		    CRDECIMATE => [2,2],         # everyother row/col
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
                     RF_COLOR => 0,
-		    INSTRUMENT => [qw/QS SW/]},
+		    INSTRUMENTS => [qw/QS SW/]},
 		 WEB => {
 		    NAME => "N.W. Atl (vis)",
 		    ACTIVE => 0}
@@ -327,8 +357,12 @@ $overlay_defs= {
 		    LATLIM     => [0,60],       # Min/Max Latitude 
 		    SATNUM     => 8,             # Goes 8
 		    SENSORNUM  => 4,             # Ir4
-		    ASCTIME    => "12:00",       # Ascending Time 
-		    DESCTIME   => "00:00" },     # Descending time
+		    TIME => {QS=>{ASCTIME    => "12:00",       # Ascending Time 
+				  DESCTIME   => "00:00" },     # Descending time
+			     SW=>{ASCTIME    => "12:00",       # Ascending Time 
+				  DESCTIME   => "00:10" }     # Descending time
+			    }
+		  },
 		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
@@ -339,7 +373,7 @@ $overlay_defs= {
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
                     RF_COLOR => 0,
-		    INSTRUMENT => [qw/QS SW/]},
+		    INSTRUMENTS => [qw/QS SW/]},
 		 WEB => {
 		    NAME => "Atl. Hurr.(ir4)",
 		    ACTIVE => [qw/QS SW/]}
@@ -354,19 +388,23 @@ $overlay_defs= {
 		    LATLIM     => [0,55],       # Min/Max Latitude 
 		    SATNUM     => 5,             # Gms 5
 		    SENSORNUM  => 1,             # Ir1
-		    ASCTIME    => "23:00",       # Ascending Time 
-		    DESCTIME   => "11:30" },     # Descending time
+		    TIME => {QS=>{ASCTIME    => "23:00",       # Ascending Time 
+				  DESCTIME   => "11:30" },     # Descending time
+			     SW=>{ASCTIME    => "12:00",       # Ascending Time 
+				  DESCTIME   => "00:10" }     # Descending time
+			    }
+		  },
 		  WINDS => {
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
-		    CRDECIMATE => [1,1],         # Take all data
+		    CRDECIMATE => [2,2],         # everyother row/col
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
                     RF_COLOR => 0,
-		    INSTRUMENT => [qw/QS SW/]},
+		    INSTRUMENTS => [qw/QS SW/]},
 		 WEB => {
 		    NAME => "W. Pac",
 		    ACTIVE => 0}
@@ -381,19 +419,23 @@ $overlay_defs= {
 		    LATLIM     => [20,47],       # Min/Max Latitude 
 		    SATNUM     => 5,             # Gms 5
 		    SENSORNUM  => 1,             # Ir1
-		    ASCTIME    => "23:00",       # Ascending Time 
-		    DESCTIME   => "11:30" },     # Descending time
+		    TIME => {QS=>{ASCTIME    => "23:00",       # Ascending Time 
+				  DESCTIME   => "11:30" },     # Descending time
+			     SW=>{ASCTIME    => "12:00",       # Ascending Time 
+				  DESCTIME   => "00:10" }     # Descending time
+			    }
+		   },
 		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
-		    CRDECIMATE => [1,1],         # Take all data
+		    CRDECIMATE => [2,2],         # everyother row/col
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
                     RF_COLOR => 0,
-		    INSTRUMENT => [qw/QS SW/]},
+		    INSTRUMENTS => [qw/QS SW/]},
 		 WEB => {
 		    NAME => "Japan Islands",
 		    ACTIVE => 0}
@@ -408,19 +450,23 @@ $overlay_defs= {
 		    LATLIM     => [-20,32],       # Min/Max Latitude 
 		    SATNUM     => 5,             # Gms 5
 		    SENSORNUM  => 1,             # Ir1
-		    ASCTIME    => "00:30",       # Ascending Time 
-		    DESCTIME   => "12:30" },     # Descending time
+		    TIME => {QS=>{ASCTIME    => "00:30",       # Ascending Time 
+				  DESCTIME   => "12:30" },     # Descending time
+			     SW=>{ASCTIME    => "12:00",       # Ascending Time 
+				  DESCTIME   => "00:10" }     # Descending time
+			     }
+		  },
 		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
-		    CRDECIMATE => [1,1],         # Take all data
+		    CRDECIMATE => [2,2],         # everyother row/col
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
                     RF_COLOR => 0,
-		    INSTRUMENT => [qw/QS SW/]},
+		    INSTRUMENTS => [qw/QS SW/]},
 		 WEB => {
 		    NAME => "Far East",
 		    ACTIVE => 0}

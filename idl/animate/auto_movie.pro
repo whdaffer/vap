@@ -127,6 +127,10 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.19  2002/08/13 20:11:19  vapdev
+; Add windfilter keyword to propagate windfilter from Perl down
+; to getwindfiles, where it's used.
+;
 ; Revision 1.18  2002/08/12 22:55:10  vapdev
 ; Add jpeg/outbase keywords and required code.
 ; Default output to jpeg. took out some commented out code.
@@ -601,10 +605,13 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     printf, lun, ext
     free_lun, lun
   ENDIF 
-  free_lun, llun
-   CD,cur_dir
-   message,'End Time: ' + systime(),/info
-   Message,'Done!',/info
+
+  IF auto_movie_cronjob THEN $
+     IF n_elements(llun) NE 0 THEN free_lun, llun
+
+  CD,cur_dir
+  message,'End Time: ' + systime(),/info
+  Message,'Done!',/info
  
 END
 

@@ -9,7 +9,6 @@ my ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime(time());
 $year += 1900;
 $yr=$year - int($year/100) * 100;
 $storms_file=sprintf("tropical%02d", $yr);
-
 my $ts_overlay_dir=$ENV{'VAP_TS_OVERLAY'} || 
   croak "\$ENV{VAP_TS_OVERLAY} is UNDEFINED!\n";
 
@@ -28,7 +27,7 @@ my $ts_overlay_dir=$ENV{'VAP_TS_OVERLAY'} ||
 
 $tsoo_defs = {STORMS_HOST => "www.solar.ifa.hawaii.edu",
 	      STORMS_DIR=>"Tropical/Data",
-	      STORMS_FILE=>"storms_file",
+	      STORMS_FILE=>$storms_file, 
 	      LOCAL_URL=>$storms_file,
 	      TS_OVERLAY_DIR=> $ts_overlay_dir,
 	      SATELLITE_REGIONS => {
@@ -52,9 +51,11 @@ $tsoo_defs = {STORMS_HOST => "www.solar.ifa.hawaii.edu",
 				GOESWEST => "E. Pacific",
 				GMS5 => "W. Pacific"}},
 
-	      WEB=>{GOESEAST => {NAME=>"Atlantic", ACTIVE=>1, INSTRUMENT=qw/QS SW/},
-		     GOESWEST => {NAME=>"E. Pacific",ACTIVE=>1, INSTRUMENT=qw/QS SW/},
-		     GMS5 =>     {NAME=>"W. Pacific",ACTIVE=>0, INSTRUMENT=qw/QS SW/}},
+	      WEB=>{
+		    GOESEAST => {NAME=>"Atlantic", ACTIVE=>1, INSTRUMENT=>[qw/QS SW/]},
+		    GOESWEST => {NAME=>"E. Pacific",ACTIVE=>1, INSTRUMENT=>[qw/QS SW/]},
+		    GMS5 =>     {NAME=>"W. Pacific",ACTIVE=>0, INSTRUMENT=>[qw/QS SW/]}
+		   },
 	      STORMRANKING => {
 			       '???' => 0,
 			       DEP => 1,

@@ -2,9 +2,21 @@
 # Generic Defaults for Vap Processing.
 # Currently, the only defaults in this file is where to send error messages.
 #
+# =============== With a little more work, can be obsoleted! ================
+#
+# See the TODO file. The defaults defined in this file have been moved
+# to other objects, but some still `use' VapUtil.pm, so just to make
+# sure nothing breaks I'm going to leave this file where it is.
+# 
+# To make it go away completely, just go through those objects which
+# `use' VapUtil.pm and remove the dependencies.
+#
 # Modification History
 #
 # $Log$
+# Revision 1.5  2002/08/08 15:07:55  vapdev
+# Added a more generic usename to alert addresses
+#
 # Revision 1.4  2002/05/08 16:00:42  vapdev
 # Removed variables that will now be defined in environment.
 # Changed email addresses
@@ -20,8 +32,10 @@
 # Initial revision
 #
 #
+# I'm leaving these in so that someone could use this module if they
+# wished. All they'd need to do, I believe, is uncomment these
+# defintions and make sure they're correct, of course.
 #
-
 #   $VAP_DISK    = $ENV{'VAP_DISK'}           || "/disk5";
 #   $VAP_ROOT    = $ENV{'VAP_ROOT'}           || "$VAP_DISK/vap";
 #   $VAP_WINDS   = $ENV{'VAP_WINDS'}          || "$VAP_DISK/winds/qscat/Rnoaa";
@@ -38,16 +52,15 @@
 
   # If you don't want the email messages, Mike, just change the following to:
 
-  #%vap_defs=( Error_Mail_Address =>
-  #   ["vapuser\@catspaw.jpl.nasa.gov", "whdaffer\@earthlink.net"] );
-
   # When I'm on vacation, send mail to 
   # Mike Spencer, vapuser and me@yahoo
   #
 
+
   %vap_defs=( Error_Mail_Address =>
   	   ["William.Daffer\@jpl.nasa.gov",
 	    "whdaffer\@attbi.com",
-           "whdaffer\@yahoo.com",
-	   $ENV{USER}."\@".$ENV{HOSTNAME}] );
+	    $ENV{USER}] );
+
   
+1;

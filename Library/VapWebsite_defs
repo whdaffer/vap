@@ -3,6 +3,9 @@
 # Modifications
 #
 # $Log$
+# Revision 1.3  2003/01/04 00:16:21  vapdev
+# Continuing work
+#
 # Revision 1.2  2002/12/20 23:45:26  vapdev
 # Ongoing ... well, you know.
 #
@@ -69,7 +72,8 @@ $website_defs = {
  							 overlays
  							 'tropical storms'/]},
  				    TITLE=>"Tropical Storms",
- 				    HEADING1=>"Here we create up to the minute overlays of tropical storms using SeaWinds scatterometry and cloud imagery from the various geo-synchronous satellites!"}
+ 				    HEADING1=>"Here we create up to the minute overlays of tropical storms using SeaWinds scatterometry and cloud imagery from the various geo-synchronous satellites!"},
+	WEBHOST => "haifung.jpl.nasa.gov"
 
 
 		};

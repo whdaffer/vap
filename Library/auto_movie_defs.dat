@@ -51,6 +51,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  2002/12/06 22:54:03  vapdev
+; Continuing work
+;
 ; Revision 1.5  2002/05/03 01:03:20  vapdev
 ; Changed environmental variables in auto_movie_defs.dat and added
 ; goes10_constants.dat, gvar_conversion_constants.dat and land_elevations.bin
@@ -77,13 +80,13 @@
 ; Name,alonpar,alatpar,wpath,interp_path,anim_path,min_nvect,decimate, crdecimate,excludecols
 
 
-{ desig: 'NEPAC', webname: 'N.E. Pac',alonpar: [195.,245,1.5], alatpar: [30., 60,1.5], wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/", anim_path: "$VAP_OPS_ANIM/nepac/daily",anim_par: [320,240,60], min_nvect: 4000,decimate: 0l, CRDecimate: [2,2], ExcludeCols: ''  }
-{ desig: 'NWPAC', webname: 'N.W. Pac',alonpar: [110.,180,1.5], alatpar: [0.,  60,1.5], wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/", anim_path: "$VAP_OPS_ANIM/nwpac/daily", anim_par: [320,240,60], min_nvect:10000,decimate: 0l, CRDecimate: [2,2], ExcludeCols: ''  }
-{ desig: 'NWATL', webname: 'N.W. Atl',alonpar: [270.,315,1.5], alatpar: [20,  45,1.5], wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/", anim_path: "$VAP_OPS_ANIM/nwatl/daily", anim_par: [320,240,60], min_nvect: 4400 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
-{ desig: 'NPAC' , webname: 'N. Pac',alonpar: [100.,270,1.5], alatpar: [-20.,60,1.5], wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/",  anim_path: "$VAP_OPS_ANIM/npac/daily",  anim_par: [320,240,60], min_nvect: 30000  ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
-{ desig: 'INDIAN' , webname: 'Indian Ocean',alonpar: [15.,135,1.5], alatpar: [-60.,30,1.5], wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/",  anim_path: "$VAP_OPS_ANIM/indian/daily",  anim_par: [320,240,60], min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
-{ desig: 'ATLHURR', webname: 'Atl. Hurr.',alonpar: [260.,350,1.5], alatpar: [10,50,1.5],wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/",  anim_path: "$VAP_OPS_ANIM/atlhurr/daily",  anim_par: [480,240,60], min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
-{ desig: 'PACHURR', webname: 'Pac. Hurr.', alonpar: [100,270,1.5], alatpar: [10,40,1.5],wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/",  anim_path: "$VAP_OPS_ANIM/pachurr/daily",  anim_par: [480,240,60], min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
+{ desig: 'NEPAC', webname: 'N.E. Pac',alonpar: [195.,245,1.5], alatpar: [30., 60,1.5], wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/", anim_path: "$VAP_OPS_ANIM/NEPAC",anim_par: [320,240,60], min_nvect: 4000,decimate: 0l, CRDecimate: [2,2], ExcludeCols: ''  }
+{ desig: 'NWPAC', webname: 'N.W. Pac',alonpar: [110.,180,1.5], alatpar: [0.,  60,1.5], wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/", anim_path: "$VAP_OPS_ANIM/NWPAC", anim_par: [320,240,60], min_nvect:10000,decimate: 0l, CRDecimate: [2,2], ExcludeCols: ''  }
+{ desig: 'NWATL', webname: 'N.W. Atl',alonpar: [270.,315,1.5], alatpar: [20,  45,1.5], wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/", anim_path: "$VAP_OPS_ANIM/NWATL", anim_par: [320,240,60], min_nvect: 4400 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
+{ desig: 'NPAC' , webname: 'N. Pac',alonpar: [100.,270,1.5], alatpar: [-20.,60,1.5], wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/",  anim_path: "$VAP_OPS_ANIM/NPAC",  anim_par: [320,240,60], min_nvect: 30000  ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
+{ desig: 'INDIAN' , webname: 'Indian Ocean',alonpar: [15.,135,1.5], alatpar: [-60.,30,1.5], wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/",  anim_path: "$VAP_OPS_ANIM/INDIAN",  anim_par: [320,240,60], min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
+{ desig: 'ATLHURR', webname: 'Atl. Hurr.',alonpar: [260.,350,1.5], alatpar: [10,50,1.5],wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/",  anim_path: "$VAP_OPS_ANIM/ATLHURR",  anim_par: [480,240,60], min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
+{ desig: 'PACHURR', webname: 'Pac. Hurr.', alonpar: [100,270,1.5], alatpar: [10,40,1.5],wpath: "$VAP_DATA_TOP", interp_path: "$VAP_OPS_ANIM/",  anim_path: "$VAP_OPS_ANIM/PACHURR",  anim_par: [480,240,60], min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
 
 
 

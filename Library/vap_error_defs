@@ -5,6 +5,9 @@
 # Modification History
 #
 # $Log$
+# Revision 1.3  2003/01/04 00:16:21  vapdev
+# Continuing work
+#
 # Revision 1.2  2002/08/12 22:53:16  vapdev
 # Add INFO/ERROR keys to defs hash
 #
@@ -29,14 +32,14 @@
 # Mike Spencer, vapuser and me@yahoo
 #
 #
-# $vap_error_defs= {INFO_HANDLE=> *STDOUT,
-# 		  ERROR_HANDLE=> *STDERR,
+# $vap_error_defs= {INFO=> *STDOUT,
+# 		  ERROR=> *STDERR,
 # 		  ERROR_MAIL_ADDRESSES =>
 # 		  ["michael.spencer\@jpl.nasa.gov",
 # 		   "whdaffer\@attbi.com.net",
 # 		   $ENV{USER}."\@".$ENV{HOSTNAME}] };
 
-$vap_error_defs= {LOG=> *STDOUT,
+$vap_error_defs= {INFO=> *STDOUT,
 		  ERROR=> *STDERR,
 		  ERROR_MAIL_ADDRESSES =>
 		  ["William.Daffer\@jpl.nasa.gov",
