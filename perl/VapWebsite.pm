@@ -789,7 +789,7 @@ sub updateWebsite{
 				  -align=>'left',
 				  -cellpadding=>5,
 				  -cellspacing=>5,
-				  -border=>1,
+				  #-border=>1,
 				 -width=>"80\%");
     my $row=1;
 
@@ -949,7 +949,7 @@ sub updateWebsite{
     $bodytable = HTML::Table->new(#-rows => 1, 
 				  #-cols=>1,
 				  -align=>'left',
-				  -border=>1,
+				  #-border=>1,
 				 -width=>"80\%");
     my $file = lc($type) . ".template";
     $file = $ENV{VAP_LIBRARY} . "/$file";
