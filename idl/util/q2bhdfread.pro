@@ -74,6 +74,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/05 22:43:27  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -123,27 +126,29 @@ FUNCTION q2bhdfread, filename, $
 
       IF exist( StartDate ) AND exist( StartTime) THEN BEGIN 
         tmp = str_sep(StartDate,'-')
-        StartYear = fix(tmp[0])
+        StartYear = tmp[0]
         StartDoy = fix(tmp[1])
-        date = doy2date( StartYear,StartDoy)
+        date = doy2date( fix(StartYear),StartDoy)
         Month = date[0]
         day = date[1]
         StartDate = StartYear+'/'+Month+'/'+day
         tmp = str_sep(strcompress(StartTime,/remove_all),':')
         StartDate = StartDate+'/'+tmp[0]+'/'+tmp[1]
-      ENDIF ELSE StartDate = '0000/00/00/00/00'
+        StartTime = temporary(StartDate)
+      ENDIF ELSE StartTime = '0000/00/00/00/00'
 
       IF exist( EndDate ) AND exist( EndTime) THEN BEGIN 
         tmp = str_sep(EndDate,'-')
-        EndYear = fix(tmp[0])
+        EndYear = tmp[0]
         EndDoy = fix(tmp[1])
-        date = doy2date( EndYear,EndDoy)
+        date = doy2date( fix(EndYear),EndDoy)
         Month = date[0]
         day = date[1]
         EndDate = EndYear+'/'+Month+'/'+day
         tmp = str_sep(strcompress(EndTime,/remove_all),':')
         EndDate = EndDate+'/'+tmp[0]+'/'+tmp[1]
-      ENDIF ELSE EndDate = '0000/00/00/00/00'
+        EndTime = temporary(enddate)
+      ENDIF ELSE EndTime = '0000/00/00/00/00'
 
 
       r = hdf_sd_nametoindex(sds_id, 'wvc_lat')
@@ -225,6 +230,21 @@ FUNCTION q2bhdfread, filename, $
 
       retstruct.nambig =  nambig
 
+
+      r = hdf_sd_nametoindex(sds_id, 'wvc_row_time')
+      IF r GE 0  THEN BEGIN 
+        r = hdf_sd_select( sds_id, r )
+        hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
+        hdf_sd_getdata,r, rowtime
+      ENDIF 
+
+
+      r = hdf_sd_nametoindex(sds_id, 'wvc_row')
+      IF r GE 0  THEN BEGIN 
+        r = hdf_sd_select( sds_id, r )
+        hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
+        hdf_sd_getdata,r, row
+      ENDIF 
       
       t2 = systime(1)
       print, 'Time to Extract data from HDF file ',t2-t1
@@ -253,17 +273,20 @@ FUNCTION q2bhdfread, filename, $
       su(bad_sel) =  0.
       sv(bad_sel) =  0.
 
-      retstruct.su =  su &  su=0
-      retstruct.sv =  sv &  sv=0
-      retstruct.u = u &  u=0
-      retstruct.v = v &  v=0
+      retstruct.su =  temporary(su)
+      retstruct.sv =  temporary(sv)
+      retstruct.u = temporary(u)
+      retstruct.v = temporary(v)
+      IF exist(rowtime) THEN $
+        retstruct.rowtime = temporary(rowtime)
+      retstruct.row = temporary(row)
 
       t2 = systime(1)
       print,'Time to get selected vectors ',t2-t11
       t1 = t2
 
-      retstruct.mu = retstruct.su*0
-      retstruct.mv = retstruct.su*0
+      retstruct.mu = 0.
+      retstruct.mv = 0.
 
       print,'Time to load structure ',systime(1)-t1
       print,'Total time ', systime(1)-t0
