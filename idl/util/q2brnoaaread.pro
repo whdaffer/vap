@@ -77,6 +77,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/11/12 20:59:50  vapuser
+; Added comments/documentation and header keyword
+;
 ; Revision 1.2  1998/11/10 00:46:04  vapuser
 ; More work...
 ;
@@ -139,47 +142,49 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
     IF keyword_set(raw) THEN return, rnoaa
 
     t2 = systime(1)
-    print,'Time to read Noaa file', t2-t1
+    IF verbose THEN print,'Time to read Noaa file', t2-t1
     t1 = t2
 
     dir = rnoaa.winddir*0.01
     x = where(dir LT 0, nx )
-    IF nx NE 0 THEN dir[x] =  dir[x] + 655.36
+    IF nx NE 0 THEN dir[x] =  dir[x] + (2l^16-1)*0.01
 
     speed = rnoaa.windspd*0.01
 
 
     mdir = rnoaa.Model_dir*0.01
     x = where(mdir LT 0, nx )
-    IF nx NE 0 THEN mdir[x] =  mdir[x] + 655.36
+    IF nx NE 0 THEN mdir[x] =  mdir[x] + (2l^16-1)*0.01
 
     mspeed = rnoaa.model_speed*0.01
 
     lon = rnoaa.Wvc_lon*0.01
     x = where(lon LT 0, nx )
-    IF nx NE 0 THEN lon[x] =  lon[x] + 655.36
+    IF nx NE 0 THEN lon[x] =  lon[x] + (2l^16-1)*0.01
 
 
 ;    errdir = rnoaa.errdir*0.01
 ;    x = where(errdir LT 0, nx )
-;    IF nx NE 0 THEN errdir[x] =  errdir[x] + 655.36
+;    IF nx NE 0 THEN errdir[x] =  errdir[x] + (2l^16-1)*0.01
 
     
     q2b = q2b_str( nrecs, ncells=76 )
     t2 = systime(1)
-    print,'time to just before 1st nscat_getuv',t2-t1
+    IF verbose THEN print,'time to just before 1st nscat_getuv',t2-t1
     t1 = t2
     nscat_getuv, dir, speed,u,v
     t2 = systime(1)
-    print,'time to do 1st nscat_getuv',t2-t1
+    IF verbose THEN print,'time to do 1st nscat_getuv',t2-t1
     t1 = t2
     nscat_getuv, mdir, mspeed, mu, mv
     t2 = systime(1)
-    print,'time to do 2nd nscat_getuv',t2-t1
+    IF verbose THEN print,'time to do 2nd nscat_getuv',t2-t1
     t1 = t2
     q2b.lon = temporary(lon)
     q2b.lat = rnoaa.wvc_lat*0.01
     q2b.row =  rnoaa.wvc_row
+    q2b.nambig = rnoaa.nambig
+    q2b.sel = rnoaa.wvc_sel
 
     q2b.mu = mu
     q2b.mv = mv
@@ -189,31 +194,57 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
     mv[*] = !values.F_Nan
 
     sel = rnoaa.wvc_sel-1
-    good = where( rnoaa.nambig GT 1 AND sel GT -1, ngood)
-    unpack_where, sel, good, col, row
-    ucol = col[ uniq(col,sort(col)) ]
-    nn = n_elements(ucol)
+    x = where( rnoaa.nambig EQ 1 AND sel LT 0, nx )
+    IF nx NE 0 THEN sel[x] =  0
+    good = where( rnoaa.nambig GE 1 AND sel GT -1, ngood)
+    bad = where(  rnoaa.nambig LT 1 OR  sel le -1, nbad)
+    ;unpack_where, sel, good, col, row
+    ;ucol = col[ uniq(col,sort(col)) ]
+    ;nn = n_elements(ucol)
     t2 = systime(1)
-    print,'time to just before loop',t2-t1
+    IF verbose THEN print,'time to just before loop',t2-t1
     t1 = t2
 
-    FOR ii=0,nn-1 DO BEGIN 
-      x = where( col EQ ucol[ii], nx )
-      mu[col[x],row[x]] =  u[ sel[col[x],row[x]], col[x], row[x] ]
-      mv[col[x],row[x]] =  v[ sel[col[x],row[x]], col[x], row[x] ]
-    ENDFOR 
+    ;FOR ii=0,nn-1 DO BEGIN 
+    ;  x = where( col EQ ucol[ii], nx )
+    ;  mu[col[x],row[x]] =  u[ sel[col[x],row[x]], col[x], row[x] ]
+    ;  mv[col[x],row[x]] =  v[ sel[col[x],row[x]], col[x], row[x] ]
+    ;ENDFOR 
 
+    
+    dims = size(u,/dim)
+    nx = dims[1] &  ny=dims[2]
+
+
+;    FOR i=0,75 DO BEGIN 
+;      FOR j=0l,ny-1 DO BEGIN 
+;        IF sel[i,j] GE 0 THEN BEGIN 
+;          mu[i,j] =  u[sel[i,j],i,j]
+;          mv[i,j] =  v[sel[i,j],i,j]
+;        ENDIF 
+;      ENDFOR 
+;    ENDFOR 
+
+    sel[bad] = 0
+    sel = sel+lindgen(nx,ny)*4
     t2 = systime(1)
-    print,'time to do loop',t2-t1
+    IF verbose THEN print,'time to do loop',t2-t1
     t1 = t2
+
+
+    mu[*] = u[sel]
+    mv[*] = v[sel]
+    mu[bad] = !values.f_nan
+    mv[bad] = !values.f_nan
 
     q2b.u = temporary(u)
     q2b.v = temporary(v)
     q2b.su = temporary(mu)
     q2b.sv = temporary(mv)
 
+    q2b.rowtime =  string( rnoaa.row_time )
     t2 = systime(1)
-    print,'time to do load arrays',t2-t1
+    IF verbose THEN print,'time to do load arrays',t2-t1
     t1 = t2
 
   ENDIF ELSE Message,!error_State.msg,/cont
