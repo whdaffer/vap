@@ -20,6 +20,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.15  2002/05/07 20:50:49  vapdev
+# put in '-w' and 'use strict'. Fixed resulting warnings.
+#
 # Revision 1.14  2001/02/09 18:38:30  vapuser
 # Added code for doing gridlines and rain flag.
 # Put in more calls to VapErrorMsg
@@ -69,34 +72,49 @@
 #
 #
 use strict;
-use lib $ENV{VAP_SFTWR_PERL};
-use vap_perl;
-use Gms5;
 use Getopt::Long;
 use File::Copy ;
+use lib $ENV{VAP_SFTWR_PERL};
+use VapUtil;
+use Winds;
+use OGoes;
+use Gms5;
 
+my $VAP_LIB = $ENV{VAP_LIBRARY} or 
+  die "ENV variable VAP_LIBRARY undefined!\nHave you sources .vaprc?\n";
+my $VAP_WWW_TOP = $ENV{VAP_WWW_TOP} or 
+  die "ENV variable VAP_WWW_TOP undefined!\nHave you sourced .vaprc?\n";
 my $usage =  "\nUsage:\n";
 $usage .= " cloud_overlay --region REGION_DESIGNATION\n";
-$usage .= "  --time TIME_DESIGNATION (GMT: yyyymmddThh:mm)\n";
+$usage .= "  --time TIME_DESIGNATION (yyyy/mm/dd/hh/mm in GMT)\n";
 $usage .= "  --windpath PATH_TO_WIND_FILES\n";
+$usage .= "  --windfilter WIND_FILTER (i.e. QS or SW or (QS|SW)) (REQUIRED!)\n";
 $usage .= "  --satname SATELLITE_NAME (.e.g. 'goes')\n";
 $usage .= "  --satnum  SATELLITE_NUMBER (e.g. 10 for goes10)\n";
 $usage .= "  --sensornum SENSOR_NUMBER (e.g. 1=vis, 2=ir2, 3=ir3, 4=ir4)\n";
-$usage .= "  --lon lonmin ( --lon lonmax )\n";
-$usage .= "  --lat latmin ( --lat latmax )\n";
-$usage .= "  --crdecimate Col --crdecimate Row\n";
-$usage .= "  --excludecol idl-array-submatrix-desg (as string)\n";
+$usage .= "  --lon lonmin lonmax\n";
+$usage .= "  --lat latmin latmax \n";
+$usage .= "  --crdecimate Col Row\n";
+$usage .= "  --excludecols idl-array-submatrix-desg (as string)\n";
 $usage .= "  --tellme: Calculates, reports variable values and exits\n\n";
 $usage .= "  where: \n";
+
+
+$usage .= "    WIND_FILTER: (REQUIRED) filter to use for wind data\n";
+$usage .= "      Possible filters are: Q for QuikSCAT data\n";
+$usage .= "      S for SeaWinds or B for Both\n";
+$usage .= "      This is NOT a shell file glob, but a regular expression,\n";
+$usage .= "      so input it EXACTLY as shown!\n";
+$usage .= "      This switch is *REQUIRED*\n";
+
 
 $usage .= "    REGION_DESIGNATION is the designation for the \n";
 
 $usage .= "      region as it appears in the _overlay_defs_ file\n";
-$usage .= "      See file $VAP_LIB/overlay_defs for the complete list of \n";
+$usage .= "      See file $VapUtil::VAP_LIBRARY/overlay_defs for the complete list of \n";
 $usage .= "      predefined regions. If absent, the program falls over to using the \n";
 $usage .= "      information given (or defaulted to) in the combination of the \n";
-$usage .= "      satname/satnum/sensornum/lon/lat options. If there are no arguments,\n";
-$usage .= "      this message is displayed\n";
+$usage .= "      satname/satnum/sensornum/lon/lat options.\n";
 
 $usage .= "    TIME_DESIGNATION: the GMT time of the area file to be gridded and \n";
 $usage .= "      overlaid. The software will find the one closest to this time \n";
@@ -111,7 +129,7 @@ $usage .= "      of the form hh:mm \n";
 $usage .= "      (see --tellme option for a way of finding out what those defaults are\n";
 
 $usage .= "    PATH_TO_WIND_FILES: pretty self explanatory.\n";
-$usage .= "      Default given by environmental variable 'VAP_WINDS'\n";
+$usage .= "      Default given by environmental variable 'VAP_DATA_TOP'\n";
 
 $usage .= "    SATNAME: Name of satellite, Currently only 'goes' works\n";
 $usage .= "      Maybe someday we'll be able to use gms (def='GOES')\n";
@@ -121,22 +139,28 @@ $usage .= "      we can only do 'GOES' satellites (def=10)\n";
 
 $usage .= "    SENSORNUM: 1=vis, 2=ir2, 3=ir3, 4=ir4 (def=4)\n";
 
-$usage .= "    LONMIN/LONMAX: The first instance of this option specifies the minimum\n";
-$usage .= "      longitude (the lower right corner of the picture)\n";
-$usage .= "      The second instance specifies the maximum longitude\n";
+$usage .= "    LON: Followed by two values: e.g. '--lon minlon maxlon'\n";
 $usage .= "      Defaults are dependent on the satellite\n";
 
-$usage .= "    LATMIN/LATMAX: See lonmin/lonmax\n";
-$usage .= "    CRDECIMATE: The first instance designates the decimation in the 'column'\n";
-$usage .= "      direction, the second the decimation in the 'row' direction\n";
+$usage .= "    LAT: Similar to --lon, but in latitude\n";
+$usage .= "    CRDECIMATE: the col/row decimation\n";
 $usage .= "      Default=[2,2]\n";
+$usage .= "    EXCLUDECOLS: See documentation for cloud_overlay.pro for the format\n";
+$usage .= "       of this string\n";
 $usage .= "    LENGTH: Length fo the Vectors overplotting the cloud data\n";
+$usage .= "    RAINFLAG: Determines what to do with Rain Flagged wind data.\n";
+$usage .= "       0=ignore, 1=use (default=0)\n";
+$usage .= "    RF_ACTION: What to do if rainflag==1\n";
+$usage .= "       0=don't plot rainflagged vectors. 1=plot using rf_color\n";
+$usage .= "    RF_COLOR: Color to use when plotting rainflagged vectors if rf_action==1\n";
+$usage .= "       this color depends on the device environment. It's an index in 8-bit \n";
+$usage .= "       color and a true 24 bit color in 24 bit color environment.\n";
 $usage .= "    TELLME: Calculates, reports the values for all the variables and exits\n\n";
 $usage .= "      Use this option to find out what the defaults are in any given situation\n";
 
 $usage .= "    If one wishes to grid and overlay an arbitrary region not predefined\n";
 $usage .= "    in the overlay_defs file, one may use the combination of \n";
-$usage .= "    satname/satnum/sensornum/on/lat to do so. Each will take defaults if\n";
+$usage .= "    satname/satnum/sensornum/lon/lat to do so. Each will take defaults if\n";
 $usage .= "    not present, e.g. satname defaults to 'goes', satnum to '10', \n";
 $usage .= "    sensornum to '4' and lon/lat limits take default appropriate to \n";
 $usage .= "    whatever satname is. \n\n";
@@ -147,19 +171,37 @@ print "=====================================================\n";
 print " $0: Beginning run\n";
 print scalar(localtime());
 print "\n===================================================\n";
-die $usage if !@ARGV;
+die "\n$0 --windfilter FILTER' is now required at the very least\n\n" if !@ARGV;
+
 print "Input Arguments are:\n\t".join("\n\t",@ARGV)."\n";
+
+my ($asctime, $desctime,$nvectors, $crdecimate,$delta, $rainflag,
+    $rf_action, $rf_color, $excludecols, @lonlim, @latlim,
+    @crdecimate, @excludecols, $result, $region, $area_file_time,
+    $time, $lastrec, $fullregionname, $regionname, $msg, $winds_path,
+    $windfilter, $satname, $satnum, $sensornum, $length, $help,
+    $tellme, $lonlim, $latlim, $testsecs, $type, $overlay_dir,
+    $tmpdir);
+
+
+
 $result=&GetOptions( 'region=s',\$region,
-		    'time=s',  \$area_file_time,
-		    'windpath|path|wpath=s', \$winds_path,
-		    'satname=s',\$satname,
-		    'satnum=i',\$satnum,
-		    'sensornum=i',\$sensornum,
-		    'lon=f@',\@lonlim,
-		    'lat=f@',\@latlim,
-		    'length=i',\$length,
-		    'help', \$help,
-		    'tellme', \$tellme );
+		     'time=s',  \$area_file_time,
+		     'windpath|path|wpath=s', \$winds_path,
+		     'windfilter|filter|wfilter|wfilt=s', \$windfilter,
+		     'satname=s',\$satname,
+		     'satnum=i',\$satnum,
+		     'sensornum=i',\$sensornum,
+		     'lon=f@',\@lonlim,
+		     'lat=f@',\@latlim,
+		     'crdecimate=i@',\@crdecimate,
+		     'excludecols=s',\$excludecols,
+		     'rainflag=i',\$rainflag,
+		     'rf_action=i',\$rf_action,
+		     'rf_color=i',\$rf_color,
+		     'length=i',\$length,
+		     'help', \$help,
+		     'tellme', \$tellme );
 
 if (!$result){
   vap_perl::VapMailErrorMsg(
@@ -168,13 +210,9 @@ if (!$result){
     die "Error parsing options\n"; 
 } 
 die $usage if $help;
+die "\n$0 --windfilter FILTER' is now required at the very least\n\n" unless $windfilter;
+die "Only allowed values are --windfilter ^(Q|S|B)\$\n" if $windfilter !~ /^(Q|S|B)$/;
 
-# Set the IDL starup file to get '24 bit true' color
-#$ENV{'IDL_STARTUP'}="/disk4/vapuser/idl-startup-true24";
-
-my ($asctime, $desctime,$nvectors, $crdecimate,
-    $delta, $rainflag, $rf_action, $rf_color, $excludecols,
-    $time, $lastrec, $fullregionname, $regionname, $msg);
 
 
 if ($region) {
@@ -182,33 +220,35 @@ if ($region) {
   do { 
     $msg="cloud_overlay: Region $region doesn't exist in OVERLAY DEFAULTS Table!\n";
     $msg.="Execute 'cloud_overlay_regions' to find valid regions\n";
-  vap_perl::VapMailErrorMsg( $msg,
+  VapUtil::VapMailErrorMsg( $msg,
 		"UNKNOWN REGION") && 
 		  die "Region $region doesn't exist in OVERLAY DEFAULTS Table!\n"} 
-  if !defined($vap_perl::overlay_defs{ $region }{ Region } );
+  if !defined($VapUtil::overlay_defs{ $region }{ Region } );
 
-  $satname     = $vap_perl::overlay_defs{ $region } { CloudData }{ Satellite   };   
-  $lonlim      = $vap_perl::overlay_defs{ $region } { CloudData }{ LonLim      };     
-  $latlim      = $vap_perl::overlay_defs{ $region } { CloudData }{ LatLim      };     
-  $satnum      = $vap_perl::overlay_defs{ $region } { CloudData }{ SatNum      };     
-  $sensornum   = $vap_perl::overlay_defs{ $region } { CloudData }{ SensorNum   };
-  $asctime     = $vap_perl::overlay_defs{ $region } { CloudData }{ AscTime     };
-  $desctime    = $vap_perl::overlay_defs{ $region } { CloudData }{ DescTime    };
-  $nvectors    = $vap_perl::overlay_defs{ $region } { WVCData   }{ NVectors    }; 
-  $crdecimate  = $vap_perl::overlay_defs{ $region } { WVCData   }{ CRDecimate  };
-  $length      = $vap_perl::overlay_defs{ $region } { WVCData   }{ Length      };
-  $delta       = $vap_perl::overlay_defs{ $region } { WVCData   }{ Delta       };
-  $rainflag    = $vap_perl::overlay_defs{ $region } { WVCData   }{ rainflag    };
-  $rf_action   = $vap_perl::overlay_defs{ $region } { WVCData   }{ rf_action   };
-  $rf_color    = $vap_perl::overlay_defs{ $region } { WVCData   }{ rf_color    };
-  $excludecols = $vap_perl::overlay_defs{ $region } { WVCData   }{ ExcludeCols };
+  $satname     = $VapUtil::overlay_defs{ $region } { CloudData }{ Satellite   };
+  $lonlim      = $VapUtil::overlay_defs{ $region } { CloudData }{ LonLim      };
+  $latlim      = $VapUtil::overlay_defs{ $region } { CloudData }{ LatLim      };
+  $satnum      = $VapUtil::overlay_defs{ $region } { CloudData }{ SatNum      };
+  $sensornum   = $VapUtil::overlay_defs{ $region } { CloudData }{ SensorNum   };
+  $asctime     = $VapUtil::overlay_defs{ $region } { CloudData }{ AscTime     };
+  $desctime    = $VapUtil::overlay_defs{ $region } { CloudData }{ DescTime    };
+  $nvectors    = $VapUtil::overlay_defs{ $region } { WVCData   }{ NVectors    };
+  $crdecimate  = $VapUtil::overlay_defs{ $region } { WVCData   }{ CRDecimate  };
+  $length      = $VapUtil::overlay_defs{ $region } { WVCData   }{ Length      };
+  $delta       = $VapUtil::overlay_defs{ $region } { WVCData   }{ Delta       };
+  $rainflag    = $VapUtil::overlay_defs{ $region } { WVCData   }{ rainflag    } unless $rainflag;
+  $rf_action   = $VapUtil::overlay_defs{ $region } { WVCData   }{ rf_action   } unless $rf_action;
+  $rf_color    = $VapUtil::overlay_defs{ $region } { WVCData   }{ rf_color    } unless $rf_color;
+  $excludecols = $VapUtil::overlay_defs{ $region } { WVCData   }{ ExcludeCols } 
+    unless defined($excludecols);
   
-  @lonlim=@{$lonlim};
-  @latlim=@{$latlim};
+  @lonlim=@{$lonlim} unless @lonlim;
+  @latlim=@{$latlim} unless @latlim;
+  @crdecimate = @{$crdecimate} unless @crdecimate;
   
   if (!$area_file_time) {
-    $asctime  = vap_perl::prepend_yyyymmdd($asctime);
-    $desctime = vap_perl::prepend_yyyymmdd($desctime);
+    $asctime  = VapUtil::prepend_yyyymmdd($asctime);
+    $desctime = VapUtil::prepend_yyyymmdd($desctime);
     my ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T-4*3600);
     $time=sprintf("%04d%02d%02dT%02d:%02d",
 		  $year+1900,$mon+1,$mday,$hour,$min);
@@ -223,8 +263,8 @@ if ($region) {
       # current time (less 1 hour) is earlier than either 
       # asctime or desctime. Take testtimes[2] 
       # (they're sorted, after all ) and subtract 1 day from it.
-      $testsecs = vap_perl::vaptime2systime($testtimes[2]);
-      $time = vap_perl::systime2vaptime($testsecs-86400);
+      $testsecs = VapUtil::vaptime2systime($testtimes[2]);
+      $time = VapUtil::systime2vaptime($testsecs-86400);
     } else {
       $time=$lastrec;
     }
@@ -233,9 +273,9 @@ if ($region) {
   }
 } else {
   
-  $satname = "GOES" if !$satname;
-  $satnum = 10 if !$satnum;
-  $sensornum = 4 if !$satnum;
+  $satname = "GOES" unless $satname;
+  $satnum = 10 unless $satnum;
+  $sensornum = 4 unless $satnum;
   
   if (!$asctime) {
     SWITCH: {
@@ -280,9 +320,9 @@ if ($region) {
   
   # Construct the time to be used in finding the correct 
   # goes/gms/whatever file.
-  $asctime  = vap_perl::prepend_yyyymmdd($asctime);
-  $desctime = vap_perl::prepend_yyyymmdd($desctime);
-  my ($sec,$min,$hour,$mday,$mon,$year)=vap_perl::systime2vaptime($^T-3600);
+  $asctime  = VapUtil::prepend_yyyymmdd($asctime);
+  $desctime = VapUtil::prepend_yyyymmdd($desctime);
+  my ($sec,$min,$hour,$mday,$mon,$year)=VapUtil::systime2vaptime($^T-3600);
   $time=sprintf("%04d%02d%02dT%02d:%02d",
 		$year+1900,$mon,$mday,$hour,$min);
   my @testtimes=( $time, $asctime,$desctime);
@@ -296,8 +336,8 @@ if ($region) {
     # current time (less 1 hour) is earlier than either 
     # asctime or desctime. Take testtimes[2] 
     # (they're sorted, after all ) and subtract 1 day from it.
-    $testsecs = vap_perl::vaptime2systime($testtimes[2]);
-    $time = vap_perl::systime2vaptime($testsecs);
+    $testsecs = VapUtil::vaptime2systime($testtimes[2]);
+    $time = VapUtil::systime2vaptime($testsecs);
   } else {
     $time=$lastrec;
   }
@@ -305,52 +345,56 @@ if ($region) {
   
 }
 
+
 $satname =~ tr/a-z/A-Z/;
 $fullregionname=join("",split( /_/, $region)) || "NOREGION";
 $regionname=join( "", (split( /_/, $region))[3,4] ) || "NR";
+$winds_path = $VapUtil::WINDS_DIR unless $winds_path;
 
 print "\nArguments and variables are...\n";
-print "\nsatname     = $satname\n";        
+print "\nsatname     = $satname\n";
 print "satnum      = $satnum\n" ;
-print "sensornum   = $sensornum\n";      
-print "lon         = @lonlim\n";         
-print "lat         = @latlim\n" ;        
-print "asctime     = $asctime\n";       
-print "desctime    = $desctime\n";      
-print "time        = $time\n" if $time; 
-print "crdecimate  = @$crdecimate\n";  
-print "length      = $length\n";  
-print "delta       = $delta\n" if $delta; 
-print "rainflag    = $rainflag\n";
-print "rf_action   = $rf_action\n";
-print "rf_color    = $rf_color\n";
-print "excludecols = $excludecols\n\n";
-print "Taking type = $type\n" if $type;  
+print "sensornum   = $sensornum\n";
+print "lon         = @lonlim\n";
+print "lat         = @latlim\n" ;
+print "asctime     = $asctime\n";
+print "desctime    = $desctime\n";
+print "time        = $time\n" if $time;
+print "crdecimate  = @$crdecimate\n";
+print "length      = $length\n";
+print "delta       = $delta\n" if $delta;
+print "rainflag    = $rainflag\n" if $rainflag;
+print "rf_action   = $rf_action\n" if $rf_action;
+print "rf_color    = $rf_color\n" if $rf_color;
+print "excludecols = $excludecols\n";
+print "Taking type = $type\n" if $type;
+print "Wind Path   = $winds_path\n";
+print "Filter      = $windfilter\n";
 print "Output overlay file will have region name $regionname\n";
 print "Output HTTP file will have region name $fullregionname\n";
 
 exit if ($tellme);
 
 # Sanity check the arguments: 
-@lonlim=vap_perl::fixlonrange( @lonlim );
+@lonlim=VapUtil::fixlonrange( @lonlim );
 do {
-  vap_perl::VapMailErrorMsg( "cloud_overlay: $satname not in allowed list\n", 
+  VapUtil::VapMailErrorMsg( "cloud_overlay: $satname not in allowed list\n", 
 			       "UNKNOWN SATNAME");
   die "$satname not in allowed list\n"; } unless $satname =~ /(GOES|GMS)/;
-do {vap_perl::VapMailErrorMsg( "cloud_overaly: $satnum not in allowed list (8,10)\n", 
+do {VapUtil::VapMailErrorMsg( "cloud_overaly: $satnum not in allowed list (8,10)\n", 
 			"UNKNOWN SATNUM") &&
      die "$satnum not in allowed list (8,10)\n" } unless $satnum =~ /(5|8|10)/;
-do {vap_perl::VapMailErrorMsg( "cloud_overaly: $sensornum not in allowed range (1-4)\n", 
+do {VapUtil::VapMailErrorMsg( "cloud_overaly: $sensornum not in allowed range (1-4)\n", 
 			"UNKNOWN SENSORNUM") &&
      die "$sensornum not in allowed range (1-4)\n"}  unless $sensornum =~ /(1|2|3|4)/;
 if (abs($lonlim[0]) > 360 || abs($lonlim[1]) > 360){ 
-  vap_perl::VapMailErrorMsg("cloud_overlay: Out of range Long Lims\n  (@lonlim)\n", 
+  VapUtil::VapMailErrorMsg("cloud_overlay: Out of range Long Lims\n  (@lonlim)\n", 
 			     "LONGLIMS OUTOFRANGE");
   die "Out of range Long Lims\n  (@lonlim)\n";
 }
 
 if (abs($latlim[0]) > 90 || abs($latlim[1]) > 90) {
-  vap_perl::VapMailErrorMsg("cloud_overlay: Out of range Lat Lims\n  (@latlim)\n", 
+  VapUtil::VapMailErrorMsg("cloud_overlay: Out of range Lat Lims\n  (@latlim)\n", 
 			     "LATLIMS OUTOFRANGE");
   die "Out of range Lat Lims\n  (@latlim)\n";
 }
@@ -371,7 +415,7 @@ my $user=$ENV{'USER'};
 
 $overlay_dir= $overlay_dir || $ENV{VAP_OPS_OVERLAY};
 do {
- vap_perl::VapMailErrorMsg( "cloud_overlay: Undefined env vars(VAP_OPS_OVERLAY)\n", 
+ VapUtil::VapMailErrorMsg( "cloud_overlay: Undefined env vars(VAP_OPS_OVERLAY)\n", 
 			    "UNDEFINED_ENV_VARS!");
      die "ENV variable VAP_OPS_OVERLAY is undefined!\n";
  } unless $overlay_dir;
@@ -380,7 +424,7 @@ do {
 
 $tmpdir = $tmpdir || $ENV{VAP_OPS_TMPFILES};
 do {
- vap_perl::VapMailErrorMsg("$0: Undefined env vars (VAP_OPS_TMPDIR)\n",
+ VapUtil::VapMailErrorMsg("$0: Undefined env vars (VAP_OPS_TMPDIR)\n",
 			   "UNDEFINED_ENV_VARS!");
    die "ENV variable VAP_OPS_TMPFILES is undefined!\n";
  } unless $tmpdir;
@@ -390,7 +434,7 @@ do {
 my $lock_file="$tmpdir/$user.cloud_overlay.$$.lock";
 
 do { 
-  vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't open $lock_file\n", 
+  VapUtil::VapMailErrorMsg("cloud_overlay: Couldn't open $lock_file\n", 
 			       "OPENERR <LOCKFILE>");
     die "Couldn't open $lock_file\n"} unless open (LOCK,">$lock_file");
 print LOCK "$$\n";
@@ -411,7 +455,7 @@ if ($satname =~ /GMS/) {
 
   if (!Gms5::GetAllFileLists())
   {
-    vap_perl::VapMailErrorMsg(
+    VapUtil::VapMailErrorMsg(
 			      "cloud_overlay:Can't Get all Gms5 archives listings!\n",
 			      "GMS5 GETALLFILELISTS");
       die "Can't Get all Gms5 archives listings!\n" ;
@@ -419,13 +463,13 @@ if ($satname =~ /GMS/) {
   
   my @isec=Gms5::GetIntersection($gms5sensornames[$sensornum-1]);
   if (!$isec[0]) { 
-    vap_perl::VapMailErrorMsg("cloud_overlay: Can't get GMS5 intersect\n", 
+    VapUtil::VapMailErrorMsg("cloud_overlay: Can't get GMS5 intersect\n", 
 			      "GMS5 INTERSECT");
       die "Can't get GMS5 intersection\n";
   } 
   my $mindiff=1.e10;
   $gridded_file="";
-  my $testsecs=vap_perl::vaptime2systime($time);
+  my $testsecs=VapUtil::vaptime2systime($time);
   foreach my $datetime (@isec) {
     my $syst=Gms5::Gms5DateTime2SysTime($datetime);
     my $dif = abs($syst-$testsecs) ;
@@ -441,14 +485,14 @@ if ($satname =~ /GMS/) {
       # But don't bother to FTP all the requisite files either!
       # Still send the error message, though!
 
-    vap_perl::VapMailErrorMsg(
+    VapUtil::VapMailErrorMsg(
 			      "cloud_overlay: No Files closer than 2 hours! <$mindiff>\n",
  			      "GMS5 MINDIFF");
   }  else {
     
     my $T=time();
     if (!Gms5::GetAll($gridded_file)){
-      vap_perl::VapMailErrorMsg(
+      VapUtil::VapMailErrorMsg(
 				"cloud_overlay: Can't GetAll for datetime $gridded_file\n", 
 				"GMS5 GRIDDEDFILE");
 	die "Can't GetAll for datetime $gridded_file\n";
@@ -458,6 +502,7 @@ if ($satname =~ /GMS/) {
   }
 
 } else {
+  # $gridded_file="";
   # It's a GOES file 
   # Supposedly we can now get and grid the AREA file 
 
@@ -465,17 +510,29 @@ if ($satname =~ /GMS/) {
   # Supposedly we can now get and grid the AREA file 
   my $T=time();
   print "$0: Calling GAG with arguments\n\tsatnum:$satnum\n\tsensornum:$sensornum";
-  print "\n\ttime:$time\n\tminlon:$minlon\n\tminlat:$minlat\n\tmaxlon:$maxlon\n\tmaxlat:$maxlat\n";
-  $gridded_file = vap_perl::gag( $satnum, $sensornum, $time, 
-				 $minlon, $minlat, $maxlon, $maxlat );
+  print "\n\ttime:$time\n\tminlon:$minlon\n\tminlat:$minlat";
+  print "\n\tmaxlon:$maxlon\n\tmaxlat:$maxlat\n";
+#  $gridded_file = VapUtil::gag( $satnum, $sensornum, $time, 
+#				 $minlon, $minlat, $maxlon, $maxlat );
+
+  # Initialize the Goes object.
+  my $goes = OGoes->new(SAT => $satnum,
+		       SENSORNUM => $sensornum,
+		       LIMITS => [$lonlim[0], $latlim[0], $lonlim[1], $latlim[1]],
+		       TIME => VapUtil::vaptime2idltime($time),
+		       ABSFLAG => 1);
+  if ($goes) {
+    # Call GAG.
+    $gridded_file = $goes->gag()
+  } else {
+    warn "Can't create goes object!\nContinuing with null gridfile";
+  }
   $T=time()-$T;
+
   print "GAG took $T seconds\n";
 
-
-
   # New mode. Don't fail if the gridding didn't work. Just continue
-    # and let it plot the vectors anyway.
-  
+  # and let it plot the vectors anyway.
 }
 
 
@@ -484,29 +541,34 @@ if ($satname =~ /GMS/) {
 # So, construct this time string.
 
 my ($idl_time_string, $idl_tmp_file, $exe_str);
-$idl_time_string=vap_perl::vaptime2idltime($time);
+$idl_time_string=VapUtil::vaptime2idltime($time);
 $idl_tmp_file="$tmpdir/$0_idl_called_by_perl_$$.pro";
 print "Writing IDL tmp file $idl_tmp_file\n";
 
 open(IDLFILE,">$idl_tmp_file") || 
-    do {vap_perl::VapMailErrorMsg(
+    do {VapUtil::VapMailErrorMsg(
 				  "Cloud_overlay: Couldn't open $idl_tmp_file\n",
 				  "BAD IDL TMPFILE OPEN") && 
 				  die "Couldn't open $idl_tmp_file\n"};
+my $idl_windfilter;
+$idl_windfilter = "QS*" if $windfilter =~ /^Q/;
+$idl_windfilter = "SW*" if $windfilter =~ /^S/;
+$idl_windfilter = "{QS,SW}*" if $windfilter =~ /^B/;
 
-
-$exe_str = "cloud_overlay,\'$gridded_file\',\'$idl_time_string\'";
-$exe_str .= ",$delta,wpath = \'$vap_perl::VAP_WINDS\'";
+$exe_str = "cloud_overlay,\'$gridded_file\',\'$idl_windfilter\',\'$idl_time_string\'";
+$exe_str .= ",$delta,wpath = \'$winds_path\'";
 $exe_str .= ",lockfile=\'$lock_file\',length=$length";
 $exe_str .= ",CRDecimate=[".join(",",@$crdecimate)."]";
 $exe_str .= ",ExcludeCols=\'$excludecols\'";
-$exe_str .= ",rainflag=$rainflag,rf_action=$rf_action,rf_color=$rf_color";
+$exe_str .= ",rainflag=$rainflag" if $rainflag;
+$exe_str .= ",rf_action=$rf_action" if $rf_action;
+$exe_str .= ",rf_color=$rf_color" if $rf_color;
 $exe_str .= ",mapLimits=$mapLimits";
 $exe_str .= ",/gridlines";
 $exe_str .= ",gmsType=\'$gms5sensornames[$sensornum-1]\'" if ($satname =~ /GMS/);
   
 print IDLFILE "$exe_str\nexit\n" || 
-   {vap_perl::VapMailErrorMsg(
+   {VapUtil::VapMailErrorMsg(
        "cloud_overlay: Can't write to idl tmp file $idl_tmp_file\n",
        "BAD WRITE TO IDL TMPFILE") && 
 	   die "Can't write to idl tmp file $idl_tmp_file\n"};
@@ -514,167 +576,45 @@ close IDLFILE;
 
 print "wrote following to idl_tmp_file\n  $exe_str\n";
 
-$exe_str=$vap_perl::IDLEXE." ".$idl_tmp_file;
+$exe_str=$VapUtil::IDLEXE." ".$idl_tmp_file;
 my $r=system( $exe_str )/256;
 
 if ($r != 0){
-  vap_perl::VapMailErrorMsg("cloud_overlay: Error in IDL\n",
+  VapUtil::VapMailErrorMsg("cloud_overlay: Error in IDL\n",
 			    "ERROR CALLING IDL");
     die " Error in IDL\n";
 }
 
+  # check for errors
 
-do{
-  vap_perl::VapMailErrorMsg(
-			    "cloud_overlay: Couldn't open $lock_file after IDL \n",
-			    "ERROR OPEN LOCKFILE");
-    die "Couldn't open $lock_file after IDL \n";} unless open ( LOCK, "<$lock_file");
-my @idlout = <LOCK>;
-close (LOCK);
-
-
-  # see if there are any lines in the idl output file 
-  # with the work ERROR in them. Exit if there are.
-
-foreach (@idlout) {
-  if (/ERROR/) {
-    print "Error in IDL processing \n";
-    print @idlout;
-    $msg=join "\n",@idlout;
-    vap_perl::VapMailErrorMsg($msg,"ERRORINIDLPROC");
-    exit;
-  }
-}
-
-unlink $lock_file  ||  print "Couldn't delete $lock_file \n";
+  VapUtil::CheckForErrors $lock_file;
 
   # goes_overlay gives the output gif file a name based on the input
   # grid file name. Get that name and rename the file to the standard
   # 'pac_overlay_$type.gif'
 
-my $output_file_name_file="$overlay_dir/auto_cloud_overlay_output_file.$$";
-
-
-do {vap_perl::VapMailErrorMsg(
-			      "cloud_overlay: Couldn't CD to $overlay_dir\n",
-			      "CD TO OVERLAY_DIR ERROR");
-  die " Couldn't CD to $overlay_dir\n\n";} unless chdir $overlay_dir;
-
-
-do {
-  vap_perl::VapMailErrorMsg(
-			    "cloud_overlay: Can't open $output_file_name_file\n",
-			    "AUTO CLOUD OVERLAY OUTPUT FILE OPEN ERROR");
-    die "Can't open $output_file_name_file\n";
-  } unless open (PICTURENAME,"<$output_file_name_file");
-
-my @picturefile=<PICTURENAME>;
-close(PICTURENAME);
-  unlink "$output_file_name_file" || 
-      print "Couldn't delete $output_file_name_file\n";
-
-  # Read the picture name
-my $picture = "$picturefile[0]";
-chomp $picture;
-my @tmp = split("/",$picture);
-$picture = $tmp[$#tmp];
-@tmp = split( /\./, $picture );
-my $fileroot = $tmp[0];
-
-  # Read the thumbnail name
-my $thumbnail = $picturefile[1];
-chomp$thumbnail;
-@tmp = split("/",$thumbnail);
-$thumbnail = $tmp[$#tmp];
-@tmp = split( /\./, $thumbnail );
-my $thumbnailroot = $tmp[0];
-
-   #
-   #---------------------- the file ------------------------
-   #
-
-my $VAP_OVERLAY_ARCHIVE = $ENV{VAP_OVERLAY_ARCHIVE} ||
-do {
-  vap_perl::VapMailErrorMessage("Undefined ENV var (VAP_OVERLAY_ARCHIVE)\n",
-				"UNDEFINED_ENV_VAR");
-    die "Undefined ENV var (VAP_OVERLAY_ARCHIVE)\n";
-  } unless $VAP_OVERLAY_ARCHIVE;
-
-my $file="$VAP_OVERLAY_ARCHIVE/$fileroot-$regionname.jpeg";
-print "Renaming $picture to $file\n";
-do {vap_perl::VapMailErrorMsg(
-			      "cloud_overlay: Couldn't rename $picture to $file, error = $!\n",
-			      "PICTURE COPY ERROR");
-	die "Couldn't rename $picture to $file, error = $!\n";} unless copy($picture,$file);
-unlink $picture;
-chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
-
-
-  # create name of file in images archive to be linked to it.
-
-my $VAP_WWW_TOP = $ENV{VAP_WWW_TOP};
-do {
-  vap_perl::VapMailErrorMessage("Undefined ENV var (VAP_WWW_TOP)\n",
-				"UNDEFINED_ENV_VAR");
-    die "Undefined ENV var (VAP_WWW_TOP)\n";
-  } unless $VAP_WWW_TOP;
-
-$wwwfile="$VAP_WWW_TOP/images/$fullregionname.jpeg";
-
-  #delete it if it exists
-if (-e $wwwfile) {
-  unlink ($wwwfile ) || print "Couldn't unlink $wwwfile\n";
-}
+my $file_with_output_name="auto_cloud_overlay_output_file.$$";
 
 
 
-  # create the symbolic link to the gif file.
-print "Linking $wwwfile to $file\n";
-symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
-
-
-   #
-   #---------------------- And its thumbnail ------------------------
-   #
-
-
-  # copy thumbnail to image overlay archive.
-$file= "$VAP_OVERLAY_ARCHIVE/$thumbnailroot-$regionname.TN.jpeg";
-print "Renaming $thumbnail to $file\n";
-do {vap_perl::VapMailErrorMsg(
-			      "cloud_overlay: Couldn't rename $thumbnail to $file, error = $!\n",
-			      "THUMBNAIL COPY ERROR") ;
-	die "Couldn't rename $thumbnail to $file, error = $!\n";} unless copy($thumbnail,$file);
-unlink $thumbnail;
-chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
-
-
-
-  # Create the symbolic name for the thumbnail
-
-$wwwfile="$VAP_WWW_TOP/images/$fullregionname.TN.jpeg";
-  #delete it if it exists
-if (-e $wwwfile) {
-  unlink ($wwwfile ) || print "Couldn't unlink $wwwfile\n";
-}
-
-  # create the symbolic link to the gif file.
-print "Linking $wwwfile to $file\n";
-symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
+my $www_ouput_filename = VapUtil::MoveOverlayOutput($overlay_dir, 
+						    $file_with_output_name, $
+						    $fullregionname,
+						    $regionname);
 
   # go to where the index.html is
 
-do {vap_perl::VapMailErrorMsg(
+do {VapUtil::VapMailErrorMsg(
           "cloud_overlay: Couldn't go to $VAP_WWW_TOP\n",
 			      "CD ERROR WWW TOP DIR");
 	die "Couldn't CD to $VAP_WWW_TOP\n";} unless chdir $VAP_WWW_TOP;
 
   # update the dates in that file
 print "Updating index.html\n";
-vap_perl::date_index();
+VapUtil::date_index();
 
   # make sure it's readible.
-do {vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't chmod index.html to 0644\n",
+do {VapUtil::VapMailErrorMsg("cloud_overlay: Couldn't chmod index.html to 0644\n",
 			      "INDEX.HTML CHMOD ERROR");
   die "Couldn't chmod index.html to 0644\n"} unless chmod(0644,"index.html");
 my $tottime=time()-$^T;
