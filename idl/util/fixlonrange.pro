@@ -58,6 +58,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/26 18:29:23  vapuser
+; Changed 'west' keyword slightly, so that if it's input as a keyword
+; now, it'll force returned range into 'west' longitude.
+;
 ; Revision 1.1  1998/10/22 21:49:08  vapuser
 ; Initial revision
 ;
@@ -112,7 +116,7 @@ FUNCTION fixlonrange, lonrange, west=west
     IF nn NE 0 THEN $
       FixedLonRange[n] =  FixedLonRange[n] -360.
   ENDIF ELSE IF Arg_Present( west ) THEN BEGIN 
-    junk = where(FixedLonRange LE 0, njunk )
+    junk = where(FixedLonRange LT 0, njunk )
     west =  njunk NE 0 
   ENDIF 
 
