@@ -104,6 +104,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/11/20 19:49:34  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -352,7 +355,8 @@ COMMON goes_overlay_cmn, landel
     loni = 0
     lati = 0
 
-    cloudmask = bytscl(sqrt(1.0*(minpix>data<1024 )/1024),top=200) 
+    ; cloudmask = bytscl(sqrt(1.0*(minpix>data<1024 )/1024),top=200) 
+    cloudmask = byte( 255*( 0.5*(errorf(4.d*scale(data,max=1024,/double)-2) +1) ) )
     data = 0
 
 
@@ -429,11 +433,15 @@ COMMON goes_overlay_cmn, landel
       image[land] = reform( $
                      CT[ channel, $
                        LAND_START>(topoIm[land]+LAND_START)<(WIND_START-1) ] )
-      image = 0> (image-cloudmask)
-      image = image + cloudmask
+;      commented out, 98/11/25, whd
+;      image = 0> (image-cloudmask)
+;      image = image + cloudmask
+;      image =  byte(image <  255)
 
+      m = max(cloudmask)
+      image = image-m/4.
+      image = byte( 0> (image + cloudmask) < 255)
 
-      image =  byte(image <  255)
       tmpIm =   map_image( image, xs,ys,xsize,ysize,$
                          lonmin=lonrange[0],$
                          latmin=limits[1],$
