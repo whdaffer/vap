@@ -3,6 +3,9 @@
 #
 # Modification History
 # $Log$
+# Revision 1.4  1998/10/29 17:27:08  vapuser
+# Added some more comments
+#
 # Revision 1.3  1998/10/17 00:18:01  vapuser
 # Added some notes
 #
@@ -138,7 +141,56 @@
 		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
 		}
 
+		# Gms 5, Ir1, West Pacific
+		GMS_5_1_WPAC_1 => {
+		  Region     => "GMS_5_1_WPAC_1",
+		  CloudData => {
+		    Satellite  => "GMS",        # Satellite Name
+		    LonLim     => [100,175],     # Min/Max Longitude
+		    LatLim     => [22,45],       # Min/Max Latitude 
+		    SatNum     => 5,             # Gms 5
+		    SensorNum  => 1,             # Ir1
+		    AscTime    => "03:00",       # Ascending Time is 03:00 GMT
+		    DescTime   => "16:00" },     # Descending time is 16:00 GMT
+		  WVCData => {                   
+		    NVectors => 2000,            # Need this many vector to continue
+		    CRDecimate => [2,3],         # Take every 2nd row, every 3rd col
+		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		}
 
+		# Gms 5, Ir1, Japan 
+		GMS_5_1_JAPAN_1 => {
+		  Region     => "GMS_5_1_JAPAN_1",
+		  CloudData => {
+		    Satellite  => "GMS",        # Satellite Name
+		    LonLim     => [120,165],     # Min/Max Longitude
+		    LatLim     => [20,47],       # Min/Max Latitude 
+		    SatNum     => 5,             # Gms 5
+		    SensorNum  => 1,             # Ir1
+		    AscTime    => "03:00",       # Ascending Time is 03:00 GMT
+		    DescTime   => "16:00" },     # Descending time is 16:00 GMT
+		  WVCData => {                   
+		    NVectors => 2000,            # Need this many vector to continue
+		    CRDecimate => [2,3],         # Take every 2nd row, every 3rd col
+		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		}
+
+		# Gms 5, Ir1, Far East
+		GMS_5_1_FAREAST_1 => {
+		  Region     => "GMS_5_1_FAREAST_1",
+		  CloudData => {
+		    Satellite  => "GMS",        # Satellite Name
+		    LonLim     => [90,160],     # Min/Max Longitude
+		    LatLim     => [-20,32],       # Min/Max Latitude 
+		    SatNum     => 5,             # Gms 5
+		    SensorNum  => 1,             # Ir1
+		    AscTime    => "03:00",       # Ascending Time is 03:00 GMT
+		    DescTime   => "16:00" },     # Descending time is 16:00 GMT
+		  WVCData => {                   
+		    NVectors => 2000,            # Need this many vector to continue
+		    CRDecimate => [2,3],         # Take every 2nd row, every 3rd col
+		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		}
 
  );
 
