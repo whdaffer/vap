@@ -207,6 +207,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/04/02 17:50:44  vapuser
+; Removed reference to calibration data. It's not required for
+; what we're doing.
+;
 ; Revision 1.1  1999/04/02 17:49:47  vapuser
 ; Initial revision
 ;
@@ -304,6 +308,17 @@ PRO gms5_overlay, datetime, gmsType, $
     return
   ENDIF 
 
+  IF n_elements(xsize ) EQ 0 AND $
+     n_elements(ysize) EQ 0 THEN BEGIN 
+    
+    lonrange = lonlim[1]-lonlim[0]
+    latrange = latlim[1]-latlim[0]
+    aspectratio = float(latrange)/lonrange
+    xsize = 960
+    ysize = fix(xsize*AspectRatio)
+    Message,"picture size defaulting to [" + $
+      string( [xsize,ysize], form='(i4,",",i4)') + ']',/info
+  ENDIF 
 
 
   ps = keyword_set(ps)
@@ -336,8 +351,8 @@ PRO gms5_overlay, datetime, gmsType, $
   IF n_Elements(maxspeed) EQ 0 THEN maxspeed = 25
   IF n_elements(length)   EQ 0 THEN length = 2
   IF n_elements(thick)    EQ 0 THEN thick = 1
-  IF n_elements(xsize)    EQ 0 THEN xsize = 640
-  IF n_elements(ysize)    EQ 0 THEN ysize = 480
+  IF n_elements(xsize)    EQ 0 THEN xsize = 960
+  IF n_elements(ysize)    EQ 0 THEN ysize = 720
   IF n_elements(BrightMin) EQ 0 THEN BrightMin = 0.
   IF n_elements(BrightMax) EQ 0 THEN BrightMax = 0.8
   IF n_elements(SatMin) EQ 0 THEN SatMin = 0.0
@@ -539,6 +554,8 @@ PRO gms5_overlay, datetime, gmsType, $
 
   IF ps THEN device,filename=OutputFilename
 
+  outfile = OutputFilename
+
   sz = Size(cloudmask,/dim)
 
   lon0 = lonpar[0]
@@ -574,7 +591,7 @@ PRO gms5_overlay, datetime, gmsType, $
     ; Define the new Brightness/Saturation mappings
   xx=findgen(100)/99.
 
-  bi = 0> interpol( [0.,1], [BrightMin, BrightMax], xx ) < 1
+  bi = 0.2> interpol( [0.,1], [BrightMin, BrightMax], xx ) < 1
   si = 0> interpol( [1.,0], [SatMin,    SatMax],xx ) < 1
 
     ; Use 'cloudmask' to create new Brightness/Saturation values
@@ -667,7 +684,7 @@ PRO gms5_overlay, datetime, gmsType, $
           ENDIF 
           veccol = BytScl( speed, min=minspeed, $
                            max=maxspeed, $
-                           top=N_COLORS-N_WIND_COLORS-1) + $
+                           top=N_WIND_COLORS-1) + $
                            WIND_START
           col24 = color24( veccol, colortable=ct)
           t0 = systime(1)
