@@ -234,6 +234,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.12  2000/02/29 23:34:05  vapuser
+; Added colorbar for rain flagged data.
+;
 ; Revision 1.11  2000/02/29 15:58:12  vapuser
 ; Added rain flag code
 ;
@@ -484,15 +487,15 @@ PRO gms5_overlay, datetime, gmsType, $
   LandHue =  0> LandHue < 360.
   WaterHue =  0> WaterHue < 360.
 
-;  catch, error
-;  IF error NE 0 THEN BEGIN 
-;    catch,/cancel
-;    Message,!error_state.msg,/cont
-;    tvlct,orig_red,orig_green,orig_blue
+  catch, error
+  IF error NE 0 THEN BEGIN 
+    catch,/cancel
+    Message,!error_state.msg,/cont
+    tvlct,orig_red,orig_green,orig_blue
 ;    genv,/restore
-;    status = 0
-;    return
-;  END
+    status = 0
+    return
+  END
 
 
 
@@ -587,6 +590,7 @@ PRO gms5_overlay, datetime, gmsType, $
   allData = Gms5ReadAll(datetime,gmsType,lonpar=lonpar)
   IF NOT isa(alldata,/structure) THEN BEGIN 
     Message,"Failure Reading GMS5 data",/cont
+    status = 0
     return
   ENDIF 
   image = allData.imagedata.image
