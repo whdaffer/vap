@@ -89,8 +89,8 @@
 ;          noxinter - obselete, does nothing, backwards compatibility
 ;          harmonic - Reset the vectors on this harmonic of the
 ;                     fundamental (number of frames)
-;          meters_per_sec - flag, report the speed in meters per
-;                           second, not knots
+;          knots - flag, report the speed in knots. Otherwise, report
+;                  the speed in meters/second
 ;
 ; ABOUT THE METHOD AND SOME OF THE DESCRIPTIONS:
 ;
@@ -302,6 +302,13 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.5  1999/10/05 17:02:00  vapuser
+; Changed the 'write_xxx' keywords to just 'xxx', thereby increasing
+; their uniqueness.  Added the 'harmonic' and 'meters_per_second'.
+; Corrected some misuses of keyword_set() and bad meters_per_second
+; to knots conversion. Changed location of land_elevations.bin to
+; VAP_LIB. General maintenance.
+;
 ; Revision 1.4  1999/04/08 22:01:56  vapuser
 ; Replaced Colorbar with ColBar
 ;
@@ -400,7 +407,8 @@ PRO ANIMATE_WIND_FIELD, files, $ ; fully qualified grid file name(s) (no default
                                            ; Implies tvsafe.
                         thick = thick, $   ; Thickness of vectors (def=1)
                         harmonic=harmonic, $; 
-                        meters_per_sec=meters_per_sec, $
+                         knots  = knots; report the speed in knots, instead of 
+                                       ; the default of m/s
                         noxinter= noxinter ; obsolete, does nothing, 
                                 ; it's just here so 
                                 ; a lot of other software doesn't
@@ -481,7 +489,7 @@ tiff    = KEYWORD_SET( tiff )
 jpeg    = KEYWORD_SET( jpeg )  
 IF n_elements(harmonic) EQ 0 THEN harmonic = 1;
 IF n_elements(thick) EQ 0 THEN thick = 1
-meters_per_sec =  keyword_set(meters_per_sec)
+knots =  keyword_set(knots)
 
 IF NOT pict AND $
    NOT gif AND $
@@ -492,7 +500,7 @@ IF NOT pict AND $
 mps2knots =  0.514 ; converts meters/sec to knots.
 
 IF n_elements( min_speed ) EQ 0 THEN min_speed =  1 ; meters/sec
-IF n_elements( max_speed ) EQ 0 THEN max_speed =  40/mps2knots ; meters/sec
+IF n_elements( max_speed ) EQ 0 THEN max_speed =  30; meters/sec
 IF n_elements( length ) EQ 0 THEN length =  3;
 IF n_elements( title ) EQ 0 THEN title =  '' ; meters/sec
 ncolors = 29
@@ -1229,11 +1237,26 @@ IF read_success THEN BEGIN
 
           y =  coords(1,*)
           y1 =  y(0) &  y2= y1 + (1-y(0))/4.
-          multiplier = mps2knots
-          IF meters_per_sec THEN multiplier = 1.
-          COLBAR,bottom=1,ncolors=ncolors,position=[0.25,y1,0.75,y2],$
-           Title='Wind Speed (knots)',division=4,min=0,max=max_speed*mps2knots, $
-           charsize=0.65,format='(F4.0)'
+
+
+          ; Set up Title/min/max speed for color bar.
+          title = 'Wind Speed (m/s)'
+          mnspeed = min_speed
+          mxspeed = max_speed
+
+          IF knots THEN BEGIN 
+            title = 'Wind Speed (knots)'
+            mnspeed = min_speed*mps2knots
+            mxspeed = max_speed*mps2knots
+          ENDIF 
+
+          COLBAR,bottom=1,ncolors=ncolors,$
+            position=[0.25,y1,0.75,y2],$
+              Title=title,division=4,$
+                min=mnspeed, max=mxspeed, $
+                  charsize=0.65,format='(F4.0)'
+
+            ; Set up nasa/jpl logo
           y1 =  y(0)  ; + (1-y(0))/6.
           xyouts, 0.17, y1, '!17NASA!X', /normal, align=1.0,size=0.0
           xyouts, 0.85, y1, '!17JPL!X', /normal, align=0.0,size=0.9
