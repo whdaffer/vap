@@ -35,6 +35,8 @@ package Animate;
 use strict;
 use Carp;
 use Cwd;
+use File::Copy;
+use File::Basename;
 use vars qw/$VERSION $usage/;
 
 # Make sure we can get the Perl code we need.
@@ -48,7 +50,8 @@ BEGIN{
     unless $ENV{VAP_OPS_ANIM};
   $usage = "$0: obj=Animate->new(REGION=>region [,TIME=>time,DELTA=>DELTA])\n";
 }
-use VapUtil qw(&auto_movie_defs);
+
+use VapUtil qw(&systime2idltime &SysNow);
 use VapError;
 
 #==================================================
@@ -57,14 +60,16 @@ use VapError;
 
 sub new {
   my $class = shift;
-  my $self={@_};
+  my $self={USER => $ENV{USER},
+	    @_};
   croak $usage unless exists $self->{REGION};
   $self->{DEFAULTS_FILE} = $ENV{VAP_LIBRARY}."/auto_movie_defs.dat";
   bless $self, ref($class) || $class;
 
   # Set the Error reporting object.
   $self->{ERROROBJ} = VapError->new() or
-    $self->_croak "Error creating VapError object!\n";
+    $self->_croak("$0:Error creating VapError object!\n",
+		  "$0: ERROR CREATING ERROR OBJECT");
 
 
   # Read the defaults file
@@ -81,10 +86,10 @@ sub new {
   # Set time and working dir, make sure the latter exists and that we
   # can CD to it.
 
-  $self->{TIME} = shift || systime2idltime(GetNow());
+  $self->{TIME} = systime2idltime(SysNow()) unless defined $self->{TIME};
   $self->{STARTTIME} = $^T;
 
-  $self->{WORKING_DIR} = $ENV{VAP_OPS_ANIM}."/". lc($self->{REGIION});
+  $self->{WORKING_DIR} = $ENV{VAP_OPS_ANIM}."/". lc($self->{REGION});
   my $working_dir = $self->{WORKING_DIR};
   $self->_croak("$0:Can't find working directory $working_dir\n",
 		"$0:NONEXISTENT WORKING DIR")
@@ -141,7 +146,8 @@ sub CreateTmpFile{
 		  "FILE OPEN ERROR");
   my $date_time = $self->{TIME};
   my $exe_str = "auto_movie,\'$date_time\',roi=\'$roi\'";
-  $exe_str .= ",pid=$$, lockfile = '". $self->{LOCKFILE}. "'\n";
+  $exe_str .= ",pid=$$, lockfile = '". $self->{LOCKFILE}."'";
+  $exe_str .= ",outbase = 'wind'\n";
   $exe_str .= "exit\n";
   print FILE $exe_str;
   print "$0:Calling IDL with string\n$exe_str\n";
@@ -171,8 +177,8 @@ sub Make_Anim{
   $self->_croak(
          "$0: Errors reported during run of auto_movie.pro\n\n".
 		  "Errors are:\n\n".
-		  $self->{IDL_ERRORS}."\n",
-		  "$0:ERRORS IN AUTO_MOVIE.PRO") if $self->Errors();
+		  $self->{IDL_OUTPUT}."\n",
+		  "$0:ERRORS IN AUTO_MOVIE.PRO") if $self->CheckForErrors();
 }
 
 #==================================================================
@@ -190,7 +196,7 @@ sub ReadDefsFile{
   
 
   # open the file 
-  my $file=shift || $auto_movie_defs_file;
+  my $file=shift || $self->{DEFAULTS_FILE};
   open (DEFS,"<$file") ||
     $self->_croak("$0: Can't open $file!:$!\n",
 		  "$0:OPEN ERROR");
@@ -198,18 +204,110 @@ sub ReadDefsFile{
   while (<DEFS>){
     next if /^;.*$/; # IDL comment line
     next if /^\s*$/; # empty line
-    my @tmp = split(/,/, $r);
+    my @tmp = split /,/;
     my $tmp = $tmp[0];
     @tmp = split(/:/, $tmp);
-    $tmp = ($tmp[1] =~ s/'//g);
+    $tmp=$tmp[1];
+    $tmp =~ s/'//g;
     push @rois, $tmp;
   }
   close DEFS;
-  $self->{ROIS} = @rois;
+  $self->{ROIS} = \@rois;
   @rois;
 }
 
+#==================================================================
+# MoveOutput
+#
+# Gets the output name from the temporary file created by
+# auto_movie.pro which holds the name. Deletes that temporary file and
+# moves the output movie plus the first frame of that movie to the WWW
+# area, changing the name to <roi>.mov and <roi>.001
+#
+#==================================================================
 
+sub MoveOutput{
+  my $self=shift;
+  my $region=lc $self->{REGION};
+  my $file=$self->{TMPFILE_DIR} . "/auto_movie_mov_filename_$$";
+  open (FILE, "<$file") ||
+    $self->_croak("$0: Error opening $file:$!\n",
+		  "$0: FILE OPEN ERROR!");
+  my $mov_file = <FILE>;
+  my $ext=<FILE>;
+  my $first_frame = "wind.001.$ext";
+  close FILE;
+
+  $self->{MOV_FILE} = $mov_file;
+  my ($basename, $path) = fileparse($mov_file);
+  my $wwwmov   = $self->{WWW_TOP}. "/mov_archive/$basename";
+  my $wwwframe = $self->{WWW_TOP}. "/mov_archive/$region.001.$ext";
+  copy($mov_file, $wwwmov ) || 
+    $self->_croak("$0: Error copying $mov_file to\n$wwwmov:$!\n",
+		 "$0: COPY ERROR");
+  copy($first_frame, $wwwframe ) || 
+    $self->_croak("$0: Error copying $first_frame to $wwwframe:$!\n",
+		 "$0: COPY ERROR");
+  unlink $mov_file;
+  unlink $first_frame;
+
+  # Delete the symlink from the images subdirectory to the real file
+  # in mov_archive.  currently this link points from, e.g.,
+  # /images/daily_nepac.mov to
+  # /mov_archive/daily_nepac_200208271234.mov to
+  # /images/nepac.mov. Then create a new link to the newest version of
+  # $region.mov and $region.001.ext, where ext is the type of file (ppm by default
+
+  # First the movie itself.
+  my $symlink = $self->{WWW_TOP}."/images/$region.mov";
+  unlink $symlink || 
+    $self->_croak("$0: Can't unlink $region.mov:$!\n",
+		  "$0: DELETE ERROR!");
+  symlink $wwwmov,$symlink || 
+    $self->_croak("$0: Can't symlink $region.mov to $wwwmov!:$!\n",
+		  "$0: DELETE ERROR!");
+
+  # Now the first frame of the movie.
+  $symlink = $self->{WWW_TOP}."/images/$region.001.ext";
+  unlink $symlink || 
+    $self->_croak("$0: Can't unlink $symlink!:$!\n",
+		  "$0: DELETE ERROR!");
+  symlink $wwwframe,$symlink ||
+    $self->_croak("$0: Can't synlink $symlink!:$!\n",
+		  "$0: DELETE ERROR!");
+  1;
+}
+
+#==================================================================
+# CheckForErrors
+#==================================================================
+
+sub CheckForErrors{
+  my $self=shift;
+  my $lockfile=$self->{LOCKFILE};
+  open LOCKFILE, "<$lockfile" || 
+    $self->_croak("$0:Error opening $lockfile:$!\n",
+		  "$0:FILE OPEN ERROR");
+  my $lines;
+  do {
+    local $/=undef;
+    $lines = <LOCKFILE>;
+  };
+  close LOCKFILE;
+
+  $self->{IDL_OUTPUT} = $lines;
+  $lines =~ /ERROR:/;
+}
+
+#==================================================================
+# WriteWebpage.
+#  At the moment, this is a blank subroutine
+#==================================================================
+
+sub WriteWebpage{
+  my $self=shift;
+  1;
+}
 #==================================================================
 # _croak:
 #  Wrapper for errorobject->ReportAndDie

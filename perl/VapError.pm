@@ -4,6 +4,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.2  2002/08/08 23:27:31  vapdev
+# General work, BEGIN block.
+#
 # Revision 1.1  2002/05/07 20:51:53  vapdev
 # Error handling/reporting object
 #
@@ -135,8 +138,8 @@ sub new {
 
   $self->{IS_BATCH}  = !defined($ENV{'TERM'});
 
-  croak "MAIL_ADDRESSES hasn't been set!\n" 
-    unless defined ($self->{MAIL_ADDRESSES});
+  croak "ERROR_MAIL_ADDRESSES hasn't been set!\n" 
+    unless defined ($self->{ERROR_MAIL_ADDRESSES});
 
   return bless $self, ref($class) || $class;
 
@@ -167,7 +170,7 @@ sub Report{
 #
 #  Should never return, as it calls "croak" at the end.  Write an
 #  email having subject `subject' and optional message `message' to
-#  every email contained in the array $self->{MAIL_ADDRESSES} and,
+#  every email contained in the array $self->{ERROR_MAIL_ADDRESSES} and,
 #  optionally, to any addtional ones contained in the *comma separated
 #  string* `address.'
 
@@ -184,10 +187,10 @@ sub ReportAndDie{
 
   my $address = shift;
   my $addresses;
-  if (ref($self->{MAIL_ADDRESSES}) eq 'ARRAY') {
-    $addresses = join " ", $self->{MAIL_ADDRESSES};
+  if (ref($self->{ERROR_MAIL_ADDRESSES}) eq 'ARRAY') {
+    $addresses = join " ", $self->{ERROR_MAIL_ADDRESSES};
   } else {
-    $addresses = $self->{MAIL_ADDRESSES};
+    $addresses = $self->{ERROR_MAIL_ADDRESSES};
   }
   if (ref($address) eq 'ARRAY'){
     $address = join " ",$address;
