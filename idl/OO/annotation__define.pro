@@ -71,6 +71,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/01 16:39:59  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -167,16 +170,72 @@ END
 ;============================================
 
 FUNCTION Annotation::Version
-   rcsid = "$Id$"
-   super = Obj_Class(self,/Super,count=cnt)
-   IF cnt NE 0 THEN BEGIN 
-     versions = strarr(cnt+1)
-     versions[0] = rcsid
-     FOR i=0,cnt-1 DO versions[i] = call_method("VERSION",super[i])
-     return,versions
-   ENDIF ELSE return,rcsid
-END
 
+     ; Version number for this class
+
+   rcsid = "$Id$"
+
+     ; Find version number for member objects.
+   Tags = Tag_Names(self)
+   n_tags = n_elements(Tags)
+   WHILE i LE n_tags-1 DO BEGIN 
+
+     catch, error
+     IF error NE 0 THEN BEGIN 
+         ; Ignore 'undefined method' errors
+       IF strpos( strupcase(!Error_state.Msg), $
+                  "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
+         error = 0
+         i = i+1
+       ENDIF ELSE return,''
+     ENDIF 
+     
+     IF VarType( self.(i) ) EQ 'OBJECT' THEN BEGIN 
+       V =  Call_Method( "VERSION", self.(i) )
+       nv = N_Elements(V)
+       IF exist(member_versions) THEN $
+          member_versions =  [ member_versions, v ] ELSE $
+          member_versions =  v
+     ENDIF 
+     i =  i+1
+   ENDWHILE 
+
+     ; find version number for superclasses.
+   super = Obj_Class(self,/Super,count=cnt)
+        
+   IF cnt NE 0 THEN BEGIN 
+     WHILE i LE cnt-1 DO BEGIN 
+       catch, error
+       IF error NE 0 THEN BEGIN 
+           ; Ignore 'undefined method' errors
+         IF strpos( strupcase(!Error_state.Msg), $
+                    "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
+           error = 0
+           i = i+1
+         ENDIF ELSE return,''
+       ENDIF 
+
+       V  = call_method("VERSION",super[i])
+
+       IF exist( super_versions ) THEN $
+         super_versions =  [super_versions, v ] ELSE $
+         super_versions =  v 
+       i = i+1
+
+     ENDWHILE 
+   ENDIF
+
+   versions =  rcsid
+
+   IF exist(super_versions) THEN $
+      versions =  [versions, super_versions]
+
+   IF exist( member_versions ) THEN $
+      versions =  [versions, member_versions ] 
+
+   Catch,/cancel
+  return,versions
+END
 
 ;============================================
 ; Definition Routine
