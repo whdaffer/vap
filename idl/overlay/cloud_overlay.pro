@@ -56,7 +56,7 @@
 ;                      min_speed = min_speed, $
 ;                      max_speed = max_speed, $
 ;                      thick     = thick, $
-;                      use_rf    = use_rf, $
+;                      rainflag    = rainflag, $
 ;                      rf_action = rf_action, $
 ;                      rf_color  = rf_color 
 ;                      
@@ -105,9 +105,7 @@
 ;        min_speed   - the minimum WVC speed
 ;        max_speed   - the maximum WVC speed
 ;        thick       - the 'thickness' of the arrows.
-;        use_rf      - 0|1|2 depending on whether you want 
-;                      NO flagging (0), MP flagging (1) or NOF
-;                      flagging(2).
+;        rainflag      - 0=don't use rain flag, 1=use rain flag
 ;        rf_action   - What to do with the flagging. If 0, don't plot
 ;                      flagged vectors. If 1, plot using rf_color.
 ;        rf_color    - The color to plot the vectors, if rf_action=1.
@@ -149,6 +147,9 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.12  2000/03/09 21:09:02  vapuser
+; Switched over to the Z-buffer version of goes_overlay.
+;
 ;
 ; Revision 1.11  2000/03/01 16:38:06  vapuser
 ; Added 'status' flag in call to overlay
@@ -227,7 +228,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                       min_speed = min_speed, $
                       max_speed = max_speed, $
                       thick     = thick, $
-                      use_rf    = use_rf, $
+                      rainflag    = rainflag, $
                       rf_action = rf_action, $
                       rf_color  = rf_color 
                       
@@ -329,7 +330,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   chkcfg,'LENGTH',length,cfg
   chkcfg,'thick',thick,cfg
 
-  chkcfg,'USE_RF',use_rf,cfg
+  chkcfg,'RAINFLAG',rainflag,cfg
   chkcfg,'RF_ACTION',rf_action,cfg
   chkcfg,'RF_COLOR',rf_color,cfg
 
@@ -346,7 +347,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     IF n_elements(decimate) EQ 0 THEN CRDecimate = [1,1]
   ENDIF 
 
-  IF n_elements(use_rf) EQ 0 THEN use_rf = 0
+  IF n_elements(rainflag) EQ 0 THEN rainflag = 0
   IF n_elements(rf_action) EQ 0 THEN rf_action = 1
   IF n_elements(rf_color) EQ 0 THEN rf_color =  0l
 
@@ -443,6 +444,15 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   IF auto_cloud_overlay THEN $
     printf,llun,"INFO: " + str
 
+  str = ' Using rainflag of       ' + strtrim(rainflag,2)
+  Message,str,/info
+  IF auto_cloud_overlay THEN $
+    printf,llun,"INFO: " + str
+
+  str =  ' IDL Release Env = ' + strtrim(getenv('IDL_RELEASE_ENV'),2)
+  Message,str,/info
+  IF auto_cloud_overlay THEN $
+    printf,llun,"INFO: " + str
 
   wf = GetWindFiles( date_time, delta=time_inc, path= wpath, filter='Q*', /twoway)
   nn = where(strlen(wf) NE 0, nf)
@@ -485,7 +495,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 ;            len=length,outfile=ofile, thumbnail=thumbnail, $
 ;             Decimate=decimate, CRDecimate=CRDecimate, $
 ;              ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif, $
-;               thick=thick, use_rf=use_rf, rf_action=rf_action, $
+;               thick=thick, rainflag=rainflag, rf_action=rf_action, $
 ;                 rf_color=rf_color, status=status
 ;          Message,'Pseudo-color mode obselete!'
 ;        ENDIF ELSE BEGIN 
@@ -494,7 +504,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
             len=length,outfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg, $
-                thick=thick, use_rf=use_rf, $
+                thick=thick, rainflag=rainflag, $
                  rf_action=rf_action, rf_color=rf_color, status=status
 ;        ENDELSE 
       END
@@ -504,7 +514,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
             len=length,outfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif, $
-                maplimits=MapLimits, thick=thick, use_rf=use_rf, $
+                maplimits=MapLimits, thick=thick, rainflag=rainflag, $
                   rf_action=rf_action, rf_color=rf_color, $
                     status = status
       END
