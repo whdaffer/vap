@@ -53,6 +53,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.8  2000/12/14 23:06:17  vapuser
+; Fixed a pointer dereference problem in ::cleanup.
+; General housekeeping.
+;
 ; Revision 1.7  2000/01/11 20:41:51  vapuser
 ; Added metadata from the succor run
 ;   (rainf,ermax,crdecimate,decimate ...)
@@ -265,6 +269,7 @@ FUNCTION qmodel::Get, $
           crdecimate   = crdecimate, $
           decimate     = deciamte, $
           exclude_cols = exclude_cols, $
+          wfiles       = wfiles, $
           infostruct   = infostruct, $
           _extra       = extra
    
@@ -326,6 +331,12 @@ FUNCTION qmodel::Get, $
        decimate = -1
    ENDIF 
 
+   IF arg_present(wfiles) THEN BEGIN 
+     x = where(strpos(hdr_tags,'WFILES') NE -1,NX ) 
+     IF nx NE 0 THEN $
+       wfiles = (*self.data).hdr.wfiles ELSE $
+       wfiles = -1
+   ENDIF 
 
    IF Arg_Present(infostruct) THEN BEGIN 
 
