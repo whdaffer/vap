@@ -47,6 +47,7 @@
 ;                    rf_color    = rf_color, $
 ;                    status      = status, $
 ;                    oplot       = oplot, $
+;                    keepaspect = keepaspect, $
 ;                    help        = help
 ;
 ;
@@ -65,8 +66,26 @@
 ;
 ;     windfiles   : Vector of Strings, List of wind files  to
 ;                   read. Must be fully qualified filenames
-;     xsize       : Xsize of resulting picture (def=640)
-;     ysize       : ditto, y size (def=480)
+;     xsize       : Xsize of resulting picture (def=640, unless
+;                   overridden by `keepaspect')
+;     ysize       : ditto, y size (def=480, unless
+;                   overridden by `keepaspect')
+;
+;                 NB. keepaspect will take the values of xsize and
+;                 ysize and modify one of them so that the aspect
+;                 ratio defined by the latitude/longitude limits in
+;                 the grid file will be maintained in the output
+;                 picture. To do this, it uses one of the values
+;                 (xsize if the lonrange/latrange>=1, ysize if not)
+;                 and uses that value and the aspect ratio to solve
+;                 for the other. Of course, this only happens when the
+;                 cloud files is successfully read, otherwise
+;                 keepaspect has *no* effect. So, if aspectratio is,
+;                 say 1.3 and the routine has taken the default x,y
+;                 size of 640,480, then the new x,y size will be
+;                 640,492; 492=640/1.3. The same will occur with
+;                 postscript output.
+;
 ;     CRDecimate  : Column/Row Decimate, 2 vector, CRdecimate=[2,3]
 ;                   means take every 2nd column, every 3rd
 ;                   row. (def=[1,1], i.e. take every vector.)
@@ -181,7 +200,7 @@
 ;                               7, default=1 a '+')
 ;                      symsize: float 
 ;                               (size of symbol, def=1)
-;                      title      : string array,  
+;                      ptitle      : string array,  
 ;                                 (annotation for for (each) symbol)
 ;                                 (default = '', which means (see note
 ;                                 below, 'no annotation')
@@ -228,7 +247,11 @@
 ;                      by a line.
 ;
 ;
-;     Help:   emit a help message.
+;    keepaspect    : (I), flag: If set, maintain the aspect ratio
+;                    which present in the gridded file. This keyword
+;                    will override input values of xsize/ysize!
+;
+;     Help:   emit a (long) help message.
 ;
 ;
 ; OUTPUTS:  A file, either a .gif, .jpeg (the default) or a .ps file,
@@ -256,7 +279,7 @@
 ;
 ; COMMON BLOCKS:  goes_overlay_cmn
 ;
-; SIDE EFFECTS:  Vast reduction of memory, as this program uses ALOT.
+; SIDE EFFECTS:  Vast reduction of memory; this program uses ALOT.
 ;
 ; RESTRICTIONS:  
 ;
@@ -267,6 +290,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.16  2000/08/15 16:47:41  vapuser
+; Added a help keyword. Added the oplot keyword, so that we can now
+; overplot symbols on the images.
+;
 ; Revision 1.14  2000/05/17 20:41:03  vapuser
 ; Fixed a problem with latitude calculation.
 ;
@@ -331,6 +358,7 @@ PRO goes_overlay, goesfile, $
                     rf_color    = rf_color , $
                     maplimits   = maplimits, $
                     oplot       = oplot, $
+                    keepaspect  = keepaspect, $
                     help        = help
 
 
@@ -340,7 +368,7 @@ PRO goes_overlay, goesfile, $
   status = 1
   savedevice = !d.name
   IF (n_elements(goesfile) EQ 0 AND n_elements(windfiles) EQ 0) OR $
-     keyword_set(help) EQ 1 THEN BEGIN 
+     keyword_set(help) THEN BEGIN 
     Message,'Usage: goes_overlay, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec,rainflag=0|1,rf_action=0|1,rf_color=24bitnumber,mapLimits=mapLimits, oplot=oplot, help=help ] ',/cont
     status = 0
     return
@@ -349,6 +377,9 @@ PRO goes_overlay, goesfile, $
   clouddata = 1
   winddata = n_elements(windfiles) NE 0 
   clouddata =  isa(goesfile,/string,/nonempty)
+
+  IF n_elements(keepaspect) NE 0 THEN keepaspect = keyword_set(keepaspect) ELSE keepaspect = 1
+  IF n_elements(gridlines) NE 0 THEN gridlines = keyword_set(gridlines) ELSE gridlines = 1
 
   read_cfgfile = 0
   cfgname = cfgname()
@@ -429,6 +460,7 @@ PRO goes_overlay, goesfile, $
     ENDIF 
   ENDELSE 
 
+  chkcfg,'KEEPASPECT',keepaspect,cfg
   chkcfg,'MINSPEED',minspeed,cfg
   chkcfg,'MAXSPEED',maxspeed,cfg
   chkcfg,'LENGTH',length,cfg
@@ -528,7 +560,7 @@ PRO goes_overlay, goesfile, $
       ENDIF ELSE BEGIN 
         checkfor =  ['PSYM','SYMSIZE','CHARSIZE','CHARTHICK',$
                      'TEXTCOLOR','SYMCOLOR','ALIGNMENT','ORIENTATION',$
-                     'TITLE', 'X_TITLE', 'Y_TITLE', 'NORMAL']
+                     'PTITLE', 'X_TITLE', 'Y_TITLE', 'NORMAL']
         FOR i=0,n_elements(checkfor)-1 DO BEGIN 
           x = where(strpos(tags,checkfor[i]) NE -1, nx )
           IF nx EQ 0 THEN BEGIN 
@@ -541,7 +573,7 @@ PRO goes_overlay, goesfile, $
               'SYMCOLOR': symcolor = 255
               'ALIGNMENT': alignment =  1.
               'ORIENTATION': orientation = 0.
-              'TITLE': title = replicate('',n_elements(oplot.lon) )
+              'PTITLE': ptitle = replicate('',n_elements(oplot.lon) )
               'X_TITLE': x_title = oplot.lon
               'Y_TITLE': y_title = oplot.lat
               'NORMAL': normal = 0
@@ -550,9 +582,10 @@ PRO goes_overlay, goesfile, $
         ENDFOR 
         toplot = { lon: oplot.lon, lat: oplot.lat, symcolor: symcolor, $
                    psym: psym, symsize: symsize, $
-                   title: title, x_title: x_title, y_title: y_title, $
-                   alignment: alignment, orientation: orientation, normal:normal , $
-                   textcolor: textcolor, charsize: charsize, charthick: charthick }
+                   ptitle: ptitle, x_title: x_title, y_title: y_title, $
+                   alignment: alignment, orientation: orientation, $
+                   normal:normal, textcolor: textcolor, charsize: charsize, $
+                   charthick: charthick }
       ENDELSE 
     ENDELSE 
   ENDIF 
@@ -598,9 +631,12 @@ PRO goes_overlay, goesfile, $
 
       goes_string =  sat_name + ' ' + sensor + ' ('  + goes_date + ')'
 
-      ofile_tmplt = strcompress(sat_name + '_' + sensor + '_' + goes_date ,/remove_all)
+      ofile_tmplt = $
+        strcompress(sat_name + '_' + sensor + '_' + goes_date ,/remove_all)
 
     ENDIF ELSE BEGIN 
+
+      ;; We've successfully read the cloud data!
 
       sat_name = "GOES " + strtrim(hdr.type/10,2)
       sensornum =  hdr.type-(hdr.type/10)*10
@@ -618,7 +654,16 @@ PRO goes_overlay, goesfile, $
 
       goes_string =  sat_name + ' ' + sensor + ' ('  + goes_date + ')'
       
-      ofile_tmplt = strcompress(sat_name + '_' + sensor + '_' + goes_date ,/remove_all)
+      ofile_tmplt = $
+        strcompress(sat_name + '_' + sensor + '_' + goes_date ,/remove_all)
+
+      IF keepaspect THEN BEGIN 
+        aspect = (hdr.limits[2]-hdr.limits[0])/(hdr.limits[3]-hdr.limits[1])
+        IF aspect GE 1 THEN $
+         xsize = ysize*aspect ELSE $
+         ysize = xsize/aspect
+      ENDIF 
+
     ENDELSE 
 
   ENDIF ELSE BEGIN 
@@ -671,7 +716,7 @@ PRO goes_overlay, goesfile, $
   N_COLORS = n_elements(ct[0,*])
   N_WIND_COLORS = n_colors-2
 
-  nn = where(strlen(windfiles) NE 0 , nf)
+  IF winddata NE 0 THEN nn = where(strlen(windfiles) NE 0 , nf) ELSE nf = 0
   IF nf NE 0 THEN BEGIN 
     WindFiles = WindFiles[nn]
     t0 = systime(1)
@@ -777,8 +822,6 @@ PRO goes_overlay, goesfile, $
     latinc = (limits[3]-limits[1])/nlat
     
   ENDIF ELSE BEGIN 
-    nlon =  fix((lonrange[1]-lonrange[0])/loninc+1)
-    nlat =  fix((limits[3]-limits[1])/latinc+1)
 
     IF ps THEN BEGIN 
       loninc = (lonrange[1]-lonrange[0] +1)/(2.*72*xsize)
@@ -787,6 +830,10 @@ PRO goes_overlay, goesfile, $
       loninc = (lonrange[1]-lonrange[0] +1)/xsize
       latinc = (limits[3]-limits[1] +1)/ysize
     ENDELSE 
+
+    nlon =  fix((lonrange[1]-lonrange[0])/loninc+1)
+    nlat =  fix((limits[3]-limits[1])/latinc+1)
+
 
   ENDELSE 
 
@@ -981,7 +1028,7 @@ PRO goes_overlay, goesfile, $
             symsize=toplot[ii].symsize ,color=toplot[ii].symcolor
         ENDFOR 
       ENDELSE 
-      xx = where( strlen(toplot[ii].title) NE 0,nxx)
+      xx = where( strlen(toplot[ii].ptitle) NE 0,nxx)
       IF nxx NE 0 THEN BEGIN 
         FOR jj=0,nxx-1 DO BEGIN 
           nal = n_elements(toplot[ii].alignment)
@@ -989,7 +1036,7 @@ PRO goes_overlay, goesfile, $
           IF toplot[ii].normal THEN BEGIN 
              xyouts, toplot[ii].x_title[xx[jj]], $
                 toplot[ii].y_title[xx[jj]],$
-                 toplot[ii].title[xx[jj]], $
+                 toplot[ii].ptitle[xx[jj]], $
                 align=toplot[ii].alignment[xx[jj] MOD nal ], $
                   orient=toplot[ii].orientation[xx[jj] MOD nor ], $
                     charsize=toplot[ii].charsize, $
@@ -997,7 +1044,7 @@ PRO goes_overlay, goesfile, $
            ENDIF ELSE BEGIN 
              xyouts, toplot[ii].x_title[xx[jj]], $
                 toplot[ii].y_title[xx[jj]],$
-                 toplot[ii].title[xx[jj]], $
+                 toplot[ii].ptitle[xx[jj]], $
                 align=toplot[ii].alignment[xx[jj]], $
                   orient=toplot[ii].orientation[xx[jj]], $
                     charsize=toplot[ii].charsize, $
@@ -1006,10 +1053,12 @@ PRO goes_overlay, goesfile, $
         ENDFOR 
       ENDIF 
     ENDFOR 
-    IF gridlines THEN $
+    IF gridlines THEN BEGIN 
       Map_Set,0,loncent,$
-        limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],$
-         Ymargin=[4.,4], /grid,/label,/noerase
+       limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
+       Ymargin=[4.,4],/noerase,/grid,/lab,color=255b
+    ENDIF 
+
 
     ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
            position=[0.25,ycb[0], 0.75, ycb[1]], $
@@ -1089,7 +1138,7 @@ PRO goes_overlay, goesfile, $
                 symsize=toplot[ii].symsize , color=toplot[ii].symcolor
           ENDFOR 
         ENDELSE 
-        xx = where( strlen(toplot[ii].title) NE 0,nxx)
+        xx = where( strlen(toplot[ii].ptitle) NE 0,nxx)
         IF nxx NE 0 THEN BEGIN 
           FOR jj=0,nxx-1 DO BEGIN 
             nal = n_elements(toplot[ii].alignment)
@@ -1097,19 +1146,21 @@ PRO goes_overlay, goesfile, $
             IF toplot[ii].normal EQ 1 THEN BEGIN 
                xyouts, toplot[ii].x_title[xx[jj]], $
                   toplot[ii].y_title[xx[jj]],$
-                   toplot[ii].title[xx[jj]], $
+                   toplot[ii].ptitle[xx[jj]], $
                   align=toplot[ii].alignment[xx[jj] MOD nal ], $
                     orient=toplot[ii].orientation[xx[jj] MOD nor ], $
                       charsize=toplot[ii].charsize, $
-                         charthick=toplot[ii].charthick,color=toplot[ii].textcolor,/normal
+                         charthick=toplot[ii].charthick,$
+                           color=toplot[ii].textcolor,/normal
              ENDIF ELSE BEGIN 
                xyouts, toplot[ii].x_title[xx[jj]], $
                   toplot[ii].y_title[xx[jj]],$
-                   toplot[ii].title[xx[jj]], $
+                   toplot[ii].ptitle[xx[jj]], $
                   align=toplot[ii].alignment[xx[jj]], $
                     orient=toplot[ii].orientation[xx[jj]], $
                       charsize=toplot[ii].charsize, $
-                         charthick=toplot[ii].charthick,color=toplot[ii].textcolor, /data
+                         charthick=toplot[ii].charthick,$
+                           color=toplot[ii].textcolor, /data
              ENDELSE 
           ENDFOR 
         ENDIF 
@@ -1160,10 +1211,12 @@ PRO goes_overlay, goesfile, $
       ENDIF 
 
 
-      IF gridlines THEN $
+      IF gridlines THEN BEGIN 
         Map_Set,0,loncent,$
-          limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],$
-           Ymargin=[4.,4], /grid,/label,/noerase, color=255b
+         limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
+          Ymargin=[4.,4],/noerase,/grid,/lab,color=0b
+      ENDIF 
+
 
       finalim[*,*,i] =  tvrd()
     ENDFOR 
