@@ -58,6 +58,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/07 00:07:48  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -75,7 +78,7 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
                          Region    = region
                          
    status = 0
-   rcsid = "$Id$
+   rcsid = "$Id$"
 
    Catch,error
    IF error NE 0 THEN BEGIN 
