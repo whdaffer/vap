@@ -3,6 +3,9 @@
 #
 #
 # $Log$
+# Revision 1.6  2001/12/08 00:02:36  vapdev
+# Getting rid of obsolete RSI routines and fixing ENV vars
+#
 # Revision 1.5  2000/02/23 22:01:27  vapuser
 # Haven't the foggiest, couldn't care less.
 #
@@ -22,6 +25,7 @@
 #
 # $Id$
 #
+CP = /bin/cp
 CC = cc
 F77 = f77
 LD = ld 
@@ -34,6 +38,7 @@ F77LIBs = -lftn
 LDFLAGS = -shared 
 CLIBS = 
 RSIINC=/usr/local/rsi/idl_5.1/external
+
 
 
 .c.o:
@@ -61,7 +66,11 @@ SO_OBJS = \
 	wvcsel.so \
 	kprimes.so
 
-default: land_mask.so succor.so
+
+INSTALLABLES=succorf
+INSTALLABLES_TARGET=$(HOME)/bin
+
+default: land_mask.so succor.so succorf
 
 
 succor.so: succor.o objanl.o succor.c objanl.f 
@@ -139,3 +148,10 @@ test_objanl-debug: test_objanl.o objanl.o
 	f77 -g -mips2 -d_lines -o test_objanl test_objanl.o objanl.f -lc -lm -lftn
 
 
+succorf: succorf.f objanl2.f
+	echo Making succorf
+	$(F77) -g -o succorf succorf.f objanl2.f -lftn
+
+install: 
+	echo Make install
+	$(CP) $(INSTALLABLES) $(INSTALLABLES_TARGET)

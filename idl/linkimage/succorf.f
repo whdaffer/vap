@@ -35,11 +35,14 @@ c
 c Modification Log:
 c
 c $Log$
+c Revision 1.1  2002/05/06 15:43:32  vapdev
+c objanl2.f, succorf.f: new all fortran versions of the succor.
+c
 c
 c*************************************************
       program succorf
       implicit none
-      integer*4 MAXVEC/300000/, MAXLON/1440/, MAXLAT/720/
+      integer*4 MAXVEC/500000/, MAXLON/1440/, MAXLAT/720/
 c
 c     --- maximum number of vectors = 400,000
 c     --- maximum grid quantization 1/12 of a degree
@@ -74,6 +77,7 @@ c     arrays based on grid dimensions
       real*4 sp/37676.0/
       real*4 gamma(9)/9*1.0/
       real*4 denom(3)/0.25, -0.5, 1/
+      real*4 lonpar(3), latpar(3)
      
       integer*4 i,j,k,dummy, first, argc, blank
       integer*4 nreps/5/, nvesc/1/, nvect/-1/, l, m
@@ -154,6 +158,15 @@ c 20      format(a80, i)
          endif 
          
          close(INFILE)
+
+
+         lonpar(1)=lonmin
+         lonpar(2)=lonmax
+         lonpar(3)=loninc
+         
+         latpar(1)=latmin
+         latpar(2)=latmax
+         latpar(3)=latinc
          
          l = (lonmax-lonmin)/loninc+1
          m = (latmax-latmin)/latinc+1
@@ -176,8 +189,8 @@ c 20      format(a80, i)
          write(OUTFILE) l,m
          write(OUTFILE) ((ug(i,j),i=1,l), j=1,m)
          write(OUTFILE) ((vg(i,j),i=1,l), j=1,m)
-c         write(OUTFILE) ((ug(i,j),j=1,m), i=1,l)
-c         write(OUTFILE) ((vg(i,j),j=1,m), i=1,l)
+         write(OUTFILE) lonpar
+         write(OUTFILE) latpar
          close(OUTFILE)
          call exit(0)
             
