@@ -61,6 +61,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/08 16:57:25  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -81,11 +84,13 @@ FUNCTION vaptime2idldt, vaptimes
        hour  = fix(tmp[3])
        min = 0
        IF N_Elements(tmp) ge 5 THEN min = fix(tmp[4])
-       idldt[i] =  Var_To_Dt(year,month,day,hour,min)
+       sec = 0
+       IF n_elements(tmp) GE 6 THEN sec =  fix(tmp[5])
+       idldt[i] =  Var_To_Dt(year,month,day,hour,min,sec)
      ENDFOR 
    ENDIF ELSE BEGIN 
      Message,'Usage: idldt=vaptimes2idldt( vaptimes )',/cont
-     print,'vaptimes are string of format: yyyy/mm/dd/hh/mi'
+     print,'vaptimes are string of format: yyyy/mm/dd/hh[/mi/sec]'
      idldt = 0
    ENDELSE 
 
