@@ -1,0 +1,66 @@
+#!/usr/bin/perl -w
+#
+# $Id$
+#
+# make_animation -- Make a SeaWinds VAP animation
+#
+# Usage: make_animation region time delta
+#
+#   Inputs:
+#
+#
+#      REGION: the designation for the region. The only allowed regions at
+#              the moment are those in the 'desig' tag in the
+#              $VAP_LIBRARY/auto_movie_defs.dat file. This field is
+#              *required*
+#
+#      TIME: The time (in vap 'IDL' time format,
+#            i.e. YYYY/MM/DD/HH/MM) of the animation. The time period used
+#            to determine which Wind data will be used in the animation is
+#            [TIME-DELTA,TIME] (see DELTA parameter). 
+#            DEFAULT = start time of run.
+#
+#      DELTA: the number of hours to go backward from TIME. Wind data
+#             within this period is used in making the animation. DEFAULT =
+#             14 hours.
+#
+#
+# 
+# Modification Log:
+#
+# $Log$
+#
+#
+use lib $ENV{VAP_SFTWR_TOP};
+use strict;
+use Animate;
+my $usage= "Usage: $0 region [time delta]\n";
+
+my $starttime =  $^T;
+die $usage unless @ARGV;
+
+$|=0; #flush buffers after every print statement. This will keep the
+      #mixing of stdout/stderr from Perl and IDL to a minimum.
+
+print "=====================================================\n";
+print "$0: Start processing at ". scalar(localtime(time))."\n";
+print "$0: Input Arguments: \n". join ("\n",@ARGV). "\n";
+
+# Create the animater object
+my $animobj = Animate->new(REGION => $ARGV[0],
+			      TIME => $ARGV[1],
+			      DELTA => $ARGV[2]) or 
+  die "Can't initialize animation object!\n";
+
+$animobj->Make_Anim() or die "$0:Error making animation!\n";
+
+my $t1=time();
+my $diff=$t1-$^T;
+
+
+print "$0: End Processing at ". scalar(localtime($t1))."\n";
+print "$0: Elapsed wall clock time: $diff seconds\n";
+print "=====================================================\n";
+
+# 
+
