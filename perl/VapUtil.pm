@@ -31,6 +31,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.9  2002/08/09 23:39:28  vapdev
+# Add auto_movie_defs to export list
+#
 # Revision 1.8  2002/08/08 23:28:05  vapdev
 # General cleanup, work on BEGIN{} block, work on interface issues.
 #
@@ -62,7 +65,7 @@
 package VapUtil;
 use strict;
 
-use vars qw/@ISA @EXPORT_OK $VAP_LIBRARY $ARCHIVETOP $GRIDDINGTOP
+use vars qw/@ISA @EXPORT_OK @EXPORT $VAP_LIBRARY $ARCHIVETOP $GRIDDINGTOP
 	    $WINDS_DIR $IDLEXE $auto_movie_defs_file
 	    $overlay_defs_file $vap_defs_file $vap_is_batch
 	    %satnum2areanum %areanum2satnum %satloc2satnum
@@ -74,15 +77,16 @@ use subs qw/&doy2mday_mon  &date2doy &vaptime2systime &systime2vaptime
 	   &GetNow &DeltaTime &ParseVapTime &vaptime2idltime
 	   &vaptime2decyear &systime2decyear &parts2decyear 
 	   &fixlonrange &prepend_yyyymmdd &SysNow &makeIDLOplotString
-	   &makeRandomTag/;
+	   &makeRandomTag &deenvvar/;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK=qw( &doy2mday_mon &date2doy &vaptime2systime &systime2vaptime 
+@EXPORT =qw( &doy2mday_mon &date2doy &vaptime2systime &systime2vaptime 
 	       &systime2idltime &idltime2systime &leapyear &auto_movie_defs
 	       &GetNow &DeltaTime &ParseVapTime &vaptime2idltime
 	       &vaptime2decyear &systime2decyear &parts2decyear 
 	       &fixlonrange &prepend_yyyymmdd &SysNow &makeIDLOplotString
-	       &makeRandomTag $VAP_LIBRARY $ARCHIVETOP $GRIDDINGTOP
+	       &makeRandomTag &deenvvar 
+	       $VAP_LIBRARY $ARCHIVETOP $GRIDDINGTOP
 	       $WINDS_DIR $IDLEXE $auto_movie_defs_file
 	       $overlay_defs_file $vap_defs_file $vap_is_batch 
 	       %satnum2areanum   %areanum2satnum %satloc2satnum 
@@ -1580,6 +1584,21 @@ sub MoveOverlayOutput{
 
 }
 
+sub deenvvar{
+  use File::Basename;
+  my $thingy = shift or 
+    croak "Usage: Cleanedup_file_spec = deenvvar(possibly_polluted_filespec [,extension] )\n";
+  $thingy =~ s/'|"//g;
+  my @parts = split /\//, $thingy;
+  foreach (@parts){
+    s/\s*//g; # will fail if path has spaces in it!
+    if( /\$/){
+      $_ = substr($_,1);
+      $_ = $ENV{$_} or carp  "Environmental variable \$".$_." is undefined!\n";
+    }
+  }
+  $thingy = join("/",@parts);
+}
 
 1;
 
