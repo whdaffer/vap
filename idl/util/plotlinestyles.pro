@@ -30,6 +30,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/08 00:06:57  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1995, William Daffer
 ;-
@@ -41,7 +44,7 @@ FUNCTION Plotlinestyles, linestyle
 COMMON plsnames, plsnames, plsnamesdef
 
 IF n_elements( linestyle ) EQ 0 THEN linestyle = !p.linestyle
-IF n_elements( plsnamesdef ) EQ 0 THEN BEGINi
+IF n_elements( plsnamesdef ) EQ 0 THEN BEGIN
   plsnames = [ 'solid', '...', '---', '-.', '-...', '__ __' ]
   plsnamesdef =1
 ENDIF
