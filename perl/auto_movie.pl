@@ -10,6 +10,9 @@
 #   (i.e. what has become known as 'vaptime')
 # 
 # $Log$
+# Revision 1.4  1998/10/22 21:16:20  vapuser
+# Made it ready to run in Qscat land
+#
 # Revision 1.3  1998/10/17 00:23:15  vapuser
 # Changed 'require vap_perl' to 'use vap_perl'
 #
@@ -27,6 +30,7 @@
 require 5.000;
 use vap_perl;
 use Cwd 'chdir';
+use File::Copy ;
 require vap_perl;
 
 ($sec,$min,$hour,$mday,$mon,
@@ -150,7 +154,8 @@ if ( $test_roi[0]) {
     # Make it rw-r--r--
   chmod 0644, $oldfile || die "Can't chmod of $oldfile\n";
   print "Renaming $oldfile to $newfile\n";
-  rename( $oldfile, $newfile ) || 
+  # rename( $oldfile, $newfile ) || 
+  copy( $oldfile, $newfile ) || 
       die "Can't rename $oldfile to $newfile, $!\n";
 
     # Now do the same for the gwind file
@@ -160,7 +165,8 @@ if ( $test_roi[0]) {
   $new_gwind_file = "$newpath/gwind_$froi.001.gif";
 
   print "Renaming gwind.001 to $new_gwind_file.\n";
-  rename( "./gwind.001", $new_gwind_file ) || 
+   # rename( "./gwind.001", $new_gwind_file ) || 
+  copy( "./gwind.001", $new_gwind_file ) || 
       die "Can't rename gwind.001 to $new_gwind_file, $!\n";
   
     # create a symlink from the images subdir to this new movie and it's thumbnail.
