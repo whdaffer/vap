@@ -57,6 +57,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/30 22:14:28  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -234,10 +237,19 @@ PRO cloud_overlay_config_events, event
           'Reading file ' + f[0]
          (*info).filename = f[0]
          Read_PCGoes, f[0], limits, data, hdr=hdr
-         sz = size( data )
+         sz = size( data,/Dimensions )
          IF N_Elements(Limits) NE 4 THEN $
            Limits = hdr.limits
-         data = 1024-data
+          sensornum = fix( getChar( strcompress( $
+                                    strtrim( hdr.type,2),/remove_all),/last) )
+          ir =  sensornum GT 1
+          IF ir THEN BEGIN 
+            data = 1024-data
+            Message, 'IR data, reversing data',/cont
+          ENDIF 
+          moments = moment(data)
+          ;a = moments[0]
+          ;s = sqrt(moments[1])
          (*info).dataPtr = data
          Cloud_Overlay_Config_Draw, info
        ENDIF 
@@ -275,6 +287,7 @@ END
 
 FUNCTION cloud_overlay_config, $
                           cloud_file, $ ; 'grid_goes' output file
+                          data=data, $
                           WaterMin= watermin, $
                           WaterMax= watermax, $
                           CloudMin= Cloudmin, $
@@ -283,11 +296,17 @@ FUNCTION cloud_overlay_config, $
                           Ysize=Ysize, $
                           Limits=Limits,$
                           group_leader = group_leader ; =0 if not present
+  restore = 0
+  IF !d.name NE 'X' THEN BEGIN 
+    restore = 1
+    genv,/save
+    set_plot,'x'
+  ENDIF 
 
+  IR =  keyword_set(IR)
   IF n_Elements(group_leader) EQ 0 THEN group_leader = 0
   IF N_elements(Xisze) EQ 0 THEN Xsize = 640
   IF N_elements(Yisze) EQ 0 THEN Ysize = 512
-  IF N_Elements(Limits) EQ 0 THEN Limits = [0,-89.99,359,89.99]
 
   IF !d.n_colors EQ 256 THEN BEGIN 
     Window,/free, /pixmap
@@ -305,7 +324,8 @@ FUNCTION cloud_overlay_config, $
   CloudMax = byte(CloudMax)
 
   tlb = Widget_Base(col=1, /map, mbar=menu_bar_id, $
-                    group_leader=group_leader)
+                    group_leader=group_leader, $
+                   Title='Cloud Overlay Configurator')
   fileButtonId = Widget_Button( menu_bar_id, /menu, Value='File')
   FileId = Widget_Button( fileButtonId, Value='Open',Uvalue='FILEOPEN')
   QuitId = Widget_Button( fileButtonId, VaLUE='Quit', Uvalue='FILEQUIT')
@@ -332,6 +352,55 @@ FUNCTION cloud_overlay_config, $
   ApplyId = Widget_Button( base3, Value="Apply", Uvalue='APPLY')
   DismissId = Widget_Button( base3, Value="Dismiss", Uvalue='DISMISS')
   CancelId = Widget_Button( base3, Value="Cancel", Uvalue='CANCEL')
+
+
+  IF N_Elements(cloud_file) NE 0 THEN BEGIN 
+    Cloud_overlay_config_setstatus, TextId, 'Reading file ' + cloud_file
+    Read_PCGoes, cloud_file, limits, data, hdr=hdr
+    sz = size( data, /dimensions )
+    IF N_Elements(Limits) NE 4 THEN $
+      Limits = hdr.limits
+    sensornum = fix( getChar( strcompress( $
+                   strtrim( hdr.type,2),/remove_all),/last) )
+    ir =  sensornum GT 1
+    IF ir THEN BEGIN 
+      data = 1024-data
+      Message, 'IR data, reversing data',/cont
+    ENDIF 
+    moments = moment(data)
+    a = moments[0]
+    s = sqrt(moments[1])
+    slidermin = min(data)
+    slidermax=max(data)
+    dataPtr = Ptr_New(data,/no_copy)
+    cutoff = a-s
+    
+  ENDIF ELSE BEGIN 
+    IF n_elements(data) NE 0 THEN BEGIN 
+      IF N_Elements(Limits) NE 4 THEN BEGIN 
+        Message,$
+          "Keyword 'limits' is REQUIRED when passing data by keyword!'",$
+         /cont
+        IF restore THEN genv,/restore
+        return,0
+      ENDIF 
+      moments = moment(data)
+      a = moments[0]
+      s = sqrt(moments[1])
+      slidermin = min(data)
+      slidermax=max(data)
+      dataPtr = Ptr_New(data) 
+      cutoff = a-s
+
+    ENDIF ELSE BEGIN 
+      Message,"Assuming you'll read data using the 'file' menu!",/cont
+      cutoff = 1024/2.
+      slidermin = 0
+      slidermax=1024
+      dataPtr = Ptr_New();
+    ENDELSE 
+  ENDELSE 
+
   Widget_Control, tlb, /realize
   Widget_Control, HistoDrawId, Get_Value=histowid
   Widget_Control, DrawId, Get_Value=wid
@@ -339,31 +408,11 @@ FUNCTION cloud_overlay_config, $
   Window, /free, /pixmap, Xsize=300, ysize=200
   Pixid = !d.Window
 
-  IF N_Elements(cloud_file) NE 0 THEN BEGIN 
-    Cloud_overlay_config_setstatus, TextId, 'Reading file ' + cloud_file
-    read_pcgoes, cloud_file, limits, data, hdr=hdr
-    sz = size( data )
-    IF N_Elements(Limits) NE 4 THEN $
-      Limits = hdr.limits
-    data = 1024-data
-    s = stdev(data,a)
-    slidermin = min(data)
-    slidermax=max(data)
-    dataPtr = Ptr_New(data,/no_copy)
-    cutoff = a-s
-
-  ENDIF ELSE BEGIN 
-    cutoff = 1024/2.
-    slidermin = 0
-    slidermax=1024
-    dataPtr = Ptr_New();
-  ENDELSE 
-
   x = where(Limits LT 0, nx )
   IF nx NE 0 THEN limits[x] = limits[x]+360.
 
 
-  loncent = Avg( Limits[ [0,2] ] )
+  loncent = Mean( Limits[ [0,2] ] )
   info =  Ptr_New( { $
                     tlb         : tlb,$
                     FileId      : FileId,$
@@ -411,5 +460,6 @@ FUNCTION cloud_overlay_config, $
 ;  Ptr_Free, (*info).DataPtr
 ;  Ptr_Free, (*info).imagePtr
   Ptr_Free, info
+  IF restore THEN genv,/restore
   return, retinfo
 END
