@@ -48,6 +48,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/09 21:43:42  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -74,9 +77,11 @@ FUNCTION parsernoaaheader, header
       tmp2 = str_sep(tmp[ii],'=')
       tag =  strupcase(strcompress(tmp2[0],/remove_all))
       value =  strupcase(strtrim( tmp2[1],2 ))
-      IF nn EQ 0 AND ii EQ 0 THEN $
-        retstruct =  create_struct( tag, value ) ELSE $
-        retstruct =  create_struct( retstruct, tag, value ) 
+      IF tag NE 'SPARE_METADATA_ELEMENT' THEN BEGIN 
+        IF nn EQ 0 AND ii EQ 0 THEN $
+          retstruct =  create_struct( tag, value ) ELSE $
+          retstruct =  create_struct( retstruct, tag, value ) 
+      ENDIF 
     ENDFOR 
   ENDFOR 
 
