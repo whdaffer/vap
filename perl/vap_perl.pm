@@ -1,11 +1,15 @@
 #!/usr/bin/perl5  
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <98/10/27 08:16:56 vapuser>
+# Time-stamp: <99/04/02 14:26:40 vapuser>
 # $Id$
 #
 # Modification History:
 #
 # $Log$
+# Revision 1.4  1998/10/27 16:27:35  vapuser
+# Fixed some problems with getcwd and undefined ARCHIVETOP and GRIDDINGTOP
+# variables
+#
 # Revision 1.3  1998/10/22 21:37:09  vapuser
 # To much work to relate. Do a diff if you really care.
 #
@@ -38,13 +42,17 @@ BEGIN {
   $ARCHIVETOP  = $ENV{'VAP_GOES_TOPDIR'}    || $VAP_ROOT."/goes";
   $GRIDDINGTOP = $ENV{'VAP_GOES_GRIDDED_TOPDIR'} || 
       $ARCHIVETOP."gridded_files";
-  $IDLEXE="/disk3/rsi/idl_5.1/bin/idl";
+  $IDLEXE=$ENV{'IDLEXE'};
   $VAP_OVERLAY_ARCHIVE = $ENV{'VAP_OVERLAY_ARCHIVE'} ||
       $VAP_WWW_TOP."/images/overlay_archive";
 
+    # MOVIE DEFS
+  $auto_movie_defs_file=$VAP_LIB."/auto_movie_defs.dat";
     # Get the Overlay Defaults
   $overlay_defs_file=$VAP_LIB."/overlay_defs";
   require $overlay_defs_file;
+
+
 }
 
 %sat_num= ('8','9' , # AREA08* are goes 9 files !
@@ -65,12 +73,9 @@ sub auto_movie_defs {
   # (i.e. 'nepac','nwpac','npac','nwatl' and whatever other regions of
   # interest we may decide to do.
   
-  # get defaults filename, default to $VAP_ROOT/auto_movie_defs.dat
-  $root = $VAP_ROOT;
-  $defs_file= shift || $root."/auto_movie_defs.dat" ;
 
   # open the file 
-  open (DEFS,"<$defs_file") || die "Can't open $defs_file\n";
+  open (DEFS,"<$auto_movie_defs_file") || die "Can't open $auto_movie_defs_file\n";
   @defs =<DEFS>;
   close DEFS;
 
@@ -95,19 +100,29 @@ sub auto_movie_defs {
 sub doy2mday_mon{
   $doy=shift;
   $year=shift;
-  # cummulative number of days in the year for the first of each month
-  @doys = (0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 ) ;
-  if ($leap_year ==1 && $doy > 60 ) {
-    $doy2 -= $leap_year;
+  # cummulative number of days in the year for the end of each month
+  @doys = (31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365) ;
+  $leapyear=leapyear($year);
+
+  if ($leapyear ==1 && $doy > 60 ) {
+    $doy2 -= $leapyear;
   } else {
     $doy2 = $doy;
   }
-  $i=0;
-  while ( $doys[$i] < $doy2) {
-    $i++;
+  if ($doy2<=31) {
+    $mon=1;
+    $mday=$doy2;
+  } else {
+
+    $i=1;
+    while ( $doys[$i] < $doy2 && $i<=12) {
+      $i++;
+    }
+    $mday = $doy2 - $doys[$i-1];
+    $mon = $i;
+
   }
-  $mday = $doy2 - $doys[$i-1];
-  $mon = $i;
+
   push (@mday_mon, ($mday,$mon) );
   @mday_mon;
 
@@ -207,8 +222,11 @@ sub date_index{
 	       'daily_npac.mov',
 	       'daily_nwatl.mov',
 	       'daily_indian.mov',
-	       'GOES104NEPAC1.gif',
-	       'GOES84NWATL1.gif'
+	       'GOES104NEPAC1.jpeg',
+	       'GOES84NWATL1.jpeg',
+	       'GMS51WPAC1.jpeg',
+	       'GMS51JAPAN1.jpeg',
+	       'GMS51FAREAST1.jpeg'
 	       );
 
   @wwwnames = ('nepac_anim',
@@ -216,18 +234,26 @@ sub date_index{
 	       'npac_anim',
 	       'nwatl_anim',
 	       'indian_anim',
-	       'npac_evol_anim',
+#	       'npac_evol_anim',
 	       'goes104nepac1',
-	       'goes84nwatl1');
+	       'goes84nwatl1',
+	       'gms51wpac1',
+	       'gms51japan1',
+	       'gms51fareast1'
+
+);
 
   %wwwhash=('nepac_anim'     => 'daily_nepac.mov',
 	    'nwpac_anim'     => 'daily_nwpac.mov',
 	    'npac_anim'      => 'daily_npac.mov', 
 	    'nwatl_anim'     => 'daily_nwatl.mov',
 	    'indian_anim'    => 'daily_indian.mov',
-	    'npac_evol_anim' => 'daily_npac_evol.mov',
-	    'goes104nepac1'  => 'GOES104NEPAC1.gif',
-	    'goes84nwatl1'   => 'GOES84NWATL1.gif',
+#	    'npac_evol_anim' => 'daily_npac_evol.mov',
+	    'goes104nepac1'  => 'GOES104NEPAC1.jpeg',
+	    'goes84nwatl1'   => 'GOES84NWATL1.jpeg',
+	    'gms51wpac1'     => 'GMS51WPAC1.jpeg',
+	    'gms51japan1'    => 'GMS51JAPAN1.jpeg', 
+	    'gms51fareast1'  => 'GMS51FAREAST1.jpeg'
 );
 
   chdir $DOCROOT || die "Couldn't chdir to $DOCROOT";
@@ -277,11 +303,16 @@ sub date_index{
   rename ("index.html", "index.html.old" ) ||
       die "Couldn't rename index.html\n";
   open (OUT, ">index.html") || die "Can't open index.html\n";
+  $search_string1 = "(hhmts|";
+  $search_string1 .= join("|",@wwwnames);
+  $search_string1 .= ")";
 
   for ($i=0;$i<=$#in;$i++) {
     $rec=$in[$i];
     if ($rec !~ /^\s*<!--\s*<!--/) {
-      if ($rec =~ /(anim|size|goes104nepac1|goes84nwatl1|hhmts)/) {
+#      if ($rec=~/(anim|size|goes104|goes84|gms51|hhmts){       
+#      if ($rec =~ /(anim|size|goes104nepac1|goes84nwatl1|hhmts)/) {
+      if ($rec =~ /$search_string1/) {
 #       print "Found something, rec = $rec\n";
 	if ($rec =~ /hhmts start/) {
 	    # Handle the 'Last Modified' at the end of the page 
@@ -292,8 +323,8 @@ sub date_index{
 	  foreach $k (@wwwnames) {
 	    if ( $rec =~ /$k/ ) {
 #	    print "key = $k\n";
-	      $search_string=$k."_size";
-	      if ($rec =~ /.*$search_string.*/ ) {
+	      $search_string2=$k."_size";
+	      if ($rec =~ /.*$search_string2.*/ ) {
 		$rec =~ s/$search_string/$file_size{$k}/;
 		$in[$i] = $rec;
 		last ;
@@ -501,17 +532,17 @@ sub gag {
     } else {
       $mon=$tmp2[0]-1;
       $mday=$tmp2[1];
-      $year=$tmp2[2]-1900;
+      $year=substr($tmp2[2],0,4)
     }
-    $file_time=timegm(0,$min,$hour,$mday,$mon,$year);
-    $diff=abs( $file_time-$test_time);
+    $noaa_file_time=timegm(0,$min,$hour,$mday,$mon,$year-1900);
+    $diff=abs( $noaa_file_time-$test_time);
     if ($diff < $min_diff) {
 	$area_file=$filename;
-	$area_file_time=$file_time; 
+	$area_file_time=$noaa_file_time; 
         ($sec1,$min1,$hour1,$mday1,$mon1,$year1)=gmtime( $area_file_time );
         $area_file_time_string =
-           sprintf("%04d%02d%02dT%02d:%02d:%02d",$
-              $year1+1900,$mon1+1,$mday1,$hour1,$min1,$sec1);
+           sprintf("%04d%02d%02dT%02d:%02d:%02d",
+		   $year1+1900,$mon1+1,$mday1,$hour1,$min1,$sec1);
 	$min_diff=$diff;
     }
 
@@ -601,27 +632,20 @@ sub gag {
 
       $mon=$tmp2[0]-1;
       $mday=$tmp2[1];
-      $year=$tmp2[2]-1900;
-      $local_area_file_time=timegm(0,0,$hour,$mday,$mon,$year);      
-      $test2 = abs($local_area_file_time == $file_times[$closest]);
+      $year=substr($tmp2[2],0,4);
+      $local_area_file_time=timegm(0,0,$hour,$mday,$mon,$year-1900);      
+      $test2 = abs($local_area_file_time - $area_file_time);
       last;
     }
   }  
 
-
-  if ( $test2 >= 1/24. ) {
+    # test2 is in seconds
+  if ( $test2 >= 3600 ) { # more than 1 hour difference.
 
       # either we don't have this area file, or it isn't the right one.
       # go to the archive are retrieve it.
 
     print "   Not here! Retrieving $area_file from the NOAA archive \n";
-#     $ftp = Net::FTP->new( $host ) || die "  Can't open new \n";
-#     $ftp->login ($user, $pw ) || die "  Can't login\n";
-#     $ftp->binary || die "  Can't go to binary\n";
-#     $ftp->get($remote_area_file,$local_area_file) ||  die "  Can't get file\n";
-#     $ftp->quit || die "  Can't close\n";
-#     print "  Done retrieving file!\n";
-
     $file=getgoesfile( $area_file);
 
     die "Error retrieving $area_file\n" if (!file);
@@ -664,7 +688,7 @@ sub gag {
 	  }
       }
       $goes_type=$satnum.$sensornum;
-      $tyear=$year+1900;
+      $tyear=$year;
       $tmonth=$month+1;
       $grid_file_name=sprintf( "GOES%03d-%04d%02d%02d%02d-%%%04d,%03d,%04d,%03d%%.dat", 
 			      $goes_type, $tyear, $tmonth, $mday, $hour, 
@@ -1049,7 +1073,7 @@ sub vaptime2systime{
   $year=substr( $time_parts[0], 0, 4 );
   $mon=substr( $time_parts[0], 4,2 );
   $mday=substr( $time_parts[0], 6, 2 );
-  ($hh,$mm)=split(/:/,$time_parts[1]);
+  ($hour,$min)=split(/:/,$time_parts[1]);
  
   $secs=timegm( 0, $min, $hour, $mday, $mon-1, $year-1900 );
   $secs;
@@ -1174,4 +1198,5 @@ sub vaptime2idltime{
   $idltime=join('/',reverse @parsed_time);
   $idltime
 }
+
 1;
