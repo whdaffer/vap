@@ -56,6 +56,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/01 17:53:09  vapuser
+; Modified 'version' method so that it will report
+; the versions of member classes. Put in some error handling
+; so that it'll ignore calls to undefined 'version' methods.
+;
 ; Revision 1.2  1998/10/01 15:45:54  vapuser
 ; Removed rcsid member, added 'version' method. Made rcsid local to version method.
 ;
@@ -535,11 +540,22 @@ FUNCTION LinkedList::Version
      ; Version number for this class
    rcsid = "$Id$"
 
+     ; Find version number for objects in the list
+   n = self-> Gethead()
+   i = 0
+   WHILE Ptr_Valid( n ) DO BEGIN 
 
-     ; Find version number for member objects.
-   Tags = Tag_Names(self)
-   n_tags = n_elements(Tags)
-   WHILE i LE n_tags-1 DO BEGIN 
+     data = self->GetCurrentDataPtr()
+     IF Ptr_Valid(data) THEN BEGIN 
+       IF VarType(*data) EQ 'OBJECT' THEN BEGIN 
+         IF Obj_Valid(*data) THEN BEGIN 
+            v = Call_Method( "VERSION", *data)
+            IF exist( list_versions ) THEN $
+               list_versions = [list_versions,v] ELSE $
+               list_versions = v
+         ENDIF 
+       ENDIF 
+     ENDIF 
 
      catch, error
      IF error NE 0 THEN BEGIN 
@@ -547,55 +563,22 @@ FUNCTION LinkedList::Version
        IF strpos( strupcase(!Error_state.Msg), $
                   "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
          error = 0
-         i = i+1
-       ENDIF ELSE return,''
+       ENDIF ELSE BEGIN 
+         Message,!error_State.msg,/cont
+         return,''
+       ENDELSE 
      ENDIF 
-     
-     IF VarType( self.(i) ) EQ 'OBJECT' THEN BEGIN 
-       V =  Call_Method( "VERSION", self.(i) )
-       nv = N_Elements(V)
-       IF exist(member_versions) THEN $
-          member_versions =  [ member_versions, v ] ELSE $
-          member_versions =  v
-     ENDIF 
-     i =  i+1
+
+     n = self->GetNext()
    ENDWHILE 
-
-     ; find version number for superclasses.
-   super = Obj_Class(self,/Super,count=cnt)
-        
-   IF cnt NE 0 THEN BEGIN 
-     WHILE i LE cnt-1 DO BEGIN 
-       catch, error
-       IF error NE 0 THEN BEGIN 
-           ; Ignore 'undefined method' errors
-         IF strpos( strupcase(!Error_state.Msg), $
-                    "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
-           error = 0
-           i = i+1
-         ENDIF ELSE return,''
-       ENDIF 
-
-       V  = call_method("VERSION",super[i])
-
-       IF exist( super_versions ) THEN $
-         super_versions =  [super_versions, v ] ELSE $
-         super_versions =  v 
-       i = i+1
-
-     ENDWHILE 
-   ENDIF
 
    versions =  rcsid
 
-   IF exist(super_versions) THEN $
-      versions =  [versions, super_versions]
-
-   IF exist( member_versions ) THEN $
-      versions =  [versions, member_versions ] 
+   IF exist(list_versions) THEN $
+      versions =  [versions, list_versions]
 
    Catch,/cancel
-  return,versions
+  return,versions(uniq(versions,sort(versions)))
 END
 
 ;----------------------------------------
