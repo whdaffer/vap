@@ -42,6 +42,7 @@
 ;                    config      = config, $
 ;                    scalevec    = scalevec, $
 ;                    gridlines   = gridlines, $
+;                    status      = status, $
 ;                    use_rf      = use_rf, $
 ;                    rf_action   = rf_action, $
 ;                    rf_color    = rf_color 
@@ -145,6 +146,8 @@
 ;
 ;     GridLines    : Put down map grid lines after TVing the image.
 ;
+;     Status       : (0), 0 means failure, 1 means success.
+;
 ;     Use_RF       : (I), Flag , 0|1|2 depending on whether you want
 ;                    NO flagging (0), MP flagging (1) or 
 ;                    NOF flagging (2). Default=0, no flagging
@@ -213,6 +216,13 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.14  2000/03/01 16:37:26  vapuser
+; Added a status flag to communicate
+; to outside world.
+;
+; Revision 1.13  2000/02/29 23:12:12  vapuser
+; Added colorbar for rain flagged data.
+;
 ; Revision 1.12  2000/02/28 18:05:07  vapuser
 ; Added rain flag code. Spruced up documentation.
 ;
@@ -293,6 +303,7 @@ PRO goes_overlay24, goesfile, $
                     config      = config , $
                     scalevec    = scalevec, $
                     gridlines   = gridlines, $
+                    status      = status, $
                     use_rf      = use_rf, $
                     rf_action   = rf_action, $
                     rf_color    = rf_color 
@@ -301,6 +312,8 @@ PRO goes_overlay24, goesfile, $
 ; COMMON goes_overlay_cmn, landel
 
 
+
+  status =  1 ; dress for success
 
   genv,/save
   tvlct,orig_red,orig_green,orig_blue,/get
@@ -311,6 +324,7 @@ PRO goes_overlay24, goesfile, $
     catch,/cancel
     tvlct,orig_red,orig_green,orig_blue
     genv,/restore
+    status = 0
     return
   END
 
@@ -332,6 +346,7 @@ PRO goes_overlay24, goesfile, $
     Message,'Usage: goes_overlay24, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec,use_rf=0|1|2,rf_action=0|1,rf_color=24bitnumber ] ',/cont
     tvlct,orig_red,orig_green,orig_blue
     genv,/restore
+    status = 0
     return
   ENDIF 
   
@@ -389,6 +404,7 @@ PRO goes_overlay24, goesfile, $
     Message,'Only one of PS, GIF  or JPEG may be set',/cont
     tvlct,orig_red,orig_green,orig_blue
     genv,/restore
+    status = 0
     return
   ENDIF 
 
@@ -505,6 +521,7 @@ PRO goes_overlay24, goesfile, $
 
   IF NOT status THEN BEGIN 
     Message,'ERROR Reading Goesfile ' + goesfile,/cont
+    status = 0
     return
   ENDIF 
 
@@ -519,6 +536,7 @@ PRO goes_overlay24, goesfile, $
       Message," Trouble parsing " + Goesfile ,/cont
       tvlct,orig_red,orig_green,orig_blue
       genv,/restore
+      status = 0
       return
     ENDIF ELSE BEGIN 
       sat_name = GoesFilenameStruct.SatName + " " + $
@@ -537,7 +555,7 @@ PRO goes_overlay24, goesfile, $
 
     IR =  ( sensornum GT 1 )
 
-    IF ir THEN GoesData = 1024-temporary(GoesData)
+    IF ir THEN GoesData = 1023-temporary(GoesData)
     IF N_elements(minpix) EQ 0 THEN minpix = 0
 
     IF getenv('OVERLAY_CT') NE '' THEN BEGIN 
@@ -550,6 +568,7 @@ PRO goes_overlay24, goesfile, $
       Message,'Error Reading ColorTable!',/cont
       tvlct,orig_red,orig_green,orig_blue
       genv,/restore
+      status = 0
       return
     ENDIF 
     CT = *ptr
