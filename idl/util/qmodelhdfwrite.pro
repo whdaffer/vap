@@ -21,6 +21,7 @@
 ;                         CreationTime= CreationTime,$
 ;                         StartTime = StartTime, $
 ;                         EndTime   = EndTime,$
+;                         InterpTime = InterpTime, $
 ;                         LonPar    = LonPar,$    
 ;                         LatPar    = LatPar, $   
 ;                         Region    = region, $
@@ -28,7 +29,8 @@
 ;                         ermax     = ermax, $
 ;                         crdecimate = crdecimate, $
 ;                         decimate   = decimate, $
-;                         exclude_cols = exclude_cols)
+;                         exclude_cols = exclude_cols, $
+;                         wfiles=wfiles )
 ;
 ;
 ; 
@@ -54,6 +56,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  2000/01/11 20:45:43  vapuser
+; In line with the addition of metadata to the qmodel object and file, I
+; added code to this module to read and transmit same.
+;
 ; Revision 1.5  1999/04/09 15:37:53  vapuser
 ; Added some argument checking
 ;
@@ -81,7 +87,8 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
                          Version      = Version,     $
                          CreationTime = CreationTime,$
                          StartTime    = StartTime,   $ 
-                         EndTime      = EndTime,     $    
+                         EndTime      = EndTime,     $ 
+                         InterpTime   = InterpTime,  $
                          LonPar       = LonPar,      $     
                          LatPar       = LatPar,      $    
                          Region       = region,      $    
@@ -89,7 +96,8 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
                          ermax        = ermax,       $     
                          crdecimate   = crdecimate,  $
                          decimate     = decimate,    $
-                         exclude_cols = exclude_cols
+                         exclude_cols = exclude_cols, $
+                         wfiles       = wfiles
                          
    status = 0
    rcsid = "$Id$"
@@ -184,6 +192,14 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
            ELSE IF vartype(creationtime) EQ 'BYTE' THEN $
              CreationTime = string(creationtime)
 
+           IF N_Elements(InterpTime) EQ 0 THEN $
+             InterpTime = '0000/00/00/00/00' $
+           ELSE IF strlen( InterpTime ) EQ 0 THEN $
+             InterpTime = '0000/00/00/00/00' $
+           ELSE IF vartype(InterpTime) EQ 'BYTE' THEN $
+             InterpTime = string(InterpTime)
+
+
 
            IF n_elements(rainf) EQ 0 THEN rainf = 0.
            IF n_elements(ermax) EQ 0 THEN ermax =  replicate(0.,n_elements(rainf))
@@ -197,11 +213,15 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
              exclude_cols =  strtrim(string(exclude_cols),2)
              ; Set Global Attributes.
 
+           IF n_elements(wfiles) EQ 0 THEN $
+             wfiles = "<Don't know>" ELSE $
+             wfiles = strjoin(wfiles,',')
            Hdf_sd_AttrSet,fileId,'LONGNAME',strtrim(LongName[0],2)
            Hdf_sd_AttrSet,fileId,'VERSION',strtrim(Version[0],2)
            Hdf_sd_AttrSet,fileId,'STARTTIME',strtrim(StartTime[0],2)
            Hdf_sd_AttrSet,fileId,'ENDTIME',strtrim(EndTime[0],2)
            Hdf_sd_AttrSet,fileId,'CREATIONTIME',strtrim(CreationTime[0],2)
+           Hdf_sd_AttrSet,fileId,'INTERPTIME',strtrim(InterpTime[0],2)
            Hdf_sd_AttrSet,fileId,'SHORTNAME',ShortName
            Hdf_sd_AttrSet,fileId,'NLON',nlon,/long
            Hdf_sd_AttrSet,fileId,'NLAT',nlat,/long
@@ -213,6 +233,7 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
            Hdf_sd_AttrSet,fileId,'CRDECIMATE',crdecimate,/long
            Hdf_sd_AttrSet,fileId,'DECIMATE',decimate,/long
            Hdf_sd_AttrSet,fileId,'EXCLUDE_COLS',exclude_cols
+           Hdf_sd_AttrSet,fileId,'WFILES',wfiles
 
              ; Create the SDS 
            USdsId =  Hdf_sd_create( fileid, "U",[nlon,nlat],/float)
@@ -237,7 +258,7 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
    ENDIF ELSE BEGIN 
      str =  'Usage: s= qmodelwrite(u,v,longname=longname, ' + $
       ' version=version, starttime=starttime, endtime=endtime,' + $
-       ' creationtime=creationtime, lonpar=lonpar, ' + $
+       ' creationtime=creationtime, interptime=interptime, lonpar=lonpar, ' + $
         'latpar=latpar, region=region)'
      Message,str,/cont
    ENDELSE 
