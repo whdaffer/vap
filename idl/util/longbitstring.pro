@@ -37,6 +37,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/06/15 16:37:07  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -51,14 +54,14 @@ FUNCTION longBitString, longwords
   IF n_elements(dims) EQ 2 THEN nl = dims[1]
   IF nl EQ 1 THEN BEGIN 
     bitstrings = $
-     PadAndJustify(longwords[0],8,pad='0',/right,form='(z)') + $
-     PadAndJustify(longwords[1],8,pad='0',/right,form='(z)') 
+     PadAndJustify(longwords[1],8,pad='0',/right,form='(z)') + $
+     PadAndJustify(longwords[0],8,pad='0',/right,form='(z)') 
   ENDIF ELSE BEGIN 
     bitstrings = strarr(nl)
     FOR l=0,nl-1 DO  $
       bitstrings[l] = $
-        PadAndJustify(longwords[0,l],8,pad='0',/right,form='(z)') + $
-        PadAndJustify(longwords[1,l],8,pad='0',/right,form='(z)') 
+        PadAndJustify(longwords[1,l],8,pad='0',/right,form='(z)') + $
+        PadAndJustify(longwords[0,l],8,pad='0',/right,form='(z)') 
   ENDELSE 
   return, bitstrings
 END
