@@ -74,6 +74,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/10/22 21:32:56  vapuser
+; Corrected definition of 'lf', protected some
+; string only code
+;
 ; Revision 1.3  1998/10/12 22:07:27  vapuser
 ; Changed StartDate in command line to StartTime, ditto End...
 ;
@@ -110,9 +114,10 @@ FUNCTION q2bhdfread, filename, $
     return, -1
   ENDIF 
 
-  IF hdf_ishdf(filename) NE 0 THEN BEGIN 
+  tfilename = DeEnvVar(filename)
+  IF hdf_ishdf(tfilename) NE 0 THEN BEGIN 
     lf =  string(10b)
-    fileid = hdf_sd_start(filename,/read) 
+    fileid = hdf_sd_start(tfilename,/read) 
     IF fileid gt 0 THEN BEGIN 
       hdf_sd_fileinfo,fileid,datasets,attributes
       ; print,'Number of SD data sets: ',datasets
