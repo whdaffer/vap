@@ -31,6 +31,9 @@
 #
 #
 # $Log$
+# Revision 1.1  1999/04/07 17:32:48  vapuser
+# Initial revision
+#
 #
 # $Id$
 package makeidldep;
@@ -40,6 +43,8 @@ require Exporter;
 @EXPORT=qw( countdep getdirs countallidldep depindir %functions %procedures );
 
 use Cwd 'chdir', 'getcwd';
+use File::Basename;
+
 #use Time::Local;
 BEGIN { my $topdir;
 	my %functions={};
@@ -131,11 +136,12 @@ sub whatdependson{
     } else {
       @deps = whatdependson( $file, $d );
     }
+    while ($dd = pop @deps) {
+      $dependants{$dd}++;
+    }
+
   }
 
-  while ($dd = pop @deps) {
-    $dependants{$dd}++;
-  }
 
   keys dependants;
 }
@@ -149,6 +155,8 @@ sub dependantsindir {
   #print "   dependantsindir: Working on directory $dir\n";
   opendir DEPDIR, $dir || die "Can't open dependency directory $dir\n";
   @depfiles = grep /.*\.dep$/, map "$dir/$_", readdir DEPDIR;
+
+  @depfiles = sort @depfiles;
   
   foreach $depfile (@depfiles) {
     $tmp=isdependent( $file, $depfile );
@@ -168,6 +176,7 @@ sub isdependent {
 
   local($file)=shift(@in);
   chop $file;
+  ($file, $path, $junk) = fileparse($file);
   $_=$depfile;
   s|^(.*)/dependencies/.*dep|$1|;
   $file="$_/$file";
@@ -179,6 +188,53 @@ sub isdependent {
   }
   return undef;
 
+}
+
+sub getprofiles {
+  local($dir) = shift @_ || die "Need input dir\n";
+  opendir DIR, $dir || die "Can't open dependency directory $dir\n";
+  @profiles = grep /.*\.pro$/, map "$dir/$_", readdir DIR;
+  @profiles = sort @profiles;
+  @profiles;
+ 
+}
+
+sub whatcalls {
+  local($file)=shift @_ || "Need input file\n";
+  local($dir)=shift @_ || "Need input dir\n";
+  ($basename,$path,$ext) = fileparse( $file, '\.pro' );
+  print ".";
+  local (@files, @dirs, $callers, @callers, 
+	 $d, $f, $matches, @matches,$c );
+
+  @files = getprofiles($dir);
+  foreach $f (@files) {
+    next if $f =~ /$file/;
+    open FILE, $f || die "Can't open $f\n";
+    @in=<FILE>;
+    close FILE;
+    #@matches=grep /$basename([(,]?\w+)*|\s*;*$/i, grep( !/.*;.*$basename.*/i, @in);
+    @m=grep !/^\s*;/,@in;
+    @matches=grep /^\s*(\w+\s*=[^;]*)*$basename(([(,]\w?)|\s)+((;+.*)|(.*))$/i, @m;
+
+    # grep( !/.*;.*$basename.*/i, @in);
+    #@matches =grep /[^;]*$basename/i, @in;
+    $matches=$#matches+1;
+    $callers{$f}++ if $matches>0;
+  }
+
+
+  @dirs = getdirs($dir);
+  foreach $d ( @dirs ){
+    if ($d !~ m%.*/dependencies$%){
+      @callers = whatcalls( $file, $d ) ;
+      while ($c = pop @callers) {
+	$callers{$c}++;
+      }
+    }
+
+  }
+  keys %callers;
 }
 1;
 
