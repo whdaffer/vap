@@ -67,14 +67,16 @@
 ;                 defaulted and lonpar is set to them on output.
 ;
 ;   LatPar: (I/O) Same as for LonPar, but for Latitude.
-;   RaInf: (I) Radius of Influence. 4-vector, Radius of
+;   RaInf: (I) Radius of Influence. vector, Radius of
 ;              influence. This is the number of grid cells to consider
 ;              when computing a value for the current grid
-;              cell. Default = [12., 10., 6,   4 ] 
+;              cell. This vector may contain any number of elements
+;              >0, Default = [12., 6,   2 ] 
 ;
-;   ErMax: (I) 4-vector, Maximum Error allowed before the data in the data
-;              field is discarded in favor of the computed model
-;              default = [50., 20., 10., 5.];
+;   ErMax: (I) vector, Maximum Error allowed before the data in the data
+;              field is discarded in favor of the computed model.
+;              Must have the same number of elements as 'rainf'
+;              default = [50., 50,50]
 ;
 ;   Min_Nvect - (I) scalar: Don't make interp file if there are less 
 ;               this number of vectors. (default=0, i.e. make it regardless)
@@ -231,7 +233,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                          Latpar    = Latpar   , $ ; (I/O) Same as Lonpar, but 
                                                   ; for latitude.
                          RaInf     =  RaInf   , $ ; (I) Radius of Influence, 
-                                                  ; a 4-vector, a
+                                                  ; a vector, a
                                                   ; decreasing
                                                   ; sequence of floats
                                                   ; indicating the
@@ -239,13 +241,14 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                                                   ; cells to use in
                                                   ; the calculation of
                                                   ; current cell.
-                         ErMax =  ErMax       , $ ; (I), Error Max. 4-vector (float)
+                                                  ; def=[12.,6,2]
+                         ErMax =  ErMax       , $ ; (I), Error Max. vector (float)
                                                   ; Maximum Error
                                                   ; allowed before the
                                                   ; data field is discarded
                                                   ; in favor of the
                                                   ; computed model.
-                                                  ; default = [50., 20, 10, 5];
+                                                  ; default = 50.*[1,1,1]
                          StartTime = StartTime, $ ; (O) Returned earliest time 
                                                   ; in Wind Files
                          EndTime   = EndTime  , $ ; (O) Returned latest time 
@@ -281,6 +284,12 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
   VersionID=rcsid
   CreationTime =  (idldt2Vaptime(today()))[0]
   Nscat = Keyword_set(Nscat)
+
+  IF N_elements(LonPar) NE 3  THEN LonPar =  [0.,359,1.]
+  IF N_elements(LatPar) NE 3  THEN LatPar =  [-60.,60.,1.]
+
+  IF n_elements(rainf) eq 0 THEN rainf = [12., 6,   2. ] 
+  IF N_Elements(ermax) eq 0 THEN ermax = [50., 50,  50]
 
   IF n_elements(u) eq 0 OR $
      n_elements(v) eq 0 OR $
@@ -334,12 +343,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
         return,0
       ENDIF 
 
-      IF N_elements(LonPar) NE 3  THEN LonPar =  [0.,359,1.]
-      IF N_elements(LatPar) NE 3  THEN LatPar =  [-60.,60.,1.]
-      IF N_elements(RaInf) NE 4 THEN Rainf = [12.,10,6,4]
-      IF N_elements(ErMax) NE 4 THEN Ermax = [50.,20.,10,5]
-
-
+      
     ENDIF ELSE BEGIN 
       Message,'Error in ReadWindFiles - Aborting',/cont
       return,0
@@ -355,18 +359,8 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     Message,'Bad return from 1st succor run',/cont
     return,0
   ENDIF 
-  rainf = [10.,6.,3.,2]
-  ermax = [10.,6.,3.,2]
-  status = RunSuccor( U,V,Lon,Lat,ui,vi,lonpar,latpar,$
-                      rainf=rainf,ermax=ermax,/reuse )
-  IF status eq 0 THEN BEGIN 
-    Message,'Bad return from 2nd succor run',/cont
-    return,0
-  ENDIF 
 
     ; Well, we've made it here, so the field must be okay. 
-
-
 
   IF NOT keyword_set( NoFile) THEN BEGIN 
     IF N_Elements(OutFile) eq 0 THEN BEGIN 
