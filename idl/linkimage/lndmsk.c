@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #define PHYREC 1024
@@ -63,6 +65,10 @@ FILE *lunfil;
  * Modification Log:
  *
  * $Log$
+ * Revision 1.3  2002/05/03 01:07:57  vapdev
+ * Changed lndmsk.c to return in case of error instead of simply exiting.
+ * Change land_mask.c to accomodate these changes.
+ *
  * Revision 1.2  1999/04/09 23:05:38  vapuser
  * Changed location of LANDMASK.DAT file
  *
@@ -75,11 +81,12 @@ FILE *lunfil;
  */
 
 int mask01( float *latd, float *latm, float *lond, float *lonm, 
-	    int *first, int *status)
+	    int *first)
 {
   unsigned static char mask[3600];
   signed static char alflag;
   signed static char flag60;
+  static int status;
   float lat, lon,t;
   double dummy;
   int dlat, dlon, latp, lonp;
@@ -90,10 +97,12 @@ int mask01( float *latd, float *latm, float *lond, float *lonm,
   
   /* CONVERT LAT AND LON TO DEGREES DECIMAL, ADJUST TO NEAREST MINUTE  */
   
+  status=1;
 #ifdef DEBUG
   printf("In lndmsk\n");
   printf("lndmsk: latd,latm,lond,lonm = %f,%f,%f,%f\n",
 	 *latd,*latm,*lond,*lonm);
+  printf("lndmsk: status = %d\n",status);
 #endif
 
 
@@ -127,14 +136,14 @@ int mask01( float *latd, float *latm, float *lond, float *lonm,
       /* GET THE ONE DEGREE MASK   */
       
       t=lat-90.0;
-      mask60( mask, &t, &lon, &status, &flag60 );
-      if (*status != 1)
+      mask60(&t, &lon, &status, &flag60, mask );
+      if (status != 1)
 	return (-1);
     }
   
-#ifdef DEBUG
-  printf("after mask60: flag60 = %ld\n", flag60 );
-#endif
+# ifdef DEBUG
+  printf("after mask60: flag60 = %ld, status=%d\n", flag60, status );
+# endif
   
   /*
    * IF THE ALL LAND OR WATER FLAG IS NOT SET, GET THE SINGLE POINT
@@ -167,13 +176,23 @@ int mask01( float *latd, float *latm, float *lond, float *lonm,
 
   
 #ifdef DEBUG
-  printf("mask01: returning 0\n");
+  printf("mask01: returning, status=%d\n", status);
 #endif
-  
-  if (alflag) 
-    return (1);
-  else 
-    return (0);
+
+  if (status==1) {  
+#   ifdef DEBUG
+    printf("lndmsk: good!\n");
+#   endif
+    if (alflag) 
+      return (1);
+    else 
+      return (0);
+  } else {
+#   ifdef DEBUG
+    printf("lndmsk: BAD!\n");
+#   endif 
+    return(-1);
+  }
   
 }
 
@@ -234,20 +253,23 @@ int mask01( float *latd, float *latm, float *lond, float *lonm,
 	 paddr    -  (I) PREVIOUS PHYSICAL RECORD ADDRESS.
 */
 
-void mask60(char mask[], float *lat, float *lon, int* status, signed char *flag )
+void mask60(float *lat, float *lon, int* status, 
+	    signed char *flag, char mask[] )
 {
 
   static long rec00, rec01;
   static int first = 1, plat = -1, plon = -1;
   int clat, clon;
   char *dir;
-  int l=len(dir);
+  int l;
   char filename[256];
 
   void rdten(), rdone(), allmsk(), bldmsk();
   
-  status=1; /* hope for the best */
-
+  *status=1; /* hope for the best */
+# ifdef DEBUG
+  printf("mask60: status = %d\n", status);
+# endif
   /* IF FIRST TIME THROUGH, OPEN FILE AND SET LPERP */
 
 
@@ -259,11 +281,15 @@ void mask60(char mask[], float *lat, float *lon, int* status, signed char *flag 
     {
       
       dir = getenv("VAP_LIBRARY");
+#     ifdef DEBUG
+      printf("lndmsk: VAP_LIBRARY = %s\n",dir);
+#     endif 
       if (dir == NULL)
 	{
 	  *status=0;
-	  return
+	  return;
 	}
+      l=strlen(dir);
       memset(filename,'\0',256);
       strncpy(filename,dir,l);
       strncat(filename,"/",1);
@@ -271,14 +297,19 @@ void mask60(char mask[], float *lat, float *lon, int* status, signed char *flag 
       lunfil = fopen(filename,"r");
       if (lunfil == NULL)
 	{
+#         ifdef DEBUG
+          printf("lndmsk: Couldn't open landmask file %s\n",filename);
+#         endif 
 	  *status=0;
 	  return;
 	}
       first = 0;
     }
+
+
   /*
-    IF LAT >= 90 SET TO ALL WATER AND RETURN
-  */
+   * IF LAT >= 90 SET TO ALL WATER AND RETURN
+   */
   
   if (*lat >= 90.0) 
     {
@@ -288,6 +319,9 @@ void mask60(char mask[], float *lat, float *lon, int* status, signed char *flag 
 #endif
       
       allmsk(flag, mask); 
+# ifdef DEBUG
+  printf("mask60: returning just after allmsk: status = %d\n", status);
+# endif
       return;
     }
 
@@ -325,7 +359,7 @@ void mask60(char mask[], float *lat, float *lon, int* status, signed char *flag 
       
 #ifdef DEBUG
       printf(
-	     "mask60: Just back from rdten,  &flag, *flag (int) *flag= %ld, %ld ,%ld\n", 
+	     "mask60: Just back from rdten, &flag, *flag, (int) *flag= %ld, %ld ,%ld\n", 
 	     flag, *flag, (int) *flag);
 #endif
       
@@ -391,6 +425,10 @@ void mask60(char mask[], float *lat, float *lon, int* status, signed char *flag 
       plat = clat;
       plon = clon;
     }
+# ifdef DEBUG
+  printf("mask60: returning at end: status = %d\n", status);
+# endif
+
 }
 
 /*
@@ -502,8 +540,8 @@ void rdten(FILE* lunfil, long *rec01, int lat, int lon, signed char *tenflg)
 	}
 #ifdef DEBUG
 	printf(
-	 "returning from rdten: rec01, tenflag, rec01%2 = %ld, %ld,%ld\n", 
-	       *rec01, *tenflg, *rec01%2 );
+	 "returning from rdten: rec01, tenflag, rec01 mod 2 = %ld, %ld,%ld\n", 
+	       *rec01, *tenflg, (*rec01) % 2 );
 #endif
 
 	return ;

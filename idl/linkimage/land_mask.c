@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 /*#include "/usr/local/rsi/idl_5.1/external/export.h"*/
 #include "/usr/local/rsi/idl/external/export.h"
 
@@ -36,13 +38,17 @@
 * RETURNS: The variable argv[2] (mask) contains the land/water flags, 0=water, 1=land
 * 
 *
-* Author: William Daffer (daffer@rainy.jpl.nasa.gov)
+* Author: William Daffer (William.Daffer@jpl.nasa.gov)
 *         m/s 300-319
 *         818-354-0161 (voice)
 *
 * Modification Log:
 *
 * $Log$
+* Revision 1.2  2002/05/03 01:07:57  vapdev
+* Changed lndmsk.c to return in case of error instead of simply exiting.
+* Change land_mask.c to accomodate these changes.
+*
 * Revision 1.1  1999/04/09 22:55:49  vapuser
 * Initial revision
 *
@@ -52,15 +58,23 @@
 */
 
 
+#define MAX_MSG_LEN 1024
+
 IDL_VPTR land_mask( int argc, IDL_VPTR argv[], char *argk )
 {
   IDL_VPTR lat, lon, mask,tmp;
   float *lat_d, *lon_d, latd,lond,latm=0.0, lonm = 0.0;
   long *mask_d;
-  int first=1, status=0;
+  static int first=1;
   int i,j,n;
-  long mask01(), m;
+  long mask01(float*, float*, float*, float*, int*);
+  long m;
+  char msg[MAX_MSG_LEN+1];
+
   static char land_mask_rcsid[]="$Id$";
+
+
+  memset(msg,(int) '\0', MAX_MSG_LEN+1);
   if ( argc < 3 ) 
     IDL_Message( IDL_M_GENERIC, IDL_MSG_LONGJMP, 
 		 "usage: land_mask, lon, lat, mask" );
@@ -97,7 +111,7 @@ IDL_VPTR land_mask( int argc, IDL_VPTR argv[], char *argk )
 
 
 #ifdef DEBUG
-  printf(" n_elts = %d\n", lat->value.arr->n_elts);
+  printf("land_mask(D): n_elts = %d\n", lat->value.arr->n_elts);
 #endif
 
 
@@ -106,31 +120,27 @@ IDL_VPTR land_mask( int argc, IDL_VPTR argv[], char *argk )
       latd = *(lat_d+i);
       lond = *(lon_d+i);
 
-
 #ifdef DEBUG
-      printf(" latd, lond = %f,%f\n", latd, lond );
+      printf("land_mask(D): latd, lond = %f,%f\n", latd, lond );
 #endif
 
 
-      m =  mask01( &latd, &latm, &lond, &lonm, &first, &status );
-      if (status != 1 || m<0 ) 
+      m =  mask01( &latd, &latm, &lond, &lonm, &first);
+      if ( m<0 ) 
 	{
+	  sprintf(msg," Bad return from mask01,mask: %d: at i=%d\n",
+		  m, i);
 	  IDL_Message( IDL_M_NAMED_GENERIC, 
 		       IDL_MSG_LONGJMP, 
-		       " Bad return from mask01, status == %d, m=%d: at i=%d\n",
-		       status, m, i);
+		       msg);
 	}
 
 
 #ifdef DEBUG
-      printf(" m = %d\n", m );
+      printf("land_mask(D): m = %d\n", m );
 #endif
 
       first=0;
       mask_d[i] = m;
     }
 } /* end land_mask */
-
-
-
-
