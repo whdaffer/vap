@@ -119,6 +119,10 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.11  2000/02/14 17:23:17  vapuser
+; Write out .mov file to /tmp/auto_movie_mov_filename so that
+; auto_movie.pl can read it in.
+;
 ; Revision 1.10  1999/10/11 17:27:16  vapuser
 ; Added code to support user/system 'config file.' Expect min/max speed
 ; in knots if knots=1. Fixed some bugs.
@@ -246,13 +250,6 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   nscat = keyword_set(nscat)
 
 
-  auto_movie_cronjob = 0
-  IF n_Elements(pid) NE 0 THEN $
-  auto_movie_cronjob = ( CheckForLock( pid, 'auto_movie.lock', $
-                                     user, dir='/tmp') EQ 1)
-  IF auto_movie_cronjob THEN $
-     lockfile = '/tmp/' + user + '.' + 'auto_movie.lock'
-
   catch, error_status
   IF error_status NE 0 THEN BEGIN
     IF auto_movie_cronjob THEN BEGIN 
@@ -263,15 +260,6 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     return
   ENDIF 
 
-  IF auto_movie_cronjob THEN BEGIN 
-    openw, llun, lockfile, /get, error= err
-    IF err NE 0 THEN BEGIN 
-      message,!error_State.msg,/cont
-      return
-   ENDIF 
-  ENDIF 
-
-  
   read_cfgfile = 0
   cfgname = cfgname()
   cfgpath = '~/.idlcfg/' 
@@ -294,6 +282,44 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
       help,cfg,/st
     ENDIF 
   ENDIF 
+
+  chkcfg,'ROI',roi,cfg
+  IF n_elements( roi ) NE 0 THEN BEGIN 
+    roistr =  READ_AUTO_MOVIE_DEFS( roi )
+    IF strpos( roistr.desig, 'ERROR' ) NE -1 THEN BEGIN 
+      str =  "ERROR: reading defaults for roi " + roi + " error = " + $
+       roistr.desig
+;      IF auto_movie_cronjob THEN BEGIN 
+;        printf,llun, str
+;        free_lun, llun
+;      ENDIF 
+      Message,str,/cont
+      return
+    ENDIF 
+  ENDIF ELSE BEGIN 
+    roi =  'NPAC'
+    roistr =  READ_AUTO_MOVIE_DEFS( 'NPAC' )
+  ENDELSE 
+
+  lroi = strlowcase(roi)
+  auto_movie_cronjob = 0
+  IF n_Elements(pid) NE 0 THEN BEGIN 
+    lockfile = 'auto_movie_' + lroi + '.lock'
+    auto_movie_cronjob = ( CheckForLock( pid, lockfile, $
+                                     user, dir='/tmp') EQ 1)
+  ENDIF 
+  IF auto_movie_cronjob THEN $
+     lockfile = '/tmp/' + user + '.' + lockfile
+
+  IF auto_movie_cronjob THEN BEGIN 
+    openw, llun, lockfile, /get, error= err
+    IF err NE 0 THEN BEGIN 
+      message,!error_State.msg,/cont
+      return
+   ENDIF 
+  ENDIF 
+
+  
 
   chkcfg,'GIF',gif,cfg,/bool
   chkcfg,'PICT',pict,cfg,/bool
@@ -318,24 +344,6 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   chkcfg,'TIME_INC',time_inc,cfg
   IF N_elements( time_inc ) EQ 0 THEN time_inc =  14.
 
-  chkcfg,'ROI',roi,cfg
-
-  IF n_elements( roi ) NE 0 THEN BEGIN 
-    roistr =  READ_AUTO_MOVIE_DEFS( roi )
-    IF strpos( roistr.desig, 'ERROR' ) NE -1 THEN BEGIN 
-      str =  "ERROR: reading defaults for roi " + roi + " error = " + $
-       roistr.desig
-      IF auto_movie_cronjob THEN BEGIN 
-        printf,llun, str
-        free_lun, llun
-      ENDIF 
-      Message,str,/cont
-      return
-    ENDIF 
-  ENDIF ELSE BEGIN 
-    roi =  'NPAC'
-    roistr =  READ_AUTO_MOVIE_DEFS( 'NPAC' )
-  ENDELSE 
 
   chkcfg,'wpath',wpath,cfg
   chkcfg,'alonpar',alonpar,cfg
@@ -648,7 +656,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
       ENDIF 
     ENDREP UNTIL done OR (i EQ nn-1)
     IF good AND auto_movie_cronjob THEN BEGIN 
-      openw,lun,'/tmp/auto_movie_mov_filename',/get,error=err
+      openw,lun,'/tmp/auto_movie_mov_filename_'+lroi,/get,error=err
       IF err THEN BEGIN 
         printf,llun,'ERROR: ' + !error_state.msg
         free_lun, llun
