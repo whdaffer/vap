@@ -89,6 +89,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1998/10/21 16:28:06  vapuser
+; Free attr.value PTR after call to hdfgetattr
+;
 ; Revision 1.4  1998/10/12 22:06:36  vapuser
 ; Worked on Qmodel stuff
 ;
@@ -1196,6 +1199,7 @@ FUNCTION Pv::Read,files
   IF nf NE 0 THEN BEGIN 
     nfiles_string = strtrim( nf, 2 )
     FOR f=0,nf-1 DO BEGIN 
+      print,'Attempting to read ', files[f]
       IF Widget_Info( self.StatusId, /valid ) THEN $
        junk = rstrpos(files[f],'/')+1
       basename = strmid( files[f], junk[0], strlen(files[f])-junk[0] )
