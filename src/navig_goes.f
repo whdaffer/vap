@@ -2,6 +2,9 @@ c navig_goes.f
 c $Id$
 c Modification History:
 c $Log$
+c Revision 1.1  1998/10/22 21:43:43  vapuser
+c Initial revision
+c
 c
 c
 c
@@ -230,7 +233,7 @@ c----  if F==0 end --------------
 444   continue
 cpppppppppppppppppppppppppppppppppppppppppppppppppppp
 
-666  len=ima_l*ima_e
+666   len=ima_l*ima_e
 c      write(*,*) 'filled in blank grids (+-1 or 2)',tot,' of',len 
 
 c********** prepare for idl display *******:

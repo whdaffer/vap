@@ -5,6 +5,9 @@
  *    Modification Log: (After RCS)
  *
  *    $Log$
+ *    Revision 1.2  1998/10/22 21:46:09  vapuser
+ *    Corrected rcsid flub
+ *
  *    Revision 1.1  1998/10/22 21:43:58  vapuser
  *    Initial revision
  *:
@@ -77,7 +80,7 @@
 #define MAX_FILE_LEN MAX_PATH_LEN-1
 
 #ifndef AREA_FILE_TOP
-#define AREA_FILE_TOP "/disk2/vap/goes/"
+#define AREA_FILE_TOP "/disk4/vap/goes/"
 #endif
 #define YYYYMMDD_FORMAT "%Y-%m-%d"
 #define YYDOY_FORMAT "%Y-%j"
@@ -182,6 +185,7 @@ int main( int argc, char **argv) {
     int type;
     int rows;
     int cols;
+    int year;
     int doy;
     int hhmm;
     float resolution[2];
@@ -196,6 +200,7 @@ int main( int argc, char **argv) {
   /* Start timer */
   time(&t0);
 
+  
   ptr=argv;
   printf("Grid_goes called with arguments...\n");
   for (i=0;i<argc;i++) printf("%s\n",*ptr++);
@@ -277,6 +282,7 @@ int main( int argc, char **argv) {
 	areafile_sensorno  = (areafileno - areafile_dirno*1000)/100;
 	ijunk              = areafile_dirno*1000 + areafile_sensorno*100;
 	areafile_areano    = areafileno - ijunk;
+	sensortype         = areafile_sensorno;
 	areafileno_set     = 1;
 	break;
       case 'd':
@@ -328,9 +334,11 @@ int main( int argc, char **argv) {
     switch (areafile_dirno){
     case 8:
       strncat( fullfilename, goesdirs[1], 7 ); /* Goes 10 */
+      goestype=10;
       break;
     case 9:
       strncat( fullfilename, goesdirs[0], 6 ); /* goes 8 */
+      goestype=8;
       break;
     default: 
       fprintf(stderr,"ERROR: Invalid Directory number %d\n", areafile_dirno );
@@ -368,9 +376,11 @@ int main( int argc, char **argv) {
 	switch (areafile_dirno) {
 	case 8: 
 	  strncat( fullfilename, goesdirs[1], 7 ); /* goes10 */
+	  goestype=10;
 	  break;
 	case 9:
 	  strncat( fullfilename, goesdirs[0], 6 ); /* goes8 */
+	  goestype=8;
 	  break;
 	default:
 	  fprintf(stderr, "ERROR: invalid satellite number %d\n",areafile_dirno );
@@ -649,11 +659,11 @@ int main( int argc, char **argv) {
     /*------ SET area boundaries : */
     minlat=paras[8]/100;
     maxlat=paras[10]/100;
-    if (goes_type/10==8) {
+    if (dat_head[2] == 70) {
       maxlon=-10;
       minlon=-140;
     }
-    if (goes_type/10==10) {
+    if (dat_head[2] == 74) {
       maxlon=-70;
       minlon=160;
     }
@@ -800,6 +810,7 @@ int main( int argc, char **argv) {
   hdr.type=goes_type;
   hdr.rows=ima_l;
   hdr.cols=ima_e;
+  hdr.year=year;
   hdr.doy=doy;
   hdr.hhmm=paras[14];
   hdr.resolution[0]=RESE;
