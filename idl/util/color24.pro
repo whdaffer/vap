@@ -86,6 +86,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/06 18:47:00  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -100,42 +103,58 @@ FUNCTION color24, colors, colorTable=colorTable, transpose=transpose
   IF keyword_set(transpose) THEN colorCpy = transpose(colorCpy)
   ndims =  size( colorCpy,/n_dim )
 
-  IF ndims EQ 1 THEN BEGIN 
-
-      ; We're looking at color indices.
-
-    IF n_elements(colorTable) EQ 0 THEN BEGIN 
-      tvlct,r,g,b,/get
-      colorTable =  [[r],[g],[b]]
-    ENDIF 
-
-    ctCpy = colorTable
-    sz = size(ctCpy,/dim)
-    IF sz[0] EQ 3 THEN ctCpy = transpose(ctCpy)
-    sz = size(ctCpy,/dim)
-    nn = sz[0]
-
-    returnColors = ctCpy[colorCpy < nn, 0] + $
-                   ctCpy[colorCpy < nn, 1]*2l^8 + $
-                   ctCpy[colorCpy < nn, 2]*2l^16
-  ENDIF ELSE BEGIN 
-    sz = size(colorCpy,/dimensions)
-    IF sz[0] EQ 3 THEN $
-      colorCpy = transpose(colorCpy)
-    IF n_elements(colorTable) EQ 0 THEN BEGIN 
-      returnColors = colorCpy[*,0] + colorCpy[*,1]*2l^8 + colorCpy[*,2]*2l^16
-    ENDIF ELSE BEGIN 
+  CASE ndims OF 
+    0: BEGIN ; scalar, must be index!
+      IF n_elements(colorTable) EQ 0 THEN BEGIN 
+        tvlct,r,g,b,/get
+        colorTable =  [[r],[g],[b]]
+      ENDIF 
       ctCpy = colorTable
-      sz = size(ctCpy)
+      sz = size(ctCpy,/dim)
       IF sz[0] EQ 3 THEN ctCpy = transpose(ctCpy)
-      sz = size(ctCpy)
+      sz = size(ctCpy,/dim)
       nn = sz[0]
-      returnColors = ctCpy[ colors[*,0] < nn, 0] + $
-                     ctCpy[ colors[*,1] < nn, 1]*2l^8 + $
-                     ctCpy[ colors[*,2] < nn, 2]*2l^16
-      
-    ENDELSE 
-  ENDELSE 
+
+      returnColors = ctCpy[colorCpy< (nn-1), 0] + $
+                     ctCpy[colorCpy < (nn-1), 1]*2l^8 + $
+                     ctCpy[colorCpy < (nn-1), 2]*2l^16
+    END 
+    1: BEGIN 
+      ;  We're looking at color indices.
+
+      IF n_elements(colorTable) EQ 0 THEN BEGIN 
+        tvlct,r,g,b,/get
+        colorTable =  [[r],[g],[b]]
+      ENDIF 
+
+      ctCpy = colorTable
+      sz = size(ctCpy,/dim)
+      IF sz[0] EQ 3 THEN ctCpy = transpose(ctCpy)
+      sz = size(ctCpy,/dim)
+      nn = sz[0]
+
+      returnColors = ctCpy[colorCpy < (nn-1), 0] + $
+                     ctCpy[colorCpy < (nn-1), 1]*2l^8 + $
+                     ctCpy[colorCpy < (nn-1), 2]*2l^16
+    END 
+    2: BEGIN 
+      sz = size(colorCpy,/dimensions)
+      IF sz[0] EQ 3 THEN $
+        colorCpy = transpose(colorCpy)
+      IF n_elements(colorTable) EQ 0 THEN BEGIN 
+        returnColors = colorCpy[*,0] + colorCpy[*,1]*2l^8 + colorCpy[*,2]*2l^16
+      ENDIF ELSE BEGIN 
+        ctCpy = colorTable
+        sz = size(ctCpy)
+        IF sz[0] EQ 3 THEN ctCpy = transpose(ctCpy)
+        sz = size(ctCpy)
+        nn = sz[0]
+        returnColors = ctCpy[ colors[*,0] < (nn-1), 0] + $
+                       ctCpy[ colors[*,1] < (nn-1), 1]*2l^8 + $
+                       ctCpy[ colors[*,2] < (nn-1), 2]*2l^16
+      ENDELSE 
+    END
+  ENDCASE 
   IF n_elements(returnColors) EQ 1 THEN returnColors = returnColors[0]
   return, returnColors
 END
