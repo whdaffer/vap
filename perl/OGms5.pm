@@ -36,11 +36,44 @@
                  Default = 2.0
 
 =item * INTERESTING_GMS_PRODUCTS: A reference to an array listing the
-                 items currently thought interesting to check and/or
-                 retrieve. This is defaulted to [ir1, grid, grida] in
-                 gms5_archive_oo.
+                 items (directories, really) currently thought
+                 interesting to check and/or retrieve. This is
+                 defaulted to [ir1, grid, grida] in
+                 gms5_archive_oo. For each datetime, a file for each
+                 of these directories will be checked and/or fetched,
+                 depending on the method and various routines will
+                 fail if one of the directories is missing the file
+                 for that datetime, so have a care what you put into
+                 this array. The two grid directores (grid and grida)
+                 contain a file used in navigating the GMS5 image, but
+                 only one is needed for any particular image. The
+                 files in the `grid' directory allow one to navigate
+                 the data if your area of interest is between 80
+                 degrees East longitude, 160 degrees West. Those in
+                 the `grida' cover 70 East to 150 West.
+
+                 See
+
+                   ftp://rsd.gsfc.nasa.gov/pub/Weather/GMS-5/hdf/grid/README
+
+                 for a full description.
+
+                 It would be nice to include logic to differentiate 
+                 between the two, so that we only had to check the one or
+                 the other, but I can't see an easy way to do it. 
+
+                 This state of affairs has the unfortunate consequence
+                 that a job may fail because, for example, the
+                 relevant `grida' file isn't in the remote archive
+                 even though the job only requires the `grid' file.
 
 =back
+
+The directory layout on the local machine must match that on the
+remote matchine (up to the the leading segment of the full path, which
+is differentiated by the values of the internal hash keys
+REMOTE_TOPDIR and LOCAL_TOPDIR, which itself depends on the
+environmental variable VAP_GMS_TOP. 
 
 =cut
 
@@ -111,7 +144,7 @@ sub new {
 
 sub GetAllFileLists{
   my $self=shift;
-  my $self->{GETALLFILELISTS}->{LATESTGET} = time();
+  $self->{GETALLFILELISTS}->{LATESTGET} = time();
   for (@{$self->{INTERESTING_GMS_PRODUCTS}}){
     $self->GetListing( "$_" ) or 
       $self->_croak("Can't get listing for $_\n",
@@ -119,6 +152,22 @@ sub GetAllFileLists{
   }
   1;
 }
+
+=pod
+
+head1 GetListing
+
+head2 Synopsis: GetListing(directory);
+
+  `directory' is relative to the remote top directory as specified to
+  the OGms5 constructure or defaulted in $VAP_LIBRARY/gms5_archive_oo
+
+  This FTPs to the directory input in the call on the remote machine
+  and does a listing, saving the output to the that directories mirror
+  on the local machine, in the file archive.filelist.
+
+
+=cut
 
 sub GetListing{
   my $self=shift;
@@ -138,12 +187,38 @@ sub GetListing{
   1;
 }
 
+=pod
+
+
+head1 GetIntersection
+
+head2 SYNOPSIS @datetime = GetIntersection(type);
+
+  `type' is the sensor (i.e. 'ir1','ir2','ir3', or 'vis') and it must
+  be in the array $self->{INTERESTING_GMS5_PRODUCTS}'
+
+  It returns the set of datetimes (strings of the form yymmddhhmm)
+  which have files in the two grid directory (grid and grida) as well
+  as a file for the specified type.
+
+=cut
+
+
 
 sub GetIntersection{
   my $self->shift;
   my $type->shift or 
     $self->_croak("Usage: obj->GetIntersection(type)\n",
 		  "Usage error");
+
+  my @interesting = $self->{INTERESTING_GMS5_PRODUCTS};
+  if (!grep(/$type/i,@interesting)) {
+    my $msg = "$type is not in the array of INTERESTING GMS5 products!";
+    $msg .= "Perhaps you should have a look at that variable!\n";
+    $msg .= "See $VAP_LIBRARY/gms5_archive_oo\n";
+    my $subject="$type NOT IN ". join(" ",@interesting);
+    $self->_croak($msg,$subject);
+  }
   chdir $self->{LOCAL_TOPDIR} || 
     $self->_croak("Can't CD to ".$self->{LOCAL_TOPDIR}."\n",
 		  "CD Error");
@@ -162,7 +237,8 @@ sub GetIntersection{
     $filecnt{$tmp}++;
   }
 
-  my @dirs=('grid', 'grida'); #removed cal and doc from list
+  my @dirs=qw(grid grida);
+
   foreach my $dir (@dirs) {
     chdir $dir || $self->_croak ("Can't CD to $dir\n",
 				 "CD Error!\n");;
@@ -187,10 +263,26 @@ sub GetIntersection{
 
 }
 
+=pod
+
+=head1 GetAll
+
+=head2 Usage: GetAll([datetime])
+
+
+  Retrieves the file specified by `datetime' for each of the
+  'interesting products,' i.e. the directories listed in
+  $self->{INTERESTING_GMS5_PRODUCTS}, unless the file is already here.
+
+=cut
+
 sub GetAll{
   my $self=shift;
   my $datetime = shift || $self->{DATETIME};
   $self->{DATETIME} = $datetime;
+  $self->_croak("Datetime hasn't been set yet!\n",
+		"No Datetime set in GetAll\n") unless $self->{DATETIME};
+
   if ($self->CheckAll()) {
     for (@{$self->{INTERESTING_GMS5_PRODUCTS}}){
       $self->Get("$_","$datetime") or 
@@ -206,7 +298,7 @@ sub Get{
   my $dir=shift;
   my $datetime=shift || $self->{DATETIME};
   $self->{DATETIME} = $datetime;  
-  my $dir = $self->{REMOTE_TOPDIR}."/$dir";
+  $dir = $self->{REMOTE_TOPDIR}."/$dir";
   chdir $dir or 
     $self->_croak("Can't CD to $dir\n",
 		  "$0:CD Error");
@@ -296,3 +388,4 @@ DESTROY {
 }
 
 1;
+

@@ -20,6 +20,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.18  2002/08/21 18:29:28  vapdev
+# *** empty log message ***
+#
 # Revision 1.17  2002/08/08 23:32:14  vapdev
 # Problem with Gms5.pm, still working.
 #
@@ -82,7 +85,7 @@ use Getopt::Long;
 use File::Copy ;
 
 use lib $ENV{VAP_SFTWR_PERL};
-use Gms5;
+use OGms5;
 use VapUtil;
 use Winds;
 use OGoes;

@@ -4,6 +4,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.3  2002/08/12 22:56:44  vapdev
+# Continuing work
+#
 # Revision 1.2  2002/08/08 23:27:31  vapdev
 # General work, BEGIN block.
 #
@@ -14,9 +17,10 @@
 #
 
 =head1 NAME VapError.pm
+
 =head2 USE
 
-   Simple object to handle all loggin *and* error reporting.
+   Simple object to handle all logging *and* error reporting.
 
 =head2 SYNOPSIS
 
@@ -28,7 +32,9 @@
 
 
 =over 4
+
 =head2 KEYS
+
 =item * INFO_HANDLE the filehandle that Report(...,INFO) sends the
         message to, by default this equals *STDOUT
 
@@ -59,9 +65,10 @@
  FAILURE MODES: The object requires that the environmental variables
                 $VAP_LIBRARY and $VAP_SFTWR_PERL exist.
 
- METHODS:
+=head2 METHODS:
 
-  new:
+=over 4
+=item *new:
 
     The constructor reads the file $VAP_LIBRARY/vap_error_defs which
     contains a reference to a hash having default values to be used in
@@ -80,15 +87,22 @@
                fields being used right now (Thu Aug  8 11:08:36 2002)
                are INFO_HANDLE, ERROR_HANDLE and MAIL_ADDRESSES.
 
-               Stay tuned for any changes.  
+               Stay tuned for any changes. 
 
-  Report(message,severity):
+=item* Report(message,severity):
 
     Send a <message> to the $self->{INFO_HANDLE} if <severity> ==
     INFO otherwise sent it to $self->{ERROR_HANDLE}
 
-  
-  ReportAndDie(subject, message, additional_addresses):
+
+=item* Log(message):
+
+    A synonym for `Report(message,INFO)' with the added element that the
+    message is prefixed with the current local time.
+
+
+
+=item * ReportAndDie(subject, message, additional_addresses):
 
     Send an email message to each address in
     $self->{MAIL_ADDRESSES} (as well as any contained in the
@@ -102,11 +116,17 @@
                          reference to an array, or a comma separated
                          list of addresses.
 
+
+=back
+
 =cut
+
 package VapError;
 use strict;
 use Carp;
+
 use vars qw($vap_error_defs $VAP_LIBRARY *STDOUT *STDERR);
+
 BEGIN {
   croak  "ENV variable VAP_LIBRARY is undefined!\n"
     unless $ENV{VAP_LIBRARY};
@@ -145,13 +165,20 @@ sub new {
 
 }
 
-#---------------------------------------------
-# Report
-# Usage: $obj->Report(message,severity)
-#
-# Send message to $self->{INFO_HANDLE} (by default STDOUT unless
-# overridden in the call to `new') if `severity' == info|INFO,
-# otherwise send it to ERROR_HANDLE (by default 
+=pod 
+
+
+=head1 ===========================================================================
+
+=head2 Report
+
+=head2 Usage: $obj->Report(message,severity)
+
+ Send message to $self->{INFO_HANDLE} (by default STDOUT unless
+ overridden in the call to `new') if `severity' == info|INFO,
+ otherwise send it to ERROR_HANDLE (by default STDERR)
+
+=cut
 
 sub Report{
   my $self=shift;
@@ -164,19 +191,24 @@ sub Report{
   1;
 }
 
-#---------------------------------------------
-#ReportAndDie -- 
-# Usage: $obj->ReportAndDie(subject [,message, address]);
-#
-#  Should never return, as it calls "croak" at the end.  Write an
-#  email having subject `subject' and optional message `message' to
-#  every email contained in the array $self->{ERROR_MAIL_ADDRESSES} and,
-#  optionally, to any addtional ones contained in the *comma separated
-#  string* `address.'
+=pod 
+
+=head1 ===========================================================================
+
+head2 ReportAndDie
+
+head2 USAGE: $obj->ReportAndDie(subject [,message, address]);
+
+  Should never return, as it calls "croak" at the end.  Write an
+  email having subject `subject' and optional message `message' to
+  every email contained in the array $self->{ERROR_MAIL_ADDRESSES} and,
+  optionally, to any addtional ones contained in the *comma separated
+  string* `address.' Message defaults to NULL MESSAGE.
 
 
+=cut
 
-#
+
 sub ReportAndDie{
   my $self=shift;
   my $subject = shift or 
@@ -208,5 +240,28 @@ sub ReportAndDie{
   }
   confess "And now, I die at ".scalar(localtime(time))."!\n";
   0;
+}
+
+=pod 
+
+
+=head1 ===========================================================================
+
+=head2 Log
+
+=head2 Usage: $obj->Log(message)
+
+ Send message to $self->{INFO_HANDLE} (by default STDOUT unless
+ overridden in the call to `new') if `severity' == info|INFO,
+ otherwise send it to ERROR_HANDLE (by default STDERR)
+
+=cut
+
+sub Log{
+  my $self=shift;
+  my $msg=shift;
+  $msg = scalar(localtime) . ": " . $msg;
+  $self->Report($msg, "INFO");
+  1;
 }
 1;
