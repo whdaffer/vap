@@ -183,6 +183,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.11  1999/10/20 17:27:01  vapuser
+; Added correct number of parans in 'field = [[ui]...'
+;
 ; Revision 1.10  1999/10/06 16:11:17  vapuser
 ; rainf=[12.,6,2,1] instead of [12.,6,2]
 ;
@@ -297,13 +300,24 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
   IF N_elements(LonPar) NE 3  THEN LonPar =  [0.,359,1.]
   IF N_elements(LatPar) NE 3  THEN LatPar =  [-60.,60.,1.]
 
-  IF n_elements(rainf) eq 0 THEN rainf =     [12., 6,   2. ,1] 
-  IF N_Elements(ermax) eq 0 THEN ermax = 50.*[ 1,  1,   1,   1]
+  IF n_elements(rainf) eq 0 THEN rainf =     [8.,1]
+  IF N_Elements(ermax) eq 0 THEN ermax = replicate(50.,n_elements(rainf))
 
   IF N_elements(rainf) NE n_Elements(ermax) THEN BEGIN 
     Message,"Rainf and Ermax must have same num elements!",/cont
     return,0
   ENDIF 
+
+  Message,'LonPar = ', string(lonpar,form='(3(f7.2,:,","))'),/info
+  Message,'LatPar = ', string(latpar,form='(3(f7.2,:,","))'),/info
+  Message,'Rainf  = ', string(rainf),/info
+  Message,'ErMax  = ', string(ermax),/info
+  IF n_Elements(crdecimate) NE 0 THEN  $
+    Message,'CRDecimate = ',string(crdecimate), /info
+  IF n_elements(decimate) NE 0 THEN $
+    Message,'Decimate = ',string(decimate), /info
+  IF n_elements(excludeCols) NE 0 THEN $
+    Message,'ExcludeCols = ',string(excludeCols), /info
 
   IF n_elements(u) eq 0 OR $
      n_elements(v) eq 0 OR $
