@@ -63,6 +63,14 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/17 00:26:22  vapuser
+; Changed
+;   retstruct[ff].start_time = var_to_dt( year,month,day,start_hour,start_min)
+;      to
+;   t = var_to_dt( year,month,day,start_hour,start_min)
+;   retstruct[ff].start_time = t
+; IDL not core dump anymore.
+;
 ; Revision 1.1  1998/10/05 18:53:39  vapuser
 ; Initial revision
 ;
@@ -91,8 +99,9 @@ FUNCTION wfnames2dt, windfiles, nscat=nscat
 
   nf = n_elements(windfiles)
   ff = 0
-  junk = { name: '', start_time:{IDLDT}, end_time:{IDLDT} }
-  retstruct =  replicate( junk, nf )
+  ;junk = { name: '', start_time:{IDLDT}, end_time:{IDLDT} }
+  ;retstruct =  replicate( junk, nf )
+  retstruct =  wfdt_str( nf )
   baselen = 9
   yearlen = 4
   IF nscat THEN BEGIN 
