@@ -39,34 +39,27 @@
 ;
 ; OUTPUTS:  
 ;
-;
-;
 ; OPTIONAL OUTPUTS:  
-;
-;
 ;
 ; COMMON BLOCKS:  
 ;
-;
-;
 ; SIDE EFFECTS:  
-;
-;
 ;
 ; RESTRICTIONS:  
 ;
-;
-;
 ; PROCEDURE:  
-;
-;
 ;
 ; EXAMPLE:  
 ;
-;
-;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  1999/10/21 23:07:21  vapuser
+; Added infostruct to 'GET' method. Also, defined self.starttime and
+; self.endtime, which are inherited from Q2b, so that the Q2B GET method
+; (a function as opposed to the native PRO) would find these quantities
+; when infostruct was requested. This should probably be eliminated, but
+; I'm too lazy right now.
+;
 ; Revision 1.5  1999/10/05 16:43:44  vapuser
 ; Added code to support starttime/endtime and deal with west longitudes.
 ;
@@ -101,6 +94,7 @@ FUNCTION qmodel::Init, U, V, $
 
 
   status = 0
+  self.version = "" 
   no_copy = keyword_set(no_copy)
   Catch, Error
   IF Error NE 0 THEN BEGIN 
@@ -165,7 +159,10 @@ PRO qmodel::Cleanup
    Ptr_Free, data.V
    Ptr_Free, data.Lon
    Ptr_Free, data.Lat
+   ptr_free, data.hdr.rainf
+   ptr_free, data.hdr.ermax
    self-> Q2b::Cleanup
+
 END
 
 ;============================================
@@ -179,11 +176,14 @@ FUNCTION Qmodel::Read, filename
          IF IsQmodel(filename) THEN BEGIN 
            qmodel =  QmodelHdfRead(filename)
          IF vartype( qmodel ) EQ 'STRUCTURE' THEN BEGIN 
-             IF Ptr_Valid( self.data ) THEN $
+             IF Ptr_Valid( self.data ) THEN BEGIN 
+               (*(self.data))-> destroy
                Ptr_Free, self.data 
-             self.data = Ptr_New( qmodel )
-             self.starttime =  string((*self.data).hdr.StartTime)
-             self.endtime =  string((*self.data).hdr.EndTime)
+             ENDIF 
+             self.starttime =  string(qmodel.hdr.StartTime)
+             self.endtime =  string(qmodel.hdr.EndTime)
+             self.Version =  string(qmodel.hdr.Version)
+             self.data = Ptr_New( qmodel,/no_copy )
              status = 1
            ENDIF 
          ENDIF ELSE BEGIN 
@@ -239,26 +239,35 @@ END
 ; Get Routine
 ;============================================
 
-PRO   qmodel::Get, $
-                nlon         = nlon, $       
-                nlat         = nlat, $       
-                region       = region, $     
-                filename     = filename,$    
-                lonpar       = lonpar,$      
-                latpar       = latpar, $     
-                shortname    = shortname,$   
-                longname     = longname,$    
-                starttime    = StartTime,$   
-                EndTime      = EndTime,$     
-                CreationTime = CreationTime,$
-                infostruct   = infostruct, $
-                _extra       = extra
+FUNCTION qmodel::Get, $
+          nlon         = nlon, $       
+          nlat         = nlat, $       
+          region       = region, $     
+          filename     = filename,$    
+          lonpar       = lonpar,$      
+          latpar       = latpar, $     
+          shortname    = shortname,$   
+          longname     = longname,$    
+          starttime    = StartTime,$   
+          EndTime      = EndTime,$     
+          CreationTime = CreationTime,$
+          data         = data, $
+          rainf        = rainf, $
+          ermax        = ermax, $
+          crdecimate   = crdecimate, $
+          decimate     = deciamte, $
+          exclude_cols = exclude_cols, $
+          infostruct   = infostruct, $
+          _extra       = extra
+   
 
+   hdr_tags = tag_names( (*self.data).hdr )
 
    IF Arg_Present(nlon)      THEN nlon = self.nlon
    IF Arg_Present(nlat)      THEN nlat = self.nlat
    IF Arg_Present(region)    THEN region = self.region
    IF Arg_Present(filename)  THEN filename = self.filename
+   IF Arg_Present(data)      THEN data     = self.data        
    IF Arg_Present(lonpar)    THEN lonpar = (*self.data).hdr.lonpar
    IF Arg_Present(latpar)    THEN latpar = (*self.data).hdr.latpar
    IF Arg_Present(ShortName) THEN ShortName = (*self.data).hdr.ShortName
@@ -266,15 +275,100 @@ PRO   qmodel::Get, $
    IF Arg_Present(StartTime) THEN StartTime = string((*self.data).hdr.StartTime)
    IF Arg_Present(EndTime)   THEN EndTime = string((*self.data).hdr.EndTime)
    IF Arg_Present(CreationTime) THEN CreationTime = (*self.data).hdr.CreationTime
+   IF arg_present(exclude_cols) THEN BEGIN 
+     x = where( strpos(hdr_tags,'EXCLUDE_COLS') NE -1 ,nx)
+     IF nx NE 0 THEN $
+       exclude_cols = string((*self.data).hdr.exclude_cols) ELSE $
+       exclude_cols= "<Don't know>"
+   ENDIF 
+   IF Arg_Present(rainf) THEN BEGIN 
+     x = where( strpos(hdr_tags,'RAINF') NE -1 ,nx)
+     IF nx NE 0 THEN BEGIN 
+       IF ptr_valid( (*self.data).hdr.rainf) THEN BEGIN 
+         rainf = *((*self.data).hdr.rainf) 
+       ENDIF ELSE BEGIN 
+         (*self.data).hdr.rainf =  ptr_new(0.)
+         rainf = 0.
+       ENDELSE 
+     ENDIF ELSE rainf = 0.
+   ENDIF 
+   IF Arg_Present(ermax) THEN BEGIN 
+     x = where( strpos( hdr_tags,'ERMAX') NE -1 ,nx)
+     IF nx NE 0 THEN BEGIN 
+       IF ptr_valid( (*self.data).hdr.ermax) THEN BEGIN 
+         ermax = *((*self.data).hdr.ermax) 
+       ENDIF ELSE BEGIN 
+         (*self.data).hdr.ermax =  ptr_new(0.)
+         ermax = 0.
+       ENDELSE 
+     ENDIF ELSE ermax = 0.
+   ENDIF 
+
+   IF arg_present(crdecimate) THEN BEGIN 
+     x = where(strpos(hdr_tags,'CRDECIMATE') NE -1,NX ) 
+     IF nx NE 0 THEN $
+       crdecimate = (*self.data).hdr.crdecimate ELSE $
+       crdecimate = [-1,-1]
+   ENDIF 
+
+   IF arg_present(decimate) THEN BEGIN 
+     x = where(strpos(hdr_tags,'DECIMATE') NE -1,NX ) 
+     IF nx NE 0 THEN $
+       decimate = (*self.data).hdr.decimate ELSE $
+       decimate = -1
+   ENDIF 
+
 
    IF Arg_Present(infostruct) THEN BEGIN 
-     infostr =  { ShortName: (*self.data).hdr.ShortName, $
+
+       ;; Create the 'info struct' to be used with PV.
+       ;; Make all entries strings, so that cw_pvfinfo doesn't choke.
+       ;; 
+     x = where(strpos( hdr_tags, 'RAINF' ) NE -1 ,nx)
+     IF nx NE 0 THEN BEGIN 
+       IF ptr_valid( (*self.data).hdr.rainf) THEN BEGIN 
+          rainf = *((*self.data).hdr.rainf) 
+          format = "(" + strtrim(n_elements(rainf),2) + "(f7.2))"
+          rainf = string(rainf,format=format)
+         ENDIF ELSE rainf='0.'
+     ENDIF 
+     x = where(strpos( hdr_tags,'ERMAX' ) NE -1 ,nx)
+     IF nx NE 0 THEN BEGIN 
+       IF ptr_valid( (*self.data).hdr.ermax) THEN BEGIN 
+         ermax = *((*self.data).hdr.ermax) 
+         format = "(" + strtrim(n_elements(ermax),2) + "(f7.2))"
+         ermax = string(ermax,format=format)
+       ENDIF ELSE ermax='0.'
+     ENDIF 
+     x = where( strpos(hdr_tags,'CRDECIMATE') NE -1 ,nx)
+     IF nx NE 0 THEN BEGIN 
+       crdecimate = string((*self.data).hdr.crdecimate,form='(2(i2))')
+     ENDIF ELSE crdecimate = '-1 -1'
+
+     x =  where(strpos(hdr_tags,'DECIMATE') NE -1 ,nx)
+     IF nx NE 0 THEN BEGIN 
+       decimate = strtrim((*self.data).hdr.decimate,2)
+     ENDIF ELSE decimate = '-1'
+
+     x =  where(strpos(hdr_tags,'EXCLUDE_COLS') NE -1 ,nx)
+     IF nx NE 0 THEN BEGIN 
+       exclude_cols =  (*self.data).hdr.exclude_cols
+     ENDIF ELSE exclude_cols =  "<don't know>"
+       
+     infostruct =  { ShortName: (*self.data).hdr.ShortName, $
+                  Version: self.version, $
                   LonPar: (*self.data).hdr.lonpar, $
                   LatPar: (*self.data).hdr.latpar, $
                   Start_Time: string((*self.data).hdr.StartTime), $
                   EndTime: string((*self.data).hdr.EndTime),$
-                  CreationTime: (*self.data).hdr.CreationTime }
+                  CreationTime: string((*self.data).hdr.CreationTime), $
+                  Rainf: rainf, $
+                  ErMax: ermax, $
+                  crdecimate: crdecimate, $
+                  decimate: decimate, $
+                  exclude_cols: exclude_cols}
    ENDIF 
+   return,1
 END
 
 
@@ -338,6 +432,44 @@ FUNCTION Qmodel::Version
 
 END
 
+;============================================
+; Write
+;============================================
+FUNCTION Qmodel::Write, filename, u,v,$
+                         ShortName = ShortName,$
+                         LongName  = LongName, $
+                         Version   = Version, $
+                         CreationTime= CreationTime,$
+                         StartTime = StartTime, $
+                         EndTime   = EndTime,$
+                         LonPar    = LonPar,$    
+                         LatPar    = LatPar, $   
+                         Region    = region, $
+                         rainf     = rainf, $
+                         ermax     = ermax, $
+                         crdecimate = crdecimate, $
+                         decimate   = decimate, $
+                         exclude_cols = exclude_cols
+
+  return, qmodelhdfwrite( filename, u,v, $
+                          ShortName = ShortName,$
+                          LongName  = LongName, $
+                          Version   = Version, $
+                          CreationTime= CreationTime,$
+                          StartTime = StartTime, $
+                          EndTime   = EndTime,$
+                          LonPar    = LonPar,$    
+                          LatPar    = LatPar, $   
+                          Region    = region, $
+                          rainf=rainf, $
+                          ermax=ermax, $
+                          crdecimate=crdecimate, $
+                          decimate=decimate, $
+                          exclude_cols=exclude_cols )
+END
+
+                         
+
 
 ;============================================
 ; Definition Routine
@@ -346,6 +478,7 @@ END
 PRO qmodel__define
   junk = {$
           QMODEL,   $
+          Version: '', $
           LatInc: 0., $
           LonInc: 0., $
           NLon : 0L , $
@@ -353,4 +486,6 @@ PRO qmodel__define
           Region: fltarr(4), $ ; region of model
           INHERITS q2b }             
 END
+
+
 
