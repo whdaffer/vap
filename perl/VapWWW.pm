@@ -40,26 +40,34 @@
 # Modification History:
 #
 # $Log$
+# Revision 1.2  2002/04/30 20:23:22  vapdev
+# Modified the 'use lib' statement
+#
 # Revision 1.1  2001/02/09 19:09:25  vapuser
 # Initial revision
 #
 #
 #
 package VapWWW;
-use lib getenv('VAP_SFTWR_TOP')."/vap/perl";
+use strict;
+use vars qw(@ISA @EXPORT $_is_batch @wwwfiles %wwwhash 
+	    %sat_num %sensor_dir $_secs_in_one_week @satregions 
+	    $ts_template_re $ts_template %during_hash );
+
+use lib $ENV{VAP_SFTWR_PERL};
 use Exporter ();
 use Cwd 'chdir', 'getcwd';
 use Time::Local;
 use Carp;
-use Vapdefs;
+#use Vapdefs;
 
 @ISA = qw(Exporter);
-@EXPORT=qw( auto_movie_defs doy2mday_mon 
-	   date2doy date_string  make_yyyymmdd gag grid_goes 
-	   getgoesfile fixlonrange vaptime2systime systime2vaptime 
-	   ParseWindFileNames GetWindFiles GetNow DeltaTime 
-	   ParseVapTime vaptime2idltime VapMailErrorMsg 
-	   rewriteStormsPage redoStormsPageLinks redoStormsPage );
+@EXPORT=qw( &auto_movie_defs &doy2mday_mon 
+	   &date2doy &date_string &make_yyyymmdd &gag &grid_goes 
+	   &getgoesfile &fixlonrange &vaptime2systime &systime2vaptime 
+	   &ParseWindFileNames &GetWindFiles &GetNow &DeltaTime
+	   &ParseVapTime &vaptime2idltime &VapMailErrorMsg 
+	   &rewriteStormsPage &redoStormsPageLinks &redoStormsPage );
 
 
 BEGIN {
@@ -137,7 +145,7 @@ BEGIN {
   
   
   
-  $ts_template="<p><a href=\"$file\">$linkstring<p><img src=\"$file\" width=320 height=240 align=top></a><p>(Processed: $processtime, Size: $size )\n";
+#  $ts_template="<p><a href=\"$file\">$linkstring<p><img src=\"$file\" width=320 height=240 align=top></a><p>(Processed: $processtime, Size: $size )\n";
   
   %during_hash = ();
   
