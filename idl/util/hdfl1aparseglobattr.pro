@@ -41,6 +41,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/06/11 20:48:02  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -57,7 +60,7 @@ FUNCTION HdfL1AParseGlobalAttr, globalAttr
   lf = string(10b)
   tmp = str_sep(globalAttr,lf)
   nreps = tmp[1]
-  data = tmp[2:2+nreps-1]
+  data = strtrim(strcompress(tmp[2:2+nreps-1]),2)
   IF n_elements(data) EQ 1 THEN data = data[0]
   return, data
 
