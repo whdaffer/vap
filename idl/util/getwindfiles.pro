@@ -107,6 +107,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1999/09/22 18:02:30  vapuser
+; Added 'twoway' keyword to tell it to add and subtract a delta.
+;
 ; Revision 1.4  1999/04/09 15:39:24  vapuser
 ; Took out some calls to dtcompare.pro, used
 ; built in idldt.julian instead
@@ -143,7 +146,7 @@ FUNCTION getwindfiles, end_time, $
 
   delta_mins =  0
   delta_hours = fix(delta)
-  IF isa(delta,/float) THEN delta_mins = fix(delta-delta(hours))*60
+  IF isa(delta,/float) THEN delta_mins = fix(delta-delta_hours)*60
 
   catch, error
   IF error NE 0 THEN BEGIN 
