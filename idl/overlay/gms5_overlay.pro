@@ -38,7 +38,9 @@
 ;                    rainflag      = rainflag, $
 ;                    rf_action   = rf_action, $
 ;                    rf_color    = rf_color, $
-;                    oplot       = oplot
+;                    oplot       = oplot, $
+;                    gridlines   = gridlines, $
+;                    keepaspect  = keepaspect
 ;
 ;
 ;
@@ -183,7 +185,7 @@
 ;                               7, default=1 a '+')
 ;                      symsize: float 
 ;                               (size of symbol, def=1)
-;                      title      : string array,  
+;                      ptitle      : string array,  
 ;                                 (annotation for for (each) symbol)
 ;                                 (default = '', which means (see note
 ;                                 below, 'no annotation')
@@ -232,6 +234,15 @@
 ;
 ;
 ;
+;    gridlines: flag. Put map graticule after TVing image if set.
+;
+;    keepaspect: flag. Maintain the aspect ratio of the latlon
+;                limits. This keyword will *partially* override the
+;                values of the xsize/ysize keywords. Depending on the
+;                value of the aspectratio, it will set one or the
+;                other of them to whatever value is necessary in
+;                order to preserve the aspect ratio.
+;                
 ;
 ; OUTPUTS:  A file, either a .gif, .jpeg (the default) or a .ps file,
 ;          depending on the status of these three flags having either
@@ -297,6 +308,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.20  2000/08/15 16:43:15  vapuser
+; Added the 'oplot' keyword to overplot symbols. Also added a 'help'
+; keyword.
+;
 ; Revision 1.19  2000/08/15 16:09:20  vapuser
 ; Fixed some small postscript bugs
 ;
@@ -406,6 +421,8 @@ PRO gms5_overlay, datetime, gmsType, $
                   rf_action   = rf_action, $
                   rf_color    = rf_color, $
                   oplot       = oplot, $
+                  gridlines   = gridlines, $
+                  keepaspect  = keepaspect, $
                   help        = help
 
 
@@ -420,13 +437,16 @@ PRO gms5_overlay, datetime, gmsType, $
 ;  loadct,0,/silent
 
   IF n_Params() EQ 0 OR keyword_set(help) THEN BEGIN 
-    Usage, 'gms5_overlay, datetime, gmsType,windfiles = windfiles, xsize = xsize, ysize = ysize, CRDecimate = CRDecimate, Decimate = Decimate, ExcludeCols = ExcludeCols, verbose = verbose, minpix  = minpix, minspeed  = minspeed, maxspeed  = maxspeed,length  = length,thick = thick, title = title,subtitle = subtitle, outfile = outfile,BrightMin = BrightMin, BrightMax = BrightMax, SatMin = SatMin, SatMax = SatMax, LandHue = LandHue,WaterHue = WaterHue,LandRGB=landRGB, WaterRGB=WaterRGB, gif = gif, ps = ps, scalefac = scalefac, jpeg = jpeg,quality = quality, ScaleVec=ScaleVec, rainflag=rainflag, rf_action=rf_action, rf_color=rf_color, oplot=oplot, help=help'
+    Usage, 'gms5_overlay, datetime, gmsType,windfiles = windfiles, xsize = xsize, ysize = ysize, CRDecimate = CRDecimate, Decimate = Decimate, ExcludeCols = ExcludeCols, verbose = verbose, minpix  = minpix, minspeed  = minspeed, maxspeed  = maxspeed,length  = length,thick = thick, title = title,subtitle = subtitle, outfile = outfile,BrightMin = BrightMin, BrightMax = BrightMax, SatMin = SatMin, SatMax = SatMax, LandHue = LandHue,WaterHue = WaterHue,LandRGB=landRGB, WaterRGB=WaterRGB, gif = gif, ps = ps, scalefac = scalefac, jpeg = jpeg,quality = quality, ScaleVec=ScaleVec, rainflag=rainflag, rf_action=rf_action, rf_color=rf_color, oplot=oplot, gridlines=gridlines, keepaspect=keepaspect, help=help'
 ;    tvlct,orig_red,orig_green,orig_blue
 ;    genv,/restore
     status = 0
     return
   ENDIF 
 
+  winddata =  n_elements(windfiles) NE 0
+  IF n_elements(gridlines) NE 0 THEN gridlines = keyword_set(gridlines)
+  IF n_elements(keepaspect) NE 0 THEN keepaspect =  keyword_set(keepaspect)
   config =  keyword_set(config)
 
 
@@ -471,23 +491,23 @@ PRO gms5_overlay, datetime, gmsType, $
     return
   ENDIF 
 
+  
   ps = keyword_set(ps)
   gif = keyword_set(gif)
   jpeg = keyword_set(jpeg)
 
+  lonrange = lonlim[1]-lonlim[0]
+  latrange = latlim[1]-latlim[0]
+  aspectratio = float(latrange)/lonrange
+  
   IF n_elements(xsize ) EQ 0 AND $
      n_elements(ysize) EQ 0 THEN BEGIN 
     IF NOT ps THEN BEGIN 
-      lonrange = lonlim[1]-lonlim[0]
-      latrange = latlim[1]-latlim[0]
-      aspectratio = float(latrange)/lonrange
       xsize = 960
       ysize = fix(xsize*AspectRatio)
-      Message,"picture size defaulting to [" + $
-        string( [xsize,ysize], form='(i4,",",i4)') + ']',/info
     ENDIF ELSE BEGIN 
       xsize = 8.4 
-      ysize = 6.5 
+      ysize = xsize*AspectRatio
     ENDELSE 
   ENDIF ELSE BEGIN 
     IF n_elements(xsize) EQ 0 THEN BEGIN 
@@ -512,6 +532,29 @@ PRO gms5_overlay, datetime, gmsType, $
 
   xoffset = 1.2
   yoffset = 9.5
+
+
+  IF keepaspect THEN BEGIN 
+    IF aspectratio GE 1. THEN $
+      xsize=ysize/aspectRatio ELSE $
+      ysize=xsize*aspectRatio
+
+    IF NOT ps THEN BEGIN 
+      xsize = fix(xsize)
+      ysize = fix(ysize)
+    ENDIF 
+  ENDIF 
+
+  IF NOT ps THEN BEGIN 
+    Message,"[Xsize, Ysize]: [" + $
+     string( [xsize,ysize], form='(i4,",",i4)') + ']',/info
+  ENDIF ELSE BEGIN 
+    Message,"[Xsize, Ysize]: [" + $
+     string( [xsize,ysize], form='(f5.2,",",f5.2)') + ']',/info
+    Message,"[xoff,yoff]: [" + $
+     string( [xoffset,yoffset], form='(f5.2,",",f5.2)') + ']',/info
+  ENDELSE 
+
 
 
   verbose = keyword_set(verbose)
@@ -596,6 +639,29 @@ PRO gms5_overlay, datetime, gmsType, $
 
 
 
+  read_cfgfile = 0
+  cfgname = cfgname()
+  cfgpath = '~/.idlcfg/' 
+  ff = findfile(cfgpath + cfgname,count=nf)
+  IF nf NE 0 THEN BEGIN 
+    read_cfgfile = 1
+  ENDIF ELSE BEGIN 
+    IF getenv('VAP_LIB') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIB')
+      ff = findfile(cfgpath + cfgname,count=nf)      
+      read_cfgfile = (nf NE 0)
+    ENDIF
+  ENDELSE   
+
+  IF read_cfgfile THEN BEGIN 
+    print,' Reading CFG file ' + cfgname
+    read_cfgfile,cfgname, cfg,path=cfgpath
+    IF n_elements(cfg) NE 0 THEN BEGIN 
+      print,'CFG found! Details follow:'
+      help,cfg,/st
+    ENDIF 
+  ENDIF 
+
   chkcfg,'RAINFLAG',rainflag,cfg
   chkcfg,'RF_ACTION',rf_action,cfg
   chkcfg,'RF_COLOR',rf_color,cfg
@@ -617,7 +683,7 @@ PRO gms5_overlay, datetime, gmsType, $
       ENDIF ELSE BEGIN 
         checkfor =  ['PSYM','SYMSIZE','CHARSIZE','CHARTHICK',$
                      'TEXTCOLOR','SYMCOLOR','ALIGNMENT','ORIENTATION',$
-                     'TITLE', 'X_TITLE', 'Y_TITLE', 'NORMAL']
+                     'PTITLE', 'X_TITLE', 'Y_TITLE', 'NORMAL']
         FOR i=0,n_elements(checkfor)-1 DO BEGIN 
           x = where(strpos(tags,checkfor[i]) NE -1, nx )
           IF nx EQ 0 THEN BEGIN 
@@ -630,7 +696,7 @@ PRO gms5_overlay, datetime, gmsType, $
               'SYMCOLOR': symcolor = 255
               'ALIGNMENT': alignment =  1.
               'ORIENTATION': orientation = 0.
-              'TITLE': title = replicate('',n_elements(oplot.lon) )
+              'PTITLE': ptitle = replicate('',n_elements(oplot.lon) )
               'X_TITLE': x_title = oplot.lon
               'Y_TITLE': y_title = oplot.lat
               'NORMAL': normal = 0
@@ -639,13 +705,16 @@ PRO gms5_overlay, datetime, gmsType, $
         ENDFOR 
         toplot = { lon: oplot.lon, lat: oplot.lat, symcolor: symcolor, $
                    psym: psym, symsize: symsize, $
-                   title: title, x_title: x_title, y_title: y_title, $
-                   alignment: alignment, orientation: orientation, normal:normal , $
-                   textcolor: textcolor, charsize: charsize, charthick: charthick }
+                   ptitle: ptitle, x_title: x_title, y_title: y_title, $
+                   alignment: alignment, orientation: orientation, $
+                   normal:normal,textcolor: textcolor, charsize: charsize, $
+                   charthick: charthick }
       ENDELSE 
     ENDELSE 
   ENDIF 
 
+  chkcfg,'GRIDLINES',gridlines,cfg
+  chkcfg,'KEEPASPECT',keepaspect,cfg
 
     ;=============== Start the processing =================
 
@@ -709,15 +778,19 @@ PRO gms5_overlay, datetime, gmsType, $
     END
   ENDCASE 
   IF clouddata THEN BEGIN 
+    Message,"Datetime: " + datetime + ', Gmstype: ' + gmstype + $
+      ", Lonpar: " + string(lonpar[0:1],form='(2(f7.2,2x))'),/info
     allData = Gms5ReadAll(datetime,gmsType,lonpar=lonpar)
     IF NOT isa(alldata,/structure) THEN BEGIN 
       Message,"Failure Reading GMS5 data",/info
       clouddata = 0
+      time_string = "No_Cloud_Data"
     ENDIF ELSE BEGIN 
       image = allData.imagedata.image
       ;calTemps = allData.CalData.ir[0].Temps
-      xloc = allData.griddata.xloc
-      yloc = allData.griddata.yloc
+      xloc = *(allData.griddata.xloc)
+      yloc = *(allData.griddata.yloc)
+      ptr_free,allData.griddata.xloc,allData.griddata.yloc
       minlon = allData.griddata.minlon
 
       newGrid = gms5idx(lonpar,latpar)
@@ -802,11 +875,11 @@ PRO gms5_overlay, datetime, gmsType, $
   ;nlat = sz[1]
 
 
- Hue = fltarr(nlon,nlat)+WaterHue
- Hue[land] = LandHue
+  Hue = fltarr(nlon,nlat)+WaterHue
+  Hue[land] = LandHue
  
    
- IF config AND clouddata THEN $
+  IF config AND clouddata THEN $
     CLOUD_OVERLAY_CONFIG, $
      landwater=hue, $
       cloudmask=cloudmask, $
@@ -876,7 +949,7 @@ PRO gms5_overlay, datetime, gmsType, $
 ;      Tv,mapIm[*,*,i],xs,ys
 ;  ENDELSE 
 
-  nn = where(strlen(windfiles) NE 0 , nf)
+  IF winddata THEN nn = where(strlen(windfiles) NE 0 , nf) ELSE nf = 0
   IF nf NE 0 THEN BEGIN 
     windFiles = windFiles[nn]
     tt0 = systime(1)
@@ -995,7 +1068,7 @@ PRO gms5_overlay, datetime, gmsType, $
               symsize=toplot[ii].symsize ,color=toplot[ii].symcolor
           ENDFOR 
         ENDELSE 
-        xx = where( strlen(toplot[ii].title) NE 0,nxx)
+        xx = where( strlen(toplot[ii].ptitle) NE 0,nxx)
         IF nxx NE 0 THEN BEGIN 
           FOR jj=0,nxx-1 DO BEGIN 
             nal = n_elements(toplot[ii].alignment)
@@ -1003,7 +1076,7 @@ PRO gms5_overlay, datetime, gmsType, $
             IF toplot[ii].normal THEN BEGIN 
                xyouts, toplot[ii].x_title[xx[jj]], $
                   toplot[ii].y_title[xx[jj]],$
-                   toplot[ii].title[xx[jj]], $
+                   toplot[ii].ptitle[xx[jj]], $
                   align=toplot[ii].alignment[xx[jj] MOD nal ], $
                     orient=toplot[ii].orientation[xx[jj] MOD nor ], $
                       charsize=toplot[ii].charsize, $
@@ -1012,7 +1085,7 @@ PRO gms5_overlay, datetime, gmsType, $
              ENDIF ELSE BEGIN 
                xyouts, toplot[ii].x_title[xx[jj]], $
                   toplot[ii].y_title[xx[jj]],$
-                   toplot[ii].title[xx[jj]], $
+                   toplot[ii].ptitle[xx[jj]], $
                     align=toplot[ii].alignment[xx[jj]], $
                       orient=toplot[ii].orientation[xx[jj]], $
                         charsize=toplot[ii].charsize, $
@@ -1022,6 +1095,11 @@ PRO gms5_overlay, datetime, gmsType, $
           ENDFOR 
         ENDIF 
       ENDFOR 
+      IF gridlines THEN BEGIN
+        Map_Set, 0, mean(lonpar[0:1]), /noborder, $
+           limit=[ latpar[0], lonpar[0], latpar[1], lonpar[1] ],$
+           Ymargin=[4.,4],/noerase,/grid,/lab,color=255b
+      ENDIF 
       tvlct,orig_red,orig_green,orig_blue
     ENDIF 
 
@@ -1055,6 +1133,10 @@ PRO gms5_overlay, datetime, gmsType, $
 
   ENDIF ELSE BEGIN 
 
+
+     ;; ======= NON postscript processing ===============
+
+
     finalim = bytarr(xsize,ysize,3)
 
     FOR i=0,2 DO BEGIN 
@@ -1067,9 +1149,11 @@ PRO gms5_overlay, datetime, gmsType, $
           2: col =  ishft(col24,-16) AND 'ff'xl
         ENDCASE 
 
+          ;; ===== Reestablish the plotting env.
+
         Map_Set, 0, mean(lonpar[0:1]), /noborder, $
-         limit=[ latpar[0], lonpar[0], latpar[1], lonpar[1] ],$
-         Ymargin=[4.,4],/noerase
+           limit=[ latpar[0], lonpar[0], latpar[1], lonpar[1] ],$
+           Ymargin=[4.,4],/noerase
 
         PlotVect, u,v,lon,lat, color=col, len=length, $
           thick=thick, scale=scaleVec, $
@@ -1091,7 +1175,7 @@ PRO gms5_overlay, datetime, gmsType, $
               symsize=toplot[ii].symsize ,color=toplot[ii].symcolor
           ENDFOR 
         ENDELSE 
-        xx = where( strlen(toplot[ii].title) NE 0,nxx)
+        xx = where( strlen(toplot[ii].ptitle) NE 0,nxx)
         IF nxx NE 0 THEN BEGIN 
           FOR jj=0,nxx-1 DO BEGIN 
             nal = n_elements(toplot[ii].alignment)
@@ -1099,7 +1183,7 @@ PRO gms5_overlay, datetime, gmsType, $
             IF toplot[ii].normal THEN BEGIN 
                xyouts, toplot[ii].x_title[xx[jj]], $
                   toplot[ii].y_title[xx[jj]],$
-                   toplot[ii].title[xx[jj]], $
+                   toplot[ii].ptitle[xx[jj]], $
                     align=toplot[ii].alignment[xx[jj] MOD nal ], $
                       orient=toplot[ii].orientation[xx[jj] MOD nor ], $
                         charsize=toplot[ii].charsize, $
@@ -1108,7 +1192,7 @@ PRO gms5_overlay, datetime, gmsType, $
              ENDIF ELSE BEGIN 
                xyouts, toplot[ii].x_title[xx[jj]], $
                   toplot[ii].y_title[xx[jj]],$
-                   toplot[ii].title[xx[jj]], $
+                   toplot[ii].ptitle[xx[jj]], $
                      align=toplot[ii].alignment[xx[jj]], $
                       orient=toplot[ii].orientation[xx[jj]], $
                         charsize=toplot[ii].charsize, $
@@ -1118,6 +1202,14 @@ PRO gms5_overlay, datetime, gmsType, $
           ENDFOR 
         ENDIF 
       ENDFOR 
+
+        ; == Put the grid lines on, if requested!
+
+      IF gridlines THEN BEGIN 
+        Map_Set, 0, mean(lonpar[0:1]), /noborder, $
+           limit=[ latpar[0], lonpar[0], latpar[1], lonpar[1] ],$
+           Ymargin=[4.,4],/noerase,/grid,/lab,color=0b
+      ENDIF 
 
         ; ======= Do annotations ==========
 
