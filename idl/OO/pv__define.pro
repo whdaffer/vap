@@ -90,6 +90,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.17  1999/08/30 15:46:01  vapuser
+; Took Colorbar out of Annotation. Put it in it's own
+; object and put an instance of that object in the PV object.
+; Changed supporting code.
+;
 ; Revision 1.16  1999/08/26 20:59:47  vapuser
 ; Let See....
 ;   Misc code fixes.
@@ -175,6 +180,8 @@ PRO pv_events, event
     'PLOTOPTIONS'    : self->PlotOptions      
     'CONFIGHARDCOPY' : self->HardCopy
     'CLOUDOVERLAY'   : self->Overlay
+    'OVERPLOTLOC'    : self->OverPLot
+    'PROPAGATEORBITS': self->Propagate
     'RESETSENS'      : self-> Set, Sensitivity = 1
     'REDRAW'         : self->draw,/force
     'QUIT2'          : self->Quit, event.top  
@@ -589,6 +596,24 @@ END
 
 
 ;====================================================
+; Overplot Data
+;====================================================
+PRO pv::Overplot
+  pv_oplot, GROUP=self.tlb
+END
+
+
+
+;====================================================
+; Propagate
+;====================================================
+PRO pv::Propagate
+  pv_propagate, self.tlb
+END
+
+
+
+;====================================================
 ;
 ; Plot Options
 ;
@@ -997,6 +1022,7 @@ FUNCTION pv::Init, $
                             divisions=4,position=[0.25,0.93,0.75,0.95], $
                            format='(f5.0)', color=n_elements(ct[0,*]) )
 
+  self.Oplot =  obj_new('ObPlot',psym=2,/plots)
 
   status = 1
   IF n_elements( files ) NE 0 THEN BEGIN 
@@ -1071,9 +1097,17 @@ FUNCTION Pv::CreateWidget
                                     UValue='HARDCOPY')
     self.HardCopyId =  Widget_Button( junk, Value='Configure Hard Copy', $
                                       UValue='CONFIGHARDCOPY')
-    junk = Widget_Button( MenuId, Value='Overlay',/Menu,Uvalue='OVERLAY')
-    self.OverlayId = Widget_Button( junk,Value='Cloud Overlay', $
-                                    Uvalue='CLOUDOVERLAY')
+;    junk = Widget_Button( MenuId, Value='Overlay',/Menu,Uvalue='OVERLAY')
+;    self.OverlayId = Widget_Button( junk,Value='Cloud Overlay', $
+;                                    Uvalue='CLOUDOVERLAY')
+
+    junk = Widget_Button( MenuId, Value='OverPlot',/Menu,Uvalue='OVERPLOT')
+    self.OverPlotId = Widget_Button( junk,Value='Plot Locations', $
+                                    Uvalue='OVERPLOTLOC')
+
+    junk = Widget_Button( MenuId, Value='Propagate',/Menu,Uvalue='PROPAGATE')
+    self.PropagateId = Widget_Button( junk,Value='Propagate Orbits', $
+                                    Uvalue='PROPAGATEORBITS')
 
     ; put a MENU below the menubar one, just in case  
     junk = Widget_Base(self.tlb,/row)
@@ -1144,9 +1178,15 @@ END
 ;====================================================
 
 
-PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
+PRO Pv::Draw, $
+      NoErase = NoErase, $
+      AlreadyPlotted=AlreadyPlotted, $
+      Force=Force, $
+      NO_OPLOT=NO_OPLOT
 
   COMMON PrevDims, oldLimit
+  no_oplot = keyword_set(no_oplot)
+
 
 
   Catch, Error
@@ -1343,7 +1383,7 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
 
       
 
-
+    IF NOT no_oplot THEN self.oplot-> draw,/doAnnot
     self-> ChangeSensitivity, On =  SaveSensitivity
     ; Widget_Control, self.StatusId, Set_Value='Done Drawing!'
     self-> WriteToStatusBar, 'Done Drawing '
@@ -1527,7 +1567,8 @@ PRO Pv::Set, xsize       = xsize, $
              Ytitle       = Ytitle,$
              Subtitle     = Subtitle,$
              doAnnotations=doAnnotations, $
-             doColorBar=doColorBar
+             doColorBar=doColorBar, $
+             oplot=oplot
 
 
 
@@ -1824,6 +1865,15 @@ PRO Pv::Set, xsize       = xsize, $
   IF n_Elements(doAnnotations) NE 0 THEN self.doAnnotations = doAnnotations
   IF n_Elements(doColorBar) NE 0 THEN self.doColorBar = doColorBar
 
+  IF n_elements(oplot) NE 0 THEN BEGIN 
+    IF isa(oplot,/object,objname='obplot') THEN BEGIN 
+      IF self.oplot NE oplot THEN BEGIN 
+        obj_destroy,self.oplob
+        self.oplot = oplot
+      ENDIF 
+    ENDIF 
+  ENDIF 
+
 END
 
 
@@ -1875,7 +1925,8 @@ PRO Pv::Get, xsize             = xsize, $
              Annotation        = Annotation, $
              ColorBar          = colorBar, $
              doAnnotations     = doAnnotations, $
-             doColorBar        = doColorBar
+             doColorBar        = doColorBar, $
+             oplot             = oplot
 
    IF Arg_Present(xsize)             THEN xsize             = self.xsize 
    IF Arg_Present(ysize)             THEN ysize             = self.ysize 
@@ -1918,6 +1969,8 @@ PRO Pv::Get, xsize             = xsize, $
    IF Arg_Present(ColorBar)          THEN ColorBar          = self.ColorBar
    IF Arg_Present(doAnnotations)     THEN doAnnotations     = self.doAnnotations
    IF Arg_Present(doColorBar)        THEN doColorBar        = self.doColorBar
+   IF Arg_Present(oplot)             THEN oplot        = self.oplot
+
 
    IF Arg_Present(CurrentDims)       THEN CurrentDims = $
       self->GetCurrentDimensions()  
@@ -2207,15 +2260,17 @@ PRO pv::CreateMap, Erase = Erase, force=force, $
        IF xmargin[0] eq 0 AND xmargin[1] EQ 0 THEN xmargin = 6
        IF ymargin[0] eq 0 AND ymargin[1] EQ 0 THEN ymargin = 5
 
-       IF Erase OR Force THEN BEGIN 
-         self-> ResetPlotObjects,/AlreadyPlotted
-         Map_Set, 0,center[0], /Grid,/Label,/Continent,$
-          limit=limit,Title=mtitle, $
-           xmargin=xmargin, ymargin=ymargin, color=titlecolor
-                                 ;        oldLimit = limit
-       ENDIF 
+     ENDIF 
 
-       
+     IF Erase OR Force THEN BEGIN 
+       self-> ResetPlotObjects,/AlreadyPlotted
+       Map_Set, 0,center[0], /Grid,/Label,/Continent,$
+        limit=limit,Title=mtitle, $
+        xmargin=xmargin, ymargin=ymargin, color=titlecolor
+                                ;        oldLimit = limit
+     ENDIF 
+
+     IF self.doAnnotations THEN  BEGIN 
        IF strlen( Xtitle ) NE 0 THEN $
          XYOUTS,mean(!x.window), 0.75*!y.window[0], Xtitle, Align=0.5, /normal, $
          charsize=charsize, charthick=charthick,color=titlecolor
@@ -2354,6 +2409,8 @@ PRO Pv__define
             ConfigId     : 0l ,$
             HardcopyId   : 0L ,$
             OverlayId    : 0l ,$
+            OverplotId   : 0l, $
+            PropagateId  : 0L, $
             MiscId       : 0l ,$
             SetSensId    : 0l ,$
             RedrawId     : 0L ,$
@@ -2439,8 +2496,9 @@ PRO Pv__define
             HCFile       : '', $        ; Default Output Hardcopy file name
             HCCntr       : 0 , $        ; For use as a extension.
             HCType       : '',$         ; Type of hardcopy
+            oplot        : obj_new(),$  ; To hold positions to be overplotted
             PSInfo       : Obj_New(),$  ; To hold Postscript info.
-            OutputHCFiles: Obj_New() ,$ ; LinkedList of Output Hardcopies
+            OutputHCFiles: Obj_New(),$  ; LinkedList of Output Hardcopies
             OutputFiles  : Obj_New(),$  ; Linked ist of Output Data Files.
             Datalist     : Obj_New()}   ; List of PvPlotObjects 
             
