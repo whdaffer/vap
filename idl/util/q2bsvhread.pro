@@ -57,6 +57,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/07 00:09:35  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -88,22 +91,24 @@ FUNCTION q2bsvhread, filename
       Nscat_GetUV, data.sdir, data.sspeed, su, sv
       Nscat_GetUV, data.mdir, data.mspeed, mu, mv
 
+      q.u = !values.f_nan
+      q.v = !values.f_nan
       FOR i=min(data.idx(1)),max(data.idx(1)) DO BEGIN 
         x = where( data.idx(1) EQ i, nx )
         IF nx NE 0 THEN BEGIN 
           tdata = data(x)
 
-          q( tdata.idx(0) ).u     (*,i-1) = u(*,x)
-          q( tdata.idx(0) ).v     (*,i-1) = v(*,x)
-          q( tdata.idx(0) ).su    (  i-1) = su(x)    
-          q( tdata.idx(0) ).sv    (  i-1) = sv(x)    
-          q( tdata.idx(0) ).mu    (  i-1) = mu(x)    
-          q( tdata.idx(0) ).mv    (  i-1) = mv(x)    
-          q( tdata.idx(0) ).sel   (  i-1) = tdata.sel
-          q( tdata.idx(0) ).qual  (  i-1) = tdata.qual
-          q( tdata.idx(0) ).nambig(  i-1) = tdata.nambig
-          q( tdata.idx(0) ).lon   (  i-1) = tdata.lon
-          q( tdata.idx(0) ).lat   (  i-1) = tdata.lat
+          q[ tdata.idx[0] ].u     [*,i-1] = u[*,x]
+          q[ tdata.idx[0] ].v     [*,i-1] = v[*,x]
+          q[ tdata.idx[0] ].su    [  i-1] = su[x]    
+          q[ tdata.idx[0] ].sv    [  i-1] = sv[x]    
+          q[ tdata.idx[0] ].mu    [  i-1] = mu[x]    
+          q[ tdata.idx[0] ].mv    [  i-1] = mv[x]    
+          q[ tdata.idx[0] ].sel   [  i-1] = tdata.sel
+          q[ tdata.idx[0] ].qual  [  i-1] = tdata.qual
+          q[ tdata.idx[0] ].nambig[  i-1] = tdata.nambig
+          q[ tdata.idx[0] ].lon   [  i-1] = tdata.lon
+          q[ tdata.idx[0] ].lat   [  i-1] = tdata.lat
 
         ENDIF 
       ENDFOR 
