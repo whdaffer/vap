@@ -12,7 +12,7 @@ DFLAGS = -DAREA_FILE_TOP=$(AREA_FILE_TOP)
 CFLAGS = -c -g $(DEBUG)
 CC     = cc $(CFLAGS)
 LD     = cc -o 
-F77    = f77 -c
+F77    = f77 -g -c
 
 LIBS   = -lF77  -lI77 -lisam -lm  -lU77 -lc
 
