@@ -1,11 +1,6 @@
-FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
-                    rainf=rainf, $
-                    ermax=ermax, $
-                    ofile=ofile, $
-                    reuse=reuse,$
-                    help=help
 ;+
 ; NAME:   RunSuccor
+; $Id$
 ; PURPOSE:  A Wrapper for the Succor.so interpolation routine
 ;
 ;
@@ -18,7 +13,10 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 ;
 ; CALLING SEQUENCE:  status=runsuccor(u,v,lon,lat,[ui,vi | ofile=ofile],
 ;                                     [lonpar,latpar, rainf=rainf,
-;                                       ermax=ermax, help=help,reuse==reuse] )
+;                                       ermax=ermax, help=help,
+;                                       reuse=reuse, native=native,
+;                                       StartTime=StartTime,$
+;                                       EndTime=EndTime ] )
 ;
 ;
 ; 
@@ -61,6 +59,13 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 ;            succor. Requires UI/VI be passed in and have the correct
 ;            dimensionality
 ;
+;        Native: (I) flag, if set and Ofile is set, don't output file
+;                in HDF format, but in native format (see
+;                qmodel_str.pro) for the description of that format.
+;        StartTime: (I) string, Start time of data that went into making
+;                   this field, 'yyyy/mm/dd/hh/mi'
+;        EndTime: (I) string, End time of data that went into making
+;                   this field, 'yyyy/mm/dd/hh/mi'
 ;        help: prints a help message
 ;
 ;
@@ -111,6 +116,9 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/07 00:08:07  vapuser
+; Add some more keywords.
+;
 ; Revision 1.2  1998/10/06 00:16:09  vapuser
 ; Changed some comments
 ;
@@ -119,9 +127,19 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 ;
 ;
 ;Jet Propulsion Laboratory
-;Copyright (c) YYYY, California Institute of Technology
+;Copyright (c) 1998, California Institute of Technology
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
+
+FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
+                    rainf = rainf, $
+                    ermax = ermax, $
+                    ofile = ofile, $
+                    reuse = reuse,$
+                    native = native,$
+                    StartTime = StartTime, $
+                    EndTime = EndTime,$
+                    help = help
 
    rcsid = "$Id$"
 
@@ -132,7 +150,7 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
   hstr = lf +    "Usage: result=runsuccor(u,v,lon,lat$" + lf
   hstr = hstr + "  [[,ui,vi,]|[ofile=ofile]]$ " + lf 
   hstr = hstr + "  [ lonpar, latpar, rainf=rainf, ermax=ermax,$ " +  lf 
-  hstr = hstr + "  help=0|1 ])" + lf + lf 
+  hstr = hstr + "  help=0|1, reuse=reuse, native=native ])" + lf + lf 
   hstr = hstr + "  Where... " + lf + lf 
   hstr = hstr + "  U: The U component (I)" + lf
   hstr = hstr + "  V: The V component (I)" + lf
@@ -162,6 +180,8 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
   hstr = hstr + "    (Def=[50.,20.,10,.5] " + lf
   hstr = hstr + "  REUSE: Flag, if set, use the UI/VI that are passed in directly"+lf
   hstr = hstr + "    in the call to succor, rather than creating them." + lf
+  hstr = hstr + "  NATIVE: (I) Flag, if set and Ofile is set, don't output " + lf
+  hstr = hstr + "    the data in HDF format, use native format " + lf  
   hstr = hstr + "  HELP: this message" + lf + lf
   hstr = hstr + "  The interpolated field is returned in the variables " + lf
   hstr = hstr + "  UI and VI, and optionally written to the file given " + lf
@@ -197,6 +217,7 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 
   good = where( finite(u) AND finite(v), ngood)
   IF ngood NE 0 THEN BEGIN 
+    CreationTime = (IdlDt2VapTime(Today()))[0]
     uu = u[good]
     vv = v[good]
     llon = lon[good]
@@ -213,7 +234,7 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
     nv = (latpar[1]-latpar[0])/latpar[2] + 1 
     IF keyword_set( reuse ) THEN BEGIN 
       IF n_elements(ui) EQ 0 OR n_elements(vi) EQ 0 THEN BEGIN 
-        Message,'UI/VI must be defined when using REUSE',/cont
+        Message,'UI/VI must already be defined when using REUSE',/cont
         print,' Required dimensionality: ',nu,nv
         return,0
       ENDIF 
@@ -237,13 +258,14 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
     print,'  Execution time ',systime(1)-t1, ' seconds'
     status = 1
     IF n_elements(ofile) THEN BEGIN 
-      openw, lun, ofile, /get, error=err
-      IF err EQ 0 THEN BEGIN 
-        WriteU, lun, ui, vi
-        free_lun, lun
-        Message,' Data written successfully to file ' + ofile,/cont
-        status = 1
-      ENDIF ELSE BEGIN 
+      status = QmodelWrite( ofile, ui, vi, $
+                            lonpar = lonpar, $
+                            latpar = latpar, $
+                            CreationTime = CreationTime, $
+                            StartTime = StartTime,$
+                            EndTime = EndTime, $
+                            Native = Native )
+      IF NOT status  THEN BEGIN 
         Message,!error_State.msg,/cont
         IF Arg_Present(ui) AND Arg_Present(vi) THEN BEGIN 
           Message,'Data return via UI/VI arguments ',/cont
@@ -251,8 +273,8 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
         ENDIF ELSE BEGIN 
            Message,'UI/VI not present on command line, aborting!',/cont
            status = 0
-         ENDELSE 
-      ENDELSE   
+        ENDELSE 
+      ENDIF 
     ENDIF ELSE status = 1
   ENDIF ELSE status = 0
   return,status
