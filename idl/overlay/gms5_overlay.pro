@@ -33,7 +33,8 @@
 ;                    MapLimits   = MapLimits, $
 ;                    status      = status, $
 ;                    thumbnail   = thumbnail, $
-;                    config      = config 
+;                    config      = config,$
+;                    scale       = scale
 ;
 ;
 ;
@@ -99,6 +100,7 @@
 ;     SatMin      : The abscissa at which the Saturation transfer
 ;                   function starts its linear ramp to 0. Ordinates of
 ;                   the transfer function less than this one will be
+
 ;                   set to 1. Input as a float between 0 and 1. (Default=0.)
 ;     SatMax      : The abscissa at whith the saturation transfer
 ;                   function reachs 0. Ordinates of the transfer
@@ -106,9 +108,9 @@
 ;                   set to 0. Input as a float between 0 and
 ;                   1. (Default=0.55)
 ;     LandRGB     : The 3-vector containing the RGB values for the
-;                   Land color. 
+;                   Land color. (default=[25, 110,   0])
 ;     WaterRGB    : The 3-vector containing the RGB values for the
-;                   Water color. 
+;                   Water color. (default=[28, 15,  80])
 ;     LandHue     : the Hue value for land (from a Hue/Brightness/Saturation
 ;                   triple ) default will be whatever Hue results when
 ;                   the default LandRGB of [25, 110,   0] is converted
@@ -116,7 +118,7 @@
 ;     WaterHue    : the Hue value for water (from a
 ;                   Hue/Brightness/Saturation triple) Default will be
 ;                   whatever hue results when the default WaterRGB,
-;                   triple of [31, 33, 129] is converted to Hue
+;                   triple of [28, 15,  80] is converted to Hue
 ;     gif         : output as Gif file 
 ;     scalefac    : scale factor to be used in making Postscript files.
 ;                   (def=0.05)
@@ -143,6 +145,8 @@
 ;                   30% the size of the original and output its name
 ;                   in this variable
 ;     config      : flag, if set, will call a overlay configurator
+;     scale       : flag, if set, the vectors will be scaled by their
+;                   speed, otherwise, they're all the same length.
 ;
 ;
 ; OUTPUTS:  A file, either a .gif, .jpeg (the default) or a .ps file,
@@ -209,6 +213,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.9  1999/06/24 21:18:36  vapuser
+; Added test for good data after gms5ReadAll
+;
 ; Revision 1.8  1999/06/23 22:00:23  vapuser
 ; Move the map_set until after config.
 ;
@@ -275,7 +282,8 @@ PRO gms5_overlay, datetime, gmsType, $
                   mapLimits   = mapLimits,$
                   status      = status, $
                   thumbnail   = thumbnail, $
-                  config      = config
+                  config      = config, $
+                  scaleVec    = scaleVec
 
 
 
@@ -283,8 +291,12 @@ PRO gms5_overlay, datetime, gmsType, $
 
   status = 1
 
+  genv,/save
+  tvlct,orig_red,orig_green,orig_blue,/get
+  loadct,0,/silent
+
   IF n_Params() EQ 0 THEN BEGIN 
-    Usage, 'gms5_overlay, datetime, windFiles = WindFiles, gmsType = gmsType,windfiles = windfiles, xsize = xsize, ysize = ysize, CRDecimate = CRDecimate, Decimate = Decimate, ExcludeCols = ExcludeCols, verbose = verbose, minpix  = minpix, minspeed  = minspeed, maxspeed  = maxspeed,length  = length,thick = thick, title = title,subtitle = subtitle, outfile = outfile,BrightMin = BrightMin, BrightMax = BrightMax, SatMin = SatMin, SatMax = SatMax, LandHue = LandHue,WaterHue = WaterHue,LandRGB=landRGB, WaterRGB=WaterRGB, gif = gif, ps = ps, scalefac = scalefac, jpeg = jpeg,quality = quality'
+    Usage, 'gms5_overlay, datetime, windFiles = WindFiles, gmsType = gmsType,windfiles = windfiles, xsize = xsize, ysize = ysize, CRDecimate = CRDecimate, Decimate = Decimate, ExcludeCols = ExcludeCols, verbose = verbose, minpix  = minpix, minspeed  = minspeed, maxspeed  = maxspeed,length  = length,thick = thick, title = title,subtitle = subtitle, outfile = outfile,BrightMin = BrightMin, BrightMax = BrightMax, SatMin = SatMin, SatMax = SatMax, LandHue = LandHue,WaterHue = WaterHue,LandRGB=landRGB, WaterRGB=WaterRGB, gif = gif, ps = ps, scalefac = scalefac, jpeg = jpeg,quality = quality, ScaleVec=ScaleVec'
     tvlct,orig_red,orig_green,orig_blue
     genv,/restore
     status = 0
@@ -299,7 +311,9 @@ PRO gms5_overlay, datetime, gmsType, $
     return
   ENDIF 
 
-  Default_WaterRGB = [31,  33, 129]
+  ;[31,  33, 129]
+  ;Default_WaterRGB = [28, 15,  80]
+  Default_WaterRGB = [11,  11, 122] 
   Default_LandRGB =  [25, 110,   0]
 
   Color_Convert, Default_WaterRGB[0],Default_WaterRGB[1],Default_WaterRGB[2],$
@@ -333,22 +347,48 @@ PRO gms5_overlay, datetime, gmsType, $
     return
   ENDIF 
 
-  IF n_elements(xsize ) EQ 0 AND $
-     n_elements(ysize) EQ 0 THEN BEGIN 
-    
-    lonrange = lonlim[1]-lonlim[0]
-    latrange = latlim[1]-latlim[0]
-    aspectratio = float(latrange)/lonrange
-    xsize = 960
-    ysize = fix(xsize*AspectRatio)
-    Message,"picture size defaulting to [" + $
-      string( [xsize,ysize], form='(i4,",",i4)') + ']',/info
-  ENDIF 
-
-
   ps = keyword_set(ps)
   gif = keyword_set(gif)
   jpeg = keyword_set(jpeg)
+
+  IF n_elements(xsize ) EQ 0 AND $
+     n_elements(ysize) EQ 0 THEN BEGIN 
+    IF NOT ps THEN BEGIN 
+      lonrange = lonlim[1]-lonlim[0]
+      latrange = latlim[1]-latlim[0]
+      aspectratio = float(latrange)/lonrange
+      xsize = 960
+      ysize = fix(xsize*AspectRatio)
+      Message,"picture size defaulting to [" + $
+        string( [xsize,ysize], form='(i4,",",i4)') + ']',/info
+    ENDIF ELSE BEGIN 
+      xsize = 8.4 
+      ysize = 6.5 
+    ENDELSE 
+  ENDIF ELSE BEGIN 
+    IF n_elements(xsize) EQ 0 THEN BEGIN 
+      IF NOT ps THEN BEGIN 
+        xsize = 960
+        Message,'Xsize defaulting to 960',/info
+      ENDIF ELSE BEGIN 
+        xsize = 8.4
+        Message,'Xsize defaulting to 8.4',/info
+      ENDELSE 
+    ENDIF 
+    IF n_elements(ysize) EQ 0 THEN BEGIN 
+      IF NOT ps THEN BEGIN 
+        ysize = 720
+        Message,'Ysize defaulting to 720',/info
+      ENDIF ELSE BEGIN 
+        ysize = 6.5
+        Message,'Ysize defaulting to 6.5',/info
+      ENDELSE 
+    ENDIF 
+  ENDELSE 
+
+  xoffset = 1.2
+  yoffset = 9.5
+
 
   verbose = keyword_set(verbose)
 
@@ -376,12 +416,12 @@ PRO gms5_overlay, datetime, gmsType, $
   IF n_Elements(maxspeed) EQ 0 THEN maxspeed = 25
   IF n_elements(length)   EQ 0 THEN length = 2
   IF n_elements(thick)    EQ 0 THEN thick = 1
-  IF n_elements(xsize)    EQ 0 THEN xsize = 960
-  IF n_elements(ysize)    EQ 0 THEN ysize = 720
-  IF n_elements(BrightMin) EQ 0 THEN BrightMin = 0.
-  IF n_elements(BrightMax) EQ 0 THEN BrightMax = 0.8
+
+  
+  IF n_elements(BrightMin) EQ 0 THEN BrightMin = 0.3
+  IF n_elements(BrightMax) EQ 0 THEN BrightMax = 1.0
   IF n_elements(SatMin) EQ 0 THEN SatMin = 0.0
-  IF n_elements(SatMax) EQ 0 THEN SatMax = 0.55
+  IF n_elements(SatMax) EQ 0 THEN SatMax = 1.0
 
   BrightMin = 0> float(BrightMin) < 1.
   BrightMax = BrightMin+.01> BrightMax < 1.
@@ -414,9 +454,6 @@ PRO gms5_overlay, datetime, gmsType, $
   LandHue =  0> LandHue < 360.
   WaterHue =  0> WaterHue < 360.
 
-  genv,/save
-  tvlct,orig_red,orig_green,orig_blue,/get
-  loadct,0,/silent
 ;  catch, error
 ;  IF error NE 0 THEN BEGIN 
 ;    catch,/cancel
@@ -427,29 +464,17 @@ PRO gms5_overlay, datetime, gmsType, $
 ;    return
 ;  END
 
-  FOR i=0,1 DO BEGIN 
-    device,get_visual_name= this_visual
-    this_visual =  strupcase(this_visual)
-    IF this_visual NE 'DIRECTCOLOR' AND  $
-       this_visual NE 'TRUECOLOR' THEN BEGIN 
-      IF i EQ 0 THEN device,true=24 ELSE BEGIN 
-        Message,'Visual Class MUST be either DIRECTCOLOR or TRUECOLOR',/cont
-        print,'  You must Exit and restart IDL'
-        print,'  If you continue getting this error, look at you initilization'
-        print," files and make sure you're not setting device,pseudo=8"
-        Message,'ERROR',/cont
-        status = 0
-        return
-      ENDELSE
-    ENDIF 
-  ENDFOR 
 
 
 
   start_time = systime(1)
 
-  ptr = ReadColorTable($
+  IF getenv('OVERLAY_CT') NE '' THEN BEGIN 
+    ptr = ReadColorTable('$OVERLAY_CT')
+  ENDIF ELSE BEGIN 
+    ptr = ReadColorTable($
        '$VAP_COLOR_TABLES/goes_overlay24.ct')
+  ENDELSE 
   IF NOT Ptr_Valid(ptr) THEN BEGIN 
     Message,'Error Reading ColorTable!',/cont
     tvlct,orig_red,orig_green,orig_blue
@@ -464,14 +489,31 @@ PRO gms5_overlay, datetime, gmsType, $
   N_WIND_COLORS = 25
   N_COLORS = 27
 
-  lonpar =  [ lonlim, ( lonlim[1]-lonlim[0] +1)/xsize ]
-  latpar =  [ latlim, ( latlim[1]-latlim[0] +1)/ysize ]
-  
-
   IF NOT ps  THEN BEGIN 
     set_plot,'x'
+    lonpar =  [ lonlim, ( lonlim[1]-lonlim[0] +1)/xsize ]
+    latpar =  [ latlim, ( latlim[1]-latlim[0] +1)/ysize ]
+    FOR i=0,1 DO BEGIN 
+      device,get_visual_name= this_visual
+      this_visual =  strupcase(this_visual)
+      IF this_visual NE 'DIRECTCOLOR' AND  $
+         this_visual NE 'TRUECOLOR' THEN BEGIN 
+        IF i EQ 0 THEN device,true=24 ELSE BEGIN 
+          Message,'Visual Class MUST be either DIRECTCOLOR or TRUECOLOR',/cont
+          print,'  You must Exit and restart IDL'
+          print,'  If you continue getting this error, look at you initilization'
+          print," files and make sure you're not setting device,pseudo=8"
+          Message,'ERROR',/cont
+          status = 0
+          return
+        ENDELSE
+      ENDIF 
+    ENDFOR 
     window,/free, /pixmap, xsize=xsize, ysize=ysize
   ENDIF ELSE BEGIN 
+    lonpar =  [ lonlim, (lonlim[1]-lonlim[0])/(2*72*xsize) ]
+    latpar =  [ latlim, (latlim[1]-latlim[0])/(2*72*ysize) ]
+
     set_plot,'PS'
     ps_form = { XSIZE          : xsize   ,$ 
                 XOFF           : xoffset ,$ 
@@ -512,7 +554,7 @@ PRO gms5_overlay, datetime, gmsType, $
   
   newGrid = gms5idx(lonpar,latpar)
   loni=newGrid.loni
-  lati=temporary(newGrid.lati)
+  lati=newGrid.lati
   newx=interpolate(temporary(xloc),loni,lati,/grid)
   newy=interpolate(temporary(yloc),$
                    temporary(loni),$
@@ -612,7 +654,7 @@ PRO gms5_overlay, datetime, gmsType, $
   nlat = sz[1]
 
 
- cloudmask = scale( temporary(cloudmask) )*99
+ cloudmask = scale( temporary(cloudmask),minv=0,maxv=255)*99
 
  Hue = fltarr(nlon,nlat)+WaterHue
  Hue[land] = LandHue
@@ -692,8 +734,9 @@ PRO gms5_overlay, datetime, gmsType, $
 
   mapIm = 0; free memory
 
-
-  IF n_elements(Windfiles) NE 0 THEN BEGIN 
+  nn = where(strlen(windfiles) NE 0 , nf)
+  IF nf NE 0 THEN BEGIN 
+    windFiles = windFiles[nn]
     tt0 = systime(1)
     windData = Read_Wind_Files(windFiles,$
                                CRDecimate=CRDecimate,$
@@ -727,7 +770,7 @@ PRO gms5_overlay, datetime, gmsType, $
             v = v[good]
             lon = lon[good]
             lat = lat[good]
-            speed = seepd[good]
+            speed = speed[good]
           ENDIF 
           veccol = BytScl( speed, min=minspeed, $
                            max=maxspeed, $
@@ -749,10 +792,12 @@ PRO gms5_overlay, datetime, gmsType, $
       tvlct,orig_red,orig_green,orig_blue,/get
       tvlct,transpose(ct)
       PlotVect,u,v,lon,lat,len=length,$
-        thick=thick,start_index=WIND_START,ncolors=N_WIND_COLORS
+        thick=thick,start_index=WIND_START,$
+          ncolors=N_WIND_COLORS, scale=scaleVec, minspeed=minspeed, $
+           maxspeed=maxspeed
       tvlct,orig_red,orig_green,orig_blue
     ENDIF ELSE $
-      PlotVect, u,v,lon,lat, color=col24, len=length, thick=thick
+      PlotVect, u,v,lon,lat, color=col24, len=length, thick=thick, scale=scaleVec
     t1 = systime(1)
     IF verbose THEN print,' Plotvect took: ', t1-t0,' Seconds '
     t0 = t1
@@ -762,13 +807,13 @@ PRO gms5_overlay, datetime, gmsType, $
   IF ps THEN BEGIN 
     ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
      position=[0.25,y[0], 0.75, y[1]], $
-     Title='Wind Speed (knots)',Min=minspeed, $
+     Title='Wind Speed (m/s)',Min=minspeed, $
      max=maxspeed,divisions=4, format='(f5.0)', $
      pscolor=ps, /true, table=ct, charsize=0.75
   ENDIF ELSE BEGIN 
     ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
      position=[0.25,y[0], 0.75, y[1]], $
-     Title='Wind Speed (knots)',Min=minspeed, $
+     Title='Wind Speed (m/s)',Min=minspeed, $
      max=maxspeed,divisions=4, format='(f5.0)', $
      pscolor=ps, /true, table=ct, charsize=0.75, $
      color='ffffff'x 
@@ -786,7 +831,10 @@ PRO gms5_overlay, datetime, gmsType, $
   y = xyz[1]
   xyouts, 0.5, y/2., title, align=0.5, $
       /normal, charsize=1.05, color=text_color
-
+  IF n_elements(subtitle) NE 0 THEN BEGIN 
+    xyouts, 0.5, y/4., subtitle, align=0.5, $
+      /normal, charsize=0.75, color=text_color
+  ENDIF 
 
 
   CASE 1 OF 
@@ -832,7 +880,7 @@ PRO gms5_overlay, datetime, gmsType, $
 
   ENDCASE
   Outfile = OutputFileName
-
+  genv,/restore
    
 END
 
