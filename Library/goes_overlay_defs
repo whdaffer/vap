@@ -1,0 +1,9 @@
+# $Id$
+//
+region NEPAC_Goes_1;
+Satellite Goes;
+LonLim -175,-115;
+LatLim 25,65;
+GoesSat 10;
+GoesSensor 4;
+
