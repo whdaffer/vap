@@ -2,7 +2,7 @@ PRO read_pcgoes, file, limits, data, image, year, jday, time, $
                  nlon, nlat, lonsize, latsize, info_string, $
                  xs= xs, ys= ys , map = map,save= save, $
                  just_header= just_header, version= version, $
-                 status= status , area_file= area_file
+                 status= status , area_file= area_file, hdr=hdr
 
 status =  -1 ; dress for failure
 on_error,2 
@@ -48,6 +48,9 @@ latsize = 0.
 ; Modification Log
 ;
 ; $Log$
+; Revision 1.1  1998/09/09 18:29:11  vapuser
+; Initial revision
+;
 
 rcsid = "$Id$"
 
