@@ -31,6 +31,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.8  2002/08/08 23:28:05  vapdev
+# General cleanup, work on BEGIN{} block, work on interface issues.
+#
 # Revision 1.7  2002/08/07 23:57:17  vapdev
 # move 'use strict' to top and fixed resulting compilation errors
 #
@@ -75,7 +78,7 @@ use subs qw/&doy2mday_mon  &date2doy &vaptime2systime &systime2vaptime
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT_OK=qw( &doy2mday_mon &date2doy &vaptime2systime &systime2vaptime 
-	       &systime2idltime &idltime2systime &leapyear 
+	       &systime2idltime &idltime2systime &leapyear &auto_movie_defs
 	       &GetNow &DeltaTime &ParseVapTime &vaptime2idltime
 	       &vaptime2decyear &systime2decyear &parts2decyear 
 	       &fixlonrange &prepend_yyyymmdd &SysNow &makeIDLOplotString
