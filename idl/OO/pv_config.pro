@@ -57,6 +57,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/11/20 20:02:27  vapuser
+; Accomidate 24bit color
+;
 ; Revision 1.2  1998/10/28 23:33:45  vapuser
 ; Modified comments. Took some out. Added code to support pvplotobjects
 ; in pv object
@@ -328,9 +331,10 @@ FUNCTION pv_config_MakeDimsList, pv_object
   MapDimsList = ''
   IF Obj_IsA( pv_object, 'PV') THEN BEGIN 
     pv_object-> Get,DimsList=DimsList
-    current = DimsList-> GetHead()
-    WHILE Ptr_Valid( current ) DO BEGIN 
-      Dims = *(*current).data
+    ;current = DimsList-> GetHead()
+    DimsPtr = DimsList-> GetHead()
+    WHILE Ptr_Valid( DimsPtr ) DO BEGIN 
+      Dims = *(DimsPtr)
       Dims-> Get, Lon = lon, Lat=Lat
       dims_string = string( [ Lon[0], Lat[0], Lon[1], Lat[1] ], $
                        form='( "<", f7.2,",",f7.2,",",f7.2,",",f7.2,">" )' )
@@ -338,7 +342,7 @@ FUNCTION pv_config_MakeDimsList, pv_object
       IF N_Elements(MapDimsList) EQ 0 THEN $
         MapDimsList = dims_string ELSE $
         MapDimsList = [ dims_string, MapDimsList  ]
-       current = DimsList-> GetNext()
+       DimsPtr = DimsList-> GetNext()
     ENDWHILE
 
     ; Reset the List pointer to the head, since this is always the
@@ -373,16 +377,18 @@ FUNCTION Pv_Config_MakeDataFileList, pv_object
     IF nFiles GT 0 THEN BEGIN 
       filelist = strarr(nFiles)
 
-      junk =  DataList-> GetHead()
-      CurrentDataPtr = DataList->GetCurrentDataPtr()
+      ;junk =  DataList-> GetHead()
+      ;CurrentDataPtr = DataList->GetCurrentDataPtr()
+      CurrentDataPtr =  DataList-> GetHead()
       WHILE ptr_valid( CurrentDataPtr ) DO BEGIN 
         t2 = systime(1)
         *CurrentDataPtr->Get,Data = Q2b
         s = q2b-> Get(filename=filename)
 ;        print,'Time to get filename: ', systime(1)-t2
         filelist[ii] = filename
-        s = DataList-> GetNext()
-        CurrentDataPtr =  DataList-> GetCurrentDataPtr()
+        ;s = DataList-> GetNext()
+        ;CurrentDataPtr =  DataList-> GetCurrentDataPtr()
+        CurrentDataPtr = DataList-> GetNext()
         ii = ii+1
       ENDWHILE 
 
@@ -419,9 +425,9 @@ PRO Pv_Config_PrevDims_Events, event
    self-> Get,DimsList = DimsList
    nDims = DimsList-> GetCount()
    index = nDims-event.index
-   n = DimsList-> GotoNode(index)
-   IF Ptr_Valid(n) THEN BEGIN 
-     Dims = *(DimsList-> GetCurrentDataPtr())
+   DataPtr = DimsList-> GotoNode(index)
+   IF Ptr_Valid(DataPtr) THEN BEGIN 
+     Dims = *(DataPtr)
      Dims-> Get, Lon = Lon, Lat=Lat
      PV_Config_Position_Dims_Sliders, info, lon, lat
    ENDIF 
@@ -576,8 +582,8 @@ PRO PV_CONFIG_Events, Event
          ; pv object, so take this into account.
         nDims = DimsList-> GetCount()
         index = nDims-Selected[0]
-        n =  DimsList-> GotoNode(index)
-        IF Ptr_Valid(n) THEN BEGIN 
+        DataPtr =  DimsList-> GotoNode(index)
+        IF Ptr_Valid(DataPtr) THEN BEGIN 
           Widget_Control, (*info).CurrentSpeedMinId, $
             Set_Value="Push 'Apply' for"
           Widget_Control, (*info).CurrentSpeedMaxId, $
@@ -594,12 +600,13 @@ PRO PV_CONFIG_Events, Event
          ; pv object, so take this into account.
         nDims = DimsList-> GetCount()
         index = nDims-Selected[0]
-        n =  DimsList-> GotoNode(index)
-        IF Ptr_Valid(n) THEN BEGIN 
+        Dataptr =  DimsList-> GotoNode(index)
+        IF Ptr_Valid(DataPtr) THEN BEGIN 
           DimsList-> DeleteCurrent
           MapDimsList = pv_config_MakeDimsList( self )
           Widget_Control, (*info).PrevDimsId, Set_Value=MapDimsList
-          Dims = *(DimsList-> GetCurrentDataPtr())
+	  DataPtr=DimsList->GetCurrent()
+          Dims = *DataPtr
           Dims-> Get, Lon = Lon, Lat=Lat
           PV_Config_Position_Dims_Sliders, info, Lon, Lat
           (*info).redraw = 1
@@ -638,8 +645,8 @@ PRO PV_CONFIG_Events, Event
         IF nFiles NE 0 THEN BEGIN 
           nSelected = N_Elements(selected)
           FOR s=0, nSelected-1 DO BEGIN 
-            n = DataList-> GoToNode( selected[s]+1 ) ; Nodes are '1' indexed
-            IF Ptr_Valid( n ) THEN DataList-> DeleteCurrent
+            DataPtr = DataList-> GoToNode( selected[s]+1 ) ; Nodes are '1' indexed
+            IF Ptr_Valid( DataPtr ) THEN DataList-> DeleteCurrent
           ENDFOR 
           filelist = Pv_Config_MakeDataFileList( self )
           Widget_Control, (*info).DataListId, Set_Value=filelist
@@ -724,7 +731,7 @@ PRO PV_CONFIG_Events, Event
       ENDIF 
 
         ; See if the Dimensions have changed
-      CurDims = *(self->GetCurrentDimensions())
+      CurDims = self->GetCurrentDimensions()
       CurDims-> Get, Lon = Lon, Lat=Lat
       NewLon = [LonMin, LonMax]
       NewLon = FixLonRange(NewLon,west=west)
@@ -954,7 +961,7 @@ PRO pv_config, GROUP=Group
       UVALUE='BASE36')
 
 
-  Dims = *(self->GetCurrentDimensions())
+  Dims = self->GetCurrentDimensions()
   Dims-> Get, Lon = Lon, Lat=Lat
 
   LABEL38 = WIDGET_LABEL( BASE36, $
@@ -1401,3 +1408,4 @@ PRO pv_config, GROUP=Group
     event_handler='pv_config_events', $
       cleanup='Pv_Config_Cleanup'
 END
+
