@@ -64,6 +64,7 @@ use strict;
 no strict 'refs';
 use OTS; # Object oriented Tropical Storms Overlay module
 use Getopt::Long;
+use lib $ENV{VAP_SFTWR_PERL};
 use VapWebsite;
 
 my $starttime = $^T;
