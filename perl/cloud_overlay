@@ -18,6 +18,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.9  1999/04/05 18:21:57  vapuser
+# took out -d switch
+#
 # Revision 1.8  1999/04/02 22:29:56  vapuser
 # Incorporated GMS5 overlays
 #
@@ -105,11 +108,10 @@ $usage .= "      The second instance specifies the maximum longitude\n";
 $usage .= "      Defaults are dependent on the satellite\n";
 
 $usage .= "    LATMIN/LATMAX: See lonmin/lonmax\n";
-
 $usage .= "    CRDECIMATE: The first instance designates the decimation in the 'column'\n";
 $usage .= "      direction, the second the decimation in the 'row' direction\n";
-$usage .= "      Default=[2,3]\n";
-
+$usage .= "      Default=[2,2]\n";
+$usage .= "    LENGTH: Length fo the Vectors overplotting the cloud data\n";
 $usage .= "    TELLME: Calculates, reports the values for all the variables and exits\n\n";
 $usage .= "      Use this option to find out what the defaults are in any given situation\n";
 
@@ -131,6 +133,7 @@ $result=&GetOptions( 'region=s',\$region,
 		    'sensornum=i',\$sensornum,
 		    'lon=f@',\@lonlim,
 		    'lat=f@',\@latlim,
+		    'length=i',\$length,
 		    'help', \$help,
 		    'tellme', \$tellme );
 
@@ -153,6 +156,8 @@ if ($region) {
   $desctime    = $vap_perl::overlay_defs{ $region } { CloudData }{ DescTime    };
   $nvectors    = $vap_perl::overlay_defs{ $region } { WVCData   }{ NVectors    }; 
   $crdecimate  = $vap_perl::overlay_defs{ $region } { WVCData   }{ CRDecimate  };
+  $length      = $vap_perl::overlay_defs{ $region } { WVCData   }{ Length      };
+  $delta       = $vap_perl::overlay_defs{ $region } { WVCData   }{ Delta       };
   $excludecols = $vap_perl::overlay_defs{ $region } { WVCData   }{ ExcludeCols };
   
   @lonlim=@$lonlim;
@@ -227,8 +232,8 @@ if ($region) {
     }
   }
   
-  @crdecimate=(2,3) unless @crdecimate;
-  $excludecols="34:42" unless @excludecols;
+  @crdecimate=(2,2) unless @crdecimate;
+  $excludecols="" unless @excludecols;
   
   # Construct the time to be used in finding the correct 
   # goes/gms/whatever file.
@@ -271,6 +276,8 @@ print "asctime     = $asctime\n";
 print "desctime    = $desctime\n";      
 print "time        = $time\n" if $time; 
 print "crdecimate  = @$crdecimate\n";  
+print "length      = $length\n";  
+print "delta        = $delta\n" if $delta; 
 print "excludecols = $excludecols\n\n";
 print "Taking type = $type\n" if $type;  
 print "Output overlay file will have region name $regionname\n";
@@ -356,8 +363,8 @@ open(IDLFILE,">$idl_tmp_file") ||
 
 
 $exe_str = "cloud_overlay,\'$gridded_file\',\'$idl_time_string\'";
-$exe_str .= ",wpath = \'$vap_perl::VAP_WINDS\'";
-$exe_str .= ",pid=$$";
+$exe_str .= ",$delta,wpath = \'$vap_perl::VAP_WINDS\'";
+$exe_str .= ",pid=$$,length=$length";
 $exe_str .= ",CRDecimate=[".join(",",@$crdecimate)."]";
 $exe_str .= ",ExcludeCols=\'$excludecols\'";
 
