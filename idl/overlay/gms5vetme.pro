@@ -51,6 +51,9 @@
 ; MODIFICATION LOG:
 ;
 ; $Log$
+; Revision 1.2  1999/04/02 17:47:53  vapuser
+; Removed cal and doc subdirectories. Don't need them.
+;
 ; Revision 1.1  1999/04/02 17:47:01  vapuser
 ; Initial revision
 ;
@@ -103,9 +106,9 @@ FUNCTION gms5vetme, type, agrid=agrid, grid=grid, ir1=ir1, ir2=ir2, ir3=ir3, vis
       Message,'Grid Subdirectory is missing!',/cont
   ENDIF 
   IF agrid THEN BEGIN 
-    ag = findfile(gms5_data_topdir + '/agrid',count=nagrid)
+    ag = findfile(gms5_data_topdir + '/grida',count=nagrid)
     IF nagrid EQ 0 THEN $
-      Message,'Agrid Subdirectory is missing!',/cont
+      Message,'grida Subdirectory is missing!',/cont
   ENDIF 
 
   IF ir1 THEN BEGIN 
