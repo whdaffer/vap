@@ -1,0 +1,85 @@
+#!/usr/bin/perl 
+#
+# Run the qchop program on any new datafiles
+#
+#
+#
+
+use Cwd 'chdir', 'getcwd';
+use Time::Local;
+use File::Copy;
+use Getopt::Long;
+
+$vap_winds = $ENV{"VAP_WINDS"} || die "Environmental variable VAP_WINDS isn't defined!\n";
+chdir $vap_winds || die "Can't CHDIR to $vap_winds\n";
+$time=localtime();
+
+$result=&GetOptions( 'noavnok',\$noavnok);
+
+
+print "Qchop: running at $time\n";
+
+$exe = "/usr/people/vapuser/bin/qchop";
+$exe .= "-n " if $noavnok;
+
+print "Checking ../from-ketch\n";
+opendir DIR, "../from-ketch" || die "Can't open '../from-ketch'\n"; 
+@newfiles= grep /QS.*\.dat/, readdir(DIR);
+if ($#newfiles > -1) {
+  foreach $i (@newfiles) {
+    $s=system("$exe ../from-ketch/$i")/256;
+    if ($s == 0) {
+      $old="../from-ketch/$i";
+      $new="../from-ketch/chopped/$i";
+      $s=rename($old, $new);
+      print "Error mv-ing $old to../from-ketch/chopped\n" if !$s;
+    } else {
+      print "Error running qchop on $i\nRenaming it to ../from-ketch/error\n";
+      $old="../from-ketch/$i";
+      $new="../from-ketch/error/$i";
+      $s=rename($old, $new);
+      print "Error mv-ing $old to../from-ketch/error\n" if !$s;
+    }
+  }
+} else {
+  $no_ketch_files=1;
+}
+
+opendir DIR, "../from-seapac" || die "Can't open '../from-seapac'\n"; 
+@newfiles= grep /QS.*\.dat/, readdir(DIR);
+if ($#newfiles > -1) {
+  foreach $i (@newfiles) {
+    $s=system("$exe ../from-seapac/$i")/256;
+    if ($s == 0) {
+      $old="../from-seapac/$i";
+
+#      -- Uncomment these lines when Son decides to start collecting 
+#      -- NRT data for the flood/wind animations.
+#
+#      $new="/disk7/vap/son/NRT/$i";
+#      copy($old,$new) || print "Error copying $old to $new\n";
+
+      $new="../from-seapac/chopped/$i";
+      $s=rename($old, $new);
+      print "Error mv-ing $old to../from-seapac/chopped\n" if !$s;
+    } else {
+      print "Error running qchop on $i\nRenaming it to ../from-seapac/error\n";
+      $old="../from-seapac/$i";
+      $new="../from-seapac/error/$i";
+      $s=rename($old, $new);
+      print "Error mv-ing $old to../from-seapac/error\n" if !$s;
+    }
+  }
+} else {
+  $no_seapac_files=1;
+}
+
+if ($no_ketch_files && $no_seapac_files) {
+  print "No Files in from-ketch or from-seapac\n" ;
+} elsif ($no_ketch_files) {
+  print "Files from SEAPAC were found!\n";
+} else {
+  print "Files from KETCH were found!\n";
+}
+exit;
+
