@@ -28,7 +28,8 @@
 ;             thick =  thick, $
 ;             Dots=Dots , $
 ;             Table=Table, $
-;             trueColor=trueColor
+;             trueColor=trueColor, $
+;             scale=scale
 ; 
 ; INPUTS:  
 ;
@@ -62,7 +63,8 @@
 ;    ncolors     : And use this many colors.
 ;    Dots        : Flag, if set, don't plot vectors, plot dots.
 ;    Truecolor   : convert Colors 'indices' to 24 bit values.
-;    Table       : and use this table, if truecolor=1.
+;    Table       : and use this table, if truecolor=1., $
+;    Scale       : Scale the vectors according to their magnitude.
 ;
 ;   
 ;
@@ -101,6 +103,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1999/04/08 21:48:40  vapuser
+; Updated some comments and did some cleanup.
+;
 ; Revision 1.3  1998/11/20 20:03:32  vapuser
 ; Accomidate 24bit color
 ;
@@ -128,7 +133,8 @@ PRO plotvect,u,v,x,y, $
              thick =  thick , $
              Dots=Dots ,$
              table=Table,$
-             truecolor=truecolor
+             truecolor=truecolor, $
+             scale=scale
 
   lf = string(10b)
   IF n_params() NE 4 THEN BEGIN 
@@ -144,7 +150,8 @@ PRO plotvect,u,v,x,y, $
      '                 ncolors = ncolors, $' + lf + $
      '                   thick =  thick, $'  + lf + $
      '                    truecolor=truecolor, $' + lf + $
-     '                      table=table'
+     '                      table=table, $'+ lf + $
+     '                        scale=scale'
     Message,str,/cont
   ENDIF  
 
@@ -160,6 +167,8 @@ PRO plotvect,u,v,x,y, $
   Dots = Keyword_set(Dots)
   skip = skip > 1
     
+  noscale = keyword_set(scale) EQ 0
+
   good1 = where(finite(u) AND finite(v),ngood1)
   IF ngood1 EQ 0 THEN return
   n = size(u)
@@ -169,6 +178,10 @@ PRO plotvect,u,v,x,y, $
     speed = speed[good]
     dx = length/37.*u[good1[good]]     ;(sin)
     dy = length/37.*v[good1[good]]     ;(cos)
+    IF noscale THEN BEGIN 
+      dx = 12*dx/speed
+      dy = 12*dy/speed
+    ENDIF 
     x2 = x[good1[good]]
     y2 = y[good1[good]]
   ENDIF ELSE BEGIN 
@@ -187,7 +200,7 @@ PRO plotvect,u,v,x,y, $
                      top=NCOLORS-1) + start_index
     col = Rgb2True(veccol, Colortable=table)
   ENDIF ELSE BEGIN 
-    IF NOT( keyword_set(color ) ) THEN  BEGIN
+    IF n_elements(color) EQ 0 THEN  BEGIN
       col = bytscl( speed, min=minspeed,max=maxspeed, $
                     top= ncolors-1) + byte(start_index)
     ENDIF ELSE BEGIN 
@@ -233,7 +246,7 @@ PRO plotvect,u,v,x,y, $
               [y0[i],y1[i],$
                y1[i]-(ct*dy[i]+st*dx[i]),$
                y1[i],y1[i]-(ct*dy[i]-st*dx[i])], $
-              color=col(i), thick= thick
+              color=col(i), thick= thick, noclip=0
     ENDFOR 
   ENDELSE 
 
