@@ -310,6 +310,12 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.7  1999/10/11 17:22:13  vapuser
+; Added support for reading user 'config files.' Change all internal
+; calculations using 'speed' to Meters/second, reverting to 'knots' only
+; when composing title/colorbar. Adopt standard that knots=1 implies
+; min/max speed are given in knots.
+;
 ; Revision 1.6  1999/10/06 17:05:51  vapuser
 ; Took out meters_per_sec keyword, put in knots keyword. Default to
 ; meters/sec and max_speed=30. Put in some support code for knots keyword.
@@ -795,7 +801,7 @@ ENDIF ELSE BEGIN
       uu0 = U
       vv0 = V
       fac =  1.
-      q-> get, lonpar = londims, latpar=latdims
+      s = q-> get(lonpar = londims, latpar=latdims)
       ddims = [ [londims],[latdims]]
 
       xfinc =  ddims(2,0)
@@ -817,7 +823,7 @@ ENDIF ELSE BEGIN
     q = Obj_New('qmodel',file=files[0])
     IF Obj_Isa(q, 'qmodel') THEN BEGIN 
       s = q-> getPlotData(U,V,Lon,Lat)
-      q-> get, lonpar = londims, latpar =latdims
+      s = q-> get(lonpar = londims, latpar =latdims)
       Obj_Destroy,q
       ddims = [ [londims],[latdims]]
 
@@ -838,7 +844,7 @@ ENDIF ELSE BEGIN
     WHILE file_cntr LT nfiles AND read_success EQ 1 DO BEGIN
       q =  Obj_New('qmodel',file=files[file_cntr])
       IF Obj_Isa(q, 'qmodel') THEN BEGIN 
-        q-> get, lonpar = londims, latpar=latdims
+        s = q-> get(lonpar = londims, latpar=latdims)
         tdims = [[londims],[latdims]]
         x = where(ddims-tdims,nx)
         IF nx EQ 0 THEN BEGIN 
