@@ -3,6 +3,9 @@
 ; put on pretty colors and overlay winds, if there are any.
 ; $Id$
 ; $Log$
+; Revision 1.1  1998/09/09 17:34:51  vapuser
+; Initial revision
+;
 ;
 ;
 ;
@@ -20,10 +23,18 @@ PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
                   wfiles = wfiles,$         ; (I) vector containing the
                                            ; fully qualified filenames
                                            ; OF windfiles to read 
-                  minpix    = minpix,$     ; minimum pixel value for
-                                           ; clouds. pixesl with
-                                           ; values below this  are
-                                           ; are set to be land OR water 
+                  minpix    = minpix,$     ; -1, minpix=avg-sigma of data
+                                           ; -2, call widget
+                                           ; configurator.
+                                           ; 0 is illegal value.
+                                           ; Otherwise, take number as
+                                           ; given. In anycase, minpix
+                                           ; it is the minimum image 
+                                           ; value that will remain as 
+                                           ; clouds. Pixels with
+                                           ; values below this  
+                                           ; are set to be land OR
+                                           ; water. 
                   getminpix =  getminpix, $ ; returns minpix if it changed
                   minspeed  = minspeed,$   ; minimum wind speed
                   maxspeed  = maxspeed,$   ; max wind speed
@@ -61,8 +72,8 @@ PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
                   outpath   = outpath ,$   ; (I) output directory
                   getoutfile= getoutfile,$ ; (O) get output file name
                   debug     =  debug ,$    ; 
-                  limits    = limits,$     ; (I) 4 vector (minlat, minlon,
-                                           ; maxlat,maxlon).
+                  limits    = limits,$     ; (I) 4 vector (minlon, minlat, 
+                                           ; maxlon,maxlat).
                                            ; map will be set to these
                                            ; limits. NOTE. care must
                                            ; be used with this keyword
@@ -76,8 +87,41 @@ PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
                                            ; program to create a
                                            ; different 'goesfile' with
                                            ; those limits.
-                  nscat = nscat            ; flag: if set, this routine expects nscat 
+                  nscat = nscat ,$         ; flag: if set, this routine 
+                                           ; expects nscat 
                                            ; style data files.
+
+                                           ; These next three keywords
+                                           ; are Qscat/Seawinds
+                                           ; specific.
+
+                  decimate = decimate ,$   ; Take every n-th vector, 
+                                           ; i.e. 2 means take every
+                                           ; 2nd, 3 = take every
+                                           ; 3rd...
+
+
+                  CRDecimate=CRDecimate,$  ; two element array, 
+                                           ; CRD[0] =n, take every nth
+                                           ; column, CRD[1]=m, take every
+                                           ; mth row, e.g. [2,3] means
+                                           ; take every 2nd col, 3rd
+                                           ; row. crdecimate=[0,0] =
+                                           ; CRDecimate=[1,1] = take
+                                           ; every vector.
+                                           ; CRDecimate takes
+                                           ; precidence over decimate.
+
+                  excludecols=excludecols  ; String suitible for 
+                                           ; an 'execute' call,
+                                           ; e.g. "2,3,23:35,71,72". 
+                                           ; These columns will be
+                                           ; excluded, in addition to
+                                           ; the ones excluded by
+                                           ; decimate and CRDecimate
+
+
+                  
 
 
                                          
@@ -109,6 +153,14 @@ PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
 ;
 COMMON goes_overlay_cmn, landel
 COMMON colors, r_curr, g_curr, b_curr, r_orig, g_orig, b_orig
+
+catch, error
+IF error NE 0 THEN BEGIN 
+  catch,/cancel
+  Message,!err_string,/cont
+  return
+END
+
 lf =  string(10B)
 debug =  keyword_set( debug )
 ; IF NOT debug THEN on_error, 2 ; return to caller
@@ -116,12 +168,14 @@ GENV,/save ; save graphics environment
 nparams =  n_params(0);
 IF nparams EQ 0 OR n_elements(goesfile) EQ 0 THEN BEGIN 
   str =  'Usage: Goes_Overlay, goesfile, $ ' + lf + $
-         '        [wfiles=wfiles | [uu=uu,vv=vv,llon=llon,llat=llat]], $' + lf + $
-         '    [,bimage, wdata, image, data, $ ' +lf + $
-         '    minpix=minpix, minspeed=minspeed, maxspeed=maxspeed, $ ' + lf + $
-         '     thick=thick, length=length, Z=Z, gif=gif, ps=ps, $' + lf + $
-         '       title=title, file_str=file_str, thumbnail=thumbnail, $' + lf + $
-         '         watcolor=watcolor, windcolor=windcolor ] '
+         '   [wfiles=wfiles | [uu=uu,vv=vv,llon=llon,llat=llat]], $' + lf + $
+         '   [,bimage, wdata, image, data, $ ' +lf + $
+         '   minpix=minpix, minspeed=minspeed, maxspeed=maxspeed, $ ' + lf + $
+         '    thick=thick, length=length, Z=Z, gif=gif, ps=ps, $' + lf + $
+         '     title=title, file_str=file_str, $ ' + lf + $
+         '      thumbnail=thumbnail, watcolor=watcolor, $ ' + lf + $
+         '       windcolor=windcolor, decimate=decimate, $' + lf + $
+         '        CRDecimate=CRDecimate, ExcludeCols=ExcludeCols] '
   Message,str,/cont
   return
 ENDIF 
@@ -155,12 +209,31 @@ IF n_elements( outpath ) NE 0 THEN BEGIN
    outpath =  outpath + '/'
 ENDIF ELSE outpath =  './'
 
+IF n_Elements(ExcludeCols) NE 0 THEN BEGIN 
+  IF VarType(ExcludeCols) eq 'STRING' THEN BEGIN 
+    IF strlen(ExcludeCols) EQ 0 THEN BEGIN 
+      Message,'ExcludeCols must be of non-zero length, ignored ',/cont
+      exclude = ''
+    ENDIF ELSE exclude = ExcludeCols
+  ENDIF ELSE BEGIN 
+    Message,'ExcludeCols must be of a string, ignored ',/cont
+    exclude = ''
+  ENDELSE 
+ENDIF 
+
+IF N_Elements(CRDecimate) NE 2 THEN BEGIN 
+  Message,'CRDecimate must be a 2-vector, ignored',/cont
+  CRD = [1,1]
+ENDIF ELSE CRD = CRDecimate
+
+
+IF N_Elements(Decimate) EQ 0 THEN Decimate = 1
 
 cblables =  strtrim( [ minspeed, maxspeed ], 2 )
 cbtitle = 'Wind Speed (M/S)'
 
 IF gif AND ps THEN BEGIN
-  message," Only one of 'gif' or 'ps' allowed ',/cont
+  message," Only one of 'gif' or 'ps' allowed ",/cont
   return
 ENDIF 
 
@@ -196,7 +269,8 @@ IF VarType( GoesFilenameStruct ) NE 'STRUCTURE' THEN BEGIN
   Message," Trouble parsing " + Goesfile ,/cont
   return
 ENDIF ELSE BEGIN 
-  sat_name = GoesFilenameStruct.SatName + " " + strtrim(GoesFilenameStruct.SatNum,2 )
+  sat_name = GoesFilenameStruct.SatName + " " + $
+   strtrim(GoesFilenameStruct.SatNum,2 )
 ENDELSE 
 sensornum = GoesFilenameStruct.Sensornum
 sensor    =  sensors[ sensornum-1 ]
@@ -222,7 +296,10 @@ CASE 1 OF
                                            maxtime=maxtime 
     ENDIF ELSE BEGIN 
         ; Data is assumed to be Qscat or Seawinds data
-      retptr = ReadQ2BData( wfiles, decimate=3) ; take every other vector
+      retptr = ReadQ2BData( wfiles, $
+                            decimate=decimate, $
+                            CRDecimate=CRD, $
+                            ExcludeCols=exclude) ; take every other vector
       IF retptr EQ NullPtr THEN BEGIN 
         Message,'Error Reading Quikscat/Seawinds data',/cont
         return
@@ -305,7 +382,7 @@ IF exist( mintime ) AND exist( maxtime ) THEN BEGIN
   maxtime =  strmid( maxtime, 0, 8) + '/' + $
    strmid( maxtime, 9, 2) + strmid( maxtime, 12,2 )
 
-  wind_time_str =  ' Nscat Data: ' + strtrim( mintime ,2 ) + ' - ' + $
+  wind_time_str =  ' Wind Data: ' + strtrim( mintime ,2 ) + ' - ' + $
   strtrim( maxtime, 2 )
 
 ENDIF 
@@ -415,6 +492,10 @@ IF n_elements( data ) EQ 0 THEN BEGIN
   return
 ENDIF 
 
+date = doy2date( year, jday )
+
+month =  date[0]
+dom = date[1]
 
 IF NOT keyword_set( windowid ) THEN BEGIN 
   IF NOT Z AND NOT ps THEN BEGIN 
@@ -439,8 +520,8 @@ IF n_elements( landel ) EQ 0 THEN BEGIN
 ENDIF 
 
 ; get the section of the land el file we need
-lonpar =  limits([1,3])
-latpar =  limits([0,2])
+lonpar =  limits([0,2])
+latpar =  limits([1,3])
 x = where( lonpar LT 0., nx )
 IF nx GT 0 THEN lonpar(x) =  lonpar(x) + 360.
 landlon   = fix( [lonpar(0),lonpar(1)]*12. )
@@ -450,17 +531,16 @@ nlandlat  = landlat(1)-landlat(0)+1
 landlon   = findgen(nlandlon)/12. + lonpar(0); #(fltarr(nlandlat)+1)   
 landlat   = findgen(nlandlat)/12. + latpar(0); ##(fltarr(nlandlon)+1)
 
-minlat =  limits(0) &  minlon= limits(1)
 tlimits =  limits ; copy to protect limits variable
+minlat =  limits(1) &  minlon= limits(0) &  maxlon= tlimits(2)
 
 latcent =  0
 loncent = 0
-minlon =  tlimits(1) &  maxlon= tlimits(3)
-y =  [1,3]
+y = [0,2]
 x =  where( tlimits(y) LT 0,nx )
 IF nx NE 0 THEN tlimits(y(x)) =  tlimits(y(x)) + 360.
 
-loncent =  avg( tlimits([1,3]) )
+loncent =  avg( tlimits([0,2]) )
 
 IF exist( wind_time_str ) THEN $
  tit =  wind_time_str ELSE $
@@ -488,8 +568,8 @@ s = size(data)
 nlon =  s[1]
 nlat =  s[2]
 
-latinc =  (tlimits(2)-tlimits(0))/nlat 
-loninc =  (tlimits(3)-tlimits(1))/nlon 
+latinc =  (tlimits(3)-tlimits(1))/nlat 
+loninc =  (tlimits(2)-tlimits(0))/nlon 
 
 
 IF ir THEN BEGIN 
@@ -568,17 +648,17 @@ ENDIF
 t3 =  systime(1)
 print,' sea section took ', (t3-t2)/60., ' minutes '
 
-MAP_SET, latcent, loncent,  limit=tlimits,/noborder;, title=title_str
+MAP_SET, latcent, loncent,  limit=tlimits[ [1,0,3,2] ],/noborder;, title=title_str
 
 
 t1 =  systime(1)
 print, 'Going into map_image '
-bimage = map_image(bimage,xs,ys,xsiz,ysiz, $
-                   latmin = tlimits(0),$
-                   latmax = tlimits(2), $
-                   lonmin = tlimits(1), $
-                   lonmax = tlimits(3),$
-                   /whole_map,compress=1)
+bimage = Map_Image( bimage,xs,ys,xsiz,ysiz, $
+                    lonmin = tlimits(0), $
+                    latmin = tlimits(1),$
+                    lonmax = tlimits(2),$
+                    latmax = tlimits(3), $
+                    /whole_map,compress=1)
 t2 =  systime(1)
 print, 'map_image took ', (t2-t1)/60., ' Minutes '
 
@@ -591,9 +671,14 @@ IF ps OR gif  OR save THEN BEGIN
                    lim_str(3) + ',' + lim_str(2) +  '%'
   dlm =  '_'
 
+  
+  year =  strtrim( year, 2 )
+  IF strlen(year) EQ 2 THEN year =  strtrim( fix(year)+1900,2)
+  time_string = year + month + dom + "T" + $
+    strmid(time,0,2) + ":" + strmid(time,2,2)
   ofileroot = outpath + strtrim( sat_name, 2 ) +  dlm + $
-   sensor + '_' + $
-     jday + time  
+   sensor + '_' + time_string
+
 
   sp =  strpos( ofileroot,' ' )
   strput, ofileroot, '_', sp
@@ -622,26 +707,31 @@ ENDIF ELSE BEGIN
  TV, bimage, xs,ys
 ENDELSE 
 xy =  convert_coord( [ xs + xsiz/2, (ny-40)/scalef ] , /dev, /to_data )
-y =  xy(1)
+y =  xy[1]
 
 ;
 ; over plot the wind vectors, if there are any.
 IF plotvect THEN BEGIN 
-  xx =  where( llat LT y, nxx )
-  IF nxx NE 0 THEN BEGIN 
-    IF windcolor EQ -1 THEN $
-      PLOTVECT, uu(xx),vv(xx),llon(xx),llat(xx),$
-         length      = length ,$
-         start_index = wind_start, $
-         ncolors     = n_wind_colors, $
-         minspeed    = minspeed ,$
-         maxspeed    = maxspeed, $
-         thick       =  thick $     
-   ELSE $
-      PLOTVECT, uu(xx),vv(xx),llon(xx),llat(xx),$
-         length = length ,$
-         thick  = thick ,$
-         color  = windcolor
+  good1 = where( finite(uu) AND finite(vv), ngood1)
+  IF ngood1 NE 0 THEN BEGIN 
+    xx =  where( llat[good1] LT y, nxx )
+    IF nxx NE 0 THEN BEGIN 
+      IF windcolor EQ -1 THEN $
+        PLOTVECT, uu[good1[xx]],vv[good1[xx]],$
+           llon[good1[xx]],llat[good1[xx]],$
+           length      = length ,$
+           start_index = wind_start, $
+           ncolors     = n_wind_colors, $
+           minspeed    = minspeed ,$
+           maxspeed    = maxspeed, $
+           thick       =  thick $     
+     ELSE $
+        PLOTVECT, uu[good1[xx]],vv[good1[xx]],$
+           llon[good1[xx]],llat[good1[xx]],$
+           length = length ,$
+           thick  = thick ,$
+           color  = windcolor
+    ENDIF 
   ENDIF 
 ENDIF 
 
@@ -694,8 +784,8 @@ IF (windcolor EQ -1) THEN BEGIN
   xyouts, cbendx, cby,    cblables(1), align = 0.0, /normal, color=text_color
 ENDIF 
 IF grid THEN BEGIN 
-  latrange =  limits(2)-limits(0)
-  lonrange =  limits(3)-limits(1)
+  latrange =  limits(3)-limits(1)
+  lonrange =  limits(2)-limits(0)
   IF latrange/5. GT 20 THEN latdel = 10 ELSE latdel = 5.
   IF lonrange/5. GT 20 THEN londel = 10 ELSE londel = 5.
 
