@@ -3,7 +3,7 @@
 #
 #
 #
-AREA_FILE_TOP=\"/disk2/vap/goes/\"
+AREA_FILE_TOP=\"/disk4/vap/goes/\"
 
 OBJ = grid_goes.o navig_goes.o pair_goes.o doy2date.o
 SRC = grid_goes.c doy2date.c navig_goes.f pair_goes.f
