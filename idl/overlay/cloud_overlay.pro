@@ -149,6 +149,12 @@
 ; Modification History:
 ;
 ; $Log$
+;
+; Revision 1.11  2000/03/01 16:38:06  vapuser
+; Added 'status' flag in call to overlay
+; routines. Check same. Deprecated pseudocolor
+; goes_overlay.
+;
 ; Revision 1.10  2000/02/28 18:02:34  vapuser
 ; Redid some documentation. Put in flags for use
 ; with Rain Flagged data.
@@ -455,8 +461,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
       ; Get the visual name, it determines which 
       ; version of goes_overlay to call.
-    Device,Get_Visual_Name= visual
-    visual = strupcase(visual)
+;    Device,Get_Visual_Name= visual
+;    visual = strupcase(visual)
     
 
     str = 'INFO: Found ' + strtrim(nf,2) + ' wind files'
@@ -473,23 +479,24 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
     CASE grid_type OF 
       'GOES': BEGIN 
-        IF visual EQ 'PSEUDOCOLOR' THEN BEGIN 
+;        IF visual EQ 'PSEUDOCOLOR' THEN BEGIN 
 ;          GOES_OVERLAY, cloud_file, wfiles=wf, $
 ;           minspeed=min_speed, maxspeed=max_speed, xsize=960,ysiz=720,$
-;            len=length,getoutfile=ofile, thumbnail=thumbnail, $
+;            len=length,outfile=ofile, thumbnail=thumbnail, $
 ;             Decimate=decimate, CRDecimate=CRDecimate, $
-;              ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif,/z, $
-;               thick=thick
-          Message,'Pseudo-color mode obselete!'
-        ENDIF ELSE BEGIN 
-          GOES_OVERLAY24,cloud_file,windFiles=wf,$
+;              ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif, $
+;               thick=thick, use_rf=use_rf, rf_action=rf_action, $
+;                 rf_color=rf_color, status=status
+;          Message,'Pseudo-color mode obselete!'
+;        ENDIF ELSE BEGIN 
+          GOES_OVERLAY,cloud_file,windFiles=wf,$
            minspeed=min_speed, maxspeed=max_speed, xsize=960,ysiz=720, $
             len=length,outfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg, $
                 thick=thick, use_rf=use_rf, $
                  rf_action=rf_action, rf_color=rf_color, status=status
-        ENDELSE 
+;        ENDELSE 
       END
        'GMS' : BEGIN 
          gms5_overlay, gms5datetime, gmsType, windfiles=wf,$
