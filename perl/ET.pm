@@ -14,6 +14,10 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.3  2002/05/07 20:40:36  vapdev
+# Set -w and `use strict' and then fixing bugs. Start trying to standardize
+# the methods used.
+#
 # Revision 1.2  2002/04/30 20:23:22  vapdev
 # Modified the 'use lib' statement
 #
@@ -22,39 +26,39 @@
 #
 #
 #
-use lib $ENV{VAP_SFTWR_PERL}
-package ET;
-use VapUtil;
-use Vapdefs;
-use Cwd;
 
+package ET;
+use strict;
+use lib $ENV{VAP_SFTWR_PERL};
+use VapUtil;
+#use Vapdefs;
+use Cwd;
+use Time::Local;
+BEGIN{
+  die "ENV var VAP_OPS_TS_OVERLAY undefined!\n" 
+    unless $ENV{VAP_OPS_TS_OVERLAY};
+  die "ENV var VAP_OPS_LOGFILES undefined!\n"
+    unless $ENV{VAP_OPS_LOGFILES};
+}
 sub new {
 
   my $class=shift;
-  $self={};
-  bless $self, $class;
-  $self->_init();
-  return $self;
-}
+  my $self={};
 
-sub _init{
-  use Time::Local;
 
-  my $self=shift;
-  my $class=shift;
-  $self{processing_topdir} = "$VAP_ROOT/earth-today";
-  $self{processing_topdir} = "/disk7/vap/earth-today/testbed";
-  $self{pickup_topdir} = "/disk7/vap/earth-today/testbed/pickup";
-  $self{pid} = $$;
-  $self{filetime}=timegm(gmtime($^T));
-  $self{starttime} = $^T;
-  $self{endtime} = 0;
-  $self{status} = 0;
-  $self{dir} =  "";
-  $self{windfiles} = "";
-  $self{interpfile} = "";
-  $self{startdir} = getcwd();
-  chdir $self{processing_topdir};
+  $self->{PROCESSING_TOPDIR} = $ENV{VAP_OPS_TS_OVERLAY};
+  $self->{PROCESSING_TOPDIR} = "/disk7/vap/earth-today/testbed";
+  $self->{PICKUP_TOPDIR} = $self->{PROCESSING_TOPDIR}."/pickup";
+  $self->{PID} = $$;
+  $self->{FILETIME}=timegm(gmtime($^T));
+  $self->{STARTTIME} = $^T;
+  $self->{ENDTIME} = 0;
+  $self->{STATUS} = 0;
+  $self->{DIR} =  "";
+  $self->{WINDFILES} = "";
+  $self->{INTERPFILE} = "";
+  $self->{STARTDIR} = getcwd();
+  chdir $self->{PROCESSING_TOPDIR};
 
   my (@time, $year, $yday, $hour, $min);
 
@@ -67,21 +71,20 @@ sub _init{
   $yday = $time[7]+1;
   $hour = $time[2];
   $min  = $time[1];
-  $self{dirname} = sprintf("%04d%03d%02d",$year ,$yday,$hour);
+  $self->{DIRNAME} = sprintf("%04d%03d%02d",$year ,$yday,$hour);
   my $logname= sprintf("%04d%03d%02d%02d",$year ,$yday,$hour,$min);
-  $self{dir} = "$self{processing_topdir}/$self{dirname}";
-  $self{pickupdir} = "$self{pickup_topdir}/$self{dirname}";
-  $self{logfile} =  "$VAP_ROOT/logfiles/et.$logname.log";
-  $self{logfile} =  "/disk7/vap/earth-today/testbed/logs/et.$logname.log";
-  1;
+  $self->{DIR} = $self->{PROCESSING_TOPDIR}."/".$self->{DIRNAME};
+  $self->{PICKUPDIR} = $self->{PICKUP_TOPDIR}."/".$self->{DIRNAME};
+  $self->{LOGFILE} =  $ENV{VAP_OPS_LOGFILES}."/et.$logname.log";
+  return   bless $self, ref($class) || $class;
 }
 
 sub _croak {
   use Carp;
   my $self=shift;
   my $msg=shift;
-  chdir $self{startdir};
-  croak $msg;
+  chdir $self->{STARTDIR};
+  croak "$msg\n";
   1;
 }
 
@@ -89,14 +92,14 @@ sub _croak {
 sub _carp {
   my $self=shift;
   my $msg=shift;
-  chdir $self{startdir};
-  croak $msg;
+  chdir $self->{STARTDIR};
+  croak "$msg\n";
   1;
 }
 
 sub _createDir{
   my $self =shift;
-  my $dir = $self{dir};
+  my $dir = $self->{DIR};
   if (! -e  $dir ) {
     mkdir $dir, 0755 or  $self->_croak( "Can't mkdir <$dir>\n");
   }
@@ -109,11 +112,13 @@ sub _createDir{
 sub makeAnimation{
   my $self=shift;
   $self->_createDir();
-  my $tmpfile="$self{processing_topdir}/tmpfiles/et.$self{filetime}.$self{pid}.pro";
-  my $lockfile="$self{processing_topdir}/tmpfiles/et.$self{filetime}.$self{pid}.lock";
+  my $tmpfile=$self->{PROCESSING_TOPDIR}."/tmpfiles/et.".
+    $self->{FILETIME}.".".$self->{pid}.".pro";
+  my $lockfile=$self->{PROCESSING_TOPDIR}."/tmpfiles/et.".
+    $self->{FILETIME}.".".$self->{PID}.".lock";
 
   open LOCKFILE, ">$lockfile";
-  print LOCKFILE "$self{pid}\n";
+  print LOCKFILE $self->{PID}."\n";
   close LOCKFILE ;
 
   open TMPFILE, ">$tmpfile"  or 
@@ -139,16 +144,16 @@ sub makeAnimation{
   my @elapsedtime=grep(/.*ELAPSED_TIME=.*/,@lines);
   $self->_carp("Can't get Elapsed Time\n") if $#elapsedtime<0;
   my @junk=split /=/, $elapsedtime[0];
-  $elapsed_time=$junk[1];
+  my $elapsed_time=$junk[1];
   chop $elapsed_time;
-  $self{idl_elapsed_time} = $elapsed_time;
+  $self->{IDL_ELAPSED_TIME} = $elapsed_time;
   
   my @interpfilename = grep(/.*INTERPFILE=.*/,@lines);
   $self->_carp("Can't get name of Interpolated File\n") if $#interpfilename<0;
   @junk=split /=/, $interpfilename[0];
   my $interpfile = $junk[1];
   chop $interpfile; 
-  $self{interpfile}=$interpfile || "<don't know>";
+  $self->{INTERPFILE}=$interpfile || "<don't know>";
 
   my @windfiles=grep(/.*WFILES=.*/,@lines);
   my $windfiles=$windfiles[0];
@@ -156,7 +161,7 @@ sub makeAnimation{
   @junk=split /=/, $windfiles;
   $windfiles=$junk[1];
 
-  $self{windfiles} = $windfiles;
+  $self->{WINDFILES} = $windfiles;
 
   unlink $lockfile;
   unlink $tmpfile;
@@ -166,17 +171,19 @@ sub makeAnimation{
 sub moveToPickupLocation{
   use File::Copy;
   my $self=shift;
-  $startcopy = time();
-  mkdir($self{pickupdir}, 0755) or  $self->_croak("Can't create $self{pickupdir}\n");
-  opendir DIR, $self{dir} or $self->_croak("Can't open $self{dir}\n");
-  @files= grep !/^\.\.?$/, readdir(DIR);
+  my $startcopy = time();
+  mkdir($self->{PICKUPDIR}, 0755) or  
+    $self->_croak("Can't create ".$self->{PICKUPDIR}."\n");
+  opendir DIR, $self->{dIR} or 
+    $self->_croak("Can't open ".$self->{dir}."\n");
+  my @files= grep !/^\.\.?$/, readdir(DIR);
   closedir DIR;
-  $self->_croak("No Files in $self{dirname}\n") if $#files < 0;
+  $self->_croak("No Files in ".$self->{DIRNAME}."\n") if $#files < 0;
   for (@files) {
-    copy $_, "$self{pickupdir}/$_" or 
-	die $self->_croak("Can't copy $_ to $self{pickupdir}\n");
+    copy $_, $self->{PICKUPDIR}."./$_" or 
+	die $self->_croak("Can't copy $_ to ".$self->{PICKUPDIR}."\n");
   }
-  $self{copy_took} = (time()-$startcopy)/60.0;
+  $self->{COPY_TOOK} = (time()-$startcopy)/60.0;
   
   1;
 }
@@ -185,10 +192,13 @@ sub makeQTMovie{
   #!/bin/csh -f
   my $self=shift;
   my $start=time();
-  chdir $self{pickupdir} or $self->_croak("Can't cd to $self{pickupdir}");
-  $self{outputqt} = "$self{pickupdir}/qt.mov";
-  $r=system("dmconvert -f qt -p video,comp=qt_cvid,squal=0.9,tqual=0.9,rate=30 -n gwind.0\#\#,start=1,end=60,step=1 gwind.0\#\# $self{outputqt} >/tmp/DMCONVERT.LOG 2>&1")/256;
-  $self{qt_took} = (time()-$start)/60.0;
+  chdir $self->{PICKUPDIR} or $self->_croak("Can't cd to ".$self->{PICKUPDIR}."\n");
+  $self->{OUTPUTQT} = $self->{PICKUPDIR}."/qt.mov";
+  my $exestring = "dmconvert -f qt -p video,comp=qt_cvid,squal=0.9,tqual=0.9,rate=30 ";
+  $exestring .= "-n gwind.0\#\#,start=1,end=60,step=1 gwind.0\#\# ";
+  $exestring .= $self->{outputqt}." >/tmp/DMCONVERT.LOG 2>&1";
+  my $r=system("$exestring")/256;
+  $self->{QT_TOOK} = (time()-$start)/60.0;
 
   $self->movetoWWW();
   1;
@@ -198,11 +208,11 @@ sub movetoWWW{
   use Time::Local;
 
   my $self=shift;
-  my $qt=shift || $self{outputqt};
+  my $qt=shift || $self->{OUTPUTQT};
   $self->_croak("need QT file") if !$qt;
 
   my ($size,$atime) = (stat($qt))[7,8];
-  my $size /= 1000;
+  $size /= 1000;
   $size = "$size Kb";
   my $ctime = localtime($atime);
   my ($y, $m, $d, @rest) = gmtime($atime-86400);
@@ -218,7 +228,7 @@ sub movetoWWW{
       $self->_croak("Can't cd to /usr/freeware/apache/share/htdocs");
   open HTML, "<index.html" or 
       $self->_croak("Can't open index.html file");
-  @in=<HTML>;
+  my @in=<HTML>;
   close HTML;
   open OUT, ">index.html.new" or 
       $self->_croak("Can't open index.html.new");
@@ -240,29 +250,29 @@ sub logit{
 
   my $self = shift;
   print "In logit\n";
-  $self{endtime} = time();
-  $self{elapsed} = ($self{endtime}-$self{starttime})/60.;
-  open LOGFILE, "> $self{logfile}" or 
-      $self->_croak("Can't open $self{logfile}\n");
+  $self->{ENDTIME} = time();
+  $self->{ELAPSED} = ($self->{ENDTIME}-$self->{STARTTIME})/60.;
+  open LOGFILE, "> ".$self->{LOGFILE} or 
+      $self->_croak("Can't open ".$self->{LOGFILE}.".\n");
 
 
   print LOGFILE "-------------------------------------------------------------\n";
-  print LOGFILE "interpfile     = $self{interpfile}\n";
-  $st=localtime($self{starttime});
-  $et=localtime($self{endtime});
+  print LOGFILE "interpfile     = ".$self->{INTERPFILE}."\n";
+  my $st=localtime($self->{STARTTIME});
+  my $et=localtime($self->{ENDTIME});
   print LOGFILE "starttime      = $st\n";
   print LOGFILE "endtime        = $et\n";
-  print LOGFILE "elapsedtime    = $self{elapsed} minutes \n";
-  print LOGFILE "idlelapsedtime = $self{idl_elapsed_time} minutes\n";
-  print LOGFILE "status         = $self{status}\n";
-  print LOGFILE "filetime       = $self{filetime}\n";
-  print LOGFILE "dir            = $self{dir}\n";
-  print LOGFILE "logfile        = $self{logfile}\n";
-  print LOGFILE "pid            = $self{pid}\n";
-  print LOGFILE "copy took      = $self{copy_took}\n";
-  print LOGFILE "QT took        = $self{qt_took}\n";
-  print LOGFILE "QT file        = $self{outputqt}\n";
-  print LOGFILE "windfiles      = $self{windfiles}\n\n";
+  print LOGFILE "elapsedtime    = ".$self->{ELAPSED}."  minutes \n";
+  print LOGFILE "idlelapsedtime = ".$self->{IDL_ELAPSED_TIME} ." minutes\n";
+  print LOGFILE "status         = ".$self->{STATUS}."\n";
+  print LOGFILE "filetime       = ".$self->{FILETIME}."\n";
+  print LOGFILE "dir            = ".$self->{DIR}."\n";
+  print LOGFILE "logfile        = ".$self->{LOGFILE}."\n";
+  print LOGFILE "pid            = ".$self->{PID}."\n";
+  print LOGFILE "copy took      = ".$self->{COPY_TOOK}."\n";
+  print LOGFILE "QT took        = ".$self->{QT_TOOK}."\n";
+  print LOGFILE "QT file        = ".$self->{OUTPUTQT}."\n";
+  print LOGFILE "windfiles      = ".$self->{WINDFILES}."\n\n";
 
 #  while (($k,$v) = each %self) {
 #    print LOGFILE "$k = $v\n";
@@ -281,11 +291,11 @@ sub cleanDirs{
     ## directory and then apply the results to both processing and
     ## pickup areas.
 
-  chdir $self{processing_topdir} or 
-      $self->_croak("Can't cd to $self{processing_topdir}");
+  chdir $self->{PROCESSING_TOPDIR} or 
+      $self->_croak("Can't cd to ".$self->{PROCESSING_TOPDIR}."\n");
   opendir DIR, "." or 
-      $self->_croak("Can't open $self{processing_topdir} to read");
-  @files=grep !/^\.\.?$/, readdir(DIR);
+      $self->_croak("Can't open ".$self->{PROCESSING_TOPDIR}." to read");
+  my @files=grep !/^\.\.?$/, readdir(DIR);
   closedir DIR;
 
   for (@files){
@@ -300,7 +310,7 @@ sub cleanDirs{
     my $time=timegm( 0, 0, $hour, $mday, $mon-1, $year-1900, 0, $doy-1,0, 0);
 
     
-    if ( ($self{filetime} - $time) > $keeptime) {
+    if ( ($self->{FILETIME} - $time) > $keeptime) {
       chdir $_ or $self->_croak("Can't cd to $_");
       opendir DIR, "." or $self->_croak("Can't open $_ to read");
       my @files=grep !/^\.\.?$/, readdir(DIR);
@@ -315,25 +325,25 @@ sub cleanDirs{
         ## Now go to the processing directory and delete the current
         ## subdirectory.
 
-      chdir "$self{pickup_topdir}/$_" or 
-	  $self->_croak("Can't cd to $self{pickup_topdir}/$_");
+      chdir $self->{PICKUP_TOPDIR}."/$_" or 
+	  $self->_croak("Can't cd to ".$self->{PICKUP_TOPDIR}."/$_\n");
       opendir DIR, "." or $self->_croak("Can't open $_ to read");
-      my @files=grep !/^\.\.?$/, readdir(DIR);
-      my $f;
+      @files=grep !/^\.\.?$/, readdir(DIR);
       closedir DIR;
       foreach $f (@files){
 	unlink $f;
       }
       chdir "..";
       rmdir;
-      chdir $self{processing_topdir} or 
-	  $self->_croak("Can't cd to $self{processing_topdir}");
+      chdir $self->{PROCESSING_TOPDIR} or 
+	  $self->_croak("Can't cd to ".$self->{PROCESSING_TOPDIR}."\n");
     }
   }
   
 }
 sub DESTROY {
-  chdir $self{startdir};
+  my $self=shift;
+  chdir $self->{STARTDIR};
   1;
 }
 
@@ -347,14 +357,14 @@ sub dbifyLog{
   chdir "logs" or $self->_croak( "Can't CD to ./logs");
   
   open LOG, "<$log" or $self->_croak( "Can't open Log file");
-  @lines=<LOG>;
+  my @lines=<LOG>;
   close LOG;
   copy $log, "./dbified/$log" or $self->_croak("Can't copy $log to ./dbified");
   unlink $log;
   @lines=@lines[1 .. $#lines];
 
 
-  %mhash=(Jan=>1,
+  my %mhash=(Jan=>1,
 	  Feb=>2,
 	  Mar=>3,
 	  Apr=>4,
@@ -368,9 +378,10 @@ sub dbifyLog{
 	  Dec=>12);
 
 
-  $dbh=DBI->connect('DBI:mysql:ET','vapuser','vapuser@mysql',
+  my $dbh=DBI->connect('DBI:mysql:ET','vapuser','vapuser@mysql',
 		    {RaiseError=>1, AutoCommit=>1} );
-  %hash=();
+  my %hash=();
+  my ($field, $val, $junk);
   for (@lines) {
     next unless /^\s*(.*)\s+=\s+(.*)\s+$/;
     $field=$1;
@@ -380,18 +391,18 @@ sub dbifyLog{
       $val="'$val'";
     } elsif (/^starttime/){
       $field="start";
-      ($dayname,$monname,$mday,$hh,$mm,$ss,$year) = 
+      my ($dayname,$monname,$mday,$hh,$mm,$ss,$year) = 
 	  ($val =~ /^(\w+) (\w+) (\d{2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})/);
-      $mon=$mhash{$monname};
+      my $mon=$mhash{$monname};
       $val=sprintf("%04d-%02d-%02d %02d:%02d:%02d", 
 		   $year, $mon, $mday, $hh, $mm, $ss);
       $val= "'$val'";      
 
     } elsif(/^endtime/){
       $field="stop";
-      ($day,$monname,$mday,$hh,$mm,$ss,$year) = 
+      my ($day,$monname,$mday,$hh,$mm,$ss,$year) = 
 	  ($val =~ /^(\w+) (\w+) (\d{2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})/);
-      $mon=$mhash{$monname};
+      my $mon=$mhash{$monname};
       $val=sprintf("%04d-%02d-%02d %02d:%02d:%02d", 
 		   $year, $mon, $mday, $hh, $mm, $ss)      ;
       $val= "'$val'";
@@ -405,7 +416,7 @@ sub dbifyLog{
     } elsif(/^filetime/){
     } elsif(/^dir/){
       $field = "dirnum";
-      @tmp=split("/", $val);
+      my @tmp=split("/", $val);
       $val=$tmp[$#tmp];
     } elsif(/^logfile/){
       $field="log";
@@ -413,12 +424,12 @@ sub dbifyLog{
     } elsif(/^pid/){
     } elsif(/^copy took/){
     } elsif(/^windfiles/){
-      @tmp=split /,/, $val;
-      $windpath="";
-      $windfiles="";
+      my @tmp=split /,/, $val;
+      my $windpath="";
+      my $windfiles="";
       use File::Basename;
       for (@tmp) {
-	($name,$path,$suffix) = fileparse($_);
+	my ($name,$path,$suffix) = fileparse($_);
 	$windpath .= $path if ($windpath ne $path);
 	$windfiles .= "$name,";
       }
@@ -432,20 +443,20 @@ sub dbifyLog{
     $hash{$field}=$val;
 
   }  
-  @processing= ("dirnum", "start", "stop", "elapsed", "status");
-  @files=("dirnum", "interpfile", "log", "windfiles", "windpath");
+  my @processing= ("dirnum", "start", "stop", "elapsed", "status");
+  my @files=("dirnum", "interpfile", "log", "windfiles", "windpath");
 
 
     ## Load the PROCESSING table
-  $cols="";
-  $vals="";
+  my $cols="";
+  my $vals="";
   for (@processing){
     $cols .= "$_,";
     $vals .= "$hash{$_},";
   }
   $cols =~ s/(.*),$/$1/;
   $vals =~ s/(.*),$/$1/;
-  $sql = "INSERT INTO processing ($cols) VALUES ($vals)";
+  my $sql = "INSERT INTO processing ($cols) VALUES ($vals)";
   $dbh->do($sql);
 
 
@@ -465,64 +476,66 @@ sub dbifyLog{
 }
 
 sub dbit{
-
   use DBI;
   use File::Basename;
   use Time::Local;
+  my $self = shift;
 
   $self->logit();
 
-  my $self = shift;
   print "In dbit\n";
-  $self{endtime} = time();
-  $self{elapsed} = ($self{endtime}-$self{starttime})/60.;
+  $self->{ENDTIME} = time();
+  $self->{ELAPSED} = ($self->{ENDTIME}-$self->{STARTTIME})/60.;
 
 
-  $dbh=DBI->connect('DBI:mysql:ET','vapuser','vapuser@mysql',
+  my $dbh=DBI->connect('DBI:mysql:ET','vapuser','vapuser@mysql',
 		    {RaiseError=>1, AutoCommit=>1} );
 
-  ($ss,$mm,$hh,$mday,$mon,$year,@junk)=localtime($self{starttime});
+  my ($ss,$mm,$hh,$mday,$mon,$year,@junk)=localtime($self->{STARTTIME});
   $year += 1900;
   $mon += 1;
-  $st=sprintf("%04d-%02d-%02d %02d:%02d:%02d", 
+  my $st=sprintf("%04d-%02d-%02d %02d:%02d:%02d", 
 		   $year, $mon, $mday, $hh, $mm, $ss)      ;
 
-  ($ss,$mm,$hh,$mday,$mon,$year,@junk)=localtime($self{endtime});
+  ($ss,$mm,$hh,$mday,$mon,$year,@junk)=localtime($self->{ENDTIME});
   $year += 1900;
   $mon += 1;
-  $et=sprintf("%04d-%02d-%02d %02d:%02d:%02d", 
+  my $et=sprintf("%04d-%02d-%02d %02d:%02d:%02d", 
 		   $year, $mon, $mday, $hh, $mm, $ss)      ;
 
-  @tmp=split("/", $self{dir});
-  $dirnum=$tmp[$#tmp];
+  my @tmp=split("/", $self->{DIR});
+  my $dirnum=$tmp[$#tmp];
 
 
     ## create the two SQL statements and load these results into the
     ## database
 
     ## the 'processing' table
-  $sql="INSERT INTO processing (dirnum, start, stop, elapsed, status)  ";
-  $sql .= "VALUES ($dirnum, '$st', '$et', $self{elapsed}, $self{status})";
+  my $sql="INSERT INTO processing (dirnum, start, stop, elapsed, status) ";
+  $sql .= "VALUES ($dirnum, '$st', '$et', ";
+  $sql .= $self->{ELAPSED}.",". $self->{STATUS}.")";
   $dbh->do($sql);
   
-  @tmp=split /,/, $self{windfiles};
+  @tmp=split /,/, $self->{windfiles};
 
-  $windpath="";
-  $windfiles="";
+  my $windpath="";
+  my $windfiles="";
   for (@tmp) {
-    ($name,$path,$suffix) = fileparse($_);
+    my ($name,$path,$suffix) = fileparse($_);
     $windpath .= $path if ($windpath ne $path);
     $windfiles .= "$name,";
   }
   $windfiles =~ s/(.*),$/$1/;
 
     ## the 'files' table
-  $sql="INSERT INTO files (dirnum, interpfile, log, windfiles, windpath) ";
-  $sql.="VALUES( $dirnum, '$self{interpfile}', '$self{logfile}', '$windfiles', '$windpath')";
+  $sql  ="INSERT INTO files (dirnum, interpfile, log, windfiles, windpath) ";
+  $sql.= "VALUES( $dirnum, ";
+  $sql.= "'".$self->{INTERPFILE}."', '";
+  $sql.= $self->{LOGFILE}."', '$windfiles', '$windpath')";
   $dbh->do($sql);
 
-  $dbh->disconnect;    
-  print "done!\n";
+  $dbh->disconnect;
+  print "done at ".scalar(localtime(time))."!\n";
 }
 
 1;
