@@ -1,6 +1,9 @@
 ; Mods.
 ;
 ; $Log$
+; Revision 1.1  1998/10/22 21:23:41  vapuser
+; Initial revision
+;
 ;
 ;
 PRO svh2hdf, files, date=date
@@ -215,10 +218,10 @@ PRO svh2hdf, files, date=date
       HDF_SD_SETINFO, Id, caldata=caldata      
       HDF_SD_ENDACCESS, Id
 
-      ID = HDF_SD_CREATE(FILEID,'wvc_row_time',dims,/string);
-      HDF_SD_ADDDATA,id, row_time
-      HDF_SD_SETINFO, Id, caldata=caldata      
-      HDF_SD_ENDACCESS, Id
+;      ID = HDF_SD_CREATE(FILEID,'wvc_row_time',dims,/string);
+;      HDF_SD_ADDDATA,id, row_time
+;      HDF_SD_SETINFO, Id, caldata=caldata      
+;      HDF_SD_ENDACCESS, Id
 
       dims = size( dir, /dimensions )
       ID = HDF_SD_CREATE(FILEID,'wind_dir',dims,/float);
