@@ -1,6 +1,0 @@
-#!/bin/perl -w
-use lib "/usr/people/vapdev/development/vap/perl";
-use WWW::LeftNavTable;
-my $q=WWW::LeftNavTable->new();
-my $a=1;
-exit;
