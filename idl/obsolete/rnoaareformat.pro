@@ -35,6 +35,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/11/20 19:57:40  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -109,9 +112,9 @@ PRO RnoaaReformat, files
       openw, olun, Ofilename, /get, error=err
       IF err EQ 0 THEN BEGIN 
         hdr = "Ncells=76" 
-        hdr = hdr + lf + "StartTime=" + StartTime 
-        hdr = hdr + lf + "EndTime=" + EndTime
-        hdr = hdr + lf + "EquatorCrossingLon=0.0"
+        hdr = hdr + lf + "DataStartTime=" + StartTime 
+        hdr = hdr + lf + "DataEndTime=" + EndTime
+        hdr = hdr + lf + "EquatorCrossingLongitude=0.0"
         t = byte(hdr)
         nt = n_elements(t)
         hdr = bytarr(q2b_rnoaa_size)

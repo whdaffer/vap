@@ -57,6 +57,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/11/20 19:55:28  vapuser
+; Changed over to using RNoaaReformat
+;
 ; Revision 1.2  1998/10/23 22:17:01  vapuser
 ; Moved some comments around.
 ;
@@ -78,10 +81,11 @@ PRO updatewinddir
     cd,curdir
     return
   ENDIF 
-  cd,'$VAP_WINDS'
+  cd,'$VAP_WINDS',cur=cur
 
   f = findfile('./RMGDR/*.R')
   RNoaaReFormat, f
+  cd,cur
 
 END
 
