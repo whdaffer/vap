@@ -21,7 +21,7 @@
 ;                         EndTime     = EndTime, $                                       
 ;                         Help        = Help, $
 ;                         Nscat       = Nscat, $
-;                         use_rf      = use_rf, $
+;                         rainflag    = rainflag, $
 ;                         rf_action   = rf_action, $
 ;                         rf_index    = rf_index
 ;                         
@@ -62,9 +62,7 @@
 ; StartTime   - (O) Earliest Time in Data files
 ; EndTime     - (O) Latest Time in Data files
 ;
-; use_rf      - (I) flag: 0|1|2 depending on whether you want to use
-;                         No rain flagging, the MP flag or the NOF
-;                         flag. Default = 1, the MP flag.
+; rainflag      - (I) flag: 0|1, 0=don't use flag, 1=use flag
 ;
 ; rf_action   - (I) flag: 0|1 depending on whether you want skip
 ;                         plotting rain flagged data or whether you
@@ -117,6 +115,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  2000/02/28 18:06:44  vapuser
+; Added rain flag code. Spruced up documentation.
+;
 ; Revision 1.5  1999/10/05 17:26:38  vapuser
 ; Added ability to read Qmodel files.
 ;
@@ -146,7 +147,7 @@ FUNCTION read_wind_files, files, $
                           EndTime     = EndTime,$
                           Help        = Help, $
                           Nscat       = Nscat, $
-                          use_rf      = use_rf, $
+                          rainflag      = rainflag, $
                           rf_action   = rf_action, $
                           rf_index    = rf_index
 
@@ -156,7 +157,7 @@ FUNCTION read_wind_files, files, $
    hstr1 =             'Usage: data=read_wind_files( files, $ ' 
    hstr1 = hstr1 + lf + "  [, decimate=n , CRDecimate=[m,n] ,$ "
    hstr1 = hstr1 + lf + "    ExcludeCols='exclude_string' , help=0|1 , $" 
-   hstr1 = hstr1 + lf + "     Nscat=0|1, use_rf=0|1|2, rf_action=0|1, $ "
+   hstr1 = hstr1 + lf + "     Nscat=0|1, rainflag=0|1, rf_action=0|1, $ "
    hstr1 = hstr1 + lf + "  rf_index=rf_index ]"
    hstr1 = hstr1 + lf + lf + 'Where...' + lf + lf
    hstr1 = hstr1 + " Files  - vector of fully qualified file names " + lf
@@ -186,8 +187,7 @@ FUNCTION read_wind_files, files, $
    hstr4 = hstr4 + "   The returned array has the form [nrecs,4] " + lf
    hstr4 = hstr4 + "   where u=[*,0], v=[*,1], lon=[*,2] and " + lf
    hstr4 = hstr4 + "   lat=[*,3] " + lf
-   hstr5 =         " Use_RF = 0|1|2 depending on whether you want to use: " + lf 
-   hstr5 = hstr5 + "   NO flagging (0), or MP flagging (1) or NOF flagging (2) " + lf
+   hstr5 =         " Rainflag = 0|1, 0=don't use flag, 1=use flag" + lf 
    hstr5 = hstr5 + " RF_Action = 0|1 depending on whether you want to:" + lf
    hstr5 = hstr5 + "   SKIP plotting the rain flagged data (0) or " + lf 
    hstr5 = hstr5 + "   PLOT it with a different color (1)" + lf
@@ -229,27 +229,27 @@ FUNCTION read_wind_files, files, $
      EndTime =  min(mint)
    ENDIF ELSE BEGIN 
      IF n_Elements(decimate) EQ 0 THEN decimate = 1
-     IF N_Elements(CRDecimate) NE 2 THEN CRDecimate =  [1,1]
+     ;IF N_Elements(CRDecimate) NE 2 THEN CRDecimate =  [1,1]
      IF VarType(ExcludeCols) EQ 'UNDEFINED' OR $
         VarType(ExcludeCols) NE 'STRING' THEN ExcludeCols = ''
      StartTime = '0000/00/00/00'
      Endtime = StartTime
      FOR f=0,nf-1 DO BEGIN 
        print,'reading ' + files(f)
-       tt = deenvvar(files[f])
+       tt = deenvvar(files[f], /isfile)
        IF Hdf_IsHDF(tt) THEN BEGIN 
          q = obj_new()
          attr = hdfgetattr( tt, attr='SHORTNAME')
          IF VarType(attr) EQ 'STRUCTURE' THEN BEGIN 
            CASE (*attr.value)[0] OF  
              'QSCATVAPMODEL': q = obj_new('qmodel',filename=tt, $
-                                          use_rf=use_rf, $
+                                          rainflag=rainflag, $
                                           rf_action=rf_action)
              'QSCATL2B'     : q = obj_new('q2b',file=tt, $
                                           decimate=decimate, $
                                           crdecimate=crdecimate, $
                                           excludecols=excludecols, $
-                                          use_rf=use_rf, $
+                                          rainflag=rainflag, $
                                           rf_action=rf_action)
              ELSE: BEGIN 
                Message,"Can't identify type of HDF file ",/cont
@@ -264,7 +264,7 @@ FUNCTION read_wind_files, files, $
                      decimate=decimate, $
                      crdecimate=crdecimate, $
                      excludecols=excludecols, $
-                     use_rf=use_rf, $
+                     rainflag=rainflag, $
                      rf_action=rf_action)
        ENDELSE 
        IF obj_valid(q) THEN BEGIN 
