@@ -64,6 +64,211 @@ PRO Pv_Config_Cleanup, id
 END
 
 ;-----------------------------------------------------
+;pv_config_Cleanup
+;-----------------------------------------------------
+
+FUNCTION pv_config_annot_events, event
+  retevent = 0
+  Widget_Control, event.top, Get_Uvalue=info
+  Widget_Control, (*info).pvbase, Get_Uvalue=pv_obj
+  pv_obj-> Get,Annotation=Annotation
+  Annotation-> Get, $
+   MainTitle=MainTitle, Xtitle=Xtitle, $
+    Ytitle=Ytitle, SubTitle=SubTitle, xmargin=xmargin, $
+     ymargin=ymargin, Charsize=Charsize, charThick=CharThick
+
+
+  CASE event.id OF 
+    (*info).annotYNId: BEGIN 
+      pv_obj-> Set,doAnnotations = event.value
+      (*info).redraw = 1
+    END
+    (*info).MainTitleId: BEGIN 
+      IF Maintitle NE event.value[0] THEN BEGIN 
+        Annotation-> Set,Maintitle = event.value[0]
+        (*info).redraw = 1
+      ENDIF 
+    ENDIF 
+    (*info).XTitleId: BEGIN 
+      IF Xtitle NE event.value[0] THEN BEGIN 
+        Annotation-> Set,Xtitle = event.value[0]
+        (*info).redraw = 1
+      ENDIF 
+    ENDIF 
+    (*info).YTitleId: BEGIN 
+      IF Ytitle NE event.value[0] THEN BEGIN 
+        Annotation-> Set,Ytitle = event.value[0]
+        (*info).redraw = 1
+      ENDIF 
+    ENDIF 
+    (*info).SubTitleId: BEGIN 
+      IF subtitle[0] NE event.value[0] THEN BEGIN 
+        Annotation-> Set,Subtitle = event.value[0]
+        (*info).redraw = 1
+      ENDIF 
+    ENDIF 
+    (*info).AnnotCharSizeId: BEGIN 
+      IF event.value NE Charsize THEN BEGIN 
+        Annotation-> Set,Charsize = event.value[0]
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).AnnotCharThickId: BEGIN 
+      IF event.value NE CharThick THEN BEGIN 
+        Annotation-> Set,CharThick = event.value[0]
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).MinXMargId: BEGIN 
+      IF event.value NE Xmargin[0] THEN BEGIN 
+        Xmargin[0] =  event.value[0]
+        Annotation-> Set,Xmargin = Xmargin
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).MaxXMargId: BEGIN 
+      IF event.value NE Xmargin[1] THEN BEGIN 
+        Xmargin[1] =  event.value[0]
+        Annotation-> Set,Xmargin = Xmargin
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).MinYMargId: BEGIN 
+      IF event.value NE Ymargin[0] THEN BEGIN 
+        Ymargin[0] =  event.value[0]
+        Annotation-> Set,Ymargin = Ymargin
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).MaxYMargId: BEGIN 
+      IF event.value NE Ymargin[1] THEN BEGIN 
+        Ymargin[1] =  event.value[0]
+        Annotation-> Set,Ymargin = Ymargin
+        (*info).redraw = 1
+      ENDIF 
+    END 
+  ENDCASE 
+  pv_obj-> Set, Annotation = Annotation
+  Widget_Control, event.top, Set_Uvalue=info
+  return, retevent
+END
+
+;-----------------------------------------------------
+;pv_config_CB_Events
+;-----------------------------------------------------
+FUNCTION pv_config_CB_Events, event
+  retevent = 0
+
+  retevent = 0
+  Widget_Control, event.top, Get_Uvalue=info
+  Widget_Control, (*info).pvbase, Get_Uvalue=pv_obj
+  pv_obj-> Get,ColorBar = CB
+
+  CB-> Get,Position = pos, divisions=divisions, $
+   Top=Top,Right=Right,Vertical=Vertical,Title=CBtitle, $
+     Charsize=CBCharsize, Format=CBFormat
+
+  CASE event.id OF 
+    (*info).DoColorBarId: BEGIN 
+      pv_obj-> Set,DoColorBar = event.value
+      (*info).redraw = 1
+    END
+    (*info).CBTitleID: BEGIN 
+      IF CBTitle NE event.value THEN BEGIN 
+        CB-> Set,Title = event.value
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).CBCharSizeId: BEGIN 
+      IF CBcharsize NE event.value[0] THEN BEGIN 
+        CB-> Set,charsize = event.value[0]
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).CBFormatId: BEGIN 
+      format =  strcompress(event.value[0],/remove_all)
+      IF strlen(format) NE 0 THEN BEGIN 
+        IF CBFormat NE event.value[0] THEN BEGIN 
+          form = event.value[0]
+          IF strmid(form,0,1) NE '(' THEN form =  '(' + form
+          IF strmid(form,strlen(form)-1,1) NE ')' THEN form = form + ')'
+          catch, error
+          IF error NE 0 THEN BEGIN 
+            ok = dialog_message("Bad format!")
+            catch,/cancel
+            GOTO, Bad_Format
+          ENDIF 
+          CB-> Get,min = min
+          test = string(min,format=form)
+          CB-> Set,format = form
+          (*info).redraw = 1
+        ENDIF 
+      ENDIF ELSE CB-> Set,format=''
+        
+      Bad_Format:
+    END 
+    (*info).CBPosXMinId: BEGIN 
+      IF pos[0] NE event.value THEN BEGIN 
+        pos[0] = event.value
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).CBPosXMaxId: BEGIN 
+      IF pos[2] NE event.value THEN BEGIN 
+        pos[2] = event.value
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).CBPosYMinId: BEGIN 
+      IF pos[1] NE event.value THEN BEGIN 
+        pos[1] = event.value
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).CBPosYMaxId: BEGIN 
+      IF pos[3] NE  event.value THEN BEGIN 
+        pos[3] = event.value
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).CBDivsId: BEGIN 
+      IF divisions NE event.value THEN BEGIN 
+        CB-> Set,Divisions = event.value
+        (*info).redraw = 1
+      ENDIF 
+    END 
+    (*info).CBOrientID: BEGIN 
+      CB-> Set, Vertical = event.value
+      Widget_Control,(*info).CBTopId,  map=event.value EQ 0, set_value=Top
+      Widget_Control,(*info).CBRightId,map=event.value EQ 1,set_Value=Right
+      CB-> Get,position = position
+      position = position[ [1,0,3,2] ]
+      CB-> Set,position = position
+      pos = position
+      Widget_Control, (*info).CBPosXMinId, set_value=pos[0]
+      Widget_Control, (*info).CBPosXMaxId, set_value=pos[2]
+      Widget_Control, (*info).CBPosYMinId, set_value=pos[1]
+      Widget_Control, (*info).CBPosYMaxId, set_value=pos[3]
+      (*info).redraw = 1
+    END 
+    (*info).CBTopId: BEGIN 
+      CB-> Set,Top = event.value
+      (*info).redraw = 1
+    END
+    (*info).CBRightId: BEGIN
+      CB-> Set,Right = event.value
+      (*info).redraw = 1
+    END
+  ENDCASE
+
+  CB-> Set,Position = pos
+  pv_obj-> Set, ColorBar = CB
+  Widget_Control, event.top, Set_Uvalue=info
+
+  return, retevent
+END
+
+;-----------------------------------------------------
 ;DecimateCWBut_Events
 ;-----------------------------------------------------
 FUNCTION DecimateCWBut_Events, Event
@@ -84,10 +289,12 @@ END
 ;-----------------------------------------------------
 PRO pv_Config_DrawLimLines, info, self, MinSpeed, MaxSpeed
     ; Get the SpeedHisto object.
-  self-> Get, SpeedHisto = SpeedHisto
+  self-> Get, SpeedHisto = SpeedHisto, Annotation=Annotation, Colorbar=CB
     ; Get the information from the Speed Histogram Object.
   SpeedHisto-> Get, Histo = Histo, XHisto=XHisto, $
     BinSize=BinSize, NBins=Nbins, Min=Min, Max=Max
+
+  CB-> Set,min =MinSpeed, max=MaxSpeed
 
   IF Ptr_Valid( Histo ) THEN BEGIN 
     IF Ptr_Valid( XHisto ) THEN XHisto = *XHisto ELSE $
@@ -455,11 +662,12 @@ FUNCTION ConfigChoiceBgroup_Events, event
 ;    'Vector Configuration', $
 ;    'Ambiguity/Plotting Color Selection', $
 ;    'Data List Pruning',$
-;    'Plot Annotations']
+;    'Plot Annotations', $
+;    'Color Bar']
 
   retevent = 0
   CASE event.value OF
-    'Map Dimensions'                     : map_array = [1,0,0,0,0]
+    'Map Dimensions'                     : map_array = [1,0,0,0,0,0]
     'Vector Configuration'               : BEGIN 
         ; Update the MinMax Speed Widgets
       Widget_Control, (*info).pvbase, Get_UValue=self
@@ -492,7 +700,7 @@ FUNCTION ConfigChoiceBgroup_Events, event
           ; If this is not pseudo color, we'll assume the grayscale
           ; color and construct the color under that assumption
         tvlct,r,g,b,/get
-        ii = (*info).ColorIndex
+        ii = (*info).ColorIndex <  n_elements(r)
         rgb = [ r[ii], g[ii], b[ii] ]
         (*info).ColorIndex = Rgb2True(rgb,/transpose)
       ENDIF 
@@ -521,11 +729,12 @@ FUNCTION ConfigChoiceBgroup_Events, event
         XYOuts,0.5,0.5,'No Histogram Available ',/normal,align=0.5
         (*info).yr = [0,0.]
       ENDELSE 
-      map_array = [0,1,0,0,0]
+      map_array = [0,1,0,0,0,0]
     END 
-    'Ambiguity/Plotting Color Selection' : map_array = [0,0,1,0,0]
-    'Data List Pruning'                  : map_array = [0,0,0,1,0]
-    'Plot Annotations'                   : map_array = [0,0,0,0,1]
+    'Ambiguity/Plotting Color Selection' : map_array = [0,0,1,0,0,0]
+    'Data List Pruning'                  : map_array = [0,0,0,1,0,0]
+    'Plot Annotations'                   : map_array = [0,0,0,0,1,0]
+    'Color Bar'                          : map_array = [0,0,0,0,0,1]
     ELSE:
   endcase
   FOR i=0,n_elements(map_array)-1 DO $
@@ -698,13 +907,8 @@ PRO PV_CONFIG_Events, Event
       Widget_Control, (*info).AmbigId,         Get_Value = NewAmbiguities
       Widget_Control, (*info).DecimateCwButId, Get_Value = DecimateCwButVal
       Widget_Control, (*info).ExcludeColsId,   Get_Value = NewExcludeCols
-;      WidgetControl,  (*info).Decimate1D,      Get_Value = newDecimate1D
-;      WidgetControl,  (*info).Decimate2DCol,   Get_Value = newDecimate2DCosl
-;      WidgetControl,  (*info).Decimate2Drow,   Get_Value = newDecimate2DRows
-      Widget_Control, (*info).MainTitleId, Get_Value = NewMainTitle
-      Widget_Control, (*info).XTitleId, Get_Value = NewXTitle
-      Widget_Control, (*info).YTitleId, Get_Value = NewYTitle
-      Widget_Control, (*info).SubTitleId, Get_Value = NewSubTitle      
+
+        ; Annotation Stuff
 
 
       colorNames = [ SelectedColor, FirstColor,SecondColor,ThirdColor,$
@@ -818,43 +1022,6 @@ PRO PV_CONFIG_Events, Event
         self-> Set, ExcludeCols = NewExcludeCols
         (*info).redraw = 1
       ENDIF 
-
-
-      self-> Get,Annotation = Annotation
-      Annotation-> Get,MainTitle = MainTitle,Xtitle=Xtitle,$
-       YTitle=YTitle,SubTitle=SubTitle
-
-      newMaintitle = newMainTitle[0]
-      newXTitle = newXTitle[0]
-      newYTitle = newYTitle[0]
-      newSubTitle = newSubTitle[0]
-
-      IF newMainTitle NE MainTitle THEN BEGIN 
-        Annotation-> Set,MainTitle = newMainTitle
-        (*info).redraw = 1
-      ENDIF 
-
-      IF newXTitle NE XTitle THEN BEGIN 
-        Annotation-> Set,XTitle = newXTitle
-        (*info).redraw = 1
-      ENDIF 
-
-
-
-      IF newYTitle NE YTitle THEN BEGIN 
-        Annotation-> Set,YTitle = newYTitle
-        (*info).redraw = 1
-      ENDIF 
-
-
-
-      IF newSubTitle NE SubTitle THEN BEGIN 
-        Annotation-> Set,SubTitle = newSubTitle
-        (*info).redraw = 1
-      ENDIF 
-
-       self-> Set,Annotation = Annotation
-
     END ; End the 'else' of the outermost 'case' 
 
   ENDCASE
@@ -920,16 +1087,16 @@ PRO pv_config, GROUP=Group
     'Vector Configuration', $
     'Ambiguity/Plotting Color Selection', $
     'Data List Pruning',$
-    'Plot Annotations']
+    'Plot Annotations', $
+    'Color Bar']
 
       ConfigureChoiceBgroupId = CW_BGROUP( BASE2, junk, $
       ROW=2, $
       EXCLUSIVE=1, $
-      Event_Funct='ConfigChoiceBgroup_Events',$
+      Event_Func='ConfigChoiceBgroup_Events',$
       UVALUE='CONFIGURECHOICEBGROUP', $
+      Set_Value=0,$
       /Return_Name)
-
-      Widget_Control, ConfigureChoiceBgroupId, Set_Value=0
 
 
   BulletinBoardBase = WIDGET_BASE(TLB, $
@@ -1285,31 +1452,195 @@ PRO pv_config, GROUP=Group
 
 
 ;-------------------------------------------------------------------
-;
-;              Title Base
-;
+;              Annotations Base
 ;-------------------------------------------------------------------
 
   AnnotBaseId = WIDGET_BASE(BulletinBoardBase, $
-      COLUMN=1, $
+      col=1, $
       MAP=0, $
-      UVALUE='PruneDataId')
+      UVALUE='ANNOTATION', $
+      EVENT_FUNC='pv_config_annot_events')
 
-  self-> Get,Annotation = Annotation
+  self-> Get,Annotation = Annotation, ColorBar=CB, $
+           doAnnotations=doAnnotations, $
+             doColorbar=doColorBar
+
   Annotation-> Get,MainTitle = mtitle, Xtitle=Xtitle, $
-   Ytitle=Ytitle, SubTitle=Subtitle
+   Ytitle=Ytitle, SubTitle=Subtitle, $
+    charsize=charsize, charthick=charthick, xmargin=xmargin, $
+     ymargin=ymargin
+
+
+  AnnotYNid = CW_BGroup(annotbaseid,['No ', 'Yes'],Label_Top='Annotations?' ,$
+                        set_value=doAnnotations,$
+                         /return_index,/exclusive,/no_release,/row)
+
+
   MainTitleId = CW_Field(AnnotBaseId, Title = 'Main Title', $
                          Value=Mtitle, /Return_Events, /string,$
-                        UValue='MAINTITLE')
+                        UValue='MAINTITLE',/row)
   XTitleId = CW_Field(AnnotBaseId, Title = 'X Title', Value=Xtitle, $
-                      /Return_Events, /string,$
-                        UValue='XTITLE' )
+                      /Return_Events, /string,UValue='XTITLE',/row )
   YTitleId = CW_Field(AnnotBaseId, Title = 'Y Title', Value=ytitle, $
-                      /Return_Events, /string,$
-                        UValue='YTITLE' )
+                      /Return_Events, /string,UValue='YTITLE',/row)
   SubTitleId = CW_Field(AnnotBaseId, Title = 'SubTitle', Value=Subtitle, $
-                        /Return_Events, /string,$
-                        UValue='SUBTITLE' )
+                        /Return_Events, /string,UValue='SUBTITLE',/row )
+  AnnotCharSizeId = cw_field(AnnotBaseId,Title='Char Size (Titles)', Value=charsize, $
+                             /return_events,/row)
+  AnnotCharThickID = cw_Field(AnnotBaseId,Title='Char Thickness (Titles)', Value=charthick, $
+                             /return_events,/row)
+
+  JunkId1 = Widget_Base(AnnotBaseId, /col)
+  JunkId2 = Widget_Label(junkid1, Value="X Margin (Character Units)",/align_center)
+  junkid3 =  Widget_Base(JunkId1,/row)
+  MinXmargId =  CW_Field(JunkId3,/col,Title='Left  ',Value=Xmargin[0],$
+                      /return )
+  MaxXmargId =  CW_Field(JunkId3,/col,Title='Right ',Value=Xmargin[1],$
+                      /return )
+
+  JunkId4 = Widget_Label(junkid1, Value="Y Margin (Character Units)",/align_center)
+  junkid5 =  Widget_Base(JunkId1,/row)
+  MinYmargId =  CW_Field(JunkId5,/col,Title='Bottom',Value=ymargin[0],$
+                      /return )
+  MaxYmargId =  CW_Field(JunkId5,/col,Title='Top   ',Value=ymargin[1],$
+                      /return )
+
+
+;-------------------------------------------------------------------
+;              ColorBar Base
+;-------------------------------------------------------------------
+
+
+  CB->Get,Title=CBTitle, Position=CBPos, $
+	Div=CBDivs, Vertical=CBVertical, $
+          right=CBRight, top=CBTop,$
+            charsize=CBCharsize, format=CBFormat
+
+
+  CBBaseId     = Widget_Base(BulletinBoardBase,map=0,/col, $
+                             event_func='PV_CONFIG_CB_EVENTS')
+  DoColorBarId =  CW_Bgroup(CBBaseId, ['No ','Yes'], /exclusive, /row, $
+                            Label_Left='ColorBar?', $
+                            Set_Value=doColorBar,/return_index, /no_release)
+
+  BASE2 = WIDGET_BASE(CBBASEID, $
+      /Col, $
+      MAP=1, $
+      UVALUE='BASE2')
+
+  CBTitleId = CW_FIELD( BASE2,VALUE=CBTitle, $
+      /col, $
+      STRING=1, $
+      RETURN_EVENTS=1, $
+      TITLE="Color Bar Title", $
+      UVALUE='CBTitle')
+  base100 =  widget_base( base2, /row )
+  CBCharsizeId =  CW_Field(base100,/row,$
+      Title='Char Size', $
+      Value=CBcharsize,/float,$
+      /return_events)
+
+  CBFormatId =  CW_Field(base100,/row,$
+      Title='Format', $
+      Value=CBformat,/string,$
+      /return_events)
+
+  BASE4 = WIDGET_BASE(CBBASEID, $
+      ROW=2, $
+      MAP=1, $
+      UVALUE='BASE4')
+
+  BASE9 = WIDGET_BASE(BASE4, $
+      ROW=1, $
+      MAP=1, $
+      UVALUE='BASE9')
+
+  LABEL11 = WIDGET_LABEL( BASE9, $
+      UVALUE='LABEL11', $
+      VALUE='Position of Color Bar (Normalized Coordinates)')
+
+
+  BASE12 = WIDGET_BASE(BASE4, $
+      ROW=2, $
+      MAP=1, $
+      UVALUE='BASE12')
+
+  CBPosXminId = CW_FSLIDER( BASE12, $
+      DRAG=1, $
+      /EDIT, $
+      MAXIMUM=1.00000, $
+      MINIMUM=0.00000, $
+      TITLE='X Mininum', $
+      UVALUE='CBPOSXMIN', $
+      VALUE=CBPos[0])
+
+   cBPosXmaxId = CW_FSLIDER( BASE12, $
+      DRAG=1, $
+      /EDIT, $
+      MAXIMUM=1.00000, $
+      MINIMUM=0.00000, $
+      TITLE='X Maximum', $
+      UVALUE='CBPOSXMAX', $
+      VALUE=CBPOS[2])
+
+  CBPosYMinId = CW_FSLIDER( BASE12, $
+      DRAG=1, $
+      /EDIT, $
+      MAXIMUM=1.00000, $
+      MINIMUM=0.00000, $
+      TITLE='Y Minimum', $
+      UVALUE='CBPOSYMIN', $
+      VALUE=CBPos[1])
+
+  CBPosYMaxId = CW_FSLIDER( BASE12, $
+      DRAG=1, $
+      /EDIT, $
+      MAXIMUM=1.00000, $
+      MINIMUM=0.00000, $
+      TITLE='Y Maximum', $
+      UVALUE='CBPPOSYMAX', $
+      VALUE=CBPos[3])
+
+
+
+  BASE22 = WIDGET_BASE(CBBASEID, $
+      ROW=1, $
+      MAP=1, $
+      UVALUE='BASE22')
+
+  CBDivsId = CW_FIELD( BASE22,VALUE=CBDivs, $
+      ROW=1, $
+      LONG=1, $
+      RETURN_EVENTS=1, $
+      TITLE='Number of Divisions', $
+      UVALUE='CBDIVS')
+
+
+  BASE24 = WIDGET_BASE(CBBASEID, $
+      COLUMN=1, $
+      MAP=1, $
+      UVALUE='BASE24')
+
+
+  CBOrientId =  CW_BGroup(base24,['Horizontal','Vertical  '],/exclusive,/Row, $
+                         Label_Top='Color Bar Orientation?',$
+                          set_value=CBVertical, /return_index,$
+                          /no_release)
+
+  Label50 = Widget_Label(base24,Value='Color Bar Title on the ...?')
+
+  BASE28 = WIDGET_BASE(BASE24, $
+      MAP=1, $
+      UVALUE='BASE28')
+
+  CBTopId = CW_Bgroup(base28,['Bottom','Top   '], /exclusive,/row,$
+                      set_value=CBTop EQ 0,/return_index, $
+                     map=CBVertical EQ 0, /no_release)
+  CBRightId = CW_Bgroup(base28,['Right','Left '], /exclusive,/row,$
+                      set_value=CBRight EQ 0,/return_index, $
+                       map=CBVertical, /no_release)
+
+  
 ;-------------------------------------------------------------------
 ;
 ;              Buttons
@@ -1340,7 +1671,7 @@ PRO pv_config, GROUP=Group
                     ClearDataListFlag : 0l    ,$
                     bases             :  [MapDimsId, TopVecConfigId, $       
                                             AmbigConfigId, PruneDataId,$
-                                         AnnotBaseId],$   
+                                         AnnotBaseId, CBBaseId],$   
 ;------------------  Map dims Base -------------------------
                     LonMinId          : LonMinId,$                        
                     LonMaxId          : LonMaxId ,$                       
@@ -1394,15 +1725,34 @@ PRO pv_config, GROUP=Group
                     DismissId         : DismissId,$          
                     CancelId          : CancelId ,$          
                     AmbigArray        : [1,0,0,0,0,0], $       
-; ------------------- Titles Base ------------------------------
+; ------------------- Annotation Base ------------------------------
+                    annotYNId         : annotYNId, $
                     MainTitleId       : MainTitleId,$
-                    XtitleId          : XtitleId,$
-                    YTitleId          : YTitleId,$
+                    XtitleId          : XtitleId  ,$
+                    YTitleId          : YTitleId  ,$
                     SubTitleId        : SubTitleId,$
+                    AnnotCharSizeId   : AnnotCharSizeId    ,$
+                    AnnotCharThickId  : AnnotCharThickId   ,$
+                    MinXMargID        : MinXMargID         ,$
+                    MinYMargID        : MinYMargID         ,$
+                    MaxXMargID        : MaxXMargID         ,$
+                    MaxYMargID        : MaxYMargID         ,$
+                    docolorbarid      : doColorBarId, $
+                    CBBaseId          : CBBaseId    , $
+                    CBTitleId         : CBTitleId   ,$
+                    CBCharSizeId      : CBCharSizeId, $
+                    CBFormatId        : CBFormatId, $
+                    CBPosXminId       : CBPosXminId ,$
+                    CBPosXmaxId       : CBPosXmaxId ,$
+                    CBPosYMinId       : CBPosYMinId ,$
+                    CBPosYMaxId       : CBPosYMaxId ,$
+                    CBDivsId          : CBDivsId    ,$
+                    CBOrientId        : CBOrientId, $
+                    CBTopId           : CBTopId,$
+                    CBRightId         : CBRightId,$
                     pvbase            : group, $
                     tlb               : tlb } )            
                     
-
 
   WIDGET_CONTROL, TLB, /REALIZE, set_uvalue=info
   Widget_Control, (*info).DrawId, Get_Value=wid
