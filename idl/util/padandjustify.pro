@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/21 21:02:28  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -85,7 +88,7 @@ FUNCTION PadAndJustify, number, ndigits, pad=pad,right=right, left=left
    Message,'Only select 1 of /right or /left',/cont
    return,0
  ENDIF ELSE IF NOT (right OR left ) THEN BEGIN 
-   Message,'Selecting right justification',/info
+   ; Message,'Selecting right justification',/info
    right = 1
  ENDIF 
 
