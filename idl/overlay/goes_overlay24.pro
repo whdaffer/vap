@@ -38,7 +38,8 @@
 ;                    ps          = ps, $        
 ;                    scalefac    = scalefac,$
 ;                    jpeg        = jpeg,$
-;                    quality     = quality
+;                    quality     = quality, $
+;                    config      = config
 ;
 ;
 ;
@@ -129,6 +130,10 @@
 ;     thumbnail   : if present, this will contain the bytarr with a
 ;                   thumbnail (30% of the size of the full image)
 ;                   Not applicable in the case of Postscript output.
+;     Config      : Flag, if set a 'configuration window' will open
+;                   and allow you to chose the {bright,Sat}{min,max}
+;                   values.
+;
 ;
 ;
 ;
@@ -181,6 +186,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.7  1999/04/08 22:01:01  vapuser
+; Replaced Colorbar with ColBar
+;
 ; Revision 1.6  1999/04/08 20:18:23  vapuser
 ; Changed color24 to rgb2true
 ;
@@ -237,10 +245,13 @@ PRO goes_overlay24, goesfile, $
                     scalefac    = scalefac, $
                     jpeg        = jpeg,$
                     quality     = quality, $
-                    thumbnail   = thumbnail
+                    thumbnail   = thumbnail, $
+                    config      = config 
 
 ; COMMON goes_overlay_cmn, landel
 
+
+  config =  keyword_set(config)
 
   Default_WaterRGB = [31,  33, 129]
   Default_LandRGB =  [25, 110,   0]
@@ -253,14 +264,14 @@ PRO goes_overlay24, goesfile, $
   genv,/save
   tvlct,orig_red,orig_green,orig_blue,/get
   loadct,0,/silent
-;  catch, error
-;  IF error NE 0 THEN BEGIN 
-;    catch,/cancel
-;    Message,!error_state.msg,/cont
-;    tvlct,orig_red,orig_green,orig_blue
-;    genv,/restore
-;    return
-;  END
+  catch, error
+  IF error NE 0 THEN BEGIN 
+    Message,!error_state.msg,/cont
+    catch,/cancel
+    tvlct,orig_red,orig_green,orig_blue
+    genv,/restore
+    return
+  END
 
   FOR i=0,1 DO BEGIN 
     device,get_visual_name= this_visual
@@ -660,6 +671,19 @@ PRO goes_overlay24, goesfile, $
    Hue = fltarr(nlon,nlat)+WaterHue
    Hue[land] = LandHue
 
+   IF config THEN $
+     CLOUD_OVERLAY_CONFIG, $
+       landwater=hue, $
+         cloudmask=cloudmask, $
+          brightmin=brightmin, $
+           brightmax=brightmax, $
+            satmin=satmin, $
+             satmax=satmax, $
+              lonmin=lonrange[0], $
+               lonmax=lonrange[1], $
+                latmin=limits[1], $
+                  latmax=limits[3]
+   
       ; Define the new Brightness/Saturation mappings
     xx=findgen(100)/99.
 
@@ -712,7 +736,8 @@ PRO goes_overlay24, goesfile, $
         tvlct,orig_red,orig_green,orig_blue,/get
         tvlct,transpose(ct)
         PlotVect,u,v,lon,lat,len=length,$
-          thick=thick,start_index=WIND_START,ncolors=N_WIND_COLORS
+          thick=thick,start_index=WIND_START,ncolors=N_WIND_COLORS, $
+            minspeed=minspeed, maxspeed=maxspeed
         tvlct,orig_red,orig_green,orig_blue
       ENDIF ELSE $
         PlotVect, u,v,lon,lat, color=col24, len=length, thick=thick
