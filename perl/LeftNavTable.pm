@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.10  2003/01/17 18:40:09  vapdev
+# Continuing work
+#
 # Revision 1.9  2003/01/16 23:47:53  vapdev
 # Continuing work
 #
@@ -101,8 +104,10 @@ sub new {
 
   #
   # Animation defaults.
+  # my $roi_hash = 
+  $self->{ANIM_DEFS} = auto_movie_defs();
 
-  my $roi_hash = auto_movie_defs();
+
 
   # Start building the tables within tables within tables within
   # tables within tables . . . needed for this navbar.
@@ -118,242 +123,38 @@ sub new {
   my $outermostrow=1;
 
   # Generic CGI object to make html code on the fly!
-  $q=CGI->new(-no_debug=>1);
+  $self->{CGI} = CGI->new(-no_debug=>1);
+  $q=$self->{CGI};
 
 
-
-#=-*=-*=-*=-*=-*=-*=-*=-*=-* Overlays =-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*
-
-
+  # We key on $type, put it at the top of the navbar so that people
+  # can navigate this page easily.
 
 
-    # Construct the table that will hold the overlay part of the nav
-    # bar. This goes in cell 1,1 of the outermost table.
+  my $overlay_table = $self->OverlayTable;
+  my $anim_table = $self->AnimTable;
+  my $ts_table = $self->Tropical_Storms_Table;
 
-  my $overlay_table = HTML::Table->new(-rows=>2,-cols=>1);
-  $overlay_table->setCaption("Cloud Overlays",'TOP');
-  $overlay_table->setStyle("{ font: Garamond, 'Times New Roman', serif; font: 50% }");
-  my @order = @{$self->{ORDER}->{OVERLAY}};
-  my ($overlay_sw_table, $overlay_qs_table);
+  my $type = $self->{TYPE};
 
+  if ($type =~ /TROPICAL_STORM/){
+    $self->setCell($outermostrow++,1,$ts_table->getTable);
+    $self->setCell($outermostrow++,1,$overlay_table->getTable);
+    $self->setCell($outermostrow++,1,$anim_table->getTable);
+  } elsif ($type =~ /OVERLAY/){
+    $self->setCell($outermostrow++,1,$overlay_table->getTable);
+    $self->setCell($outermostrow++,1,$anim_table->getTable);
+    $self->setCell($outermostrow++,1,$ts_table->getTable);
 
-     # The actual navigation links are constructed in these two tables
-     # and will get the information on which 'regions' to use from the
-     # defaults hash defined in $VAP_LIBRARY/overlay_defs_oo. The two
-     # keys of interest in this instance are the WEB->{ACTIVE} key and
-     # the WINDS->{INSTRUMENTS} key. The former dictates whether this
-     # region is active for any wind/cloud data, i.e. if WEB->{ACTIVE}
-     # = 0 this region will not appear in the navbar or the
-     # appropriate page. The latter points to any array ref whose
-     # values tell which wind data to use: [QS, SW] will produce a
-     # navigation href and a slot in both overlay pages and one
-     # individually will only produce it for the indicated SeaWinds
-     # instrument.
-
-
-     # The array @defunct_satellites refers to the cloud data
-     # satellites. This is a quick way to eliminate webprocessing of
-     # of *all* regions associated with a particular image satellite.
-
-
-    # ========= SeaWinds on QuikSCAT table ================
-
-  my @defunct_satellites = @{$website_defs->{DEFUNCT_SATELLITES}};
-
-
-  if ($self->anyOverlays('QS')) {
-    $overlay_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
-    $overlay_qs_table->setCaption("QuikSCAT",'TOP');
-    $row=1;
-    foreach (@order) {
-      $key = $_;
-      $value = $overlay_defs->{$key};
-      $skip=0;
-      if (@defunct_satellites) {
-	foreach my $s (@defunct_satellites){
-	  $skip = grep (/$s/i, $key);
-	  last if $skip
-	}
-      }
-      next if $skip;
-      next if !$value->{WEB}->{ACTIVE};
-      #$q=CGI->new(-no_debug=>1);
-      $link = $q->a({-href=>"overlay_Q.html#$key"},
-		    $value->{WEB}->{NAME});
-      $content=$q->p({-align=>'LEFT'},$link);
-      $overlay_qs_table->setCell($row++, 1, $content);
-    }
-  }
-
-    # ========= SeaWinds on ADEOS-II table ============
-
-    # first we determine whether this one is needed at all! I may be
-    # that someone has decided to turn not make any SeaWinds on
-    # ADEOS-II overlays.
-
-
-  if ($self->anyOverlays('SW')) {
-    $overlay_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
-    $overlay_sw_table->setCaption("SeaWinds",'TOP');
-    $row=1;
-    @order = keys %{$overlay_defs} unless @order;
-    foreach (@order) {
-      $key = $_;
-      $value = $overlay_defs->{$key};
-	# value here is a reference to a hash, see
-	# $VAP_LIBRARY/overlay_defs_oo for its definition.
-      $skip=0;
-      if (@defunct_satellites) {
-	foreach my $s (@defunct_satellites){
-	  $skip = grep (/$s/i, $key);
-	  last if $skip
-	}
-      }
-      next if $skip;
-      next if !$value->{WEB}->{ACTIVE};
-
-      #$q=CGI->new(-no_debug=>1);
-      $link = $q->a({-href=>"overlay_S.html#$key"},
-		    $value->{WEB}->{NAME} );
-      $content=$q->p({-align=>'LEFT'},$link);
-      $overlay_sw_table->setCell($row++, 1, $content);
-    }
+  } else {
+    $self->setCell($outermostrow++,1,$anim_table->getTable);
+    $self->setCell($outermostrow++,1,$overlay_table->getTable);
+    $self->setCell($outermostrow++,1,$ts_table->getTable);
   }
 
 
 
-    # Now put the two tables into the overall `overlay' cell of the
-    # Left Nav table
 
-  $row = 1;
-  $overlay_table->setCell($row++,1,$overlay_qs_table->getTable) 
-    if $overlay_qs_table;
-  $overlay_table->setCell($row,1,$overlay_sw_table->getTable) 
-    if $overlay_sw_table;
-
-
-    # And put the overlay table into outermost table, self
-  $self->setCell($outermostrow++,1,$overlay_table->getTable);
-
-
-
-
-#=-*=-*=-*=-*=-*=-*=-*=-*  Animations    *=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*
-
-
-
-
-    # Construct the table that will hold the animation part of the nav
-    # bar. This goes in cell 2,1. The animations won't split QS from
-    # SW, so there's no need for the additional layer of tables as is
-    # the case with the overlays.
-
-  my $anim_table = HTML::Table->new(-rows=>9,-cols=>1);
-  $anim_table->setCaption("Animations",'TOP');
-  $anim_table->setStyle("{ font: Garamond, 'Times New Roman', serif; size: 50%}");
-  @order = @{$self->{ORDER}->{ANIMATION}};
-
-  $row=0;
-
-  foreach (@order) {
-    $key = $_;
-    $value = $roi_hash->{$key};
-    $row++;
-    #$q=CGI->new(-no_debug=>1);
-    $link = $q->a({-href=>"anim.html#$key"},$value);
-    $content=$q->p({-align=>'LEFT'},$link);
-    $anim_table->setCell($row, 1, $content);
-  }
-
-
-    # Now put the anim_table into self
-
-  $self->setCell($outermostrow++,1,$anim_table->getTable); 
-
-
-
-#=-*=-*=-*=-*=-*=-*=-*=-*  Tropical Storms *=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*
-
-
-
-
-    # Construct the table that will hold the Tropical Storms. Cell
-    # 3,1. this will get the information need to construct itself from
-    # the tropical_storm_defs_oo hash.
-
-  my $ts_table = HTML::Table->new(-caption=>"Tropical Storms", 
-				  -rows=>2,-col=>1);
-  $ts_table->setCaption("Tropical Storms",'TOP');
-  $ts_table->setStyle(" { font: Garamond, 'Times New Roman', serif; size: 50%}");
-
-  my ($ts_sw_table, $ts_qs_table);
-  @order = @{$self->{ORDER}->{TROPICAL_STORM}};
-
-    # ============= Seawinds on QuikSCAT  =================
-
-  if ($self->anyTSOverlays('QS')) {
-    $ts_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
-    $ts_qs_table->setCaption("QuikSCAT",'TOP');
-    $row=0;
-    @order = @{$tsoo_defs->{SATELLITES}} unless @order;
-    foreach my $sat (@order) {
-      $skip=0;
-      if (@defunct_satellites) {
-	foreach my $s (@defunct_satellites){
-	  $skip = grep (/$s/i, $sat);
-	  last if $skip
-	}
-      }
-      next if $skip;
-      $row++;
-      #$q=CGI->new(-no_debug=>1);
-      $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
-      $link = $q->a({-href=>"ts_Q.html#$sat"},
-		    "$webname");
-      $content=$q->p({-align=>'LEFT'},$link);
-      $ts_qs_table->setCell($row, 1, $content);
-    }
-  }
-
-    # ============= Seawinds on ADEOS-II =================
-
-  if ($self->anyTSOverlays('SW')) {
-
-    $ts_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
-    $ts_sw_table->setCaption("SeaWinds",'TOP');
-    $row=0;
-
-    @order = @{$tsoo_defs->{SATELLITES}} unless @order;
-    foreach my $sat (@order) {
-      $skip=0;
-      if (@defunct_satellites) {
-	foreach my $s (@defunct_satellites){
-	  $skip = grep (/$s/i, $sat);
-	  last if $skip
-	}
-      }
-      next if $skip;
-      $row++;
-      #$q=CGI->new(-no_debug=>1);
-      $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
-      $link = $q->a({-href=>"ts_S.html#$sat"},
-		    "$webname");
-      $content=$q->p({-align=>'LEFT'},$link);
-      $ts_sw_table->setCell($row, 1, $content);
-    }
-
-  }
-
-    # Now put these two tables into the overlay Tropical Storm cell
-    # for the Nav Bar
-  $row = 1;
-  $ts_table->setCell($row++,1,$ts_qs_table->getTable) if $ts_qs_table;
-  $ts_table->setCell($row,1,$ts_sw_table->getTable) if $ts_sw_table;
-
-    # And put the Tropical storm table into the proper slot in the
-    # navbar.
-
-  $self->setCell($outermostrow++,1,$ts_table->getTable);
 
 
 #=-*=-*=-*=-*=-* Now, for the rest of the NavBar =-*=-*=-*=-*=-*=-*=-*=-*
@@ -423,7 +224,7 @@ sub anyOverlays{
 }
 
 sub anyTSOverlays{
-
+  my $self=shift;
   my $web = $tsoo_defs->{WEB};
   if (@_){
     while (my ($k, $v) = each %{$web}) {
@@ -442,6 +243,261 @@ sub anyTSOverlays{
     }
   }
   return 0;
+}
+
+#=-*=-*=-*=-*=-*=-*=-*=-*=-* Overlays =-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*
+
+
+sub OverlayTable{
+
+  my $self=shift;
+  my $q=$self->{CGI};
+
+
+
+    # Construct the table that will hold the overlay part of the nav
+    # bar. 
+
+  my $overlay_table = HTML::Table->new(-rows=>2,-cols=>1);
+  $overlay_table->setCaption("Cloud Overlays",'TOP');
+  $overlay_table->setStyle("{ font: Garamond, 'Times New Roman', serif; font: 50% }");
+  my @order = @{$self->{ORDER}->{OVERLAY}};
+  my ($overlay_sw_table, $overlay_qs_table);
+
+
+     # The actual navigation links are constructed in these two tables
+     # and will get the information on which 'regions' to use from the
+     # defaults hash defined in $VAP_LIBRARY/overlay_defs_oo. The two
+     # keys of interest in this instance are the WEB->{ACTIVE} key and
+     # the WINDS->{INSTRUMENTS} key. The former dictates whether this
+     # region is active for any wind/cloud data, i.e. if WEB->{ACTIVE}
+     # = 0 this region will not appear in the navbar or the
+     # appropriate page. The latter points to any array ref whose
+     # values tell which wind data to use: [QS, SW] will produce a
+     # navigation href and a slot in both overlay pages and one
+     # individually will only produce it for the indicated SeaWinds
+     # instrument.
+
+
+     # The array @defunct_satellites refers to the cloud data
+     # satellites. This is a quick way to eliminate webprocessing of
+     # of *all* regions associated with a particular image satellite.
+
+
+    # ========= SeaWinds on QuikSCAT table ================
+
+  my @defunct_satellites = @{$website_defs->{DEFUNCT_SATELLITES}};
+
+
+  if ($self->anyOverlays('QS')) {
+    $overlay_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    my $caption = $q->a({-href=>"overlay_Q.html"},
+			 "QuikSCAT");
+    $overlay_qs_table->setCaption($caption,'TOP');
+    my $row=1;
+    foreach (@order) {
+      my $key = $_;
+      my $value = $overlay_defs->{$key};
+#       $skip=0;
+#       if (@defunct_satellites) {
+# 	foreach my $s (@defunct_satellites){
+# 	  $skip = grep (/$s/i, $key);
+# 	  last if $skip
+# 	}
+#       }
+#       next if $skip;
+      next if !$value->{WEB}->{ACTIVE};
+      #$q=CGI->new(-no_debug=>1);
+      my $link = $q->a({-href=>"overlay_Q.html#$key"},
+		    $value->{WEB}->{NAME});
+      my $content=$q->p({-align=>'LEFT'},$link);
+      $overlay_qs_table->setCell($row++, 1, $content);
+    }
+  }
+
+    # ========= SeaWinds on ADEOS-II table ============
+
+    # first we determine whether this one is needed at all! I may be
+    # that someone has decided to turn not make any SeaWinds on
+    # ADEOS-II overlays.
+
+
+  if ($self->anyOverlays('SW')) {
+    $overlay_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    my $caption = $q->a({-href=>"overlay_S.html"},
+			 "SeaWinds");
+    $overlay_sw_table->setCaption($caption,'TOP');
+    my $row=1;
+    @order = keys %{$overlay_defs} unless @order;
+    foreach (@order) {
+      my $key = $_;
+      my $value = $overlay_defs->{$key};
+	# value here is a reference to a hash, see
+	# $VAP_LIBRARY/overlay_defs_oo for its definition.
+#       $skip=0;
+#       if (@defunct_satellites) {
+# 	foreach my $s (@defunct_satellites){
+# 	  $skip = grep (/$s/i, $key);
+# 	  last if $skip
+# 	}
+#       }
+#       next if $skip;
+      next if !$value->{WEB}->{ACTIVE};
+
+      #$q=CGI->new(-no_debug=>1);
+      my $link = $q->a({-href=>"overlay_S.html#$key"},
+		    $value->{WEB}->{NAME} );
+      my $content=$q->p({-align=>'LEFT'},$link);
+      $overlay_sw_table->setCell($row++, 1, $content);
+    }
+  }
+
+
+
+    # Now put the two tables into the overall `overlay' cell of the
+    # Left Nav table
+
+  my $row = 1;
+  $overlay_table->setCell($row++,1,$overlay_qs_table->getTable) 
+    if $overlay_qs_table;
+  $overlay_table->setCell($row,1,$overlay_sw_table->getTable) 
+    if $overlay_sw_table;
+
+  $overlay_table;
+}
+
+#=-*=-*=-*=-*=-*=-*=-*=-*  Animations    *=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*
+
+
+sub AnimTable{
+
+  my $self=shift;
+  my $q=$self->{CGI};
+
+
+    # Construct the table that will hold the animation part of the nav
+    # bar. The animations won't split QS from SW, so there's no need
+    # for the additional layer of tables as is the case with the
+    # overlays.
+
+  my $anim_table = HTML::Table->new(-rows=>9,-cols=>1);
+  my $caption = $q->a({-href=>"anim.html"},
+			 "Animations");
+  $anim_table->setCaption($caption,'TOP');
+  $anim_table->setStyle("{ font: Garamond, 'Times New Roman', serif; size: 50%}");
+  my @order = @{$self->{ORDER}->{ANIMATION}};
+
+  my $row=0;
+  my $roi_hash = $self->{ANIM_DEFS};
+
+  foreach (@order) {
+    my $key = $_;
+    my $value = $roi_hash->{$key};
+    $row++;
+    #$q=CGI->new(-no_debug=>1);
+    my $link = $q->a({-href=>"anim.html#$key"},$value);
+    my $content=$q->p({-align=>'LEFT'},$link);
+    $anim_table->setCell($row, 1, $content);
+  }
+
+
+    # Now put the anim_table into self
+
+  $anim_table;
+
+}
+
+#=-*=-*=-*=-*=-*=-*=-*=-*  Tropical Storms *=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*
+
+sub Tropical_Storms_Table{
+  my $self=shift;
+  my $q=$self->{CGI};
+    # Construct the table that will hold the Tropical Storms. This
+    # will get the information need to construct itself from the
+    # tropical_storm_defs_oo hash.
+
+  my $ts_table = HTML::Table->new(-caption=>"Tropical Storms", 
+				  -rows=>3,-col=>1);
+  my $caption = $q->a({-href=>"ts_Q.html"},
+			 "QuikSCAT");
+  $ts_table->setCaption("Tropical Storms",'TOP');
+  $ts_table->setStyle(" { font: Garamond, 'Times New Roman', serif; size: 50%}");
+
+  my ($ts_sw_table, $ts_qs_table);
+  my @order = @{$self->{ORDER}->{TROPICAL_STORM}};
+
+    # ============= Seawinds on QuikSCAT  =================
+
+  if ($self->anyTSOverlays('QS')) {
+    $ts_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    my $caption = $q->a({-href=>"ts_Q.html"},
+			 "QuikSCAT");
+    $ts_qs_table->setCaption($caption,'TOP');
+    my $row=0;
+    @order = @{$tsoo_defs->{SATELLITES}} unless @order;
+    foreach my $sat (@order) {
+#
+#       I put this in to handle GMS5, which has some problems, but now
+#       I'm going to comment it out. Even if there's no cloud data, at
+#       least we can see the winds close to a storm.
+
+#       $skip=0;
+#       if (@defunct_satellites) {
+# 	foreach my $s (@defunct_satellites){
+# 	  $skip = grep (/$s/i, $sat);
+# 	  last if $skip
+# 	}
+#    }
+#       next if $skip;
+
+      $row++;
+      #$q=CGI->new(-no_debug=>1);
+      my $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
+      my $link = $q->a({-href=>"ts_Q.html#$sat"},
+		       "$webname");
+      my $content=$q->p({-align=>'LEFT'},$link);
+      $ts_qs_table->setCell($row, 1, $content);
+    }
+  }
+
+    # ============= Seawinds on ADEOS-II =================
+
+  if ($self->anyTSOverlays('SW')) {
+
+    $ts_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    my $caption = $q->a({-href=>"ts_S.html"},
+			 "SeaWinds");
+    $ts_sw_table->setCaption($caption,'TOP');
+    my $row=0;
+
+    @order = @{$tsoo_defs->{SATELLITES}} unless @order;
+    foreach my $sat (@order) {
+#       $skip=0;
+#       if (@defunct_satellites) {
+# 	foreach my $s (@defunct_satellites){
+# 	  $skip = grep (/$s/i, $sat);
+# 	  last if $skip
+# 	}
+#    }
+#      next if $skip;
+      $row++;
+      #$q=CGI->new(-no_debug=>1);
+      my $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
+      my $link = $q->a({-href=>"ts_S.html#$sat"},
+		    "$webname");
+      my $content=$q->p({-align=>'LEFT'},$link);
+      $ts_sw_table->setCell($row, 1, $content);
+    }
+    
+  }
+
+    # Now put these two tables into the overlay Tropical Storm cell
+    # for the Nav Bar
+  my $row = 1;
+  $ts_table->setCell($row++,1,$ts_qs_table->getTable) if $ts_qs_table;
+  $ts_table->setCell($row,1,$ts_sw_table->getTable) if $ts_sw_table;
+
+  $ts_table;
 }
 
 1;

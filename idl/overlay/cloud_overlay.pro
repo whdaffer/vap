@@ -190,6 +190,9 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.21  2002/08/09 23:43:08  vapdev
+; Added wfilter and supporting code. Documentation.
+;
 ; Revision 1.20  2002/05/03 01:09:24  vapdev
 ; Changed various overlay routines to use new vapdev/vaprun env variables.
 ;
@@ -441,17 +444,12 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   
 
   IF auto_cloud_overlay THEN BEGIN 
-    openr, llun, lockfile,/ get, error=err
-    IF err NE 0 THEN BEGIN 
-      Message,!error_state.msg,/cont
-      return
-    ENDIF 
-    pid = 0L
-    readf, llun, pid &  free_lun, llun
+    tmp = strsplit(lockfile,'.',/extract)
+    pid = tmp[n_elements(tmp)-1]
     pid = strtrim(pid,2)
     openw, llun, lockfile, /get, error= err
     IF err NE 0 THEN BEGIN 
-      message,!err_string,/cont
+      message,!err_state.msg,/cont
       return
    ENDIF 
   ENDIF 

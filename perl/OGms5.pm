@@ -146,8 +146,8 @@ sub new {
   my $host = $ENV{HOSTNAME} || `hostname`;
   $self->{LOCAL_HOST}=$host . ".jpl.nasa.gov";
   $self->{DELTA} = 6 unless $self->{DELTA};
-  bless  bless $self, ref($class) || $class;
-  $self->_croak( "Need KEY INTERESTING_GMS5_PRODUCTS\n",
+  bless  $self, ref($class) || $class;
+  $self->{ERROROBJ}->_croak( "Need KEY INTERESTING_GMS5_PRODUCTS\n",
 		 "$0->new ERROR!")
     unless exists $self->{INTERESTING_GMS5_PRODUCTS};
 

@@ -8,6 +8,9 @@ package OTS;
 # Modification Log:
 #
 # $Log$
+# Revision 1.6  2003/01/16 23:47:53  vapdev
+# Continuing work
+#
 # Revision 1.5  2003/01/04 00:16:21  vapdev
 # Continuing work
 #
@@ -392,7 +395,7 @@ sub parseTropicalStorms{
     next if $starttime && ($time1 < $starttime);
     next if $endtime && ($time1 > $endtime);
     my $sat = $self->whichSatellite($lon, $lat);
-    next unless $test_satellite eq $sat;
+    next unless $sat && $test_satellite eq $sat;
 
 
     push @{$self->{STORMS}->{$name}->{VAPTIME}},    $vaptime;
@@ -771,7 +774,7 @@ sub makeOverlay{
   my $idltimestring=join("",@tmp[0 .. 4]);
   my $idltmpfilestr;
   my $windfilter =   ($self->{WINDFILTER} eq 'Q')? "Q": "S";
-  my $outputname="$region-$type-$storm-$idltimestring" . "_" . $windfilter . ".jpeg";
+  my $outputname="$region-$type-$storm-$idltimestring" . "-" . $windfilter . ".jpeg";
 
 
   my @maplimits=($lon-10,$lat-10,$lon+10,$lat+10);
@@ -784,7 +787,23 @@ sub makeOverlay{
 
   if ($region eq 'GMS5') {
 
-    
+      # Make sure out maplimits are acceptable. Only need to check
+      # long, since lat is +/-60
+
+    my @limits = @{$self->{DEFAULTS}->{SATELLITE_REGIONS}->{GMS5}->{Region}};
+    $maplimits[0] = $maplimits[0] < $limits[0]? $limits[0]:$maplimits[0];
+    $maplimits[2] = $maplimits[2] > $limits[2]? $limits[2]:$maplimits[2];
+    if (abs($maplimits[0]-$maplimits[2]) < 10) {
+      $self->{ERROROBJ}->_croak(
+				["Longitude range is too small for",
+				 "storm, $storm",
+				 "at lon: $lon, lat: $lat",
+				 "minlon: $maplimits[0]",
+				 "maxlon: $maplimits[2]\n"],
+				"OTS: MAPLIMITS PROBLEM!"
+			       );
+    }
+    $maplimits="[".join(",",@maplimits)."]";
     my $gms=OGms5->new( DATETIME => $modidltime, 
 		      ERROROBJ => $self->{ERROROBJ},
 		      TYPE => 'ir1');

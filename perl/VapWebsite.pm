@@ -60,6 +60,8 @@ use Carp;
 use Cwd;
 use File::Copy;
 use File::Basename;
+use Time::Local;
+
 use vars qw/$VERSION $usage $website_defs $tsoo_defs $overlay_defs/;
 
 BEGIN {
@@ -104,6 +106,7 @@ use VapCGI;
 use HTML::Table;
 use LeftNavTable;
 use TopNavTable;
+use BottomNavTable;
 use VapUtil;
 use VapError;
 
@@ -132,11 +135,19 @@ sub new{
   $self->{SIZE} = int($size/1024.0 + 0.5);
 
   my $defs = "VapWebsite_defs";
-  require $defs || $self->{ERROROBJ}->_croak("Can't `require' $defs\n", 
-				 "VapWebsite: require ERROR");
+  my $defsfile = $ENV{VAP_LIBRARY} . "/$defs";
+  open DEFSFILE, "<$defsfile" or $self->{ERROROBJ}->_croak("Can't open $defsfile\n", 
+				 "VapWebsite: open ERROR");
+  do {
+    local $/=undef;
+    my $lines = <DEFSFILE>;
+    eval $lines;
+  };
+  close DEFSFILE;
 
   $self->{WEB}->{DEFS} = $website_defs;
   $self->{CGI} = VapCGI->new(-nodebug=>1);
+  $self->{BOTTOMTABLE}= BottomNavTable->new;
 
   my ($name0, $path0) = fileparse($0);
   $self->{NAME0} = $name0;
@@ -168,7 +179,7 @@ sub parseFilename{
   $self->{PATH} = $path;
   my @fields=();
   if ($ext =~ /(jpeg|jpg)/i){
-    if ($name =~ /-(TYP|DEP|STO)-/) {
+    if ($name =~ /-(TYP|HUR|CYC|DEP|STO)-/) {
 
         # ---- It's a tropical storm image ----------
         # The format for these files is 
@@ -178,23 +189,38 @@ sub parseFilename{
         #    where 
         #
         #        SAT = GOES(8|10) or GMS5
-        #        STORMTYPE = TYP|DEP|STO
+        #        STORMTYPE = CYC|HUR|TYP|DEP|STO
         #        NAME = the storm's name
         #        DATE = the date of the data used
         #        TYPE = Q|S Q=QuikSCAT.
         #
 
-      my ($region, $stormtype, $name, $date,$insttype) = 
-	($name =~ /(\w+)-(\w+)-(\w+)-(\d+)-(\w+)\..*/);
-      my $year = strsum($date,0,4);
-      $self->{TYPE} = "TROPICAL_STORM";
-      $self->{DESTINATION} = $ENV{VAP_TS_ARCHIVE} . "/$year";
-      $self->{WEBPAGE} = $type2webpage{$self->{TYPE}} . ".html";
-      $self->{WHICH_SEAWINDS} = $insttype;
+      my ($region, $stormtype, $name, $date,$insttype) = split /-/,$name;
+      $self->{REGION} = $region;
+
+      my $year = substr($date,0,4);
+      $self->{YEAR} = $year;
 
         # Just to make the code a little more readible!
       $self->{TROPICAL_STORM}->{DEFS} = $self->{PROCESSOR_DEFAULTS};
       delete $self->{PROCESSOR_DEFAULTS};
+
+        # If we're close to the new year, we have to look at the
+        # previous year too!
+
+      my $startofyear = timelocal(1,0,0,1,0,$year-1900);
+      my $active_time = $self->{WEB}->{DEFS}->{TS_ACTIVE_TIME};
+      $self->read_ts_manifest;
+
+      $self->{ALSO_CHECK} = $year-1 
+	if (($^T - $startofyear) <= $active_time);
+
+      $self->{TYPE} = "TROPICAL_STORM";
+      $self->{DESTINATION} = $ENV{VAP_TS_ARCHIVE} . "/$year";
+      $self->{WHICH_SEAWINDS} = $insttype;
+      $self->{WEBPAGE} = 
+	$type2webpage{$self->{TYPE}} . "_" . $insttype . ".html";
+
 
     } else {
 
@@ -333,7 +359,8 @@ sub moveFile{
     $self->redoSymlink($self->{WWWFILE},$symlink);
 
     unlink $file;
-
+  } elsif ($type =~ /TROPICAL_STORM/) {
+    ;
   } else {
 
     my $msg="Unknown type <$type>\n";
@@ -456,17 +483,117 @@ sub updateWebsite{
 	       TROPICAL_STORM=>$self->{WEB}->{DEFS}->{TROPICAL_STORM}->{ORDER}};
 
   my $type=$self->{TYPE};
+  my $bodytable;
 
     # With the exception of TROPICAL_STORM type, which has to be
     # handled differently, here find the mtime of each of the files
     # for this type, store the information in $self, and then use it
     # to rewrite this particular webpage.
 
-  my $bodytable;
+
   if ($type =~ /TROPICAL_STORM/i) {
 
-      # Tropical Storm.
+      # --------------- Tropical Storm ------------------
+
+
     my @order = @{$order->{TROPICAL_STORM}};
+    my $ts_defs = $self->{TROPICAL_STORM}->{DEFS};
+    my $stormranking2description = $ts_defs->{STORMRANKING2DESCRIPTION};
+    my $ts_web = $ts_defs->{WEB};
+    my $hash = $self->getTSlist;
+    my $nrows=@order;
+    $bodytable = HTML::Table->new(-rows=>$nrows,
+				  -cols=>1,
+				  -width=>"80\%");
+    my $q=$self->{CGI};
+    my $title=$self->{WEB}->{DEFS}->{TROPICAL_STORM}->{TITLE};
+    my $keywords =$self->{WEB}->{DEFS}->{TROPICAL_STORM}->{META}->{KEYWORDS};
+    my $h1=$self->{WEB}->{DEFS}->{TROPICAL_STORM}->{HEADING1};
+
+    $self->startPage($title,$keywords,$h1,$type,$order);
+    my $row=1;
+    my ($table_this_storm,$table_this_region);
+
+    foreach my $region (@order){
+      if ($hash->{$region}) {
+
+	my $n_storms_in_region = keys(%{$hash->{$region}});
+	my $caption = $q->a({-name=>"$region"},$ts_web->{$region}->{NAME});
+	$table_this_region = HTML::Table->new( -rows=>$n_storms_in_region,
+					       -cols=>1,
+					     -border=>1);
+	$table_this_region->setCaption($caption,'TOP');
+
+	my @sorted_storms = $self->sortby_time_last_seen($hash->{$region});
+
+	my $region_row=1;
+
+	foreach my $name (@sorted_storms){
+	  my $this_storm = $hash->{$region}->{$name};
+	  my @files=@{$this_storm->{FILES}};
+	  my $n_storm_rows = @files;
+	  $table_this_storm=HTML::Table->new( -rows=>$n_storm_rows,
+					      -cols=>1);
+	  $table_this_storm->setCaption($name,'TOP');
+	  my $storm_row=1;
+
+	  foreach my $f (@files){
+	    my ($sat2, $storm_type2, $name2, $date2,$year2, $type2) = 
+	      parsename($f);
+	    my $file_in_archive = $ENV{VAP_TS_ARCHIVE} . "/$year2/$f";
+	    my ($size,$mtime) = (stat($file_in_archive))[7,9];
+
+	    $size = int($size/1024);
+
+	    my ($y, $m, $d, $h, $mm) = 
+	      ($date2 =~ /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/);
+
+	    $date2 = "$y/$m/$d/$h/$mm";
+	    my $string = $stormranking2description->{$storm_type2};
+	    $string .= " $date2";
+	    my $alt = "$sat2 $storm_type2 $name2 $date2 $type2";
+	    my $createstring = "Created: " . scalar(localtime($mtime));
+	    my $sizestring .= "Size: $size (Kb)";
+	    my $linelink = $q->a({-href=>"/images/storms_archive/$year2/$f",
+#				 -name=>"$_",
+				 -align=>'right'},
+				 $string);
+	    my $img = $q->img({-src=>"/images/storms_archive/$year2/$f",
+			      -valign=>'top',
+			       -width=>'200',
+			       -height=>'150'});
+	    my $clickableimage = $q->a({-href=>"/images/storms_archive/$year2/$f",
+					-alt=>"$alt",
+					-valign=>'top',
+					-width=>'200',
+					-height=>'150'}, $img);
+
+
+	    my $content = $q->p({-align=>'left'}, "$linelink");
+	    #$content .= $q->p({-align=>'left'},$createstring);
+	    #$content .= $q->p({-align=>'left'},$sizestring);
+	    $content .= $createstring . $sizestring;
+	    $content .= $q->p({-align=>'left'}, $clickableimage);
+	    $table_this_storm->setCellVAlign($storm_row,1,'top');
+	    $table_this_storm->setCell($storm_row++,1,$content);
+
+	  } # end loop over files in storm
+
+	  $table_this_region->setCell($region_row++,1,$table_this_storm->getTable);
+	  $table_this_storm=undef;
+
+	} # end loop over storms in region
+
+	$bodytable->setCellVAlign($row,1,'top');
+	$bodytable->setCell($row++,1,
+			    $table_this_region->getTable);
+
+
+	$table_this_region=undef
+      }
+    }
+
+
 
 
   } elsif ($type =~ /OVERLAY/i) {
@@ -509,7 +636,7 @@ sub updateWebsite{
       #### ===== here we start building the page ======= ###
 
 
-    $self->startPage($title,$keywords,$h1,0,$order);
+    $self->startPage($title,$keywords,$h1,$type,$order);
 
 
     my $nrows = @order;
@@ -519,6 +646,9 @@ sub updateWebsite{
     my $row=1;
 
     foreach (@order){
+
+        # $self->{WEBSPACE} is the list of files in the webspace that
+        # need entries in the webpage.
 
       if ($self->{WEBSPACE}->{$_}){
 	my ($file,$size,$mtime)=@{$self->{WEBSPACE}->{$_}};
@@ -596,7 +726,7 @@ sub updateWebsite{
       #### ===== here we start building the page ======= ###
 
 
-    $self->startPage($title,$keywords,$h1,0,$order);
+    $self->startPage($title,$keywords,$h1,$type,$order);
 
     foreach (@order){
 
@@ -819,7 +949,7 @@ sub Overlayfilename2region{
 
 =head1 startPage
 
-=head2 Usage: $self->startPage($title, $keywords, $h1,$isTropicalStorm, $order );
+=head2 Usage: $self->startPage($title, $keywords, $h1,$type, $order );
 
 =over 4
 
@@ -829,8 +959,7 @@ sub Overlayfilename2region{
 
 =item * $h1: The level 1 header of this page
 
-=item * $isTropicalStorm: flag, to tell whether this is a tropical
-                          storm page.
+=item * $type: TROPICAL_STORM or OVERLAY or ANIMATION. what type of product it is.
 
 =item * $order: A hash containing the order to put the item in the navigation bar.
 
@@ -840,7 +969,7 @@ sub Overlayfilename2region{
 
 
 sub startPage{
-  my ($self, $title, $keywords, $h1,$isTropicalStorm, $order) = @_;
+  my ($self, $title, $keywords, $h1,$type, $order) = @_;
   my $q=$self->{CGI};
 
   my $html = $q->start_html(
@@ -893,20 +1022,27 @@ sub startPage{
   my $topnavtable=TopNavTable->new();
 
     # For the left navbar
-  my $leftnavtable=LeftNavTable->new(-isTropicalStorm => $isTropicalStorm,
+  my $leftnavtable=LeftNavTable->new(TYPE => $type,
 				     #-width=>"20\%",
 				     WEBHOST => $self->{WEB}->{DEFS}->{WEBHOST},
 				     ORDER => $order);
 
   my $toptablehtml = $topnavtable->getTable;
   $toptablehtml .=  $q->h1($h1);
+  $toptablehtml .= $q->a({-name=>"TOP"},"");
   $outsidetable->setCell(1,1,$toptablehtml);
   $outsidetable->setCellColSpan(1,1,2);
   $outsidetable->setCell(2,1,$leftnavtable->getTable);
   $outsidetable->setCellVAlign(2,1,'top');
+  $outsidetable->setCell(3,1,$self->{BOTTOMTABLE}->getTable);
+  delete $self->{BOTTOMTABLE};
+  $outsidetable->setCellColSpan(3,1,2);
+  $outsidetable->setCellVAlign(3,1,'TOP');
+  $outsidetable->setCellVAlign(3,1,'CENTER');
+  #$outsizetable->setCellStyle();
 
     # We can't convert to the table to HTML just yet, because we have
-    # to put the `body' table in it first.
+    # to put the `body' table in it first. So we save it in the hash for later.
 
   $self->{OUTSIDETABLE} = $outsidetable;
   $self->{HTML} = $html;
@@ -1026,5 +1162,174 @@ sub goodLink{
   my $test = readlink($link);
   return 0 if !$test || (! -e $test);
   return 1;
+}
+
+sub read_ts_manifest{
+  my $self=shift;
+  my $manifest_file = $self->{WEB}->{DEFS}->{TS_MANIFEST};
+  my $manifest;
+  open MANIFEST, "<$manifest_file" or 
+    $self->{ERROROBJ}->_croak(["Error reading TS manifest file",
+			       "$manifest_file\n"],
+				 "Error reading TS MANIFEST");
+  do {
+    local $/=undef;
+    my $lines = <MANIFEST>;
+    eval $lines;
+  };
+
+  $self->{TROPICAL_STORM}->{MANIFEST} = $manifest;
+  1;
+}
+
+
+sub parsename{
+  # The files look like GMS5-CYC-01B-200010161251-X.jpeg
+  my $file=shift;
+  die unless $file;
+  my @tmp=split /\./, $file;
+  my ($sat, $storm_type, $name, $date,$type)  = split /-/, $tmp[0];
+  my ($year, $month, $day, $hour, $min) = $date =~ 
+    /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/;
+  ($sat, $storm_type, $name, $date,$year, $type);
+}
+
+sub bydate{
+  my ($sata, $storm_typea, $namea, $datea,$yeara,$typea) = parsename($a);
+  my ($satb, $storm_typeb, $nameb, $dateb, $yearb,$typeb) = parsename($b);
+  $datea <=> $dateb;
+}
+
+
+sub getTSlist{
+
+    # return the list of storms which will make up the webpage.
+
+  my $self=shift;
+  my $type_re = ".*-" . $self->{WHICH_SEAWINDS} . "\.jpeg";
+  my $manifest = $self->{TROPICAL_STORM}->{MANIFEST};
+  my $active_time = $self->{WEB}->{DEFS}->{TS_ACTIVE_TIME};
+  my $file = $self->{NAME};
+  my ($sat, $storm_type, $name, $date,$year, $type) = 
+    parsename($file);
+
+  push @{$manifest->{$year}->{$name}->{FILES}}, $file . ".jpeg";
+  $manifest->{$year}->{$name}->{LAST_SEEN} = $self->{MTIME};
+  $manifest->{$year}->{$name}->{LAST_SEEN_DATETIME} = 
+    scalar(localtime($self->{MTIME}));
+  $manifest->{$year}->{ACTIVE}=1;
+  $manifest->{$year}->{$name}->{ACTIVE} = 1;
+
+  my $storms_hash = ();
+
+    # Loop over the `year's in manifest file. Those more than 1 year
+    # old can be set inactive automatically (if they haven't been
+    # already). We have to check last year's storms because we may be
+    # close to the turn of the year and a storm may have persisted
+    # across New Years, or it may be within `active_time' of the
+    # current run, in which case we still want to display the
+    # storm. At the end of these loops we should have a hash that
+    # contains the list of the storms which will make up this page.
+
+  while (my ($year, $year_hash) = each %{$manifest} ) {
+    if ($self->{YEAR} - $year > 1){
+      if ($year_hash->{ACTIVE}) {
+ 	  # These storms are all more than a year old, so they can't
+	  # be active.
+	while (my ($name, $this_storm) = each %{$year_hash} ){
+	  $this_storm->{ACTIVE} = 0;
+	}
+	$year_hash->{ACTIVE} = 0;
+      }
+    } else {
+      
+      my $there_are_active_storms = 0;
+      while (my ($name, $this_storm) = each %{$year_hash} ){
+	next if ref($this_storm) ne "HASH";
+	if (($^T-$this_storm->{LAST_SEEN}) > $active_time){
+	  $this_storm->{ACTIVE} = 0;
+	} else {
+	  $there_are_active_storms=1;
+	  $storms_hash->{$year}->{$name} = $this_storm;
+	  $year_hash->{ACTIVE}=1;
+	}
+      }
+      $year_hash->{ACTIVE} = 0 unless $there_are_active_storms;
+    }
+  }
+
+    # The hash `storm_hash' still has a 'year' dimension, which might
+    # have more than one year in it, if we're close to the turn fo the
+    # year. It would be nice to get rid of. What we really want is the
+    # hash arranged by 'region' and then by 'storm.' Also, we only
+    # want files of the same 'seawinds' origin (Q/S) as the current
+    # product. That's what we'll do now.
+
+  my $final_hash = ();
+  while (my ($year, $year_hash) = each %{$storms_hash}){
+    while (my ($name, $this_storm) = each %{$year_hash}){
+      next if ref($this_storm) ne "HASH";      
+      my @files = grep /$type_re/, @{$this_storm->{FILES}};
+      if (@files){
+	foreach my $f (@files){
+	  my $region = $self->TSfilename2region($f);
+	  push @{$final_hash->{$region}->{$name}->{FILES}}, $f;
+	  $final_hash->{$region}->{$name}->{LAST_SEEN} = 
+	    $this_storm->{LAST_SEEN};
+
+	}
+      }
+    }
+  }
+  $storms_hash = undef;
+
+    # Ahh, but the files in the final hash may not be sorted!
+
+
+  my @regions = keys %{$final_hash};
+  foreach my $region (@regions){
+    my $regions_hash = $final_hash->{$region};
+    my @storms = keys %{$regions_hash};
+    foreach my $name (@storms){
+      my @files = @{$regions_hash->{$name}->{FILES}};
+      if (@files>1){
+	@files = sort bydate @files;
+
+  	  # bydate sorts them in ascending order! I want them to
+  	  # appear in the page in DESCENDING order, so that the latest
+  	  # image is at the top!
+
+	@files = reverse @files;
+	my $last_seen = $regions_hash->{$name}->{LAST_SEEN};
+
+	  # When I tried to simple reset fields within these subhashs,
+	  # I ran into some strange things in this code, which seemed
+	  # to be ghost references to empty hash locations.  So to be
+	  # safe I delete this key to make sure the hash is clean.
+
+	delete $regions_hash->{$name};
+	
+	@{$regions_hash->{$name}->{FILES}} = @files;
+	$regions_hash->{$name}->{LAST_SEEN} = $last_seen;
+      }
+    }
+  }
+  $self->{TS_FINAL_HASH} = $final_hash;
+  $final_hash;
+}
+
+sub sortby_time_last_seen{
+  my $self=shift;
+  my $hash=shift;
+  %VapWebsite::name_vs_lastseen = ();
+  while (my ($k, $v) = each %{$hash}){
+    $VapWebsite::name_vs_lastseen{$k} = $v->{LAST_SEEN};
+  }
+  my @sortedkeys = sort bylastseen keys(%VapWebsite::name_vs_lastseen);
+  
+}
+
+sub bylastseen {
+  $VapWebsite::name_vs_lastseen{$b} <=> $VapWebsite::name_vs_lastseen{$a};
 }
 1;

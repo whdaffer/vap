@@ -137,6 +137,7 @@ foreach (@storms){
   $errorobj->_croak("Error delivering results\n",
 		  "$0: failure delivering product") unless 
 		    $website->updateWebsite;
+  $website = undef;
 
 }
 

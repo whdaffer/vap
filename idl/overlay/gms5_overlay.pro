@@ -308,6 +308,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.25  2002/12/20 23:49:08  vapdev
+; Changed the format of the output file so as
+; to make the Website side of things a
+; little easier.
+;
 ; Revision 1.24  2002/05/08 16:02:11  vapdev
 ; Changed ENV variables to reflect new scenario
 ;
@@ -500,6 +505,7 @@ PRO gms5_overlay, datetime, gmsType, $
      latlim [0] LT -60 OR latlim[1] GT 60 THEN BEGIN 
     Message,'MapLimits out of range!',/cont
     print,' mapLimits must be bound by [70,-60,200,60]'
+    print,'Input mapLimits: ',maplimits
     status = 0
     return
   ENDIF 

@@ -46,6 +46,9 @@ Make a SeaWinds VAP animation
 # Modification Log:
 #
 # $Log$
+# Revision 1.5  2003/01/16 23:47:53  vapdev
+# Continuing work
+#
 # Revision 1.4  2002/08/21 18:29:28  vapdev
 # *** empty log message ***
 #
@@ -62,7 +65,7 @@ Make a SeaWinds VAP animation
 #
 use strict;
 no strict 'refs';
-use lib $ENV{VAP_SFTWR_TOP};
+use lib $ENV{VAP_SFTWR_PERL};
 use Getopt::Long;
 use Animate;
 use VapWebsite;

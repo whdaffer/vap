@@ -47,14 +47,10 @@ $tsoo_defs = {STORMS_HOST => "www.solar.ifa.hawaii.edu",
 			  GMS5 => 'GMS5'
 			  },
 	      SATELLITES => [qw<GOESEAST GOESWEST GMS5>],
-	      WEB =>{ NAME => { GOESEAST => "Atlantic", 
-				GOESWEST => "E. Pacific",
-				GMS5 => "W. Pacific"}},
-
 	      WEB=>{
-		    GOESEAST => {NAME=>"Atlantic", ACTIVE=>1, INSTRUMENT=>[qw/QS SW/]},
-		    GOESWEST => {NAME=>"E. Pacific",ACTIVE=>1, INSTRUMENT=>[qw/QS SW/]},
-		    GMS5 =>     {NAME=>"W. Pacific",ACTIVE=>0, INSTRUMENT=>[qw/QS SW/]}
+		    GOESEAST => {NAME=>"Atlantic",  ACTIVE=>1, INSTRUMENTS=>[qw/QS SW/]},
+		    GOESWEST => {NAME=>"E. Pacific",ACTIVE=>1, INSTRUMENTS=>[qw/QS SW/]},
+		    GMS5 =>     {NAME=>"W. Pacific",ACTIVE=>1, INSTRUMENTS=>[qw/QS SW/]}
 		   },
 	      STORMRANKING => {
 			       '???' => 0,
@@ -62,7 +58,13 @@ $tsoo_defs = {STORMS_HOST => "www.solar.ifa.hawaii.edu",
 			       STO => 2,
 			       CYC => 3,
 			       HUR => 3,
-			       TYP => 3}
+			       TYP => 3},
+	      STORMRANKING2DESCRIPTION => {
+					   DEP => 'Tropical Depression',
+					   STO => 'Tropical Storm',
+					   CYC => 'Cyclone',
+					   HUR => 'Hurricane',
+					   TYP => 'Typhoon'}
 	     };
 
 $tsoo_defs->{REMOTE_URL} = "http://".
