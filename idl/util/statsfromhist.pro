@@ -35,6 +35,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/03/29 17:10:40  vapuser
+; Changed some comments
+;
 ; Revision 1.1  1999/03/29 17:07:03  vapuser
 ; Initial revision
 ;
@@ -52,6 +55,15 @@ FUNCTION statsfromhist, hist, x
   ; Returns [mean,variance] or [0,-1] if error.
 
   retarray = [0,-1]
+  IF n_params() LT 1 THEN BEGIN 
+    Usage,"stats=statsfromhist(histogram [,xarray])"
+    return,[0,-1]
+  ENDIF 
+
+  IF NOT exist(hist) THEN BEGIN 
+    Message,'Input parameter HIST is required',/cont
+    return,[0,-1]
+  ENDIF 
 
   IF NOT exist(x) THEN x = lindgen(n_elements(hist))
   
