@@ -67,6 +67,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/11 17:13:11  vapuser
+; Initial revision
+;
 ;
 ;
 ;Copyright (c) 1999, William Daffer
@@ -78,7 +81,7 @@ PRO chkcfg, name, val, cfg_struct, boolean=boolean
   bool = keyword_set(boolean)
   IF n_elements(cfg_struct) NE 0 THEN BEGIN 
     tags = tag_names(cfg_struct)
-    x =  where( strpos(tags, strupcase(name) ) NE -1, nx )
+    x =  where( tags EQ  strupcase(name), nx )
     IF nx NE 0 THEN $
       sval = cfg_struct.(x[0])
     IF n_elements(val) eq 0 THEN BEGIN 
