@@ -29,7 +29,7 @@
 ;                                       ; added to it.
 ;                      time_inc,      $ ; select wind files this number 
 ;                                       ; of hours +/- time given 
-;                                       ; in date_time. def=3
+;                                       ; in date_time. def=6
 ;                      wpath = wpath, $ ; path to wind files (def=$VAP_WINDS)
 ;                      overlay_path = overlay_path,$ ; path to output overlay file
 ;                                       ; def = $VAP_ROOT/overlay
@@ -43,6 +43,7 @@
 ;                                             ; excludeCols='0,38:40,75'
 ;                                             ; means exclude columns 
 ;                                             ; 0, 38,39,40 and 75.
+;                      Length=Length    ; Vector Length
 ;                      jpeg=jepg        ; Make a jpeg file
 ;                      gif=gif          ; Make a gif file
 ;                      ps =  ps         ; make a postscript instead of
@@ -64,7 +65,7 @@
 ; OPTIONAL INPUTS: 
 ;
 ;        time_inc   - Select wind files within this time of
-;                     'date_time' default=+/- 3 hours
+;                     'date_time' default=+/- 6 hours
 ;
 ;
 ;	
@@ -83,6 +84,7 @@
 ;                      Default=[1,1] meaning, take every vector.
 ;        ExcludeCols - (I) string, ExcludeCols='0,38:40,75' means
 ;                      exclude columns 0, 38,39,40 and 75
+;        Legnth      - Vector Length
 ;        ps          - Make Postscript file instead of gif.
 ;        pid         - used with cronjobs
 ;
@@ -120,6 +122,9 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.7  1999/04/06 18:36:37  vapuser
+; Added in GMS 5 code
+;
 ; Revision 1.6  1999/01/25 19:46:47  vapuser
 ; Can't remember.
 ;
@@ -149,7 +154,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                                        ; (format = yyyy/mm/dd/hh) 
                       time_inc,      $ ; select wind files this number 
                                        ; of hours +/- time given 
-                                       ; in date_time. def=3
+                                       ; in date_time. def=6
                       wpath = wpath, $ ; path to wind files (def=$VAP_WINDS)
                       overlay_path = overlay_path,$ ; path to output overlay file
                                        ; def = $VAP_OVERLAY
@@ -163,7 +168,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                                              ; excludeCols='0,38:40,75'
                                              ; means exclude columns 
                                              ; 0, 38,39,40 and 75.
-
+                      length = length, $ ; Length of vectors
                       ps =  ps,$       ; make a postscript file.
                       gif=gif,$        ; Make gif file
                       pid=pid,$        ; Used with cron jobs
@@ -177,7 +182,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
  Rcs_id = "$Id$";
 
-  auto_cloud_overlay = keyword_set(pid) ; flag for cronjob runs.
+  auto_cloud_overlay = n_elements(pid)  NE 0 ; flag for cronjob runs.
   user = getenv('USER')
   IF (user NE "" ) AND auto_cloud_overlay THEN BEGIN 
     lockfile = (findfile('/tmp/' + user + '.cloud_overlay.lock', count=n))(0)
@@ -210,18 +215,18 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     return
   ENDIF 
 
-  IF n_params() NE  2 THEN BEGIN 
+  IF n_params() LT   2 THEN BEGIN 
     message,' Both paramters (CLOUD_FILE & DATE_TIME) are required ',/cont
     return
   ENDIF 
-
+  gms =  0
   IF N_Elements(gmsType) NE 0  THEN BEGIN
     gms = 1
     gms5datetime = cloud_file
   ENDIF 
     
 
-
+  IF n_elements(length) EQ 0 THEN length = 2
   ps =  keyword_set( ps );
   gif = keyword_set(gif)
   jpeg = (gif OR ps ) EQ 0;
@@ -234,7 +239,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   ENDCASE
   Message,'File will be output as ' + OutputType,/info
 
-  IF N_elements( time_inc ) EQ 0 THEN time_inc = 3
+  IF N_elements( time_inc ) EQ 0 THEN time_inc = 6
   IF n_elements( wpath ) EQ 0 THEN wpath =  '$VAP_WINDS'
   IF n_elements( overlay_path ) EQ 0 THEN overlay_path =  '$VAP_OVERLAY'
 
@@ -315,19 +320,20 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     printf,llun,"INFO: " + str
 
 
-  wf = GetWindFiles( date_time, delta=time_inc, path= wpath, filter='Q*')
-  nf = n_elements(wf)
+  wf = GetWindFiles( date_time, delta=time_inc, path= wpath, filter='Q*', /twoway)
+  nn = where(strlen(wf) NE 0, nf)
+  IF nf NE 0 THEN wf = wf[nn]
 
   
-  IF strlen(wf[0]) EQ 0 AND nf EQ 1 THEN BEGIN 
-    str = 'ERROR: No wind files in dir ' + WPATH
-    Message,str,/cont
-    IF auto_cloud_overlay THEN BEGIN 
-      printf,llun,str
-      free_lun,llun
-    ENDIF 
-    return 
-  ENDIF ELSE BEGIN
+;  IF strlen(wf[0]) EQ 0 AND nf EQ 1 THEN BEGIN 
+;    str = 'ERROR: No wind files in dir ' + WPATH
+;    Message,str,/cont
+;    IF auto_cloud_overlay THEN BEGIN 
+;      printf,llun,str
+;      free_lun,llun
+;    ENDIF 
+;    return 
+;  ENDIF ELSE BEGIN
 
       ; Get the visual name, it determines which 
       ; version of goes_overlay to call.
@@ -352,13 +358,13 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
         IF visual EQ 'PSEUDOCOLOR' THEN BEGIN 
           GOES_OVERLAY, cloud_file, wfiles=wf, $
            minspeed=2, maxspeed=20, xsize=960,ysiz=720,$
-            len=2,getoutfile=ofile, thumbnail=thumbnail, $
+            len=length,getoutfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif,/z
         ENDIF ELSE BEGIN 
           GOES_OVERLAY24,cloud_file,windFiles=wf,$
            minspeed=2, maxspeed=20, xsize=960,ysiz=720, $
-            len=2,outfile=ofile, thumbnail=thumbnail, $
+            len=length,outfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg
         ENDELSE 
@@ -366,7 +372,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
        'GMS' : BEGIN 
          gms5_overlay, gms5datetime, gmsType, windfiles=wf,$
           minspeed=2, maxspeed=20, $
-            len=2,outfile=ofile, thumbnail=thumbnail, $
+            len=length,outfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif, $
                 maplimits=MapLimits
@@ -392,7 +398,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
       printf, wlun, thumbnail
       free_lun, wlun
     ENDIF 
-  ENDELSE  
+;  ENDELSE  
   IF exist( llun ) THEN   free_lun,llun
   cd,cur_dir
 
