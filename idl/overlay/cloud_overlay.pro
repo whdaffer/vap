@@ -147,6 +147,10 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.14  2000/05/17 16:52:12  vapuser
+; Make the routine continue to the end even if the cloud file isn't
+; there or can't be read.
+;
 ; Revision 1.13  2000/05/16 15:05:16  vapuser
 ; Changed from multi-valued 'use_rf' to single-valued 'rainflag'
 ;
@@ -354,6 +358,14 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   
 
   IF auto_cloud_overlay THEN BEGIN 
+    openr, llun, lockfile,/ get, error=err
+    IF err NE 0 THEN BEGIN 
+      Message,!error_state.msg,/cont
+      return
+    ENDIF 
+    pid = 0L
+    readf, llun, pid &  free_lun, llun
+    pid = strtrim(pid,2)
     openw, llun, lockfile, /get, error= err
     IF err NE 0 THEN BEGIN 
       message,!err_string,/cont
@@ -484,7 +496,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
       Message,"Error in overlay processing"
 
     IF auto_cloud_overlay THEN BEGIN 
-      openw, wlun, '/tmp/auto_cloud_overlay_output_file',/get,error=err
+      file = OVERLAY_PATH + "/auto_cloud_overlay_output_file."+pid
+      openw, wlun, file,/get,error=err
       IF err NE 0 THEN BEGIN
         str =  'ERROR: ' + !err_string
         printf,llun,str
