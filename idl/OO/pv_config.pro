@@ -31,6 +31,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.10  1999/11/12 19:53:28  vapuser
+; Added code to support new DIRTH selected vectors in the
+; new L2B data product. (per Bryan's request)
+;
 ; Revision 1.9  1999/10/21 22:47:40  vapuser
 ; Added pv_finfo stuff (support for
 ; turning plotting on/off or deleting single
@@ -762,7 +766,7 @@ FUNCTION ConfigChoiceBgroup_Events, event
           ; If this is not pseudo color, we'll assume the grayscale
           ; color and construct the color under that assumption
         tvlct,r,g,b,/get
-        ii = (*info).ColorIndex <  n_elements(r)
+        ii = (*info).ColorIndex <  (n_elements(r)-1)
         rgb = [ r[ii], g[ii], b[ii] ]
         (*info).ColorIndex = Rgb2True(rgb,/transpose)
       ENDIF 
@@ -1211,7 +1215,8 @@ PRO pv_config, GROUP=Group
       Event_Func='ConfigChoiceBgroup_Events',$
       UVALUE='CONFIGURECHOICEBGROUP', $
       Set_Value=0,$
-      /Return_Name)
+      /Return_Name,$
+      /NO_RELEASE)
 
 
   BulletinBoardBase = WIDGET_BASE(TLB, $
