@@ -62,6 +62,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/23 22:24:45  vapuser
+; Added ability to handle vector input.
+;
 ; Revision 1.1  1998/10/05 17:10:50  vapuser
 ; Initial revision
 ;
@@ -69,11 +72,11 @@
 ;Copyright (c) 1998, William Daffer
 ;-
 
-FUNCTION DeEnvVar, path
-
+FUNCTION DeEnvVar, path, isFile=isFile
    ; replace environmental variables with their expansion
    rcsid = "$Id$"
    IF n_elements(path) EQ 0 THEN return,''
+   IsFile = keyword_set(isFile)
    np = n_elements(path)
    IF np EQ 1 THEN fullpath = '' ELSE fullpath = strarr(np)
    FOR p=0,np-1 DO BEGIN 
@@ -88,8 +91,12 @@ FUNCTION DeEnvVar, path
        ENDIF ELSE BEGIN
          fullpath[p] = fullpath[p]+tmp[i] 
        ENDELSE 
-       IF strpos(fullpath[p],'/') NE strlen(fullpath[p])-1 THEN $
+         ; If it isn't a file, put a '/' at the end.
+       IF NOT isFile AND $
+          (rstrpos(fullpath[p],'/') NE strlen(fullpath[p])-1) THEN $
           fullpath[p] = fullpath[p]+'/'
+         ; If it doesn't begin with a '/' or a '.', put a '/' at the
+         ; beginning.
        IF strmid(fullpath[p],0,1) NE '/' AND $
           strmid(fullpath[p],0,1) NE '.' THEN $
          fullpath[p] =  '/' + fullpath[p]
