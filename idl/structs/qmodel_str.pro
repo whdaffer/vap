@@ -11,14 +11,12 @@
 ;
 ;
 ;
-; CALLING SEQUENCE:  structure=qmodel_str(nlon,nlat)
+; CALLING SEQUENCE:  structure=qmodel_str()
 ;
 ;
 ; 
 ; INPUTS:  
 ;
-;      nlon : number of longitude elements
-;      nlat : number of latitude elements
 ;
 ;
 ;
@@ -28,7 +26,6 @@
 ;	
 ; KEYWORD PARAMETERS:  
 ;
-;     region - a 4-vector defining the region.
 ;
 ;
 ; OUTPUTS:   1 structure of type QMODEL
@@ -69,6 +66,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/07 18:29:36  vapuser
+; Took out lon and lat arrays. Added some CreationTime,
+; StartTime, EndTime and Lonpar, to make it like the
+; HDF version.
+;
 ; Revision 1.1  1998/10/01 17:59:17  vapuser
 ; Initial revision
 ;
@@ -77,34 +79,45 @@
 ;Copyright (c) 1998, California Institute of Technology
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
-FUNCTION qmodel_str, nlon, nlat, region=region
-COMMON qmodel_cmn, qmodel_defined, qmodel_size, qmodel
-
-rcsid = "$Id$"
-;
-IF N_Elements( nlon ) EQ 0 THEN nlon = 360.
-IF N_Elements( nlat ) EQ 0 THEN nlat = 121
 
 
-IF n_elements( qmodel_defined ) eq 0 THEN BEGIN
+FUNCTION qmodel_str
+  COMMON qmodel_cmn, qmodel_defined, qmodel
 
-  qmodel =  { QMODELDATA,$
-              CreationTime : '',$
-              StartTime    : '',$
-              EndTime      : '',$
-              LonPar       : fltarr(3),$
-              LatPar       : fltarr(3)
-              U      : fltarr(nlon, nlat ), $
-              V      : fltarr(nlon, nlat )  }
+  rcsid = "$Id$"
+  ;
 
-  qmodel_defined = 1
-  qmodel_size = n_Tags( qmodel, /length )
-ENDIF
-retmodel = qmodel
+  IF n_elements( qmodel_defined ) eq 0 THEN BEGIN
 
-IF n_elemetns(region) EQ 4 THEN retmodel.region = region
+    hdr={ QMODELHDR, $
+          LongName     : bytarr(48),$
+          ShortName    : bytarr(24),$ 
+          NLon         : 0l        ,$
+          NLat         : 0l        ,$
+          LonPar       : fltarr(3) ,$
+          LatPar       : fltarr(3) ,$
+          Region       : fltarr(4) ,$
+          CreationTime : bytarr(16),$ ;vaptime, yyyy/mm/dd/hh/mm
+          StartTime    : bytarr(16),$ ;yyyy/mqm/dd/hh/mm
+          EndTime      : bytarr(16),$ ;yyyy/mm/dd/hh/mm
+          Version      : bytarr(16) $
+        }
 
-RETURN, retmodel
+    qmodel =  { QMODELDATA,$
+                hdr : replicate(hdr,1), $
+                U   : Ptr_New(), $
+                V   : Ptr_New(), $
+                Lon : Ptr_New(), $
+                Lat : Ptr_New()  $
+              }
+
+    tmp = byte('QMODEL')
+    nn = strlen('QMODEL')
+    qmodel.hdr.ShortName[0:nn-1] = tmp
+    qmodel_defined = 1
+  ENDIF
+
+RETURN, qmodel
 end
 
 
