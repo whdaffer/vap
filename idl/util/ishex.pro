@@ -32,6 +32,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/07 23:15:56  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -58,13 +61,20 @@ FUNCTION isHex, numstring
     return,-1
   ENDIF 
 
+  tnumstring =  strcompress(numstring,/remove_all)
+  IF strmid(tnumstring,0,1) EQ "'" THEN BEGIN 
+      ; String is of form 'yyyyy'x. Remove leading and trailing stuff.
+    tnumstring =  strmid(tnumstring,1,strlen(tnumstring)-1)
+    tnumstring =  strmid(tnumstring,0,strlen(tnumstring)-2)
+  ENDIF 
+
   nn = n_elements(numstring)
   num = intarr(nn)
 
   teststrings =  ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
   nteststrings =  n_elements(teststrings)
 
-  copy = strupcase(numstring)
+  copy = strupcase(tnumstring)
 
   FOR i=0,nn-1 DO BEGIN 
 
@@ -87,7 +97,7 @@ FUNCTION isHex, numstring
     ENDREP UNTIL nonhex OR j EQ len
     num[i] = nonhex NE 1
   ENDFOR 
-
+  IF nn EQ 1 THEN num = num[0]
   return,num
 END
 
