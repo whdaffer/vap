@@ -1,4 +1,3 @@
-#!/usr/bin/perl
 #
 # $Id$
 #
@@ -15,21 +14,26 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.2  2002/04/30 20:23:22  vapdev
+# Modified the 'use lib' statement
+#
 # Revision 1.1  2001/02/09 18:52:57  vapuser
 # Initial revision
 #
 #
 #
 package Qs;
-
-use lib getenv('VAP_SFTWR_TOP')."/vap/perl";
+use strict;
+use vars qw/@ISA @EXPORT $VAP_WINDS $VAP_ROOT $IDLEXE/;
+use subs qw/&getWindFiles &getFileTimes/;
+use lib $ENV{VAP_SFTWR_TOP};
 use Cwd 'chdir', 'getcwd';
 use Time::Local;
 use Net::FTP;
 use Carp;
 use File::Basename;
 use VapUtil;
-use Vapdefs;
+#use Vapdefs;
 
 @ISA = qw(Exporter);
 @EXPORT=qw(getWindFiles getFileTimes);
@@ -37,7 +41,7 @@ use Vapdefs;
 
 #BEGIN {
 
-#   $VAP_LIB=$ENV{'VAP_LIB'}   || "/usr/people/vapuser/Qscat/Library";
+#   $VAP_LIB=$ENV{'VAP_LIB'}   || 
 
 #     # Get the Overlay Defaults
 #   $overlay_defs_file=$VAP_LIB."/overlay_defs";
@@ -55,7 +59,7 @@ use Vapdefs;
 
 sub getWindFiles{
 
-  local ($startime, $endtime, @files, $st, $et, @in_range);
+  my ($starttime, $endtime, @files, $st, $et, @in_range);
 
   # usage: @files=getWindFiles(yyyy/mm/dd/hh/mm, yyyy/mm/dd/hh/mm)
   if (!$_[0]) {
@@ -69,10 +73,11 @@ sub getWindFiles{
     $endtime = idltime2systime($_[1]);
   }
 
-  ($path,@files)=getFileList();
+  my ($path,@files)=getFileList();
+  my @in_range;
   croak "Can't get file list!\n" unless $#files> -1;
   for (@files) {
-    ($st,$et) = getFileTimes($_);
+    my ($st,$et) = getFileTimes($_);
     push @in_range, $_ unless ($st > $endtime || $et < $starttime);
   }  
   ($path,@in_range);
@@ -81,7 +86,7 @@ sub getWindFiles{
 
 
 sub getFileList{
-  local($dir,@files);
+  my ($dir,@files);
   $dir=shift || "$VAP_WINDS";
   opendir DIR, "$dir" || croak "Can't open directory $dir\n";
   @files=grep /^QS\d+\.S\d+\.E\d+/, readdir(DIR);
@@ -91,7 +96,7 @@ sub getFileList{
 }
 
 sub getFileTimes{
-  local($file,$name,$path,$year,$month,$day,$hour,
+  my($file,$name,$path,$year,$month,$day,$hour,
 	$min,$start,$end,$starttime,$endtime);
 
   $file=shift || 
@@ -110,11 +115,11 @@ sub getFileTimes{
 
 sub FindClosestInTimeAndDistance{
   
-  local($lon, $lat, $time, $starttime, $endtime, $tolerance, $ofile, $delflag,
+  my ($lon, $lat, $time, $starttime, $endtime, $tolerance, $ofile, $delflag,
 	$randomtag, $idltmpfile, $ofile, $t0, $time_delta, 
 	$year, $month, $day, $hour, $min, $k, $kk, $v, $t, @t, 
 	$name, $value, $path);
-  local(%hash) = ();
+  my %hash = ();
   
   $lon=shift || croak "Param 1 <LON> is required\n";
   $lat=shift || croak "Param 2 <LAT> is required\n";
@@ -143,18 +148,18 @@ sub FindClosestInTimeAndDistance{
   print IDLTMPFILE "exit\n";
   close IDLTMPFILE;
   
-  $r=system( "$Qs::IDLEXE $idltmpfile")/256;
-  die "Bad return from system( $IDLEXE $tmpfile)\n" if $r != 0;
+  my $r=system( "$Qs::IDLEXE $idltmpfile")/256;
+  croak "Bad return from system( $IDLEXE $idltmpfile)\n" if $r != 0;
   
   unlink $idltmpfile || warn "Couldn't unlink($idltmpfile)\n";
-  die "Can't find $ofile!\n" if (! -e $ofile) ;
+  croak "Can't find $ofile!\n" if (! -e $ofile) ;
   
   open OFILE, "<$ofile" || croak"Can't reopen $ofile\n";
-  $first=1;
+  my $first=1;
   while (<OFILE>){
     chop;
     last if /^-+\s+ERROR\s+-+.*$/;
-    ($k,$v) = split /:/;
+    my ($k,$v) = split /:/;
     $k =~ s/\s+//g;
     $v =~ s/\s+//g;
     
@@ -182,7 +187,7 @@ sub FindClosestInTimeAndDistance{
     # these are then put into the hash using $FILE as the key.
     #
     # Pretty slick, eh?
-
+    my ($FILE, $ROWTIME, $LOCATION, $DISTANCE, $INSWATH, $v, $path, $suffix);
     if (!$v) {
       if (!$first){
 	$hash{$FILE}{rowtime}  = $ROWTIME;
@@ -201,28 +206,29 @@ sub FindClosestInTimeAndDistance{
   unlink $ofile if $delflag;
 
 
-  @keys=keys %hash;
+  my @keys=keys %hash;
+  my (@files, @ret, @times, @t);
   if ($#keys==0) {
     @files=Bracket($path, $keys[0]);
     @ret=($path, $hash{$keys[0]}{rowtime}, @files);
   } elsif ($#keys > 0) {
 
-    foreach $key (keys %hash){
-      ($year,$month,$day,$hour,$min)=split "/", $hash{$key}{rowtime};
+    foreach my $key (keys %hash){
+      my ($year,$month,$day,$hour,$min)=split "/", $hash{$key}{rowtime};
       push @times, 
 	join("|", $key,timegm( 0, $min, $hour, $day, $month-1, $year-1900));
     }
 
     @times = sort @times;
 
-    foreach $f (@times){
-      ($file,$t)=split(/\|/, $f);
+    foreach my $f (@times){
+      my ($file,$t)=split(/\|/, $f);
       push @files, $file;
       push @t, $t;
     }
 
     @files=Bracket($path, @files);
-    $time=systime2idltime(($t[0]+$t[$#t])/2);
+    my $time=systime2idltime(($t[0]+$t[$#t])/2);
     @ret=($path, $time, @files);
 
   }
@@ -237,8 +243,8 @@ sub Bracket{
     # the list and the one after the last.
     # requires that getFileList returns the files sorted.
 
-  local( $name, $path, @files, @keepfiles, $i, $first, $last);
-  local($path) = shift || croak "Param 1, the path, I need it!\n";
+  my ( $name, $path, @files, @keepfiles, $i, $first, $last);
+  $path = shift || croak "Param 1, the path, I need it!\n";
   @keepfiles = @_;
   $first = shift || croak "Param 2, The FIRST file, I need it!\n";
 
@@ -246,7 +252,7 @@ sub Bracket{
 
   ($path, @files) = getFileList($path);
 
-  $i=-1;
+  my $i=-1;
   for (@files) {
     if (/$first/ && $i){
       push @keepfiles, $files[$i] ;
@@ -258,22 +264,21 @@ sub Bracket{
     $i++;
   }
   @keepfiles = sort @keepfiles;
-     
 }
 
 sub getBefore{
-  @files = BrackFile(@_);
-  $ret=$files[0];
+  my @files = BrackFile(@_);
+  my $ret=$files[0];
 }
 
 sub getAfter{
-  @files = BrackFile(@_);
-  $ret=$files[1];
+  my @files = BrackFile(@_);
+  my $ret=$files[1];
 }
 
 sub bydate{
-  @aa=split(/\|/, $a);
-  @bb=split(/\|/, $b);
+  my @aa=split(/\|/, $a);
+  my @bb=split(/\|/, $b);
   $bb[1] <=> $aa[1];
 }
 1;
