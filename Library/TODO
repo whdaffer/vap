@@ -1,0 +1,11 @@
+1. Get rid of all dependencies on VapUtil.pm!
+ 
+   Very little code depends on VapUtil anymore, but there are those
+   last little niggling dependencies I haven't gotten rid of yet, so I
+   can't take out the 'use VapUtil' statements until I do! Which means
+   I can't get rid of the obsolete vap_defs file, since VapUtil.pm
+   `requires' it. The only thing in there are the email addresses to
+   send error email and that functionality has been taken over by the
+   VapError.pm object, which has its own default file. So, until the
+   last dependencies to VapUtil are removed, we have to carry around
+   both the module and its defaults file.

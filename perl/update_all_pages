@@ -1,0 +1,9 @@
+#!/usr/bin/perl -w
+foreach my $p (qw/OVERLAY TROPICAL_STORM/){
+  foreach (qw(Q S)){
+    `update_website $p $_` or die "$!\n";
+  }
+}
+
+`update_website ANIMATION` or die "$!\n";
+exit;

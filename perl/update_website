@@ -1,0 +1,29 @@
+#!/usr/bin/perl -w 
+use strict;
+use Cwd;
+use VapWebsite;
+use VapError;
+my $product = shift;
+$product = uc $product;
+my $filter = shift;
+$filter = uc $filter if $filter;
+my $website;
+my $usage="update_website TYPE [FILTER]\n";
+die $usage unless $product;
+
+my $error = VapError->new();
+
+if ($filter) {
+  $website = VapWebsite->new(UPDATE=> $product,
+				WINDFILTER=>$filter,
+				ERROROBJ=>$error);
+} else {
+  $website = VapWebsite->new(UPDATE=> $product,
+				ERROROBJ=>$error);
+  
+}
+
+$website->updateWebsite;
+
+exit;
+
