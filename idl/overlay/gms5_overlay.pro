@@ -232,6 +232,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.18  2000/05/17 20:46:06  vapuser
+; Wrap all output filename constructors with strcompress(/remove_all)
+;
 ; Revision 1.17  2000/05/17 16:51:09  vapuser
 ; Make the routine continue to the end even if the gms5 file isn't
 ; there or can't be read.
@@ -370,7 +373,7 @@ PRO gms5_overlay, datetime, gmsType, $
 
   clouddata = 1
   IF isa(datetime,/string,/nonempty) THEN BEGIN 
-    Message,"Input parameter DATETIME must be a nonempty STRING!",/cont
+    ;Message,"Input parameter DATETIME must be a nonempty STRING!",/cont
 
     datetime_str = Gms5ParseDatetime(Datetime)
     IF NOT isa(datetime_str,/structure,name='GMS5DATETIME') THEN BEGIN 
@@ -425,7 +428,7 @@ PRO gms5_overlay, datetime, gmsType, $
         xsize = 8.4
         Message,'Xsize defaulting to 8.4',/info
       ENDELSE 
-    ENDIF 
+    ENDIF ELSE IF ps THEN xsize =  xsize < 11
     IF n_elements(ysize) EQ 0 THEN BEGIN 
       IF NOT ps THEN BEGIN 
         ysize = 720
@@ -434,7 +437,7 @@ PRO gms5_overlay, datetime, gmsType, $
         ysize = 6.5
         Message,'Ysize defaulting to 6.5',/info
       ENDELSE 
-    ENDIF 
+    ENDIF ELSE IF ps THEN ysize = ysize <  8
   ENDELSE 
 
   xoffset = 1.2
@@ -565,8 +568,8 @@ PRO gms5_overlay, datetime, gmsType, $
     set_plot,'z'
     device,set_resolution=[xsize,ysize],z_buff=0
   ENDIF ELSE BEGIN 
-    lonpar =  [ lonlim, (lonlim[1]-lonlim[0])/(2*72*xsize) ]
-    latpar =  [ latlim, (latlim[1]-latlim[0])/(2*72*ysize) ]
+    lonpar =  [ lonlim, (lonlim[1]-lonlim[0]+1)/(2.*72*xsize) ]
+    latpar =  [ latlim, (latlim[1]-latlim[0]+1)/(2.*72*ysize) ]
 
     set_plot,'PS'
     ps_form = { XSIZE          : xsize   ,$ 
@@ -883,7 +886,7 @@ PRO gms5_overlay, datetime, gmsType, $
     xyouts, 0.5, ytitle, title, align=0.5, $
         /normal, charsize=1.05, color=text_color
     IF n_elements(subtitle) NE 0 THEN BEGIN 
-      xyouts, 0.5, ysubtitle. subtitle, align=0.5, $
+      xyouts, 0.5, ysubtitle, subtitle, align=0.5, $
         /normal, charsize=0.75, color=text_color
     ENDIF 
 
