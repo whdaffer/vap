@@ -83,6 +83,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/22 21:17:47  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -91,10 +94,10 @@
 
 FUNCTION CheckForLock, pid, filename, user, dir=dir
   rcsid = "$Id$"
-  IF n_params() eq 2 THEN BEGIN 
+  IF n_params() ge 2 THEN BEGIN 
     IF n_elements(dir) EQ 0 THEN dir = '/tmp'
     IF N_Elements(user) EQ 0 THEN User = GetEnv("USER")
-    f = findfile(dir + '/' + user + filename,count=n)
+    f = findfile(dir + '/' + user + '.' + filename,count=n)
     IF n NE 0 THEN BEGIN 
       openr, lun, f[0],/get,err=err
       IF err NE 0 THEN BEGIN 
