@@ -5,8 +5,34 @@
 # Modification History
 #
 # $Log$
+# Revision 1.1  2000/02/08 18:24:54  vapuser
+# Initial revision
+#
 #
 #
 
-%vap_defs=( Error_Mail_Address =>
-	   ["vapuser@catspaw.jpl.nasa.gov","whdaffer@earthlink.net"] );
+  $VAP_DISK    = $ENV{'VAP_DISK'}           || "/disk5";
+  $VAP_ROOT    = $ENV{'VAP_ROOT'}           || "$VAP_DISK/vap";
+  $VAP_WINDS   = $ENV{'VAP_WINDS'}          || "$VAP_DISK/winds/qscat/Rnoaa";
+  $VAP_ANIM    = $ENV{'VAP_ANIM'}           || "$VAP_ROOT/anim";
+  $VAP_OVERLAY = $ENV{'VAP_OVERLAY'}        || "$VAP_ROOT/overlay";
+  $VAP_WWW_TOP = $ENV{'VAP_WWW_TOP'}        || "$VAP_ROOT/www/htdocs";
+  $ARCHIVETOP  = $ENV{'VAP_GOES_TOPDIR'}    || "$VAP_ROOT/goes";
+  $GRIDDINGTOP = $ENV{'VAP_GOES_GRIDDED_TOPDIR'} || 
+      "$ARCHIVETOP/gridded_files";
+  $IDLEXE=$ENV{'IDLEXE'};
+  $VAP_OVERLAY_ARCHIVE = $ENV{'VAP_OVERLAY_ARCHIVE'} ||
+      $VAP_WWW_TOP."/images/overlay_archive";
+  $FTPDIR=$ENV{'FTPDIR'} || "/disk5/ftp/";
+
+  # If you don't want the email messages, Mike, just change the following to:
+
+  %vap_defs=( Error_Mail_Address =>
+     ["vapuser\@catspaw.jpl.nasa.gov", "whdaffer\@earthlink.net"] );
+
+  # When I'm on vacation, send mail to 
+  # Mike Spencer, vapuser and me@yahoo
+  #
+  #%vap_defs=( Error_Mail_Address =>
+  #	   ["Michael.Spencer\@jpl.nasa.gov","vapuser\@catspaw.jpl.nasa.gov",
+  #         "whdaffer\@yahoo.com"] );
