@@ -7,7 +7,7 @@
 ;
 ; CATEGORY:  File I/O
 ;
-; CALLING SEQUENCE:  basename=basename(files)
+; CALLING SEQUENCE:  basename=basename(files [,extsep = extsep])
 ; 
 ; INPUTS:  
 ;
@@ -15,7 +15,12 @@
 ;
 ; OPTIONAL INPUTS:  None
 ;	
-; KEYWORD PARAMETERS:  None
+; KEYWORD PARAMETERS:  extsep : single character. This is the
+;                     character that separates the extensions. If this
+;                     keyword is set, the routine returns the filename
+;                     with the last extension (if there are any)
+;                     stripped off. If it isn't present, this routine
+;                     returns everything except the path.
 ;
 ; OUTPUTS:  
 ;   Failure: -1
@@ -36,6 +41,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/04/07 19:16:10  vapuser
+; Return scalar output for scalar input
+;
 ; Revision 1.1  1998/11/23 23:35:43  vapuser
 ; Initial revision
 ;
@@ -43,7 +51,7 @@
 ;Copyright (c) 1998, William Daffer
 ;-
 
-FUNCTION basename, filenames
+FUNCTION basename, filenames, extsep=extsep
    
    IF n_params() LT 1 THEN BEGIN 
      Message,'Usage: basenames = basename(filenames)',/cont
@@ -57,7 +65,13 @@ FUNCTION basename, filenames
    basenames = strarr(nf)
    FOR f=0l,nf-1 DO BEGIN 
      s = rstrpos(filenames[f],'/')+1
-     basenames[f] = strmid(filenames[f],s[0],strlen(filenames[f])-s)
+     IF n_elements(extsep) EQ 0 THEN BEGIN 
+       basenames[f] = strmid(filenames[f],s[0],strlen(filenames[f])-s)
+     ENDIF ELSE BEGIN 
+       tmp = strmid(filenames[f],s[0],strlen(filenames[f])-s)
+       t = rstrpos( tmp, extsep )
+       basenames[f] =  strmid(tmp,0,t)
+     ENDELSE 
    ENDFOR
    IF nf EQ 1 THEN basenames = basenames[0]
    return,basenames
