@@ -13,6 +13,9 @@
  *
  * Modifications:
  * $Log$
+ * Revision 1.1  2000/02/10 21:02:24  vapuser
+ * Initial revision
+ *
  * */
 #define BUFD  4
 #define BUFW 76
@@ -82,6 +85,44 @@ void main( int argc,char **argv ) {
       exit(1);
     }
 
+
+  /* Check the `nudging_method'.
+   * Throw the file out if it's the 
+   * `Highest-ambiguity initialization'
+   * This means the the AVN model field wasn't available!
+   */
+
+  p=buf1;
+  do {
+    p=fgets(p,80,ip);
+    if (p == NULL) {
+      fprintf(stderr, "<nudging_method> Truncated File! Exiting\n");
+      exit(1);
+    }
+    p1 = strstr(p, "nudging_method" );
+    p2 = strstr(p,"spare_metadata_element");
+  } while (p1 == NULL && p2 == NULL);
+
+  if (p2 != NULL) 
+  {
+    fprintf(stderr,"Can't find nudging_method" );
+    fclose(ip);
+    exit(1);
+  }
+  p2=strstr(p,"Highest-ambiguity");
+  if (p2 != NULL) 
+  {
+    fprintf(stderr,"nudging_method = Highest-ambiguity initialization\n");
+    fclose(ip);
+    exit(1);
+  }
+
+
+  fseek( ip, 0, SEEK_SET);
+  p=buf1;
+  
+  /* Find the Start time */
+
   p=buf1;
   do {
     p=fgets(p,80,ip);
@@ -104,12 +145,15 @@ void main( int argc,char **argv ) {
     exit(1);
   }
 
+
   strncpy(ofile,"QS",2);
   strncat(ofile,ymd,strlen(ymd));
   strncat(ofile,".S",2);
   strncat(ofile,hm,strlen(hm));
   strncat(ofile,".E",2);
 
+
+  /* And the End Time */
   fseek( ip, 0, SEEK_SET);
   p=buf1;
   do {
@@ -124,7 +168,7 @@ void main( int argc,char **argv ) {
 
   if (p2 != NULL) 
   {
-    fprintf(stderr,"Can't find DataStartTime\n" );
+    fprintf(stderr,"Can't find DataEndTime\n" );
     fclose(ip);
     exit(1);
   }
