@@ -20,7 +20,11 @@
 ;                         StartTime   = StartTime, $
 ;                         EndTime     = EndTime, $                                       
 ;                         Help        = Help, $
-;                         Nscat       = Nscat
+;                         Nscat       = Nscat, $
+;                         use_rf      = use_rf, $
+;                         rf_action   = rf_action, $
+;                         rf_index    = rf_index
+;                         
 ;
 ;
 ; 
@@ -57,6 +61,17 @@
 ;                 ExcludeCols. (default=0, meaning, expect Qscat data)
 ; StartTime   - (O) Earliest Time in Data files
 ; EndTime     - (O) Latest Time in Data files
+;
+; use_rf      - (I) flag: 0|1|2 depending on whether you want to use
+;                         No rain flagging, the MP flag or the NOF
+;                         flag. Default = 1, the MP flag.
+;
+; rf_action   - (I) flag: 0|1 depending on whether you want skip
+;                         plotting rain flagged data or whether you
+;                         want to plot it in a different
+;                         color. Default=1, plot in a different color.
+; rf_index    - (O) array of Longs: Indices of output data which are
+;                                   rain flagged. equals -1 if rf_action=0.
 ;
 ;
 ; OUTPUTS:  Success: a [nrecs,4] array with [*,0] = U, [*,1] = v, [*,2] = lon
@@ -102,6 +117,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1999/10/05 17:26:38  vapuser
+; Added ability to read Qmodel files.
+;
 ; Revision 1.4  1998/11/25 22:41:42  vapuser
 ; fixed some problems calculating start/end time.
 ;
@@ -127,15 +145,19 @@ FUNCTION read_wind_files, files, $
                           StartTime   = StartTime,$
                           EndTime     = EndTime,$
                           Help        = Help, $
-                          Nscat       = Nscat
+                          Nscat       = Nscat, $
+                          use_rf      = use_rf, $
+                          rf_action   = rf_action, $
+                          rf_index    = rf_index
 
    rcsid="$Id$"
    lf = string(10b)
 
    hstr1 =             'Usage: data=read_wind_files( files, $ ' 
-   hstr1 = hstr1 + lf + "  [, decimate=n [, CRDecimate=[m,n] [,$ "
-   hstr1 = hstr1 + lf + "    ExcludeCols='exclude_string' [, help=0|1 [, $" 
-   hstr1 = hstr1 + lf + "     Nscat=0|1 [,fill=0|1 ]]]]]] "
+   hstr1 = hstr1 + lf + "  [, decimate=n , CRDecimate=[m,n] ,$ "
+   hstr1 = hstr1 + lf + "    ExcludeCols='exclude_string' , help=0|1 , $" 
+   hstr1 = hstr1 + lf + "     Nscat=0|1, use_rf=0|1|2, rf_action=0|1, $ "
+   hstr1 = hstr1 + lf + "  rf_index=rf_index ]"
    hstr1 = hstr1 + lf + lf + 'Where...' + lf + lf
    hstr1 = hstr1 + " Files  - vector of fully qualified file names " + lf
    hstr1 = hstr1 + " Decimate - scalar, take every n-th vector, e.g. 2 " + lf
@@ -160,18 +182,21 @@ FUNCTION read_wind_files, files, $
    hstr3 = hstr3 + "   If set, decimate/CRDecimate/Fill and ExcludeCols are " + lf
    hstr3 = hstr3 + "   ignored. " + lf
    hstr3 = hstr3 + " Help  - flag, if set, emit this message and exit. " + lf 
-;   hstr3 = hstr3 + " Fill - flag, if set, the return array contains NaNs for " + lf
-;   hstr3 = hstr3 + "   excluded data " + lf
    hstr4 =         " Returns an array of data if successful, a scaler 0 if not." + lf
    hstr4 = hstr4 + "   The returned array has the form [nrecs,4] " + lf
    hstr4 = hstr4 + "   where u=[*,0], v=[*,1], lon=[*,2] and " + lf
    hstr4 = hstr4 + "   lat=[*,3] " + lf
-;   hstr4 = hstr4 + "   If Fill is set, the returned array will be " + lf
-;   hstr4 = hstr4 + "   [nrows,ncols,4] with u=[*,*,0], v=[*,*,1], lon=[*,*,2]" + lf
-;   hstr4 = hstr4 + "   and lat=[*,*,3] with NaNs occupying the excluded locations" + lf
-;   hstr4 = hstr4 + lf 
+   hstr5 =         " Use_RF = 0|1|2 depending on whether you want to use: " + lf 
+   hstr5 = hstr5 + "   NO flagging (0), or MP flagging (1) or NOF flagging (2) " + lf
+   hstr5 = hstr5 + " RF_Action = 0|1 depending on whether you want to:" + lf
+   hstr5 = hstr5 + "   SKIP plotting the rain flagged data (0) or " + lf 
+   hstr5 = hstr5 + "   PLOT it with a different color (1)" + lf
+   hstr5 = hstr5 + " if RF_Action = 1: " + lf 
+   hstr5 = hstr5 + "     RF_Index is a Long Array with the indices of the rain " + lf 
+   hstr5 = hstr5 + "     flagged data, otherwise, RF_Index = -1"
 
-   hstr = hstr1 + hstr2 + hstr3 + hstr4
+
+   hstr = hstr1 + hstr2 + hstr3 + hstr4 + hstr5
    IF keyword_set(Help) THEN BEGIN 
      Print,hstr
      return,0
@@ -217,11 +242,15 @@ FUNCTION read_wind_files, files, $
          attr = hdfgetattr( tt, attr='SHORTNAME')
          IF VarType(attr) EQ 'STRUCTURE' THEN BEGIN 
            CASE (*attr.value)[0] OF  
-             'QSCATVAPMODEL': q = obj_new('qmodel',filename=tt)
+             'QSCATVAPMODEL': q = obj_new('qmodel',filename=tt, $
+                                          use_rf=use_rf, $
+                                          rf_action=rf_action)
              'QSCATL2B'     : q = obj_new('q2b',file=tt, $
                                           decimate=decimate, $
                                           crdecimate=crdecimate, $
-                                          excludecols=excludecols)
+                                          excludecols=excludecols, $
+                                          use_rf=use_rf, $
+                                          rf_action=rf_action)
              ELSE: BEGIN 
                Message,"Can't identify type of HDF file ",/cont
                print,'  Attribute "ShortName" must be either QSCATL2B or QSCATVAPMODEL'
@@ -234,10 +263,12 @@ FUNCTION read_wind_files, files, $
          q = obj_new('q2b',file=tt, $
                      decimate=decimate, $
                      crdecimate=crdecimate, $
-                     excludecols=excludecols)
+                     excludecols=excludecols, $
+                     use_rf=use_rf, $
+                     rf_action=rf_action)
        ENDELSE 
        IF obj_valid(q) THEN BEGIN 
-         s = q-> GetPlotData(u,v,lon,lat)
+         s = q-> GetPlotData(u,v,lon,lat, rf_index=rf_index)
          s = q-> Get( StartTime = ST, Endtime=ET)
          IF strlen(st) NE 0 THEN BEGIN 
            tmp = str_sep(st,'/')
@@ -258,22 +289,34 @@ FUNCTION read_wind_files, files, $
            ENDIF 
          ENDIF 
          IF nofill THEN BEGIN 
+
            good = where( finite(u) AND finite(v), ngood )
+           
+           IF rf_index[0] NE -1 THEN BEGIN 
+             ii = lonarr(n_elements(u))
+             ii[rf_index] =  1
+             rf_index =  where( ii[good], nn) &  ii=0
+           ENDIF 
+
            IF ngood NE 0 THEN BEGIN 
              u = u[good]
              v = v[good]
              lon = lon[good]
              lat = lat[good]
              IF exist(uu) THEN BEGIN 
+               rrf_index =  [rrf_index, $
+                             rf_index + n_elements(uu)]
                uu = [uu,u]
                vv = [vv,v]
                llon = [llon,lon]
                llat = [llat,lat]
+
              ENDIF ELSE BEGIN 
                uu = u
                vv = v
                llon = lon
                llat = lat
+               rrf_index = rf_index;
              ENDELSE 
            ENDIF 
          ENDIF ELSE BEGIN 
@@ -296,7 +339,9 @@ FUNCTION read_wind_files, files, $
 
      ENDFOR 
    ENDELSE 
-   data =  [ [uu], [vv], [llon], [llat] ]
+   data =  [ [temporary(uu)],   [temporary(vv)], $
+             [temporary(llon)], [temporary(llat)] ]
+   rf_index =  temporary(rrf_index)
    return, data
 END
 

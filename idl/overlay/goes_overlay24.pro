@@ -41,7 +41,10 @@
 ;                    quality     = quality, $
 ;                    config      = config, $
 ;                    scalevec    = scalevec, $
-;                    gridlines   = gridlines
+;                    gridlines   = gridlines, $
+;                    use_rf      = use_rf, $
+;                    rf_action   = rf_action, $
+;                    rf_color    = rf_color 
 ;
 ;
 ;
@@ -142,6 +145,23 @@
 ;
 ;     GridLines    : Put down map grid lines after TVing the image.
 ;
+;     Use_RF       : (I), Flag , 0|1|2 depending on whether you want
+;                    NO flagging (0), MP flagging (1) or 
+;                    NOF flagging (2). Default=0, no flagging
+;
+;     FL_Action    : (I), flag, 0|1 depending on whether you want to
+;                    skip plotting rain flagged data (0) or plot it
+;                    with the color given in FL_Color(1), Default = 1,
+;                    use FL_color.
+;
+;     FL_Color     : (I), long integer. The 24 bit color to be used
+;                    when plotting the rain flagged data, provide
+;                    FL_Action=1. The default is black. (Although I
+;                    like '80541e'xl, which is a sort of muddy
+;                    brown. It's index 12 in the pv colortable. Much
+;                    more visible and 'dirty' looking.
+;
+;
 ;
 ;
 ;
@@ -175,7 +195,7 @@
 ;
 ;
 ;
-; SIDE EFFECTS:  Vast reduction if memory, as this program uses ALOT
+; SIDE EFFECTS:  Vast reduction of memory, as this program uses ALOT.
 ;
 ;
 ;
@@ -193,6 +213,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.11  1999/10/11 17:25:23  vapuser
+; Added code to support user/system 'config file.'
+;
 ; Revision 1.10  1999/10/05 17:22:23  vapuser
 ; Added scalevec and gridlines keywords and associated code.  Added use
 ; of 'OVERLAY_CT' environmental variable for the overlay colortable, and
@@ -266,7 +289,11 @@ PRO goes_overlay24, goesfile, $
                     thumbnail   = thumbnail, $
                     config      = config , $
                     scalevec    = scalevec, $
-                    gridlines   = gridlines
+                    gridlines   = gridlines, $
+                    use_rf      = use_rf, $
+                    rf_action   = rf_action, $
+                    rf_color    = rf_color 
+
 
 ; COMMON goes_overlay_cmn, landel
 
@@ -299,7 +326,7 @@ PRO goes_overlay24, goesfile, $
     ENDIF 
   ENDFOR 
   IF n_elements(goesfile) EQ 0 THEN BEGIN 
-    Message,'Usage: goes_overlay24, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec ] ',/cont
+    Message,'Usage: goes_overlay24, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec,use_rf=0|1|2,rf_action=0|1,rf_color=24bitnumber ] ',/cont
     tvlct,orig_red,orig_green,orig_blue
     genv,/restore
     return
@@ -453,6 +480,23 @@ PRO goes_overlay24, goesfile, $
   ENDIF 
   yoffset = 9.5
 
+
+
+  chkcfg,'USE_RF',use_rf,cfg
+  chkcfg,'RF_ACTION',rf_action,cfg
+  chkcfg,'RF_COLOR',rf_color,cfg
+
+  IF n_elements(use_rf) EQ 0 THEN use_rf = 0
+  IF n_elements(rf_action) EQ 0 THEN rf_action = 1
+    ; if rf_action=1, plot the rain flagged data as black
+  IF n_elements(rf_color) EQ 0 THEN rf_color =  0l
+
+
+
+
+    ; ============ Start the processing ==================
+
+
   start_time = systime(1)
   Read_PCGoes,goesfile,limits,GoesData,hdr=hdr, status=status
 
@@ -519,7 +563,10 @@ PRO goes_overlay24, goesfile, $
       windData = Read_Wind_Files(windFiles,$
                                  CRDecimate=CRDecimate,$
                                  Decimate=Decimate,$
-                                 ExcludeCols=ExcludeCols)
+                                 ExcludeCols=ExcludeCols, $
+                                 use_rf=use_rf, $
+                                 rf_action=rf_action, $
+                                 rf_index=rfi)
       t1 = systime(1)
       IF verbose THEN print,' Read_wind_Files took: ', t1-t0,$
         ' Seconds '
@@ -535,37 +582,63 @@ PRO goes_overlay24, goesfile, $
         v = windData[*,1]
         lon = windData[*,2]
         lat = windData[*,3]
+        
         good = where( finite(u) AND finite(v), ngood )
         IF ngood NE 0 THEN BEGIN 
+          IF rf_action EQ 1 AND $
+           rfi[0] NE -1 THEN BEGIN 
+            ii = lonarr(n_elements(u))
+            ii[rfi] = 1
+            rfi =  where( ii[good], nn)&  ii=0
+          ENDIF 
+
           u = u[good]
           v = v[good]
           lon = lon[good]
           lat = lat[good]
+
           speed = sqrt( u^2+v^2)
           good = where( speed NE 0, ngood )
           IF ngood NE 0 THEN BEGIN 
             IF ngood NE n_elements(u) THEN BEGIN 
+
+              IF rf_action EQ 1 AND $
+               rfi[0] NE -1 THEN BEGIN 
+                ii = lonarr(n_elements(u))
+                ii[rfi] = 1
+                rfi =  where( ii[good],nn)&  ii=0
+              ENDIF 
+
               u = u[good]
               v = v[good]
               lon = lon[good]
               lat = lat[good]
               speed = speed[good]
+
             ENDIF 
             good = where( lon GE lonrange[0] AND $
                           lon LE lonrange[1] AND $
                           lat GE limits[1] AND $
                           lat LE limits[3], ngood )
             IF ngood NE 0 THEN BEGIN 
+              IF rf_action EQ 1 AND $
+               rfi[0] NE -1 THEN BEGIN 
+                ii = lonarr(n_elements(u))
+                ii[rfi] = 1
+                rfi =  where( ii[good],nn)&  ii=0
+              ENDIF 
               u = u[good]
               v = v[good]
               lon = lon[good]
               lat = lat[good]
               speed = speed[good]
+
               veccol = BytScl( speed, min=minspeed, $
                                max=maxspeed, $
                                top=N_WIND_COLORS-1) + $
                                   WIND_START
               col24 = Rgb2True( veccol, colortable=ct)
+              
             ENDIF ELSE BEGIN 
               u = 0
               v = 0
@@ -581,7 +654,7 @@ PRO goes_overlay24, goesfile, $
       ENDELSE 
 
     ENDIF   
-
+    
       ; read the land elevation file, if it isn't in the common
 ;    IF n_elements(landel) EQ 0 THEN BEGIN 
 ;      openr,lun,'$VAP_ROOT/animate/land_elevations.bin',/get,error=err
@@ -832,10 +905,25 @@ PRO goes_overlay24, goesfile, $
         PlotVect,u,v,lon,lat,len=length,$
           thick=thick,start_index=WIND_START,ncolors=N_WIND_COLORS, $
             minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec
+        
+        IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
+          TVLCT,rf_color AND 'ff'xl,$
+                ishft(rf_color,-8) AND 'ff'xl, $
+                 ishft(rf_color,-16) AND 'ff'xl,1
+          PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
+            thick=thick,minspeed=minspeed, maxspeed=maxspeed, $
+              scale=scaleVec,color=1
+        ENDIF 
         tvlct,orig_red,orig_green,orig_blue
-      ENDIF ELSE $
+      ENDIF ELSE BEGIN 
         PlotVect, u,v,lon,lat, color=col24, len=length, thick=thick, $
-          scale=scaleVec
+          scale=scaleVec,minspeed=minspeed,maxspeed=maxspeed
+        IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
+          PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
+            thick=thick,minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec,$
+              color=rf_color
+        ENDIF 
+      ENDELSE 
       t1 = systime(1)
       IF verbose THEN print,' Plotvect took: ', t1-t0,' Seconds '
       t0 = t1
@@ -864,7 +952,7 @@ PRO goes_overlay24, goesfile, $
 
 
 
-    IF ps THEN text_color = '000000'x ELSE text_color = 'ffffff'x
+    IF ps THEN text_color = '000000'x ELSE text_color = 'ffffff'xl
 
     IF n_elements(title) NE 0 THEN $
       Title= title + ' ' + goes_string ELSE $
