@@ -5,6 +5,10 @@
 # Modification History
 #
 # $Log$
+# Revision 1.2  2001/02/26 18:14:58  vapuser
+# Put whdaffer@earthlink.net into the email list. Modified the
+# (commented out) vacation addresses.
+#
 # Revision 1.1  2000/02/08 18:24:54  vapuser
 # Initial revision
 #
@@ -27,12 +31,13 @@
 
   # If you don't want the email messages, Mike, just change the following to:
 
-  %vap_defs=( Error_Mail_Address =>
-     ["vapuser\@catspaw.jpl.nasa.gov", "whdaffer\@earthlink.net"] );
+  #%vap_defs=( Error_Mail_Address =>
+  #   ["vapuser\@catspaw.jpl.nasa.gov", "whdaffer\@earthlink.net"] );
 
   # When I'm on vacation, send mail to 
   # Mike Spencer, vapuser and me@yahoo
   #
-  #%vap_defs=( Error_Mail_Address =>
-  #	   ["Michael.Spencer\@jpl.nasa.gov","vapuser\@catspaw.jpl.nasa.gov",
-  #         "whdaffer\@yahoo.com"] );
+  %vap_defs=( Error_Mail_Address =>
+  	   ["Michael.Spencer\@jpl.nasa.gov",
+	    "whdaffer\@earthlink.net",
+           "whdaffer\@yahoo.com"] );
