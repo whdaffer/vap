@@ -3,7 +3,7 @@
 ; $Id$
 ; NAME:  AUTO_MOVIE
 ;
-; Time-stamp: <98/10/16 14:10:37 vapuser>
+; Time-stamp: <98/10/22 09:47:07 vapuser>
 ;
 ;		
 ; 
@@ -130,6 +130,9 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.4  1998/10/17 00:18:34  vapuser
+; Final 'intermediate stage'. Should be ready to use.
+;
 ; Revision 1.3  1998/10/12 22:36:15  vapuser
 ; Still intermediate
 ;
@@ -225,13 +228,15 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 
   auto_movie_cronjob = 0
   IF n_Elements(pid) NE 0 THEN $
-  auto_movie_cronjob = ( CheckForLock( pid, 'auto_mocie.lock', $
+  auto_movie_cronjob = ( CheckForLock( pid, 'auto_movie.lock', $
                                      user, dir='/tmp') EQ 1)
   catch, error_status
   IF error_status NE 0 THEN BEGIN
-    IF auto_movie_cronjob THEN $
-     printf, llun, 'ERROR: ' + !err_string
-    message, !error_State.msg,/cont
+    IF auto_movie_cronjob THEN BEGIN 
+      IF exist(llun) THEN $
+        printf, llun, 'ERROR: ' + !error_State.msg
+    ENDIF 
+    message, 'ERROR: ' + !error_State.msg,/cont
     return
   ENDIF 
 
@@ -516,6 +521,8 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     exe_str =  'dmconvert -f qt -p video,' + $
      'comp=qt_cvid,squal=0.9,tqual=0.9,rate=15 ' + $
      ' -n gwind.0##,start=1,end=60,step=1 gwind.0## ' + omov_file
+    Message,'Calling dmconvert with command line: ',/cont
+    print,'    ' + exe_str
     spawn,exe_str,ret
     IF ret(0) NE '' THEN BEGIN
       str =  'ERROR: in dmconvert '
