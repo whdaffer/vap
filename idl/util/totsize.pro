@@ -66,6 +66,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1998/11/23 17:54:01  vapuser
+; Elaborated on some of the comments.
+;
 ; Revision 1.1  1998/11/23 16:47:38  vapuser
 ; Initial revision
 ;
@@ -93,7 +96,7 @@ FUNCTION totsize, item
         p = *item
         t = totsize(p)
         IF t NE -1 THEN totsize = 0> totsize + t ELSE return,-1l
-      ENDIF ELSE Message,"Can't Take size of Null Pointer",/cont
+      ENDIF ELSE totsize = 0
     END
     ELSE: BEGIN 
       nn = n_elements(item)
