@@ -72,6 +72,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1999/04/08 23:54:31  vapuser
+; Worked on some comments
+;
 ; Revision 1.2  1998/11/10 00:46:40  vapuser
 ; ncells keyword, make nheader_recs=1
 ;
@@ -115,7 +118,17 @@ IF n_elements( q2b_rnoaa_defined ) eq 0 THEN BEGIN
         errspd      : intarr(4,ncells),   $   
         errdir      : intarr(4,ncells),   $   
         mle_like    : intarr(4,ncells),   $     
-        wvc_sel     : BYTARR(ncells) } 
+        wvc_sel     : BYTARR(ncells)     ,$
+        MP_rain_index : intarr(ncells)   ,$
+        NOF_rain_index: bytarr(ncells)   ,$
+        TB_mean_H     : intarr(ncells)   ,$
+        TB_mean_V     : intarr(ncells)   ,$
+        TB_stdev_H    : intarr(ncells)   ,$
+        TB_stdev_V    : intarr(ncells)   ,$
+        Num_TB_H      : bytarr(ncells)   ,$
+        Num_TB_V      : bytarr(ncells)   ,$
+        TB_rain_rate  : intarr(ncells)   ,$
+        TB_rain_attenuation: intarr(ncells)  } 
 
   q2b_rnoaa_defined = 1
 
@@ -123,7 +136,7 @@ ENDIF
 IF n_elements( nstruct ) eq 0 THEN nstruct = 1
 
 IF nstruct le 0 THEN nstruct = 1
-q2b_rnoaa_size = 3980L
+q2b_rnoaa_size = 5272L
 
 RETURN, replicate( q2b_rnoaa , nstruct )
 end
