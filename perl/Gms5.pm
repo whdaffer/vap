@@ -27,6 +27,9 @@
 
 # Modifications:
 # $Log$
+# Revision 1.2  1999/04/02 18:35:10  vapuser
+# Removed 'doc' and 'cal' processing. We really don't need it.
+#
 # Revision 1.1  1999/04/02 18:29:10  vapuser
 # Initial revision
 #
@@ -115,7 +118,7 @@ sub GetIntersection {
 
 sub GetAllFileLists {
 
-  Open() unless defined ($ftp);
+  Open(); # unless defined ($ftp);
 
 #   CdDoc();
 #   @list=List("*.Z");
@@ -182,7 +185,7 @@ sub GetAll {
   $test = CheckAll($datetime);
   if ($test) {
 
-    Open() unless defined ($ftp);
+    Open(); #unless defined ($ftp);
 #     CdDoc();
 #     @list=List("$datetime*");
 #     carp "No Doc files found for $datetime\n" if $#list<0;
@@ -375,7 +378,7 @@ sub CheckAll {
 
   $ret=1;
 
-  Open() unless defined ($ftp);
+  Open(); # unless defined ($ftp);
 
 
 #   CdDoc();
@@ -438,7 +441,7 @@ sub CheckAll {
     carp "No Vis files found for $datetime\n";
     $ret=0 ;
   }
-
+  Close();
   $ret;
 } # CheckAll
 
