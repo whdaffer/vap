@@ -35,6 +35,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  2000/01/11 20:43:07  vapuser
+; Added a call to tvlct, hoping to be able to get multiple colorbars in
+; one animation. Alas, cw_animate isn't smart enough. I'll have to write
+; my own.
+;
 ; Revision 1.2  1999/10/05 16:23:59  vapuser
 ; Changed calls to 'read_jpeg'
 ;
@@ -51,7 +56,7 @@ PRO frames2xmovie_events, event
    widget_control, event.top,/destroy
 END
 
-PRO frames2xmovie, files, gif=gif, title=title
+PRO frames2xmovie, files, gif=gif, title=title, png=png
 
 
   IF n_params() LT 1 THEN BEGIN 
@@ -82,13 +87,17 @@ PRO frames2xmovie, files, gif=gif, title=title
   set_plot,'x'
 
   gif =  keyword_set(gif)
+  png = keyword_set(png)
   IF gif THEN type =  'GIF'
+  IF png THEN type = 'PNG'
   
   IF NOT exist(type) THEN BEGIN 
     junk = rstrpos(files[0],'/')+1
     tmp = str_sep(strmid( files[0], junk, strlen(files[0])-junk ),'.')
     type =  strupcase(tmp[1])
   ENDIF 
+
+  order = 0
 
   CASE type OF 
     'GIF': BEGIN 
@@ -114,10 +123,18 @@ PRO frames2xmovie, files, gif=gif, title=title
     'JPEG': BEGIN 
       read_jpeg, files[0], image, colortable
     END 
+    'PNG': BEGIN 
+      image =  read_png( files[0], r,g,b)
+      ncolors = n_elements(r)
+      window,colors=ncolors,/free,/pixmap,xsize=10,ysize=10
+      wdelete,!d.window
+      tvlct,r,g,b      
+      order = 1
+    END 
     ELSE: BEGIN 
       Message,'Unknown file type ' + type ,/cont
       return
-    ENDIF 
+    END
   ENDCASE 
 
   dims = size(image,/dimension)
@@ -127,7 +144,7 @@ PRO frames2xmovie, files, gif=gif, title=title
   tlb = widget_base(Title=title)
   animate = cw_animate(tlb, nx,ny,nframes)
   Widget_Control, /Realize, tlb
-  cw_animate_load, animate, frame=0, image=image
+  cw_animate_load, animate, frame=0, image=image, order=order
   FOR i=1,nframes-1 DO BEGIN 
     CASE type OF 
       'GIF': BEGIN 
@@ -140,8 +157,12 @@ PRO frames2xmovie, files, gif=gif, title=title
       'JPEG': BEGIN 
         read_jpeg, files[i], image, colortable
       END 
+      'PNG': BEGIN 
+        image = read_png( files[i], r,g,b)
+        tvlct,r,g,b
+      END 
     ENDCASE 
-    cw_animate_load, animate, frame=i, image=image
+    cw_animate_load, animate, frame=i, image=image, order=order
   ENDFOR 
   cw_animate_run, animate
 
