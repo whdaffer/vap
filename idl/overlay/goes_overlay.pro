@@ -3,6 +3,10 @@
 ; put on pretty colors and overlay winds, if there are any.
 ; $Id$
 ; $Log$
+; Revision 1.4  1998/11/04 19:39:21  vapuser
+; Put in call to ColorBar, use Hist_Equal on data array, other
+; oddiments here and there.
+;
 ; Revision 1.3  1998/10/30 22:12:02  vapuser
 ; Worked on image processing, not done yet.
 ;
@@ -79,7 +83,7 @@ PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
                   outpath   = outpath ,$   ; (I) output directory
                   getoutfile= getoutfile,$ ; (O) get output file name
                   debug     =  debug ,$    ; 
-                  limits    = limits,$     ; (I) 4 vector (minlon, minlat, 
+;                  limits    = limits,$     ; (I) 4 vector (minlon, minlat, 
                                            ; maxlon,maxlat).
                                            ; map will be set to these
                                            ; limits. NOTE. care must
@@ -520,6 +524,24 @@ IF n_elements( data ) EQ 0 THEN BEGIN
   return
 ENDIF 
 
+  ; Now we know what limits we're using, discard any data that falls
+  ; outside the plot window
+flon = fixlonrange( [limits[0], limits[2] ] )
+good = where( llon GE flon[0] AND llat GE limits[1] AND $
+              llon LE flon[1] AND llat LE limits[3], ngood )
+IF ngood NE 0 THEN BEGIN 
+  uu = uu[good]
+  vv = vv[good]
+  llon = llon[good]
+  llat = llat[good]
+ENDIF ELSE BEGIN 
+    ; Need some data in uu/vv/llon,/./at to keep the other 
+    ; portions of this code happy.
+  uu = uu[0]
+  vv = vv[0]
+  llon = llon[0]
+  llat = llat[0]
+ENDELSE 
 date = doy2date( year, jday )
 
 month =  date[0]
@@ -644,6 +666,7 @@ dlat =  replicate(1.,nlon) # (findgen( nlat )*latinc + minlat )
 
 bimage = hist_equal( data, min=minpix, max=1024, $
                      top=WIND_START-CLOUD_START-1)+CLOUD_START
+data = 0
 UNPACK_WHERE, bimage, smallpix, col, row
 
 lons =  dlon[ smallpix ]
@@ -672,6 +695,7 @@ IF nland NE 0 THEN BEGIN
   bimage( col(land), row(land) ) =  $
    land_start >  (landel( ix, iy ) + LAND_START) <  (cloud_start-1)
 ENDIF 
+landel = 0
 t2 =  systime(1)
 print,' land section took ', (t2-t1)/60., ' minutes '
 
@@ -686,6 +710,12 @@ IF nsea NE 0 THEN BEGIN
 
 ENDIF 
 
+col = 0
+row = 0
+land = 0
+sea = 0
+mask = 0
+
 xx =  where( bimage EQ 0, nxx )
 IF nxx NE 0 THEN BEGIN
   IF keyword_set( watcolor ) THEN $
@@ -694,7 +724,7 @@ IF nxx NE 0 THEN BEGIN
 ENDIF 
 
 t3 =  systime(1)
-print,' sea section took ', (t3-t2)/60., ' minutes '
+print,' sea section took ', t3-t2, ' seconds '
 
 MAP_SET, latcent, loncent,  $
  limit=tlimits[ [1,0,3,2] ],/noborder, ymargin=[4.,4.]
