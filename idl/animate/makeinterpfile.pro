@@ -15,7 +15,7 @@
 ; CALLING SEQUENCE:  
 ;
 ;          field=MakeInterpFile( [ [date_time , time_inc, |
-;                                   Wfiles=Wfiles],Ofile=Ofile,$
+;                                   Wfiles=Wfiles],OutFile=OutFile,$
 ;                                   Wpath=Wpath, Filter=Filter,$
 ;                                   Lonpar=lonpar, Latpar=Latpar,
 ;                                   Rainf=Rainf, Ermax=Ermax, $
@@ -23,7 +23,7 @@
 ;                                   Decimate=Decimate,$
 ;                                   CRDecimate=CRDecimate,$
 ;                                   ExcludeCols=ExcludeCols,$
-;                                   Nscat=Nscat, nofile=nofile )
+;                                   Nscat=Nscat, noFile=nofile )
 ;
 ;
 ; 
@@ -46,7 +46,7 @@
 ;   Wfiles: (I) Vector of fully qualified file names. If this keyword is
 ;           set, parameters 'date_time' and 'time_inc' are ignored.
 ;
-;   Ofile: (I) if this keyword is a string, it is taken to be the fully qualified
+;   OutFile: (I) if this keyword is a string, it is taken to be the fully qualified
 ;              output file name. If it is not set, and the 'NoFile'
 ;              flag is also clear,  then the field will be
 ;              output to a file with the standard name formula
@@ -98,7 +98,7 @@
 ;                    Files.
 ;   EndTime: (O) - the Latesest time which appears in the Wind
 ;                  Files.
-;   Ofile: (I/O) - If set on input, this will be the name of the
+;   OutFile: (I/O) - If set on input, this will be the name of the
 ;                  output file. If present as a return argument, it
 ;                  will return the name of the output file.
 ;   Nscat: (I) flag. If set, expect Nscat data.
@@ -171,6 +171,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1998/11/23 21:39:48  vapuser
+; Changed meaning of min_Nvect (-1 .vs. 0 for 'make regardless')
+; Corrected an endif/endelse bug
+;
 ; Revision 1.4  1998/10/17 00:24:05  vapuser
 ; Added min_Nvect to call and requisite code to
 ; use this quantity.
@@ -237,7 +241,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                                                   ;  Nscat data
                          NoFile = NoFile, $       ; (I), flag, if set, don't write 
                                                   ; file.
-                         Ofile = Ofile ,$         ; (I/O). If present on input, 
+                         OutFile = OutFile ,$         ; (I/O). If present on input, 
                                                   ; this will
                                                   ; be the name of the
                                                   ; output file. If
@@ -337,23 +341,24 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
 
 
   IF NOT keyword_set( NoFile) THEN BEGIN 
-    IF N_Elements(Ofile) eq 0 THEN BEGIN 
-      Ofile = 'QIF-'
+    IF N_Elements(OutFile) eq 0 THEN BEGIN 
+      cd,current=cur
+      OutFile = cur + '/QIF-'
       tmp = str_sep( EndTime,'/' )
       nn = n_elements(tmp)
-      FOR i=0,nn-1 DO Ofile = Ofile + tmp[i]
-      Ofile = Ofile + '.hdf'
+      FOR i=0,nn-1 DO OutFile = OutFile + tmp[i]
+      OutFile = OutFile + '.hdf'
     ENDIF 
 
-    Ofile = Ofile[0]
+    OutFile = OutFile[0]
       ; Let's write it out.
-    Message,' Writing file to ' + Ofile,/info
-    s = qmodelhdfwrite( Ofile,Ui,Vi, lonpar=lonpar, latpar=Latpar, $
+    Message,' Writing file to ' + OutFile,/info
+    s = qmodelhdfwrite( OutFile,Ui,Vi, lonpar=lonpar, latpar=Latpar, $
                         Version=Versionid, Longname=Longname, $
                         CreationTime=CreationTime, StartTime=StartTime, $
                         EndTime=EndTime )
     IF s NE 1 THEN $
-      Message,'Failure writing model to file ' + Ofile,/cont
+      Message,'Failure writing model to file ' + OutFile,/cont
   ENDIF 
 
     ; return the field.
