@@ -56,8 +56,33 @@
 ;    Length      : Make them this long 
 ;    thick       : And this thick
 ;    Title       : Put this title on the plot
-;    color       : Don't use speed of vector to determine color,
-;                  rather plot them all with this color index
+;    color       : if color=-1L, then use speed, even if truecolor is
+;                  set. This can be done because in a 24 bit system,
+;                  -1L is not a legitimate color value (because it has
+;                  the most significant bit set, and that is more than 24
+;                  bits.) If this value is set to some number other
+;                  than -1L, don't use speed of vector to determine color,
+;                  rather plot them all with this color index, if 8
+;                  bit system,  or this color, if truecolor is set.
+;
+;                  If color=-1L or color='undefined' (in the sense of
+;                  'n_elements(color) eq 0', AND truecolor=1, this
+;                  routine will bytscl the speed array into the range
+;                  specified by start_index and n_colors and then do
+;                  one of two things. It will either get the color
+;                  table from the system by tvlct and then, using the
+;                  bytscl'd speed array as color indices into this
+;                  color table, compute 24 bit colors from it, or it
+;                  will compute the 24 bit colors using the whatever
+;                  table is input via the 'Table' keyword. 
+;
+;                  The only other method to specify color in a
+;                  true/direct color environment is to set
+;                  the 'color' keyword to an array having the same
+;                  dimensions as the u/v/lon/lat arrays containing the
+;                  desired 24 bit numbers to be used as colors.
+;                  
+;   
 ;    start_index : When using speed to determine the color, use this
 ;                  color index as the starting index
 ;    ncolors     : And use this many colors.
@@ -103,6 +128,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1999/10/05 16:34:04  vapuser
+; Added 'scale' keyword, corrected a misuse of 'keyword_set' and put a
+; 'noclip' in call to plots
+;
 ; Revision 1.4  1999/04/08 21:48:40  vapuser
 ; Updated some comments and did some cleanup.
 ;
@@ -162,6 +191,8 @@ PRO plotvect,u,v,x,y, $
   IF N_Elements( minspeed )    EQ 0 THEN minspeed =  2
   IF N_Elements ( maxspeed )   EQ 0 THEN maxspeed =  37
   IF N_elements( thick )       EQ 0 THEN thick =  0
+  IF n_elements(color)         EQ 0 THEN color = -1l
+
   truecolor = keyword_set(truecolor)
 
   Dots = Keyword_set(Dots)
@@ -184,35 +215,61 @@ PRO plotvect,u,v,x,y, $
     ENDIF 
     x2 = x[good1[good]]
     y2 = y[good1[good]]
+
+    IF n_elements(color) EQ n_elements(x) THEN $
+      color = color[good1[good]]
+
   ENDIF ELSE BEGIN 
     Message,' There are NO Non-Zero length Vectors ',/cont
     return
   ENDELSE 
   speed =  minspeed >  speed < maxspeed
 
-  IF TrueColor THEN BEGIN 
-    IF n_elements(Table) EQ 0 THEN BEGIN 
-      tvlct,r,g,b,/get
-      table = transpose([ [r],[g],[b]])
-    ENDIF 
-    veccol = BytScl( speed, min=minspeed, $
-                     max=maxspeed, $
-                     top=NCOLORS-1) + start_index
-    col = Rgb2True(veccol, Colortable=table)
-  ENDIF ELSE BEGIN 
-    IF n_elements(color) EQ 0 THEN  BEGIN
-      col = bytscl( speed, min=minspeed,max=maxspeed, $
-                    top= ncolors-1) + byte(start_index)
+
+  IF TrueColor THEN BEGIN
+
+    IF n_elements(color) EQ n_elements(speed) THEN BEGIN 
+      col = color
     ENDIF ELSE BEGIN 
-      IF n_elements( color ) EQ 1 THEN BEGIN 
-        IF color EQ -1 THEN $
-           col = Bytscl( speed, min=minspeed,max=maxspeed, $
-                         top= ncolors-1) + byte( start_index)  ELSE $
-           col= bytarr( n_elements( speed ) ) + byte(color )
-      ENDIF ELSE $
-            col = color
+      IF color[0] EQ -1 THEN BEGIN 
+        IF n_elements(Table) EQ 0 THEN BEGIN 
+          tvlct,r,g,b,/get
+          table = transpose([ [r],[g],[b]])
+        ENDIF 
+        veccol = BytScl( speed, min=minspeed, $
+                         max=maxspeed, $
+                         top=NCOLORS-1) + start_index
+        col = Rgb2True(veccol, Colortable=table)
+      ENDIF ELSE col=replicate( color, n_elements(speed))
     ENDELSE 
+
+  ENDIF ELSE BEGIN 
+
+      ; pseudo color
+    IF n_elements(color) GT 1 THEN BEGIN 
+      col = color
+    ENDIF ELSE BEGIN 
+      IF color[0] EQ -1 THEN $
+        col = bytscl( speed, min=minspeed,max=maxspeed, $
+                      top= ncolors-1) + byte(start_index) ELSE $
+        col=replicate(color,n_elements(speed))
+    ENDELSE 
+
   ENDELSE 
+
+;    IF color[0] EQ -1 THEN BEGIN 
+;    ENDIF ELSE BEGIN 
+;      IF n_elements( color ) EQ 1 THEN BEGIN 
+;        IF color EQ -1 THEN $
+;           col = Bytscl( speed, min=minspeed,max=maxspeed, $
+;                         top= ncolors-1) + byte( start_index)  ELSE $
+;           col = replicate(color,n_elements(speed))
+;      ENDIF ELSE $
+;            col = color
+;    ENDELSE 
+;  ENDELSE 
+
+
   ;
   r = .2                          ;len of arrow head
   angle = 22.5 * !dtor            ;Angle of arrowhead
