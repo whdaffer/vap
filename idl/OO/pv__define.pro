@@ -90,6 +90,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.15  1999/07/01 15:25:28  vapuser
+; Change inputpath/outputpath defaults
+;
 ; Revision 1.14  1999/06/30 23:07:43  vapuser
 ; Changed Xdisplay to XdisplayFile
 ;
@@ -369,7 +372,7 @@ END
 
 PRO pv::quit,id
    Widget_Control, id,/Destroy
-   ; Obj_Destroy, self
+   Obj_Destroy, self
 END
 
 
@@ -453,6 +456,10 @@ PRO Pv::WidgetWrite
               dims = size(U,/Dimension)
               WriteU, Lun, dims[1],dims[2], 0L
               WriteU, Lun, u,v,lon,lat
+              Message,'Writing file to' + file,/info
+              Message,'File Dims are: ' + $
+                  string(dims[1:2], form='(i2,1x,i5)' ) + ' Ambig: Selected ',/info
+              self-> WriteToStatusBar,"Data Written to " + file
             ENDIF 
           ENDIF ELSE BEGIN 
             FOR p=0,nPlots-1 DO BEGIN 
@@ -464,8 +471,12 @@ PRO Pv::WidgetWrite
 
               IF status THEN BEGIN 
                 s = size(U)
+                pp = PlotAmbiguities[p]
                 WriteU, Lun, s[1],s[2], PlotAmbiguities[p]
                 WriteU, Lun, u,v,lon,lat
+                Message,'File Dims are: ' + $
+                  string( s[1:2], form='(i2,1x,i5)') + ' Ambig: ' + strtrim(pp,2),/cont
+
               ENDIF 
             ENDFOR 
           ENDELSE 
@@ -526,8 +537,8 @@ PRO pv::Hardcopy
          s = size(im)
          JPeg = bytarr( s[1], S[2], 3 )
          Jpeg[*,*,0] =  red(im)
-         Jpeg[*,*,0] =  green(im)
-         Jpeg[*,*,0] =  blue(im)
+         Jpeg[*,*,1] =  green(im)
+         Jpeg[*,*,2] =  blue(im)
          Write_Jpeg,fullFilename,jpeg, true=3
        END 
        'PICT': BEGIN 
@@ -541,8 +552,11 @@ PRO pv::Hardcopy
         set_plot,'ps'
         self.PsInfo-> Get,ps = ps
         device,_extra=ps
-        self-> draw
+        self.Annotation-> ReCalcColorBar
+        self-> draw,/force
+        device,/close
         set_plot,'x'
+        self.Annotation-> ReCalcColorBar
        END 
        ELSE: message,'Unknown Hardcopy Type!!',/cont
      ENDCASE 
@@ -602,12 +616,15 @@ PRO Pv::Resize, x,y
 
   self-> ResetPlotObjects,/AlreadyPlotted
   y = y-40
+  Widget_Control, self.tlb, update=0
   Widget_Control, self.DrawId, draw_Xsize=x, Draw_Ysize=y
+  Widget_Control, self.tlb, /update
   wset, self.wid
   WDelete, self.pixId
   self.xsize = x
   self.ysize = y
   Window,/Free,/Pixmap, XSize=x, YSize=y
+  self.Annotation->ReCalcColorBar
   self-> Draw
   ;self.pixId = !d.Window
   ;self-> CopyToPixmap
@@ -961,7 +978,13 @@ FUNCTION pv::Init, $
   CT =  *PtrToColorTable
   self.Ncolors = N_elements( CT[0,*] )
   self.PsInfo = Obj_New('PSFORM') ;
-  self.Annotation = Obj_new('ANNOTATION')
+  self.Annotation = Obj_new('ANNOTATION',$
+                       table=ct,ncolors=self.nwind,title='Wind Speed (m/s)',$
+                            bottom=self.wind0,$
+                            true= (self.visual NE 'PSEUDOCOLOR'), $
+                           min=self.minspeed, max=self.maxspeed, $
+                            divisions=4,position=[0.25,0.93,0.75,0.95], $
+                           format='(f5.0)', color=n_elements(ct[0,*]) )
 
 
   status = 1
@@ -1135,7 +1158,8 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
   DontKnow = -1 ; Setting for PvPlotObject.InRegion
 
   self.Annotation-> Get,MainTitle = Mtitle, Xtitle=Xtitle, $
-                      Ytitle=Ytitle, SubTitle=SubTitle
+                      Ytitle=Ytitle, SubTitle=SubTitle, $
+                       DOcolorbar=docolorbar, Colorbar=CB
 
   ; X/Y title must be applied using _xyouts_
   ; Mtitle gets passed in to Map_set. Subtitle will be seen only if
@@ -1148,7 +1172,8 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
     force = 1
   ENDIF 
 
-  IF !d.name NE 'PS' THEN Wset, self.wid
+  postscriptDevice =  !d.name EQ 'PS'
+  IF NOT PostscriptDevice THEN Wset, self.wid
 
   IF status THEN BEGIN 
     Widget_Control,/HourGlass
@@ -1218,16 +1243,31 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
             IF Status THEN BEGIN 
               self-> UpdateSpeedHisto,u,v,nTotPlots
               self->WriteToStatusBar,'Drawing...'
-              PlotVect,u,v,lon,lat,$
-                Length = self.Length, $
-                  thick=self.Thickness, $
-                    Color=self.AmbigColors[PlotAmbiguities[p]],$
-                      MinSpeed=self.MinSpeed, $
-                       MaxSpeed=self.MaxSpeed, $
-                         Start_index=self.Wind0,$
-                          NColors=self.NWind, dots=dots,$
-                           truecolor=self.visual ne 'PSEUDOCOLOR' , $
-                            table=CT
+              IF self.visual NE 'PSEUDOCOLOR' AND PostscriptDevice THEN BEGIN 
+                ; True color, but plotting to Postscript file!
+                tvlct,r,g,b,/get
+                tvlct,transpose(CT)
+                PlotVect,u,v,lon,lat,$
+                  Length = self.Length, $
+                    thick=self.Thickness, $
+                      Color=self.AmbigColors[PlotAmbiguities[p]],$
+                        MinSpeed=self.MinSpeed, $
+                         MaxSpeed=self.MaxSpeed, $
+                           Start_index=self.Wind0,$
+                            NColors=self.NWind, dots=dots
+                tvlct,r,g,b
+              ENDIF ELSE BEGIN 
+                PlotVect,u,v,lon,lat,$
+                  Length = self.Length, $
+                    thick=self.Thickness, $
+                      Color=self.AmbigColors[PlotAmbiguities[p]],$
+                        MinSpeed=self.MinSpeed, $
+                         MaxSpeed=self.MaxSpeed, $
+                           Start_index=self.Wind0,$
+                            NColors=self.NWind, dots=dots,$
+                             truecolor=self.visual ne 'PSEUDOCOLOR' , $
+                              table=CT
+              ENDELSE 
               
               po->InRegion,1
               nTotPlots =  nTotPlot+1
@@ -1246,19 +1286,33 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
               IF status THEN BEGIN 
                 self-> UpdateSpeedHisto,u,v,nTotPlots
                 self->WriteToStatusBar,'Drawing...'
-
                   ; Plot the vectors
                 t1 = systime(1)
-                PlotVect,u,v,lon,lat,$
-                  Length = self.Length, $
-                    thick=self.Thickness, $
-                      Color=self.AmbigColors[PlotAmbiguities[p]],$
-                        MinSpeed=self.MinSpeed, $
-                         MaxSpeed=self.MaxSpeed, $
-                           Start_index=self.Wind0,$
-                            NColors=self.NWind, dots=dots,$
-                           truecolor=self.visual ne 'PSEUDOCOLOR' , $
-                            table=CT
+                IF PostscriptDevice AND $
+                   self.visual NE 'PSEUDOCOLOR' THEN BEGIN 
+                  tvlct,r,g,b,/get
+                  tvlct,transpose(CT)
+                  PlotVect,u,v,lon,lat,$
+                    Length = self.Length, $
+                      thick=self.Thickness, $
+                        Color=self.AmbigColors[PlotAmbiguities[p]],$
+                          MinSpeed=self.MinSpeed, $
+                           MaxSpeed=self.MaxSpeed, $
+                             Start_index=self.Wind0,$
+                              NColors=self.NWind, dots=dots
+                  tvlct,r,g,b
+                ENDIF ELSE BEGIN 
+                  PlotVect,u,v,lon,lat,$
+                    Length = self.Length, $
+                      thick=self.Thickness, $
+                        Color=self.AmbigColors[PlotAmbiguities[p]],$
+                          MinSpeed=self.MinSpeed, $
+                           MaxSpeed=self.MaxSpeed, $
+                             Start_index=self.Wind0,$
+                              NColors=self.NWind, dots=dots,$
+                             truecolor=self.visual ne 'PSEUDOCOLOR' , $
+                              table=CT
+                ENDELSE 
                 po->InRegion,1
                 nTotPlots =  nTotPlots + 1
               ENDIF ELSE IF status EQ NoData THEN BEGIN 
@@ -1490,10 +1544,12 @@ PRO Pv::Set, xsize       = xsize, $
    
   IF N_Elements(MinSpeed) NE 0 THEN BEGIN 
     self.MinSpeed = Minspeed
+    self.annotation-> Set,Min = MinSpeed
   ENDIF 
  
   IF N_Elements(MaxSpeed) NE 0 THEN BEGIN 
     self.MaxSpeed = MaxSpeed
+    self.annotation-> Set,Max = MaxSpeed
   ENDIF 
 
   IF N_Elements(Length) NE 0 THEN BEGIN 
@@ -2107,22 +2163,37 @@ END
 PRO pv::CreateMap, Erase = Erase, force=force, $
       center = center, limit = limit
 
-  self.Annotation-> Get,MainTitle = Mtitle, Xtitle=Xtitle, $
-                      Ytitle=Ytitle, SubTitle=SubTitle
+  postscriptDevice = !d.name EQ 'PS'
 
-  !p.subTitle = subTitle
+  self.Annotation-> Get,MainTitle = Mtitle, Xtitle=Xtitle, $
+                      Ytitle=Ytitle, SubTitle=SubTitle, $
+                       DoColorBar=DoColorBar
+
+  IF DoColorBar THEN self.Annotation-> Get,Colorbar = CB
 
    map_extent = abs(limit[3]-limit[1])*abs(limit[2]-limit[0])
    dots =  map_extent GE (140*110)
-   IF self.visual NE 'PSEUDOCOLOR' THEN titlecolor = 'ffffff'x
+   IF postscriptdevice THEN BEGIN 
+     titlecolor = !p.color
+   ENDIF ELSE BEGIN 
+     IF self.visual NE 'PSEUDOCOLOR' THEN BEGIN 
+       titlecolor = 'ffffff'x
+     ENDIF ELSE BEGIN 
+       titlecolor = 255
+     ENDELSE 
+   ENDELSE 
 
-   IF strlen(!p.SubTitle) NE 0 OR $
-     strlen( Xtitle )    NE 0 OR $
-     strlen( YTitle )    NE 0 THEN BEGIN 
+   labels =  strlen(subtitle) NE 0 OR $
+             strlen(Xtitle)      NE 0 OR $
+             strlen(Ytitle)      NE 0 OR $
+             strlen(Mtitle)      NE 0
 
+
+   IF labels OR doColorBar THEN BEGIN 
+
+     !p.subtitle = subtitle
      IF Erase OR Force THEN BEGIN 
        self-> ResetPlotObjects,/AlreadyPlotted
-       titlecolor = 255
        Map_Set, 0,center[0], /Grid,/Label,/Continent,$
         limit=limit,Title=mtitle, $
          xmargin=6, ymargin=5, color=titlecolor
@@ -2131,12 +2202,17 @@ PRO pv::CreateMap, Erase = Erase, force=force, $
 
      IF strlen( Xtitle ) NE 0 THEN $
       XYOUTS, 0.5, 0.75*!y.window[0], Xtitle, Align=0.5, /normal, $
-      charsize=1.2
+      charsize=1.2, color=titlecolor
 
      IF strlen( Ytitle ) NE 0 THEN $
       XYOUTS, 0.75*!x.window[0], 0.5, Ytitle, Align=0.5, /normal, $
-      charsize=1.2, Orient=90
-
+      charsize=1.2, Orient=90,color=titlecolor
+     !p.subtitle = ''
+     IF DOColorBar THEN CB-> calc,/apply
+     
+     Map_Set, 0,center[0], limit=limit, $
+         xmargin=6, ymargin=5, /noerase,/noborder
+     
    ENDIF ELSE BEGIN 
      IF Erase OR Force THEN BEGIN 
        self-> ResetPlotObjects,/AlreadyPlotted
