@@ -183,6 +183,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.12  1999/10/21 22:45:04  vapuser
+; Added some Messages to relate info about input argument/keywords.
+;
 ; Revision 1.11  1999/10/20 17:27:01  vapuser
 ; Added correct number of parans in 'field = [[ui]...'
 ;
@@ -308,16 +311,18 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     return,0
   ENDIF 
 
-  Message,'LonPar = ', string(lonpar,form='(3(f7.2,:,","))'),/info
-  Message,'LatPar = ', string(latpar,form='(3(f7.2,:,","))'),/info
-  Message,'Rainf  = ', string(rainf),/info
-  Message,'ErMax  = ', string(ermax),/info
+  Message,'LonPar = ' + string(lonpar,form='(3(f7.2,:,","))'),/info
+  Message,'LatPar = '+ string(latpar,form='(3(f7.2,:,","))'),/info
+  nn = n_elements(rainf)
+  form = '(' + strtrim(nn,2) + '(f7.2,:,","))'
+  Message,'Rainf  = '+ string(rainf,form=form),/info
+  Message,'ErMax  = '+ string(ermax,form=form),/info
   IF n_Elements(crdecimate) NE 0 THEN  $
-    Message,'CRDecimate = ',string(crdecimate), /info
+    Message,'CRDecimate = '+ string(crdecimate,form='(2(i2,:,","))'), /info
   IF n_elements(decimate) NE 0 THEN $
-    Message,'Decimate = ',string(decimate), /info
+    Message,'Decimate = ' + strtrim(decimate,2), /info
   IF n_elements(excludeCols) NE 0 THEN $
-    Message,'ExcludeCols = ',string(excludeCols), /info
+    Message,'ExcludeCols = '+ string(excludeCols), /info
 
   IF n_elements(u) eq 0 OR $
      n_elements(v) eq 0 OR $
