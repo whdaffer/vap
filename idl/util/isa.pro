@@ -68,6 +68,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.11  2000/05/17 21:35:35  vapuser
+; Added /help. Make it return,0 if variable is undefined instead of
+; throwing an error.
+;
 ; Revision 1.10  2000/03/17 00:41:43  vapuser
 ; Added IDLDT to the tests. Return 0 if input variable
 ; is undefined
@@ -166,7 +170,7 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
      keyword_set(dcomplex): test = vartype( variable ) EQ 'COMPLEX_DOUBLE'
      keyword_set(string) : BEGIN 
        test = vartype( variable ) EQ 'STRING'
-       IF keyword_set( nonempty ) THEN BEGIN 
+       IF test AND keyword_set( nonempty ) THEN BEGIN 
          ii = 0
          nn = n_elements(variable)
          REPEAT BEGIN 
