@@ -1,15 +1,16 @@
 
 =head1 NAME
 
-  Overlay.pm -- Object to handle creation of the overlays of QuikSCAT/SeaWinds data
-                Replaces most of the code in cloud_overlay.
+  Overlay.pm -- Object to handle creation of the overlays of
+                QuikSCAT/SeaWinds data. Replaces most of the code in
+                cloud_overlay.
 
 =head2 SYNOPSIS
 
   $overly_obj = Overlay->new( REGION=>region, 
+                              WINDFILTER=> 'filter',
                               TIME => 'yyyy/mm/dd/hh/mm',
                               WINDPATH => 'path-to-wind-data',
-                              WINDFILTER=> 'filter',
                               DELTA => n,
                               SATNAME => 'name',
                               SATNUM => 'num',
@@ -40,21 +41,29 @@
   writes out what processing would be undertaken and then exits
   without actually doing the processing; HELP emits a usage message.
 
+  The minimal set of keywords required by this object are REGION and
+  WINDFILTER. The rest will take appropriate defaults.
+
 =cut 
+
 #
 # $Id$
 #
 # Modifications:
 #
 # $Log$
+# Revision 1.1  2002/08/21 18:28:54  vapdev
+# initial revision
 #
+#
+package Overlay;
 use strict;
-use vars qw/%overlay_defs/;
+use vars qw/%overlay_defs $VERSION $VAP_LIBRARY $usage/;
 use Carp;
 use Cwd;
 use File::Basename;
 use File::Copy;
-use lib $ENV{VAP_SFTWR_PERL};
+
 
 BEGIN {
 
@@ -75,25 +84,22 @@ BEGIN {
   croak "ENV var VAP_OPS_TMPFILES is undefined\n" 
     unless $ENV{VAP_OPS_TMPFILES};
 
-  my $defsfile = $ENV{VAP_LIBRARY} . "/overlay_defs_oo";
-  croak "Can't find defaults file $defsfile!\n" unless (! -e $defsfile );
-  do { require "$defsfile"; } or croak "Can't `require $defsfile\n";
 
-  my $usage =  "\nUsage:\n";
-  $usage .= " overlyobj = Overlay->new(REGION=>region,\n";
-  $usage .= "  TIME=>'yyyy/mm/dd/hh/mm',(in GMT)\n";
-  $usage .= "  WINDPATH => 'PATH_TO_WIND_FILES',\n";
-  $usage .= "  WINDFILTER=> WINDFILTER, (i.e. QS or SW or (QS|SW)) (REQUIRED!)\n";
-  $usage .= "  DELTA => n, (number of hours around TIME to look for wind data)\n";
-  $usage .= "  SATNAME => SATELLITE_NAME, (.e.g. 'goes')\n";
-  $usage .= "  SATNUM =>  SATELLITE_NUMBER, (e.g. 10 for goes10)\n";
-  $usage .= "  SENSORNUM => SENSOR_NUMBER, (e.g. 1=vis, 2=ir2, 3=ir3, 4=ir4)\n";
-  $usage .= "  LONLIM => [lonmin, lonmax],\n";
-  $usage .= "  LATLIM => [latmin,latmax], \n";
-  $usage .= "  CRDECIMATE => [Col,Row],\n";
-  $usage .= "  EXCLUDECOLS => idl-array-submatrix-desg (as string)\n";
+  $usage =  "\nUsage:\n";
+  $usage .= " overlyobj = Overlay->new(REGION=>region,\n\t\t";
+  $usage .= "  TIME=>'yyyy/mm/dd/hh/mm',(in GMT)\n\t\t";
+  $usage .= "  WINDPATH => 'PATH_TO_WIND_FILES',\n\t\t";
+  $usage .= "  WINDFILTER=> WINDFILTER, (i.e. QS or SW or (QS|SW)) (REQUIRED!)\n\t\t";
+  $usage .= "  DELTA => n, (number of hours around TIME to look for wind data)\n\t\t";
+  $usage .= "  SATNAME => SATELLITE_NAME, (.e.g. 'goes')\n\t\t";
+  $usage .= "  SATNUM =>  SATELLITE_NUMBER, (e.g. 10 for goes10)\n\t\t";
+  $usage .= "  SENSORNUM => SENSOR_NUMBER, (e.g. 1=vis, 2=ir2, 3=ir3, 4=ir4)\n\t\t";
+  $usage .= "  LONLIM => [lonmin, lonmax],\n\t\t";
+  $usage .= "  LATLIM => [latmin,latmax], \n\t\t";
+  $usage .= "  CRDECIMATE => [Col,Row],\n\t\t";
+  $usage .= "  EXCLUDECOLS => idl-array-submatrix-desg (as string)\n\t\t";
   $usage .= "  TELLME =>: Calculates, reports variable values and exits\n\n";
-  $usage .= "  where: \n";
+  $usage .= "  where: \n\n";
 
 
   $usage .= "    WINDFILTER: (REQUIRED) filter to use for wind data\n";
@@ -106,7 +112,7 @@ BEGIN {
 
   $usage .= "    REGION is the designation for the \n";
   $usage .= "      region as it appears in the _overlay_defs_ file\n";
-  $usage .= "      See file $VAP_LIBRARY/overlay_defs for the complete list of \n";
+  $usage .= "      See file \$VAP_LIBRARY/overlay_defs_oo for the complete list of \n";
   $usage .= "      predefined regions. If absent, the program falls over to using the \n";
   $usage .= "      information given (some of which can be defaulted)\n";
   $usage .= "      in the combination of the satname/satnum/sensornum/lon/lat\n";
@@ -117,22 +123,22 @@ BEGIN {
 
 
 
-$usage .=   "    TIME: the GMT time of the `run'. This time will determine which\n";
-$usage .=   "       cloud and wind data are used and the behavior of the object\n";
-$usage .=   "       depends on which other keys are present.\n";
+  $usage .=   "    TIME: the GMT time of the `run'. This time will determine which\n";
+  $usage .=   "       cloud and wind data are used and the behavior of the object\n";
+  $usage .=   "       depends on which other keys are present.\n";
 
-$usage .=   "       If REGION is present but TIME is not, the data used in the\n";	  
-$usage .=   "       run will be determined using the ASCTIME/DESCTIME in the hash\n"; 
-$usage .=   "       defined in the $VAP_LIBRARY/overlay_defs_oo. The object will\n";  
-$usage .=   "       choose the time closest but not exceeding to the current\n";      
-$usage .=   "       time.\n";
-  
-$usage .=   "       If TIME is present at object creation, the object will use\n";
-$usage .=   "       that time whether REGION (and hence the ASCTIME/DESCTIME\n";
-$usage .=   "       implied) is present or not.\n\n";
+  $usage .=   "       If REGION is present but TIME is not, the data used in the\n";
+  $usage .=   "       run will be determined using the ASCTIME/DESCTIME in the hash\n";
+  $usage .=   "       defined in the \$VAP_LIBRARY/overlay_defs_oo. The object will\n";
+  $usage .=   "       choose the time closest but not exceeding to the current\n";
+  $usage .=   "       time.\n";
+
+  $usage .=   "       If TIME is present at object creation, the object will use\n";
+  $usage .=   "       that time whether REGION (and hence the ASCTIME/DESCTIME\n";
+  $usage .=   "       implied) is present or not.\n\n";
 
   $usage .= "    DELTA: defines the `window' around the value given in TIME\n";
-  $usage .= "      in which to search for wind data\n"
+  $usage .= "      in which to search for wind data\n";
   $usage .= "    PATH_TO_WIND_FILES: pretty self explanatory.\n";
   $usage .= "      Default given by environmental variable 'VAP_DATA_TOP'\n";
 
@@ -166,7 +172,10 @@ $usage .=   "       implied) is present or not.\n\n";
   $usage .= "    If one wishes to grid and overlay an arbitrary region not predefined\n";
   $usage .= "    in the overlay_defs file, one must use the combination of \n";
   $usage .= "    satname/satnum/sensornum/lon/lat to do so.\n\n";
+
 }
+
+use lib qw/ $ENV{VAP_SFTWR_PERL} $ENV{VAP_LIBRARY}/;
 use VapUtil;
 use VapError;
 use OGoes;
@@ -178,12 +187,21 @@ use OGms5;
 
 sub new {
   my $class = shift;
-  my $self={@_};
+  my $self;
+  #my $defsfile = $ENV{VAP_LIBRARY} . "/overlay_defs_oo";
+  my $defsfile = "overlay_defs_oo";
+  croak "Can't find defaults file $defsfile!\n" unless (! -e $defsfile );
+  do { require "$defsfile"; } or croak "Can't `require $defsfile\n";
+  if (@_ < 2){
+    print "$usage\n";
+    croak "*** Minimally, I need either (REGION,WINDFILTER)\nor SATTIME, SATNUM, SENSORNUM, WINDFILTER, LON and LAT\n";
+  } else {
+    $self = {@_};
+  }
   $self->{OVERLAY_DEFAULTS} = \%overlay_defs;
-  %overlay_defs = undef;
-  if (defined $self->{REGION}) {
+  if ($self->{REGION} && $self->{WINDFILTER}) {
     my $region = $self->{REGION};
-    my $hash= $self->{DEFAULTS}->{$region};
+    my $hash= $self->{OVERLAY_DEFAULTS}->{$region};
     $self->{SATNAME}     = $hash-> {CLOUDS}->{Satellite};
     $self->{LONLIM}      = $hash-> { CLOUDS }->{ LONLIM      };
     $self->{LATLIM}      = $hash-> { CLOUDS }->{ LATLIM      };
@@ -210,21 +228,22 @@ sub new {
       my ($ss, $mm, $hh, $mday, $mon, $year, $wday, $yday, $isdst) = 
 	gmtime(time());
       my ($ahh,$amm) = split /:/,$self->{ASCTIME};
-      my $atime = timegm(0,$amm,$ahh,$mday,mon,$year);
+      my $atime = timegm(0,$amm,$ahh,$mday,$mon,$year);
       my ($dhh,$dmm) = split /:/,$self->{DESCTIME};
-      my $dtime = timegm(0,$dmm,$dhh,$mday,mon,$year);
+      my $dtime = timegm(0,$dmm,$dhh,$mday,$mon,$year);
       my $time = $atime<=$nowsecs? $atime: $dtime;
       $self->{TIME} = systime2idltime($time);
     }
   } else {
     print "$usage\n";
-    croak "*** Need, minimally, SATTIME, SATNUM, SENSORNUM, WINDFILTER, LON and LAT\n";
-    unless (defined($self->{WINDFILTER}) && 
-	    defined($self->{SATNAME}) && 
-	    defined($self->{SENSORNUM}) && 
-	    defined($self->{LONLIM}) && 
-	    defined($self->{LATLIM}) );
-    $self->{TIME} = $systime2idltime(SysNow()) 
+    croak "*** Minimally, I need either (REGION,WINDFILTER)\nor SATTIME, SATNUM, SENSORNUM, WINDFILTER, LON and LAT\n"
+      unless (defined($self->{WINDFILTER}) && 
+	      defined($self->{SATNAME}) && 
+	      defined($self->{SENSORNUM}) && 
+	      defined($self->{LONLIM}) && 
+	      defined($self->{LATLIM}) );
+
+    $self->{TIME} = systime2idltime(SysNow()) 
       unless $self->{TIME};
 
   }
@@ -234,7 +253,12 @@ sub new {
   $self->{DELTA} = 4 unless $self->{DELTA};
   $self->{SECS} = idltime2systime($self->{TIME});
   $self->ReportStatus();
+  if ($self->{HELP}) {
+    print $usage;
+    exit;
+  } 
 
+  
   return $self;
 }
 #=============================================================
@@ -262,7 +286,7 @@ sub _croak {
 #=============================================================
 #
 #=============================================================
-
+#sub 
 
 
 #=============================================================

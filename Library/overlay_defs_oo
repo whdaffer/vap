@@ -3,6 +3,9 @@
 # Modification Log;
 #
 # $Log$
+# Revision 1.1  2002/08/21 18:28:54  vapdev
+# initial revision
+#
 #
 #
 # Current Regions are:
@@ -35,14 +38,21 @@
 # 		    SENSORNUM  => y,     # e.g. 4 for ir4, should matcy y in reg.desc.
 # 		    ASCTIME    => "hh:mm",  # Note 2
 # 		    DESCTIME   => "HH:MM" },# Note 2
-# 		  WIND => {                   
+# 		  WINDS => {                   
 # 		    NVECTORS => xx,         # Need this many vector to continue
 # 		    CRDECIMATE => [x,y],    # Take every y-th row, every x-th col
-#                   LENGTH => w             # The vectors are 'w' long
-#                   DELTA => u             # A time window of 'u' hours is put around 
+#                   LENGTH => w,             # The vectors are 'w' long
+#                   DELTA => u,             # A time window of 'u' hours is put around 
 #                                          # THE 'asc/desc' time in the search for 
 #                                          # WIND data to over plot. 
-# 		    ExcludeCols => "IDL exclude string"} # Talk to me about this one.
+# 		    EXCLUDECOLS => "IDL exclude string", # Talk to me about this one.
+#                   RAINFLAG => 0|1, # flag: if 1, then use the flag rain 
+#                   RF_ACTION => 0|1,# flag, what to do if rainflag==1. 
+#                                    #  If 0, do not plot rainflagged data, 
+#                                    # if 1, plot it using RF_COLOR.
+#                   RF_COLOR => n # Color to use when plotting ranflagged data. 
+#                                 # An index if using pseudo color, 
+#                                 a 24 bit true color if not.
 # 		}
 #
 #
@@ -82,13 +92,16 @@
 		    SENSORNUM  => 4,             # Ir4
 		    ASCTIME    => "18:00",       # Ascending Time 
 		    DESCTIME   => "07:00" },     # Descending time
-		  WIND => {                   
+		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
 		    CRDECIMATE => [1,1],         # Take all data
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
-		    EXCLUDECOLS => ""}           # Exclude none
+		    EXCLUDECOLS => "",           # Exclude none
+		    RAINFLAG => 0,
+		    RF_ACTION => 0,
+                    RF_COLOR => 0}
 		},
 
                # GOES 10 Visible, NE Pacific
@@ -102,13 +115,16 @@
 		    SENSORNUM  => 1,             # Visible
 		    ASCTIME    => "18:00",       # Ascending Time 
 		    DESCTIME   => "07:00" },     # Descending time
-		  WIND => {                   
+		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
 		    CRDECIMATE => [1,1],         # Take all data
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
-		    EXCLUDECOLS => ""}           # Exclude none
+		    EXCLUDECOLS => "",           # Exclude none
+		    RAINFLAG => 0,
+		    RF_ACTION => 0,
+                    RF_COLOR => 0}
 		},
                # GOES 10 Visible, Pacific Hurricane
 		GOES_10_4_PACHURR_1 => {  #<-------------------------------|
@@ -121,13 +137,16 @@
 		    SENSORNUM  => 4,             # Ir4
 		    ASCTIME    => "16:00",       # Ascending Time 
 		    DESCTIME   => "05:00" },     # Descending time
-		  WIND => {                   
+		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
 		    CRDECIMATE => [2,2],         # Take all data
 		    LENGTH => 2,                 # Vector Length
 		    DELTA => 5,                  # Delta Time
-		    EXCLUDECOLS => ""}           # Exclude none
+		    EXCLUDECOLS => "",           # Exclude none
+		    RAINFLAG => 0,
+		    RF_ACTION => 0,
+                    RF_COLOR => 0}
 		},
 
                # Goes 8, ir4, NW Atlantic
@@ -141,13 +160,16 @@
 		    SENSORNUM  => 4,             # Ir4
 		    ASCTIME    => "12:00",       # Ascending Time 
 		    DESCTIME   => "00:10" },     # Descending time
-		  WIND => {                   
+		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,       # Need this many vector to continue
 		    CRDECIMATE => [1,1],    # Take every row and col
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
-		    EXCLUDECOLS => ""}      # Exclude none
+		    EXCLUDECOLS => "",           # Exclude none
+		    RAINFLAG => 0,
+		    RF_ACTION => 0,
+                    RF_COLOR => 0}
 		},
 
                # Goes 8, Visible, NW Atlantic
@@ -161,13 +183,16 @@
 		    SENSORNUM  => 1,             # Visible
 		    ASCTIME    => "12:00",       # Ascending Time 
 		    DESCTIME   => "00:10" },     # Descending time
-		  WIND => {                   
+		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
 		    CRDECIMATE => [1,1],         # Take all data
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
-		    EXCLUDECOLS => ""}           # Exclude none
+		    EXCLUDECOLS => "",           # Exclude none
+		    RAINFLAG => 0,
+		    RF_ACTION => 0,
+                    RF_COLOR => 0}
 		},
 
                # Goes 8, ir4, Atlantic Hurricane
@@ -181,13 +206,16 @@
 		    SENSORNUM  => 4,             # Ir4
 		    ASCTIME    => "12:00",       # Ascending Time 
 		    DESCTIME   => "00:00" },     # Descending time
-		  WIND => {                   
+		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
 		    CRDECIMATE => [2,2],         # Take every other row/col
 		    LENGTH => 2,                 # Vector Length
 		    DELTA => 5,                  # Delta Time
-		    EXCLUDECOLS => ""}      # Exclude none
+		    EXCLUDECOLS => "",           # Exclude none
+		    RAINFLAG => 0,
+		    RF_ACTION => 0,
+                    RF_COLOR => 0}
 		},
 
 		# Gms 5, Ir1, West Pacific
@@ -201,13 +229,16 @@
 		    SENSORNUM  => 1,             # Ir1
 		    ASCTIME    => "23:00",       # Ascending Time 
 		    DESCTIME   => "11:30" },     # Descending time
-		  WIND => {                   
+		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
 		    CRDECIMATE => [1,1],         # Take all data
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
-		    EXCLUDECOLS => ""}      # Exclude middle 8 columns.
+		    EXCLUDECOLS => "",           # Exclude none
+		    RAINFLAG => 0,
+		    RF_ACTION => 0,
+                    RF_COLOR => 0}
 		},
 
 		# Gms 5, Ir1, Japan 
@@ -221,13 +252,16 @@
 		    SENSORNUM  => 1,             # Ir1
 		    ASCTIME    => "23:00",       # Ascending Time 
 		    DESCTIME   => "11:30" },     # Descending time
-		  WIND => {                   
+		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
 		    CRDECIMATE => [1,1],         # Take all data
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
-		    EXCLUDECOLS => ""}           # Exclude none
+		    EXCLUDECOLS => "",           # Exclude none
+		    RAINFLAG => 0,
+		    RF_ACTION => 0,
+                    RF_COLOR => 0}
 		},
 
 		# Gms 5, Ir1, Far East
@@ -241,13 +275,16 @@
 		    SENSORNUM  => 1,             # Ir1
 		    ASCTIME    => "00:30",       # Ascending Time 
 		    DESCTIME   => "12:30" },     # Descending time
-		  WIND => {                   
+		  WINDS => {                   
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
 		    CRDECIMATE => [1,1],         # Take all data
 		    LENGTH => 1.5,                 # Vector Length
 		    DELTA => 4,                  # Delta Time
-		    EXCLUDECOLS => ""}           # Exclude none
+		    EXCLUDECOLS => "",           # Exclude none
+		    RAINFLAG => 0,
+		    RF_ACTION => 0,
+                    RF_COLOR => 0}
 		}
 
  );

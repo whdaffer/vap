@@ -7,10 +7,16 @@
 
   $anim_obj = Animate->new( REGION => region,
                             TIME => time,
-                            DELTA => delta);
+                            DELTA => delta,
+                            WIND_FILTER => filter);
+
+  This object provides methods to write a temporary file executed by
+  IDL to create the frames which are then combined by a call to the
+  SGI routine `dmconvert.' It then calls the objects needed to move
+  the finished product to the webspace and rewrite the webpage.
 
 
-=head2 KEYS
+=head2 CONSTRUCTOR KEYS
 
 =over 4 
 
@@ -28,8 +34,49 @@
                  isn't passed in, it is defaulted in the IDL script
                  that this object calls.
 
+=item * WIND_FILTER: Filter for SeaWinds on QuikSCAT or on ADEOS-II.
+                     This filter must look like a typical unix shell
+                     file glob. Default = "{QS,SW}*"
 
 =back
+
+=head2 CALLABLE METHODS
+
+=over 4
+
+=item *   new: Creates new object. (discussed above)
+
+=item *   Make_Anim: Actually make the animation
+
+=item *   MoveOutput: Move output to the WWW area
+
+=item *   WriteWebpage: Rewrite the webpage 
+
+=back
+
+=head2 DEPENDENCIES
+
+       Environmental variables: 
+          All of these should be defined for the running user by `sourcing' the 
+          .vaprc file
+
+	VAP_LIBRARY - Where things like color tables and the defaults 
+                      used by the animation process live
+
+	VAP_SFTWR_PERL - Necessary for Perl modules
+	VAP_OPS_ANIM   - Work area
+	VAP_WWW_TOP    - Top of webspace
+	VAP_OPS_TMPFILES - Where to put tmp files.
+
+       Perl modules:
+
+	 Carp
+	 Cwd
+	 File::Copy
+	 File::Basename
+	 VapUtil
+	 VapError
+
 
 =cut
 
@@ -39,6 +86,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.5  2002/08/21 18:24:59  vapdev
+# Continuing work
+#
 #
 #
 package Animate;
