@@ -1,11 +1,14 @@
 #!/usr/bin/perl5  
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <99/09/21 15:46:34 vapuser>
+# Time-stamp: <00/02/28 10:56:06 vapuser>
 # $Id$
 #
 # Modification History:
 #
 # $Log$
+# Revision 1.8  1999/09/22 23:06:37  vapuser
+# Added hurricane alley overlays
+#
 # Revision 1.7  1999/09/08 21:16:00  vapuser
 # Changes some definitions in the BEGIN{} section.
 #
@@ -31,11 +34,11 @@ require Exporter;
 @EXPORT=qw( $VAP_LIB $VAP_ROOT $VAP_WINDS $VAP_ANIM 
 	   $VAP_OVERLAY $VAP_WWW_TOP $ARCHIVETOP 
 	   $GRIDDINGTOP $IDLEXE $VAP_OVERLAY_ARCHIVE 
-	   $VAP_WWW_TOP auto_movie_defs doy2mday_mon 
+	   $VAP_WWW_TOP $vap_is_batch auto_movie_defs doy2mday_mon 
 	   date2doy date_string  make_yyyymmdd gag grid_goes 
 	   getgoesfile fixlonrange vaptime2systime systime2vaptime 
 	   ParseWindFileNames GetWindFiles GetNow DeltaTime 
-	   ParseVapTime vaptime2idltime );
+	   ParseVapTime vaptime2idltime VapMailErrorMsg );
 
 use Cwd 'chdir', 'getcwd';
 use Time::Local;
@@ -43,26 +46,20 @@ BEGIN {
     # Get ENV variables
 
   $VAP_LIB=$ENV{'VAP_LIB'}                  || "/usr/people/vapuser/Qscat/Library";
-  $VAP_DISK=$ENV{'VAP_DISK'}                || "/disk5/vap";
-  $VAP_ROOT   = $ENV{'VAP_ROOT'}            || $VAP_DISK."/vap";
-  $VAP_WINDS  = $ENV{'VAP_WINDS'}           || $VAP_DISK."/winds/qscat/Rnoaa";
-  $VAP_ANIM   = $ENV{'VAP_ANIM'}            || $VAP_ROOT."/anim";
-  $VAP_OVERLAY = $ENV{'VAP_OVERLAY'}        || $VAP_ROOT."/overlay";
-  $VAP_WWW_TOP = $ENV{'VAP_WWW_TOP'}        || $VAP_ROOT."/www/htdocs";
-  $ARCHIVETOP  = $ENV{'VAP_GOES_TOPDIR'}    || $VAP_ROOT."/goes";
-  $GRIDDINGTOP = $ENV{'VAP_GOES_GRIDDED_TOPDIR'} || 
-      $ARCHIVETOP."gridded_files";
-  $IDLEXE=$ENV{'IDLEXE'};
-  $VAP_OVERLAY_ARCHIVE = $ENV{'VAP_OVERLAY_ARCHIVE'} ||
-      $VAP_WWW_TOP."/images/overlay_archive";
 
     # MOVIE DEFS
   $auto_movie_defs_file=$VAP_LIB."/auto_movie_defs.dat";
+
     # Get the Overlay Defaults
   $overlay_defs_file=$VAP_LIB."/overlay_defs";
   require $overlay_defs_file;
 
+    # Get generic VAP processing Defaults
+  $vap_defs_file=$VAP_LIB."/vap_defs";
+  require $vap_defs_file;
 
+    # Check for interactivity.
+  $vap_is_batch = !defined($ENV{'TERM'});
 }
 
 %sat_num= ('8','9' , # AREA08* are goes 9 files !
@@ -278,15 +275,23 @@ sub date_index{
 	    'gms51fareast1'  => 'GMS51FAREAST1.jpeg'
 );
 
-  chdir $DOCROOT || die "Couldn't chdir to $DOCROOT";
-
+  do {
+    print "Couldn't chdir to $DOCROOT";
+    return undef;
+  } unless chdir $DOCROOT;
+  
   
   while( ($key,$value) = each %wwwhash ) {
-    $file = $VAPIM.$value;
+    $file = "$VAPIM$value";
+    
     if (-e $file) { 
 
-      ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
-       $atime,$mtime,$ctime,$junk)=stat($file) || die "Couldn't stat $file\n";;
+     if (! ( ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+       $atime,$mtime,$ctime,$junk)=stat($file)))
+     {
+       print "Couldn't stat $file\n";
+       return undef;
+     }
 
       ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
        $atime,$mtime,$ctime,$junk)=stat($file) if !$nlink;
@@ -322,9 +327,11 @@ sub date_index{
   open(IN ,"index.html.blank");
   @in=<IN>;
   close(IN);
-  rename ("index.html", "index.html.old" ) ||
-      die "Couldn't rename index.html\n";
-  open (OUT, ">index.html") || die "Can't open index.html\n";
+  do { print "Couldn't rename index.html\n";
+       undef;} unless rename ("index.html", "index.html.old");
+  do {
+    print "Can't open index.html\n";
+    undef; } unless open (OUT, ">index.html");
   $search_string1 = "(hhmts|";
   $search_string1 .= join("|",@wwwnames);
   $search_string1 .= ")";
@@ -365,7 +372,8 @@ sub date_index{
     }
     print OUT $in[$i];
   }
-  chdir $start_dir || die "Couldn't go back to $start_dir\n";
+  do {print "Couldn't go back to $start_dir\n";
+	  undef;} unless chdir $start_dir;
   close OUT;
   1;
 }
@@ -452,7 +460,8 @@ sub gag {
   local($start_dir) = Cwd::cwd(); 
 
   ($host,$user,$pw) = getgoesarchive();
-  die "Can't get goes Archive info\n" unless defined $pw;
+  do { print "Can't get goes Archive info\n";
+       undef; } unless defined $pw;
 
 
     # given the satellite, returns x of AREAx
@@ -507,8 +516,11 @@ sub gag {
 
     # Convert the test time to GMT
   $test_time = timegm( 0, $tmin, $thour, $tmday, $tmon, $tyear );
-  die "Can't convert test time $tyear/$tmon/$tmday $thour\n" 
-      if $test_time == -1;
+  if ($test_time == -1)
+  {
+    print "Can't convert test time $tyear/$tmon/$tmday $thour\n";
+    return undef; 
+  } 
 
     # Construct file test times. The times in the 
     # area info file are already in GMT.);
@@ -518,8 +530,11 @@ sub gag {
   $noaa_area_info_filename=$ARCHIVETOP."/goes".$satnum."/";
   $noaa_area_info_filename.=$sensor_dir{$sensornum}."/noaa_area_info";
     # Open 'info' file
-  open(NOAA_AREA_INFO, "<$noaa_area_info_filename") || 
-      die "Couldn't open noaa_area_info $noaa_area_info_filename file \n";
+  if (!open(NOAA_AREA_INFO, "<$noaa_area_info_filename") )
+  {
+    print "Couldn't open noaa_area_info $noaa_area_info_filename file \n";
+    return undef;
+  }
   @noaa_area_info = <NOAA_AREA_INFO>;
   close(NOAA_AREA_INFO);
 
@@ -571,7 +586,11 @@ sub gag {
   }
   $diffhrs=$min_diff/3600.;
   print "min_diff=$min_diff, diffhrs=$diffhrs\n";
-  die "Closest File ($area_file) is over $diffhrs hours distant!\n" if $diffhrs>2.;
+  if ($diffhrs>2.)
+  {
+    print "Closest File ($area_file) is over $diffhrs hours distant!\n";
+    return undef;
+  }
 
   print "  AREA file for this run = $area_file\n";
 
@@ -609,7 +628,8 @@ sub gag {
         # directory. See if the area file there is the same one.
 
     $cwd=Cwd::getcwd();
-    chdir $local_path || die "Couldn't cd to $local_path to run mkai\n";
+    do { print "Couldn't cd to $local_path to run mkai\n";
+	 undef;} unless  chdir $local_path; 
     $t=Cwd::getcwd();
     print "Now in $t\n";
     $exe_str = "/usr/people/vapuser/bin/mkai ";
@@ -630,14 +650,16 @@ sub gag {
     if ($r != 0) {
       print "   Some kind of error in mkai\n";
     }
-    chdir $cwd || die "Couldn't cd back to $cwd\n";
+    do {print "Couldn't cd back to $cwd\n";
+	undef;} unless chdir $cwd;
     print "Done running mkai\n";
 
         # read the local area_info file, see if the area file we have
         # is from the same time.
 
     $local_ainf = $local_path."/area_info";
-    open ( INF, "<$local_ainf") || die "Couldn't open $local_ainf\n";
+    do {print "Couldn't open $local_ainf\n";
+	undef;} unless open ( INF, "<$local_ainf") ;
     @ainf=<INF>;
     close (INF);
 
@@ -670,7 +692,12 @@ sub gag {
     print "   Not here! Retrieving $area_file from the NOAA archive \n";
     $file=getgoesfile( $area_file);
 
-    die "Error retrieving $area_file\n" if (!file);
+    if (!file) 
+    { 
+      print "Error retrieving $area_file\n";
+      return undef;
+    }
+	  
       
         # If we're running this as root, change owner/group and
         # permissions
@@ -712,7 +739,8 @@ sub gag {
       $goes_type=$satnum.$sensornum;
       $tyear=$year;
       $tmonth=$month+1;
-      $grid_file_name=sprintf( "GOES%03d-%04d%02d%02d%02d-%%%04d,%03d,%04d,%03d%%.dat", 
+      $grid_file_name=sprintf( 
+	    "GOES%03d-%04d%02d%02d%02d-%%%04d,%03d,%04d,%03d%%.dat", 
 			      $goes_type, $tyear, $tmonth, $mday, $hour, 
 			      $iminlon, $iminlat, $imaxlon, $imaxlat );
       
@@ -721,7 +749,7 @@ sub gag {
 
 
       # construct the name of the gridded file.
-      print "   Testing for presence of a grid file matching file glob\n   $local_gridded_file\n";
+      print "   Testing for grid file matching glob\n   $local_gridded_file\n";
       if (-e $local_gridded_file) {
 	  print "  $grid_file already exists, I'll return this file instead\n";
 	  # Not he prettiest way to code this, I'll think of something later.
@@ -742,7 +770,11 @@ sub gag {
   $local_gridded_file=grid_goes( $gridding_path, $area_file, 
 				$minlon, $minlat, $maxlon, $maxlat );
   print "local gridded_file = $local_gridded_file\n";
-  die "Error Gridding area file $area_file\n" if !$local_gridded_file;
+  if (!$local_gridded_file) 
+  { 
+    print "Error Gridding area file $area_file\n" ;
+    return undef;
+  } 
   $local_gridded_file;
 
 } # End GAG
@@ -1221,4 +1253,15 @@ sub vaptime2idltime{
   $idltime
 }
 
+sub VapMailErrorMsg{
+  if ($vap_is_batch){
+    $errmsg=$_[0] || "Generic Error\n";
+    $subject=$_[1] || "<Generic Vap Error>\n";
+    $addresses=join ", ", @{$vap_perl::vap_defs{'Error_Mail_Address'}};
+    open MAIL_MESSAGE, "|mailx -s \'$subject\' $addresses";
+    print MAIL_MESSAGE $errmsg;
+    close MAIL_MESSAGE;
+  }
+  1;
+}
 1;
