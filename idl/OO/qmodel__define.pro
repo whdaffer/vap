@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1999/10/05 16:43:44  vapuser
+; Added code to support starttime/endtime and deal with west longitudes.
+;
 ; Revision 1.4  1998/10/17 00:20:03  vapuser
 ; Added many arguments to GET method
 ;
@@ -179,6 +182,8 @@ FUNCTION Qmodel::Read, filename
              IF Ptr_Valid( self.data ) THEN $
                Ptr_Free, self.data 
              self.data = Ptr_New( qmodel )
+             self.starttime =  string((*self.data).hdr.StartTime)
+             self.endtime =  string((*self.data).hdr.EndTime)
              status = 1
            ENDIF 
          ENDIF ELSE BEGIN 
@@ -246,6 +251,7 @@ PRO   qmodel::Get, $
                 starttime    = StartTime,$   
                 EndTime      = EndTime,$     
                 CreationTime = CreationTime,$
+                infostruct   = infostruct, $
                 _extra       = extra
 
 
@@ -260,6 +266,15 @@ PRO   qmodel::Get, $
    IF Arg_Present(StartTime) THEN StartTime = string((*self.data).hdr.StartTime)
    IF Arg_Present(EndTime)   THEN EndTime = string((*self.data).hdr.EndTime)
    IF Arg_Present(CreationTime) THEN CreationTime = (*self.data).hdr.CreationTime
+
+   IF Arg_Present(infostruct) THEN BEGIN 
+     infostr =  { ShortName: (*self.data).hdr.ShortName, $
+                  LonPar: (*self.data).hdr.lonpar, $
+                  LatPar: (*self.data).hdr.latpar, $
+                  Start_Time: string((*self.data).hdr.StartTime), $
+                  EndTime: string((*self.data).hdr.EndTime),$
+                  CreationTime: (*self.data).hdr.CreationTime }
+   ENDIF 
 END
 
 
