@@ -92,6 +92,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/22 21:33:23  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -152,10 +155,26 @@ FUNCTION hdfgetattr, filename, attribute=attribute, printall=printall
         IF n_elements(attribute) NE 0 THEN BEGIN 
           IF strupcase(attribute) EQ strupcase(name) THEN BEGIN 
             retstruct.name = name
+            IF VarType(data) EQ 'STRING' THEN BEGIN 
+              data = str_sep(data,lf)
+              IF strupcase(data[0]) EQ 'CHAR' THEN BEGIN 
+                data =  data[2:n_elements(data)-1]
+                x = where(strlen(data))
+                data = data[x]
+              ENDIF 
+            ENDIF 
             retstruct.value = Ptr_New(data,/no_copy)
           ENDIF 
         ENDIF ELSE BEGIN 
           retstruct(ai).name = name
+          IF VarType(data) EQ 'STRING' THEN BEGIN 
+            data = str_sep(data,lf)
+            IF strupcase(data[0]) EQ 'CHAR' THEN BEGIN 
+              data =  data[2:n_elements(data)-1]
+                x = where(strlen(data))
+                data = data[x]
+            ENDIF 
+          ENDIF 
           retstruct(ai).value = Ptr_New(data,/no_copy)
         ENDELSE 
       ENDFOR 
