@@ -104,7 +104,7 @@
 ; start_time defaults to current_time - delta.
 
 ; Path defaults to VAP_WINDS
-; filter defaults to 'path/Q*'
+; filter defaults to 'path/{QS,SW}*'
 ;
 ; 
 ; Success: Returns an array of file names 
@@ -117,6 +117,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.9  2002/05/03 01:11:34  vapdev
+; Changed these support files to use multiple paths/filters (in case
+; we want to segregate QuikSCAT/ADEOS streams). Modifed env variables to
+; reflect new schema. Just cosmetic work on the swath routines.
+;
 ; Revision 1.8  2001/12/08 00:02:37  vapdev
 ; Getting rid of obsolete RSI routines and fixing ENV vars
 ;
@@ -219,7 +224,7 @@ FUNCTION getwindfiles, end_time, $
        path[i] = path[i] + '/'
   ENDFOR 
    
-  IF n_elements(filter) EQ 0 THEN filter =  "{Q,S}*"
+  IF n_elements(filter) EQ 0 THEN filter =  "{QS,SW}*"
 
 
     ;-----------------------------------------
