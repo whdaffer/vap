@@ -1,0 +1,7 @@
+# $Id$
+#
+# $Log$
+#
+#
+$remote_host="rsd.gsfc.nasa.gov";
+$REMOTE_TOPDIR="/pub/Weather/GMS-5";
