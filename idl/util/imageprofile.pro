@@ -50,6 +50,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/11/17 18:01:44  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -61,7 +64,7 @@ FUNCTION imageProfile, image, startPt, endPt
     Message,'Usage: [ [x],[y],[z]] = imageProfile(image [,startPt [,EndPt ] ] )',/cont
     return,''
   ENDIF 
-  ndims = size(image,n_dims)
+  ndims = size(image,/n_dim)
   sz = size(image,/dimensions)
   IF ndims NE 2 THEN BEGIN 
     Message,'Image must be 2-d!',/cont
@@ -72,7 +75,7 @@ FUNCTION imageProfile, image, startPt, endPt
   IF N_elements(endPt) NE 2 THEN endPt =  [ sz[0], sz[1] ]-1
 
   x0 = startPt[0]
-  y0 =startr[1]
+  y0 =startPt[1]
   x1 = endPt[0]
   y1 = endPt[1]
 
@@ -98,4 +101,5 @@ FUNCTION imageProfile, image, startPt, endPt
     END
   ENDCASE 
   return, [ [xi], [yi], [zi] ]
+
 END
