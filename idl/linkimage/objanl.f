@@ -19,6 +19,9 @@ C
 c Modifications Log:
 c
 c $Log$
+c Revision 1.1  1999/10/06 20:17:37  vapuser
+c Initial revision
+c
 c
 c
 c $Id$
@@ -751,12 +754,12 @@ d        print 200,k,urms,vrms,vec
 C     ===== Done with the big loop !=============
 
 
-c      if(nvesc.eq.1)then 
+      if(nvesc.eq.1)then 
 cd        type*,' calling smooth for vg'
-c        call smooth(sp,vg,work,l,m)
-c      endif 
+        call smooth(sp,vg,work,l,m)
+      endif 
 cd      type*,' calling smooth for ug'
-c      call smooth(sp,ug,work,l,m)
+      call smooth(sp,ug,work,l,m)
 
 c **********************************************
 c     find variance of analyzed field
