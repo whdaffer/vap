@@ -31,6 +31,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.13  2002/12/04 23:56:20  vapdev
+# Ongoing work
+#
 # Revision 1.12  2002/12/04 00:59:41  vapdev
 # Ongoing work
 #
@@ -150,7 +153,7 @@ BEGIN {
 		     '4' => 'ir4',
 		     '5' => 'ir5'
 		    );
-  %sensorname2num = reverse %sensornum2dir;
+  %sensorname2num = reverse %sensornum2name;
 
 }
 

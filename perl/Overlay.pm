@@ -52,6 +52,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.3  2002/12/06 00:39:22  vapdev
+# Continuing work
+#
 # Revision 1.2  2002/12/03 00:13:28  vapdev
 # Ongoing work
 #
@@ -203,6 +206,7 @@ EOF
 use lib qw/ $ENV{VAP_SFTWR_PERL} $ENV{VAP_LIBRARY}/;
 use OGoes;
 use OGms5;
+use Winds;
 use VapUtil;
 use VapError;
 
@@ -234,8 +238,8 @@ sub new {
     croak $minusage;
   }
 
-  @{$self->{GOES_NUM2NAME}} = [qw/null vis ir2 ir3 ir4/]; 
-  @{$self->{GMS_NUM2NAME}} = [qw/null ir1 ir2 ir3 vis/];
+  @{$self->{GOES_NUM2NAME}} = qw/null vis ir2 ir3 ir4/; 
+  @{$self->{GMS_NUM2NAME}} = qw/null ir1 ir2 ir3 vis/;
 
      # `null' is just a placeholder to make the indexing work out.
 
@@ -329,7 +333,7 @@ sub setupProcessing{
 			  ABSFLAG => $self->{ABSFLAG},
 			  ERROROBJ => $self->{ERROROBJ});
     $self->_croak("Error creating OGoes object",
-		  "OGoes initialization failure!") unless !$goes;
+		  "OGoes initialization failure!") unless $goes;
     my $t = time();
     $gridded_file = $goes->gag();
     print "Error gridding file -- Continuing without one!\n" 
@@ -350,12 +354,19 @@ sub setupProcessing{
     my ($datetime, $mindiff) = $gms->GetClosest();
     $self->_croak("No GMS files within $delta of $datetime",
 		"No GMS files") unless $datetime;
-    $gridded_file=$datetime;
     $gmstype = $sensor;
+    $gridded_file=$datetime;
+
   }
   $self->{GRIDDED_FILE} = $gridded_file;
   $self->{GMSTYPE} = $gmstype || "";
-  ($gridded_file, $gmstype);
+
+
+    ## Now get the wind files!
+
+  
+
+  1;
 }
 
 
@@ -436,6 +447,7 @@ sub runIDL{
 
 sub _moveOutput{
   my $self=shift;
+  1;
 }
 #=============================================================
 # _redoHTML
@@ -443,6 +455,7 @@ sub _moveOutput{
 #==================================================================
 sub _redoHTML{
   my $self=shift;
+  1;
 }
 
 #=============================================================
@@ -457,7 +470,8 @@ sub _buildTmpfile{
   # So, construct this time string.
 
   my $lock_file = $self->_createLockfile();
-
+  my $gridded_file = $self->{GRIDDED_FILE};
+  my $delta = $self->{DELTA};
   my ($idl_time_string, $idl_tmp_file, $exe_str);
   $idl_time_string=$self->{TIME};
   $idl_tmp_file=$ENV{VAP_TMPFILES_DIR}. "$0_idl_called_by_perl_$$.pro";
@@ -469,36 +483,39 @@ sub _buildTmpfile{
 
   my $idl_windfilter = $self->{WINDFILTER} =~ /^Q/i? "QS*":"SW*";
 
-  print TMPFILE "gridded_file = '". $gridded_file . "'\n";
+  print TMPFILE "gridded_file = '". $self->{GRIDDED_FILE} . "'\n";
   print TMPFILE "idl_windfilter = '" . $idl_windfilter . "'\n";
   print TMPFILE "idl_time_string = '" . $idl_time_string . "'\n";
   print TMPFILE "delta = $delta\n";
-  print TMPFILE "wpath = '" . $winds_path . "'\n";
+  print TMPFILE "wpath = '" . $self->{WINDSPATH} . "'\n";
   print TMPFILE "lockfile = '". $lock_file . "'\n";
-  print TMPFILE "length = $length";
+  print TMPFILE "length = ". $self->{LENGTH};
   print TMPFILE "CRDecimate = [" . 
     join( ",", @{$self->{CRDECIMATE}} ) . "]\n";
-  print TMPFILE "ExcludeCols = '" . $excludecols . "'\n";
-  my $limits = $self->{LIMITS};
-  my $maplimits = "[ $limts[0], $limits[1], $limits[2], $limits[3]]";
+  print TMPFILE "ExcludeCols = '" . $self->{EXCLUDECOLS} . "'\n";
+  my @limits = @{$self->{LIMITS}};
+  my $maplimits = "[ $limits[0], $limits[1], $limits[2], $limits[3]]";
 
   print TMPFILE "mapLimits = $maplimits\n";
 
-  my $exe_str = << "EOF";
+  my $tmpfile_exe_str = << "EOF";
 
-  cloud_overlay, gridded_file, idl_windfilter, idl_time_string, delta,$
-    wpath = wpath, lockfile=lockfile, length=length, $
+  cloud_overlay, gridded_file, idl_windfilter, idl_time_string, delta,\$
+    wpath = wpath, lockfile=lockfile, length=length, \$
     crdecimate=crdecimate, excludecols=excludecols
 
-  EOF
+EOF
 
-  $exe_str .= ",\$\nrainflag = $rainflag" if $rainflag;
-  $exe_str .= ",\$\n rf_action=$rf_action" if $rf_action;
-  $exe_str .= ",\$\n rf_color=$rf_color\n" if $rf_color;
-  $exe_str .= ",\$\n gmsType='" . $gmstype . "'" 
-    if ($gmstype);
+  $tmpfile_exe_str .= ",\$\nrainflag = " . $self->{RAINFLAG} 
+    if $self->{RAINFLAG};
+  $tmpfile_exe_str .= ",\$\n rf_action=" . $self->{RF_ACTION} 
+    if $self->{RF_ACTION};
+  $tmpfile_exe_str .= ",\$\n rf_color=". $self->{RF_COLOR} 
+    if $self->{RF_COLOR};
+  $tmpfile_exe_str .= ",\$\n gmsType='" . $self->{GMSTYPE} . "'"
+    if $self->{GMSTYPE};
 
-  print TMPFILE "\n$exe_str\n";
+  print TMPFILE "\n$tmpfile_exe_str\n";
   print TMPFILE "\nexit\n";
 
   close TMPFILE;
@@ -506,14 +523,15 @@ sub _buildTmpfile{
 
 }
 #=============================================================
-# _constructFinalName
+# _constructFinalBasename
 #    Construct the name this file will have in the overlay archive
 #    portion of the WWW area
 #==================================================================
 
-sub _constructFinalName{
+sub _constructFinalBasename{
 
   my $self = shift;
+  my $outputname = shift;
   my @exts = @_;
   my ($name, $path, $ext) = fileparse($outputname, @exts);
   my @tmp=split(/_/,$self->{REGION});
@@ -558,9 +576,9 @@ sub _checkForErrors{
   close FILE;
   my @errors = grep /ERROR/, @lines;
   if (@errors) {
-    my $string = "cloud_overlay had errors!\n Lines from lockfile:\n\n";
-    $string .= join("\n", @lines ) . "\n";
-    $self->_croak{$string, "ERRORS IN LOCKFILE!");
+    my $string = "cloud_overlay had errors!\n Printing\n$lockfile:\n\n";
+    $string .=  join("\n", @lines ) . "\n";
+    $self->_croak($string, "ERRORS IN LOCKFILE!");
   }
 }
 

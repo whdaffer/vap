@@ -38,11 +38,14 @@ $tsoo_defs = {STORMS_HOST => "www.solar.ifa.hawaii.edu",
 				   },
 
 	      SAT2SAT => {
-			  GOESEASTN=>"Goes8", 
-			  GOESWESTN=>"Goes10",
+			  GOESEASTN=>"GOES8", 
+			  GOESWESTN=>"GOES10",
 			  GMS5 => "GMS5" 
 			 },
-	      SATELLITES => qw<GOESEAST GOESWEST GMS5>,
+	      SATELLITES => [qw<GOESEAST GOESWEST GMS5>],
+	      WEB =>{ NAME => { GOESEAST => "Atlantic", 
+				GOESWEST => "E. Pacific",
+				GMS5 => "W. Pacific"}},
 	      STORMRANKING => {
 			       '???' => 0,
 			       DEP => 1,

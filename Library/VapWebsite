@@ -3,4 +3,13 @@
 # Modifications
 #
 # $Log$
+# Revision 1.1  2002/12/03 00:12:50  vapdev
+# Initial revision
+#
 @allowed_extensions = qw/jpeg jpg JPEG JPG mov/;
+
+  # Setting this array will cause any product which has this string in
+  # its name to be passed over in processing the website. 
+
+@defunct_satellites = qw/gms gms5 GMS GMS5/;
+

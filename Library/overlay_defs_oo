@@ -3,6 +3,9 @@
 # Modification Log;
 #
 # $Log$
+# Revision 1.2  2002/12/03 00:13:28  vapdev
+# Ongoing work
+#
 # Revision 1.1  2002/08/21 18:28:54  vapdev
 # initial revision
 #
@@ -50,9 +53,12 @@
 #                   RF_ACTION => 0|1,# flag, what to do if rainflag==1. 
 #                                    #  If 0, do not plot rainflagged data, 
 #                                    # if 1, plot it using RF_COLOR.
-#                   RF_COLOR => n # Color to use when plotting ranflagged data. 
+#                   RF_COLOR => n} # Color to use when plotting ranflagged data. 
 #                                 # An index if using pseudo color, 
 #                                 a 24 bit true color if not.
+#                 WEB=>{
+#                    NAME => 'name to use on website',
+#                    ACTIVE => 0|1 } # 1 means put on website.
 # 		}
 #
 #
@@ -80,7 +86,7 @@
 
 
 
-%overlay_defs= (
+$overlay_defs= {
                # Goes 10 Ir4, NE Pacific
 		GOES_10_4_NEPAC_1 => {  #<-------------------------------|
 		  REGION     => "GOES_10_4_NEPAC_1", # must match this --|
@@ -101,7 +107,10 @@
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0}
+                    RF_COLOR => 0},
+		 WEB => {
+		    NAME => "N.E. Pac (IR4)",
+		    ACTIVE => 1}
 		},
 
                # GOES 10 Visible, NE Pacific
@@ -124,7 +133,10 @@
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0}
+                    RF_COLOR => 0},
+		 WEB => {
+		    NAME => "N.E. Pac (VIS)",
+		    ACTIVE => 0}
 		},
                # GOES 10 Visible, Pacific Hurricane
 		GOES_10_4_PACHURR_1 => {  #<-------------------------------|
@@ -146,7 +158,10 @@
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0}
+                    RF_COLOR => 0},
+		 WEB => {
+		    NAME => "Pac. Hurr.(ir4)",
+		    ACTIVE => 1}
 		},
 
                # Goes 8, ir4, NW Atlantic
@@ -169,7 +184,10 @@
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0}
+                    RF_COLOR => 0},
+		 WEB => {
+		    NAME => "N.W. Atl (ir4)",
+		    ACTIVE => 1}
 		},
 
                # Goes 8, Visible, NW Atlantic
@@ -192,7 +210,10 @@
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0}
+                    RF_COLOR => 0},
+		 WEB => {
+		    NAME => "N.W. Atl (vis)",
+		    ACTIVE => 0}
 		},
 
                # Goes 8, ir4, Atlantic Hurricane
@@ -215,7 +236,10 @@
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0}
+                    RF_COLOR => 0},
+		 WEB => {
+		    NAME => "Atl. Hurr.(ir4)",
+		    ACTIVE => 1}
 		},
 
 		# Gms 5, Ir1, West Pacific
@@ -238,7 +262,10 @@
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0}
+                    RF_COLOR => 0},
+		 WEB => {
+		    NAME => "W. Pac",
+		    ACTIVE => 0}
 		},
 
 		# Gms 5, Ir1, Japan 
@@ -261,7 +288,10 @@
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0}
+                    RF_COLOR => 0},
+		 WEB => {
+		    NAME => "Japan",
+		    ACTIVE => 0}
 		},
 
 		# Gms 5, Ir1, Far East
@@ -284,10 +314,13 @@
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0}
+                    RF_COLOR => 0},
+		 WEB => {
+		    NAME => "Far East",
+		    ACTIVE => 0}
 		}
 
- );
+ };
 
 
 

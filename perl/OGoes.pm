@@ -9,6 +9,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.6  2002/12/06 00:39:22  vapdev
+# Continuing work
+#
 # Revision 1.5  2002/08/08 23:26:16  vapdev
 # General cleanup, work on BEGIN{} block.
 #
@@ -77,7 +80,7 @@
 =item * TIME: string, "YYYY/MM/DD/HH/MM"
               Defaults to current time.
 
-=item * DELTA: A float. The delta time around TIME to search for
+=item * DELTA: A float. The delta time (in hours) around TIME to search for
                data. If ABSFLAG is set this interval extends from
                DATETIME-DELTA to DATETIME+DELTA, otherwise, the time
                of the image file must reside in the interval
@@ -134,7 +137,7 @@ sub new {
 
     # Check for interactivity.
   $self->{_IS_BATCH} = !defined($ENV{'TERM'});
-  $self->{_MIN_DIFF_TIME} = 1.5*3600;
+  $self->{DELTA} = 4.0 unless $self->{DELTA};
   $self->{TIME} = VapUtil::systime2idltime(time()) unless $self->{TIME};
   $self->{SYSTIME} = VapUtil::idltime2systime($self->{TIME});
   $self->{SENSORNUM} = $VapUtil::sensorname2num{$self->{SENSOR}} 
@@ -144,7 +147,7 @@ sub new {
   $self->{REMOTE_ARCHIVE_INFO} = 
     VapUtil::getgoesarchive("$VapUtil::VAP_LIBRARY/goes_archive");
   my $limits = $self->{LIMITS} || [0,0,0,0];
-  $self->{DELTA} = 4.0 unless $self->{DELTA};
+
 
   croak "Input Keys SAT and (SENSOR or SENSORNUM)  are required!\n" 
     unless (exists($self->{SAT}) && 
@@ -157,6 +160,8 @@ sub new {
   ${$self->{LIMITS}}[0] = $tmp[0];
   ${$self->{LIMITS}}[2] = $tmp[1];
   $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
+  $self->{GRIDDED_FILE_NAME_FORMAT} = "GOES%03d_%04d%02d%02d%02d_%04d,%03d,%04d,%03d.dat";
+
   return $self;
 }
 
@@ -199,9 +204,10 @@ sub grid{
   my $minlat  = shift @_ || 0 ;
   my $maxlon = shift @_ || 0 ;
   my $maxlat  = shift @_ || 0 ;
-  my $local_gridded_file;
+  
   print "  checking for already existing gridded file!\n";
-  if (!($local_gridded_file = $self->AlreadyGridded())) {
+  my $local_gridded_file = $self->AlreadyGridded();
+  if (!$local_gridded_file) {
     print "  Preparing to grid area file $areafile\n";
 
     my $exe_string;
@@ -232,6 +238,7 @@ sub grid{
     }
     $local_gridded_file;
   }
+  $local_gridded_file;
 }
 
 
@@ -244,8 +251,7 @@ sub grid{
 sub AlreadyGridded {
   my $self=shift;
   # The format of the filename, given in grid_goes.c, is:
-
-  my $format= "GOES%03d_%04d%02d%02d%02d_%04d,%03d,%04d,%03d.dat";
+  my $format= $self->{GRIDDED_FILE_NAME_FORMAT};
 
   # We construct this filename and check to see if it exists in the
   # local gridded files repository. Return that name if it does,
@@ -260,7 +266,7 @@ sub AlreadyGridded {
 			 $goes_type, $year, $month, $day, $hour,
 			 $minlon, $minlat, $maxlon, $maxlat);
   my $retval = 
-    (-e $self->{GRIDDEDPATH} . "$testfile")? $testfile : undef
+    (-e $self->{GRIDDINGDIR} . "/$testfile")? $testfile : undef
 }
 
 #----------------------------------------------------------
@@ -274,7 +280,7 @@ sub GetAREAFile{
   ($file, $time,$mindiff,$remoteflag) = 
     $self->NearestAREAFile();
 
-  if ($mindiff < $self->{_MIN_DIFF_TIME}) {
+  if ($mindiff < $self->{DELTA}) {
     if ($remoteflag) {
       $localfile=$self->FetchAREAFile($file);
     } else {
@@ -314,8 +320,8 @@ sub NearestAREAFile{
     $diff = abs($diff) if $absflag;
 
     if ($diff > 0) {
-      if ($diff < $mindiff) {
-	$mindiff=$diff;
+      if ($diff/3600. < $mindiff) {
+	$mindiff=$diff/3600.;
 	$file=$k;
 	$time=$v;
       }
@@ -590,11 +596,11 @@ sub FetchAREAFile{
 #
 #----------------------------------------------------------
 
-sub setMinDiff{
+sub setDelta{
   my $self=shift;
-  $self->{_MIN_TIME_DIFF} =shift || 
-  do { print "Taking default time difference of 45 minutes!\n";
-    45};
+  $self->{DELTA} =shift || 
+  do { print "Taking default time difference of 4 hours!\n";
+    4*3600};
 }
 
 
@@ -631,7 +637,8 @@ sub GriddingPath{
   my $self=shift;
   my $satnum= $self->{SAT};
   my $sensordir= $self->{SENSOR};
-  my $dir = ($self->{GRIDDINGDIR} = "$VapUtil::GRIDDINGTOP/goes$satnum/$sensordir");
+  my $dir = $VapUtil::GRIDDINGTOP . "/goes" . $satnum ."/" . $sensordir;
+  $self->{GRIDDINGDIR} = $dir;
 }
 
 #----------------------------------------------------------

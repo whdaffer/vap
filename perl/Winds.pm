@@ -1,61 +1,97 @@
 #
 # $Id$
-#
-# Winds.pm
-#
-# OO Perl Module for finding and manipulating Qscat/SeaWinds data files.
-#
-#  Methods:
-#
-#     `new': 
-#
-#        usage: $objref = Winds->new(FILTER = some_filter, 
-#                                  [ ENDTIME = 'yyyy/mm/dd/hh/mm/ss',
-#                                  STARTTIME = 'yyyy/mm/dd/hh/mm/ss']);
-#
-#        Required input: 
-#
-#              FILTER. This is the REGULAR EXPRESSION used to find wind
-#              data. To find only QuikSCAT files, use FILTER = 'QS',
-#              to file SeaWinds data only, use FILTER => 'SW ' and to
-#              find both, use FILTER => '(QS|SW)'
-#
-#
-#              It must be a REGULAR EXPRESSION, rather than a file
-#              glob, because what is searched is an array of filenames
-#              which I generate using perl internal routines. I'm not
-#              using the shell to find the files! If you put in a
-#              shell glob the results will most probably be
-#              unexpected.
-#
-#
-#        Optional input: 
-#
-#              ENDTIME defaults to current time.
-#              STARTTIME defaults to endtime - 3 hours.
-#
-#  For use with the TS and ET module and any other module which needs
-#  to be able to find Qscat wind files or get their times.
-#
-# Author: William H. Daffer
-#
+
+=pod
+
+
+
+=head1 Winds.pm
+
+ OO Perl Module for finding and manipulating Qscat/SeaWinds data files.
+
+=head2 Methods:
+
+=over 4
+
+=item * new: 
+
+        usage: $objref = Winds->new(FILTER = some_filter, 
+                                  [ ENDTIME = 'yyyy/mm/dd/hh/mm/ss',
+                                  STARTTIME = 'yyyy/mm/dd/hh/mm/ss']);
+
+
+=over 6
+
+=head2  Arguments (all in the `keyword => value' format)
+
+        Required input: 
+
+=item *  FILTER: This is the REGULAR EXPRESSION used to find wind
+                 data. It is *NOT* a file glob! 
+
+              To find only QuikSCAT files, use FILTER = 'QS',
+              to file SeaWinds data only, use FILTER => 'SW ' and to
+              find both, use FILTER => '(QS|SW)'
+
+
+             It must be a REGULAR EXPRESSION, rather than a file
+             glob, because what is searched is an array of filenames
+             which I generate using perl internal routines. I'm not
+             using the shell to find the files! If you put in a
+             shell glob the results will most probably be
+             unexpected.
+
+
+       Optional input: 
+
+=item * DELTA: the number of hours back from ENDTIME to go, default = 3.
+
+=item * ENDTIME defaults to current time.
+
+=item * STARTTIME defaults to endtime - DELTA hours.
+
+=back
+
+=back
+
+  For use with the TS and ET module and any other module which needs
+  to be able to find Qscat wind files or get their times.
+
+
+=cut 
+
 # Modification Log:
 #
 # $Log$
+# Revision 1.2  2002/08/08 23:28:54  vapdev
+# Removed some 'my' shadowing.
+#
 # Revision 1.1  2002/08/08 00:15:14  vapdev
 # Initial Revision
-#
-#
-#
+
+
+
 package Winds;
 use strict;
+use Carp;
+
+BEGIN  {
+
+  croak "ENV variable VAP_OPS_TMPFILES is undefined!\n" 
+    unless $ENV{VAP_OPS_TMPFILES};
+
+  croak "ENV variable VAP_SFTWR_PERL is undefined!\n" 
+    unless $ENV{VAP_SFTWR_PERL};
+}
+
 use lib "$ENV{VAP_SFTWR_PERL}";
 use Cwd 'chdir', 'getcwd';
 use Time::Local;
-use Net::FTP;
-use Carp;
+#use Net::FTP;
 use File::Basename;
 use VapUtil;
+use VapError;
+@Winds::ISA = qw/VapError/;
 
 
 #---------------------------------------------
@@ -72,11 +108,28 @@ sub new {
 	     PATH => $VapUtil::VAP_DATA_TOP,
 	     @_};
 
-  croak "usage obj = Winds->new(FILTER=>'filter' \n[,STARTTIME => 'yyy/mm/dd/hh/mm/ss', \nENDTIME=>'yyy/mm/dd/hh/mm/ss']);" unless exists($self->{FILTER});
-
   
-  return bless $self, ref($class) || $class;
+  $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
+  bless $self, ref($class) || $class;
+
+  $self->_croak("usage obj = Winds->new(FILTER=>'filter' \n[,STARTTIME => 'yyy/mm/dd/hh/mm/ss', \nENDTIME=>'yyy/mm/dd/hh/mm/ss']);", 
+		"Winds: initialization error!") unless $self->{FILTER};
+
+  return $self;
 }
+
+=pod
+
+=over 4
+
+=item * @files_in_time_range = getWindFiles;
+
+        Returns array of files within the timerange defined by STARTTIME/ENDTIME 
+        matching input FILTER
+
+=back
+
+=cut
 
 
 #---------------------------------------------
@@ -88,14 +141,28 @@ sub getWindFiles{
   my ($startime, $endtime, $path, @files, $st, $et, @in_range);
 
   ($path,@files)=getFileList();
-  croak "Can't get file list!\n" unless $#files> -1;
+  $self->_croak("ERROR: Can't get file list!\n",
+		"Winds: ERROR from getFileList") unless $#files> -1;
   for (@files) {
     ($st,$et) = getFileTimes($_);
     push @in_range, $_ unless ($st > $self->{ENDTIME} || $et < $self->{STARTTIME});
   }  
   $self->{FILES_IN_RANGE} = \@in_range;
-  1;
+  @in_range;
 }
+
+=pod
+
+=over 4
+
+=item * ($dir, @files) = getFileList()
+
+        Returns an array of which the first element is the directory
+        where the files given in the remainder of the array live.
+
+=back
+
+=cut
 
 
 #---------------------------------------------
@@ -104,13 +171,32 @@ sub getWindFiles{
 sub getFileList{
   my $self=shift;
   my $dir=$self->{PATH};
-  opendir DIR, "$dir" || croak "Can't open directory $dir\n";
+  opendir DIR, "$dir" || 
+    $self->_croak("Can't open directory $dir\n",
+		  "Winds: Error opening $dir");
   my $regex = $self->{FILTER}."\\d+\\.S\\d+\\.E\\d+";
   my @files=grep /^$regex/, readdir(DIR);
   closedir DIR;
   @files = sort @files;
   ($dir,@files);
 }
+
+=pod
+
+=over 4
+
+=item * (starttime, endtime ) = getFileTimes(file)
+
+        Returns the start and end time (as determined by parsing the
+        filename) of the input file, or (undef,undef) if parameter is
+        missing or non-existent or some other problem occured.
+
+        It's assumed the format of the filename is
+        (QS|SW)yyyymmdd.Shhmm.Ehhmm.
+
+=back
+
+=cut
 
 #---------------------------------------------
 #
@@ -122,12 +208,25 @@ sub getFileTimes{
   my ($name,$path,$year,$month,$day,$hour,
 	$min,$start,$end,$starttime,$endtime);
 
-  my $file=shift || 
-      croak "Param 1 </path/to/file/QSYYYYMMDD.SHHMM.EHHMM> is REQUIRED!\n";
+  my $file=shift;
+  if (!$file) {
+    print "Param 1 </path/to/file/QSYYYYMMDD.SHHMM.EHHMM> is REQUIRED!\n";
+    return ($starttime,$endtime);
+  }
+  if (! -e $file) {
+    print "$file doesn't exist!\n";
+    return ($starttime,$endtime);
+  }    
+
   ($name,$path) = fileparse($file);
   ($year,$month,$day,$start,$end) = 
       $name =~ /^[QS][SW](\d{4,4})(\d{2,2})(\d{2,2})\.S(\d+)\.E(\d+)$/;
-  
+
+  if (! ($year && $month && $day && $start && $end) ) {
+    print "Misformated filename for $file!\n"; 
+    return ($starttime,$endtime);
+  }
+
   ($hour,$min) = $start =~ /(\d{2,2})(\d{2,2})/;
   $starttime=timegm(0, $min, $hour, $day, $month-1, $year-1900);
   ($hour,$min) = $end =~ /(\d{2,2})(\d{2,2})/;  
@@ -136,6 +235,38 @@ sub getFileTimes{
   ($starttime, $endtime);
 }
 
+
+=pod
+
+=over 4
+
+=item * ($path, $time, @files) = 
+               FindClosestInTimeAndDistance(lon,lat,time 
+                                      [,time_delta, tolerance])
+
+        Returns the `files' located in directory `path' which bracket
+        those files closest in time and distance to the location
+        `lon',`lat'. The time range searched for is `time' +/-
+        `time_delta' (which defaults to 2 hours) and the distance is
+        `tolerance' degrees (default=5)
+
+        This routine constructs an IDL batch file, then calls IDL
+        with this batchfile as the argument. The batchfile invokes the
+        IDL file `nearto.pro' which produces an outputfile which this
+        routine then parses for the returned information.
+
+        The `$time' reported on output is either the time of closest
+        approach (if only one file satistifes closeness criteria, or
+        it's the average of the times of the two bracketing files, if
+        there's more than one file satifying the 'closeness' criteria.
+
+        It returns `undef's if there are errors.
+
+
+
+=back
+
+=cut
 
 #---------------------------------------------
 #
@@ -148,12 +279,17 @@ sub FindClosestInTimeAndDistance{
 	$name, $value, $path);
   my %hash = ();
 
-  $lon=shift || croak "Param 1 <LON> is required\n";
-  $lat=shift || croak "Param 2 <LAT> is required\n";
-  $time=shift || croak "Param 3 <TIME> is required\n";
+  $lon=shift; 
+  $lat=shift; 
+  $time=shift;
   $time_delta=shift || 2;
   $tolerance=shift || 5;
   $delflag = shift;
+
+  if (! ($lon && $lat && $time) ){
+    print "parameters lon,lat and time are REQUIRED!\n";
+    return (undef, undef, undef);
+  }
   $randomtag= makeRandomTag();
   $ofile= shift || $ENV{VAP_OPS_TMPFILES}."/nearto.$randomtag.dat";
   $idltmpfile=$ENV{VAP_OPS_TMPFILES}."/runnearto.$randomtag.pro";
@@ -175,12 +311,15 @@ sub FindClosestInTimeAndDistance{
   close IDLTMPFILE;
 
   my $r=system( "$VapUtil::IDLEXE $idltmpfile")/256;
-  croak "Bad return from system( $VapUtil::IDLEXE $idltmpfile)\n" if $r != 0;
+  $self->_croak("Error running IDL $idltmpfile\n",
+		"ERROR batch IDL") if $r != 0;
 
   unlink $idltmpfile || warn "Couldn't unlink($idltmpfile)\n";
   croak "Can't find $ofile!\n" if (! -e $ofile) ;
 
-  open OFILE, "<$ofile" || croak"Can't reopen $ofile\n";
+  open OFILE, "<$ofile" || 
+    $self->_croak("Can't reopen $ofile\n",
+		  "Winds: OPEN ERROR on $ofile");
   my $first=1;
 
   while (<OFILE>){
@@ -237,9 +376,19 @@ sub FindClosestInTimeAndDistance{
   my @keys=keys %hash;
   my (@files, @ret, @times);
   if ($#keys==0) {
+
+      # Only one file. Find the file immediately preceeding and
+      # following it.
+
     @files=$self->Bracket($path, $keys[0]);
     @ret=($path, $hash{$keys[0]}{ROWTIME}, @files);
+
   } elsif ($#keys > 0) {
+
+      # more than one!
+
+      # Go through and get the GMT time for each file, this time is
+      # the `rowtime' at closest approach to `lat',`lon'.
 
     foreach my $key (keys %hash){
       ($year,$month,$day,$hour,$min)=split "/", $hash{$key}{ROWTIME};
@@ -249,11 +398,16 @@ sub FindClosestInTimeAndDistance{
 
     @times = sort @times;
 
-    foreach my $f (@times){
-      my ($file,$t)=split(/\|/, $f);
-      push @files, $file;
-      push @t, $t;
-    }
+#     foreach my $f (@times){
+#       my ($file,$t)=split(/\|/, $f);
+#       push @files, $file;
+#       push @t, $t;
+#     }
+
+    my ($file, $t) = split(/\|/,$times[0]);
+    push @files,$file;
+    ($file, $t) = split(/\|/,$times[$#times]);
+    push @files,$file;
 
     @files=$self->Bracket($path, @files);
     $time=systime2idltime(($t[0]+$t[$#t])/2);
@@ -263,32 +417,54 @@ sub FindClosestInTimeAndDistance{
   @ret;
 }
 
+=pod
+
+=over 4
+
+=item * @files = Bracket($path,$firstfile [,$lastfile]);
+
+        Returns an array containing the file in directory `$path'
+        prior, in time, to `$firstfile' and after `$lastfile.'
+        `$lastfile' defaults to `$firstfile.'
+
+        Returns (undef, undef) on error.
+
+=back
+
+=cut
+
 
 #---------------------------------------------
 #
 #---------------------------------------------
 sub Bracket{
+
   my $self=shift;
-  my $first = shift || croak "Param 2, The FIRST file, I need it!\n";
+  my $path = shift;
+  my $first = shift;
   my $last = shift || $first;
+
+  if (! ($path && $first)){
+    print "usage: (before_first,after_last) = Bracket(path,first [,last]);\n";
+    return (undef, undef);
+  }
 
   # given the input path and files, find the one before the first in
   # the list and the one after the last.
   # requires that getFileList returns the files sorted.
 
-  my $path = shift || croak "Param 1, the path, I need it!\n";
-  my @keepfiles = @_;
+  my @keepfiles = ();
 
-  my( $name, @files);
+  my ($name, @files);
   ($path, @files) = $self->getFileList($path);
 
   if (@files) {
     my $i=-1;
     for (@files) {
-      if (/$first/ && $i){
+      if (/$first/ && $i>=0){
 	push @keepfiles, $files[$i] ;
       }
-      if (/$last/ && $i+2 <= $#files) {
+      if (/$last/ && $i <= ($#files-2)) {
 	push @keepfiles, $files[$i+2];
 	last;
       }
@@ -299,6 +475,20 @@ sub Bracket{
 }
 
 
+=pod
+
+=over 4
+
+=item * $file=getBefore( $path, $first, $last);
+
+        Returns the file in `$path' immediately prior to `$first'
+
+        This is just a wrapper to Bracket
+
+=back
+
+=cut
+
 #---------------------------------------------
 #
 #---------------------------------------------
@@ -308,6 +498,21 @@ sub getBefore{
   my $ret=$files[0];
 }
 
+
+=pod
+
+=over 4
+
+=item * $after = getAfter($path,$first[,$last])
+
+        Returns the file in `$path' immediately after `$last' (which
+        may default to `$first'
+
+        This is just a wrapper to Bracket()
+
+=back
+
+=cut
 
 #---------------------------------------------
 #
@@ -329,3 +534,9 @@ sub getAfter{
 #}
 1;
 
+=pod 
+
+=head2  Author: William H. Daffer
+
+
+=cut 
