@@ -86,6 +86,10 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.4  1998/10/05 22:54:41  vapuser
+  ; Added Start/EndTime to Read,Set,Get
+  ; and Object Definition
+  ;
   ; Revision 1.3  1998/10/01 17:52:44  vapuser
   ; Modified 'version' method so that it will report
   ; the versions of member classes. Put in some error handling
@@ -978,6 +982,8 @@ FUNCTION Q2b::Read, filename
         IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
           status = 1
           self.type = 'HDF'
+          self.StartTime = StartTime
+          self.EndTime = EndTime
         ENDIF 
       ENDIF ELSE BEGIN 
           ; Assume it's SVH data.
@@ -986,8 +992,8 @@ FUNCTION Q2b::Read, filename
         IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
           status = 1
           self.type = 'SVH'
-          self.StartTime = StartTime
-          self.EndTime = EndTime
+          self.StartTime = '0000/00/00/00/00'
+          self.EndTime = '0000/00/00/00/00'
         ENDIF 
       ENDELSE 
     END
@@ -998,8 +1004,6 @@ FUNCTION Q2b::Read, filename
     self.nrecs  =  N_Elements( data )
     self.ncells =  N_Elements( data(0).su )
     self.data   =  ptr_new(data)
-    self.StartTime = "0000/00/00/00/00"
-    self.EndTime = "0000/00/00/00/00"
     ; self-> GetExtent
   ENDIF ELSE status = 0
 
