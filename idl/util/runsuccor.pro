@@ -44,10 +44,10 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 ;	
 ; KEYWORD PARAMETERS:  
 ;
-;       rainf: Radius of influence. This is the number of grid cells
+;       rainf: 4-vector, Radius of influence. This is the number of grid cells
 ;            to consider when computing a value for the current grid
 ;            cell. Default = [12., 10., 6,   4 ] 
-;       ermax: Maximum Error allowed before the data in the data
+;       ermax: 4-vector, Maximum Error allowed before the data in the data
 ;              field is discarded in favor of the computed model
 ;              default = [50., 20., 10., 5.];
 ;
@@ -102,6 +102,9 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/09/30 19:10:48  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
