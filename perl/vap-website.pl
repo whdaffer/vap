@@ -5,15 +5,19 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.5  2002/12/04 01:19:07  vapdev
+# Ongoing work
+#
 #
 #
 use strict;
 use CGI;
 use HTML::Table;
 use LeftNavTable;
-
-my $q=CGI->new(-nodebug=>1);
-my $body=CGI->new(-nodebug=>1);
+use TopNavTable;
+use VapCGI;
+my $q=VapCGI->new(-nodebug=>1);
+my $body=VapCGI->new(-nodebug=>1);
 
 my $html=$q->start_html(
 	    -title=>"Haifung Winds stuff",
@@ -62,11 +66,12 @@ my $outsidetable = HTML::Table->new(-rows=>3,
 				   -border=>1);
   # For the top navbar
 
-my $topbody = HTML::Table->new(-rows=>1,
-			       -cols=>3);
+#my $topbody = HTML::Table->new(-rows=>1,
+#			       -cols=>3);
+my $topnavtable = TopNavTable->new();
 
   # For the left navbar
-my $leftnavtable = LeftNavTable->new();
+my $leftnavtable = LeftNavTable->new(-width=>"20\%");
 
 
 # my @navcol = ($q->a({-href=>"#ATLANTIC"},"Atlantic"),
@@ -78,7 +83,7 @@ my $leftnavtable = LeftNavTable->new();
   # The table in the middle of the page.
 my $mainbodytable = HTML::Table->new(-rows=>6,
 				      -cols=>1,
-				      -width=>"60\%",
+				      -width=>"80\%",
  				      -border=>1);
 
 my $bodyhtml = $body->h1("Welcome to my test page");
@@ -92,12 +97,48 @@ $bodyhtml .= $body->p("Just some more test to check out the formatting");
 #			-align=>"left"});
 
 $mainbodytable->setCell(1,1,$bodyhtml);
-
+  # Top navbar
+$outsidetable->setCell(1,1,$topnavtable->getTable);
+$outsidetable->setCellColSpan(1,1,3);
+  # Side navbar
 $outsidetable->setCell(2,1,$leftnavtable->getTable);
+  # main content
 $outsidetable->setCell(2,2,$mainbodytable->getTable);
 my $tables=$outsidetable->getTable;
 
 $html .= $tables;
+$html .= $q->map({-name=>"nasa-home", 
+		  -area=>[
+			 {-ALT=>"NASA",
+			  -SHAPE=>"circle",
+			  -COORDS=>"56,36,31",
+			  -HREF=>"http://www.nasa.gov",
+			  -TARGET=>"_new"},
+			 {-ALT=>"'Winds' Home Page",
+			  -COORDS=>"159,6,380,88",
+			  -HREF=>"http://winds.jpl.nasa.gov/index.html",
+			  -SHAPE=>"RECT",
+			 -TARGET=>"_new"}
+			]
+		 });
+$html .= $q->map( {-name=>"jpl-caltech",
+		   -area=>[ {-ALT=>"Jet,Propulsion,Laboratory",
+			    -COORDS=>"6,60,159,73",
+			    -HREF=>"http://www.jpl.nasa.gov",
+			     -TARGET=>"_new",
+			    -SHAPE=>"RECT"
+			   },
+			   {-ALT=>"California,-Institute of Technology",
+			    -COORDS=>"14,72,159,87",
+			    -HREF=>"http://www.caltech.edu",
+			    -TARGET=>"_new",
+			    -SHAPE=>"RECT"
+			   }
+			  ]
+		  }
+		);
+
+
 $html .= $q->end_html();
 my $a=0;
 print "$html\n";

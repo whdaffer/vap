@@ -31,6 +31,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.12  2002/12/04 00:59:41  vapdev
+# Ongoing work
+#
 # Revision 1.11  2002/08/21 18:29:29  vapdev
 # *** empty log message ***
 #
@@ -430,6 +433,8 @@ sub auto_movie_defs {
     @tmp2 = split(/:/, $tmp[1]);
     $desig =~ s/'|"//g;
     $tmp2[1] =~ s/'|"//g;
+#    $desig =~ s/\s+//g;
+#    $tmp2[1] =! s/\s+//g;
     $hash->{$desig} = $tmp2[1];
   }
   close DEFS;

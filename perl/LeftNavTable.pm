@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.5  2002/12/04 01:20:31  vapdev
+# Ongoing work
+#
 # Revision 1.4  2002/12/03 05:57:14  vapdev
 # Ongoing work
 #
@@ -29,8 +32,12 @@ use VapUtil;
 sub new {
 
   my $class = shift;
-  my $self=$class->SUPER::new(-rows=>8,-cols=>1);
+  my $self=$class->SUPER::new(-rows=>8,-cols=>1, @_);
+  $self->setStyle( "{ font-family: Verdana, sans-serif; font-size: 500% }");
+                    
 
+
+ #
   # Get the defaults for the various VAP products, as well as for the
   # website itself
 
@@ -83,7 +90,7 @@ sub new {
 
   my $overlay_table = HTML::Table->new(-rows=>2,-cols=>1);
   $overlay_table->setCaption("Cloud Overlays",'TOP');
-
+  $overlay_table->setStyle("{ font: Garamond, 'Times New Roman', serif; font: 10% }");
      # The actual navigation links are constructed in these two tables
      # and will get the information on which 'regions' to use from
      # $VAP_LIBRARY/overlay_defs_oo (the WEB=>...) portion of that
@@ -166,6 +173,7 @@ sub new {
 
   my $anim_table = HTML::Table->new(-rows=>9,-cols=>1);
   $anim_table->setCaption("Animations",'TOP');
+  $anim_table->setStyle("{ font: Garamond, 'Times New Roman', serif; size: 500%}");
   $row=0;
   while (($key, $value) = each %{$roi_hash}){
     $skip=0;
@@ -200,6 +208,7 @@ sub new {
 
   my $ts_table = HTML::Table->new(-caption=>"Tropical Storms", -rows=>2,-col=>1);
   $ts_table->setCaption("Tropical Storms",'TOP');
+  $ts_table->setStyle(" { font: Garamond, 'Times New Roman', serif; size: 10%}");
     # ============= Seawinds on ADEOS-II =================
 
   my $ts_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
