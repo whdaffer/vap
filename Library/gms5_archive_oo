@@ -1,0 +1,13 @@
+#
+# $Id$
+#
+# $Log$
+#
+$gms5_defs = {
+	      REMOTE_HOST=>"rsd.gsfc.nasa.gov",
+	      REMOTE_TOPDIR=>"/pub/Weather/GMS-5",
+	      LOCAL_TOPDIR => $ENV{VAP_GMS_TOP},
+	      INTERESTING_GMS5_PRODUCTS => [grid,
+					    grida,
+					    ir1]
+	     };
