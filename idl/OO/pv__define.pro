@@ -90,6 +90,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.19  1999/10/05 16:39:13  vapuser
+; Changed the values of some defaults.
+;
 ; Revision 1.18  1999/09/02 18:43:04  vapuser
 ; Added Over plotting and orbit propagation.
 ; fixed a bug in Colorbar/Map_set interaction.
@@ -810,6 +813,30 @@ FUNCTION pv::Init, $
   ENDIF 
 
 
+  read_cfgfile = 0
+  cfgname = 'pv.cfg'
+  cfgpath = deenvvar('$HOME/.idlcfg/')
+  ff = findfile(cfgpath + cfgname,count=nf)
+  IF nf NE 0 THEN BEGIN 
+    read_cfgfile = 1
+  ENDIF ELSE BEGIN 
+    IF getenv('VAP_LIB') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIB')
+      ff = findfile(cfgpath + cfgname,count=nf)      
+      read_cfgfile = (nf NE 0)
+    ENDIF
+  ENDELSE   
+
+  IF read_cfgfile THEN BEGIN 
+    print,' Reading CFG file ' + cfgname
+    read_cfgfile,cfgname, cfg,path=cfgpath
+    IF n_elements(cfg) NE 0 THEN BEGIN 
+      print,'CFG found! Details follow:'
+      help,cfg,/st
+    ENDIF 
+  ENDIF 
+  
+
   IF keyword_set( help ) THEN self-> SelfHelp
 
 
@@ -831,9 +858,13 @@ FUNCTION pv::Init, $
 
   self.doAnnotations =  keyword_set(doAnnotations)
   self.doColorBar =  keyword_set(doColorBar)
+
+  chkcfg,'XSIZE',xsize,cfg
+  chkcfg,'YSIZE',Ysize,cfg
+
   IF N_Elements(xsize)       EQ 0 THEN xsize = 640 
   IF N_Elements(ysize)       EQ 0 THEN ysize = 480 
-  
+
   n_ambigs = N_Elements(self.ambiguities)
   IF N_Elements(ambiguities) EQ 0 THEN BEGIN 
     ambiguities = lonarr(n_ambigs)
@@ -851,6 +882,11 @@ FUNCTION pv::Init, $
          self.ambiguities[0] = 1
        ENDELSE 
   ENDELSE 
+
+  chkcfg,'DECIMATE_BY',decimate_by,cfg
+  chkcfg,'CRDECIMATE_BY',crdecimate_by,cfg
+  chkcfg,'EXCLUDECOLS',excludecols,cfg
+
   IF N_Elements(decimate_by) EQ 0 THEN decimate_by = 1
   IF N_Elements(CRDecimate_by) NE 2 THEN CRDecimate_by = [2,2] 
   IF N_Elements(ExcludeCols) EQ 0 THEN ExcludeCols = '' ELSE BEGIN 
@@ -859,6 +895,8 @@ FUNCTION pv::Init, $
       ExcludeCols = '' 
     ENDIF 
   ENDELSE 
+
+  chkcfg,'INPUTPATH',inputpath,cfg
   IF N_Elements(InputPath)   EQ 0 THEN BEGIN 
     path = getenv('VAP_WINDS') 
     IF path NE '' THEN InputPath = path ELSE InputPath ='./' 
@@ -868,12 +906,16 @@ FUNCTION pv::Init, $
       InputPath = './' 
     ENDIF 
   ENDELSE 
+
+  chkcfg,'INPUTFILTER',inputfilter,cfg
   IF N_Elements(InputFilter) EQ 0 THEN InputFilter = 'QS*S*E* *.hdf' ELSE BEGIN 
     IF VarType(InputFilter) NE 'STRING' THEN BEGIN 
       Message,'InputFilter must be of type STRING',/cont
       InputFilter = 'QS*S*E* *.hdf' 
     ENDIF 
   ENDELSE 
+
+  chkcfg,'OUTPUTPATH',outputpath,cfg
   IF N_Elements(OutputPath)  EQ 0 THEN OutputPath = './' ELSE BEGIN 
     IF VarType(OutputPath) NE 'STRING' THEN BEGIN 
       Message,'OutputPath must be of type STRING',/cont
@@ -882,12 +924,16 @@ FUNCTION pv::Init, $
     IF rstrpos( OutputPath,'/') LT strlen(OutputPath)-1 THEN $
       OutputPath = OutputPath + '/'
   ENDELSE 
+
+  chkcfg,'OUTPUTFILTER',outputfilter,cfg
   IF N_Elements(OutputFilter) EQ 0 THEN OutputFilter = '*.dat' ELSE BEGIN 
     IF VarType(OutputFilter) NE 'STRING' THEN BEGIN 
       Message,'OutputFilter must be of type STRING',/cont
       OutputFilter = '*.dat'
     ENDIF 
   ENDELSE 
+
+  chkcfg,'HCTYPE',hctype,cfg
   IF N_Elements(HCType)  EQ 0 THEN HCType = 'ps' ELSE BEGIN 
     IF VarType(HCType) NE 'STRING' THEN BEGIN 
       Message,'HCType must be of type STRING',/cont
@@ -895,6 +941,7 @@ FUNCTION pv::Init, $
     ENDIF 
   ENDELSE 
 
+  chkcfg,'HCFILE',hcfile,cfg
   IF N_Elements(HCFile)  EQ 0 THEN $
     HCFile = 'pv_out' +self.HCType ELSE BEGIN 
       IF VarType(HCFile) NE 'STRING' THEN BEGIN 
@@ -907,12 +954,20 @@ FUNCTION pv::Init, $
   IF strpos( self.HCFile, junk ) EQ -1 THEN $
    self.HCFile = self.HCFile+'.' + self.HCType
 
+  chkcfg,'LONRANGE',lonrange,cfg
   IF N_Elements(LonRange)   NE 2 THEN LonRange = [0.,359] ELSE BEGIN 
     IF VarType(LonRange) NE 'FLOAT' THEN LonRange = float(LonRange)  
   ENDELSE 
+
+  chkcfg,'LATRANGE',latrange,cfg
   IF N_Elements(LatRange)    EQ 0 THEN LatRange = [-90,90.] ELSE BEGIN 
     IF VarType(LatRange) NE 'FLOAT' THEN LatRange = float(LatRange)  
   ENDELSE 
+
+  chkcfg,'LENGTH',length,cfg
+  chkcfg,'THICKNESS',thickness,cfg
+  chkcfg,'MINSPEED',minspeed,cfg
+  chkcfg,'MAXSPEED',maxspeed,cfg
 
   IF N_Elements(Length)      EQ 0 THEN Length = 2
   IF N_Elements(Thickness)   EQ 0 THEN Thickness = 1
@@ -1033,7 +1088,11 @@ FUNCTION pv::Init, $
     status = self-> Read( files )
   ENDIF ELSE IF n_elements( data ) NE 0 THEN BEGIN 
     IF Obj_Valid( data ) THEN BEGIN 
-      status = self.DataList-> Append(data)
+      IF obj_isa( data, 'PVPLOTOBJECT') THEN $
+        status = self.DataList-> Append(data) ELSE BEGIN 
+        p =  Obj_new('PvPlotObject',DATA)
+        status = self.DataList-> Append(p)
+      ENDELSE 
     ENDIF ELSE BEGIN 
       Structure_Name = STRUPCASE(Tag_Names( data, /structure_name) )
       CASE Structure_Name OF 
@@ -1045,7 +1104,7 @@ FUNCTION pv::Init, $
           return,0
         END
       ENDCASE 
-       p =  Obj_new('PvPlotObject',q)
+      p =  Obj_new('PvPlotObject',q)
       status = self.DataList-> Append(p)
     ENDELSE 
   ENDIF 
@@ -1255,6 +1314,7 @@ PRO Pv::Draw, $
         po = *(CurrentPlotDataPtr)
         po-> Get,Data=Q2b, $
                  SelectedOnly=SelectedOnly, $
+                 UserPlotFlag=UserPlotFlag, $
                  PlotFlag=PlotFlag, $
                  AlreadyPlotted=AlreadyPlotted, $
                  InRegion=InRegion
@@ -1262,7 +1322,7 @@ PRO Pv::Draw, $
           ; self.ambiguities[0]=1 => plot 'selected' ambiguities.
           ; self.ambiguities[1]=1 => plot 1st ambiguity ... etc.
 
-        IF PlotFlag AND NOT (AlreadyPlotted) AND $
+        IF UserPlotFlag AND PlotFlag AND NOT (AlreadyPlotted) AND $
            InRegion NE 0 THEN BEGIN 
 
           IF first THEN BEGIN 
