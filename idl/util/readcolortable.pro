@@ -60,6 +60,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/11/03 22:29:06  vapuser
+; Changed some comments
+;
 ; Revision 1.1  1998/11/03 22:16:17  vapuser
 ; Initial revision
 ;
@@ -74,40 +77,36 @@ FUNCTION ReadColorTable, filename
     Message,'IDL 5.1 or greater required.',/cont
     return,Ptr_New()
   ENDIF 
+  IF n_params() LT 1 THEN BEGIN 
+    filename = mpickfile(path='/usr/people/vapuser/Qscat/Resources/Color_Tables')
+    IF filename EQ  '' THEN return,ptr_new()
+  ENDIF 
 
-  IF n_params() EQ 0 THEN BEGIN 
-    Message,'Usage, PtrToColorTable = readct( filename )',/cont
-    PtrToColorTable = Ptr_New()
-  ENDIF ELSE BEGIN 
-    Openr, lun, filename, /get_lun, error=err
-    IF err EQ 0 THEN BEGIN 
-      rec = ''
-      readf, lun, rec
-      rec = strtrim(strcompress( rec ),2)
-      tmp = str_sep( rec, ' ')
-      IF n_elements(tmp) NE 3 THEN BEGIN 
-        Message,'All Records in color table file MUST have 3 columns!',/cont
-        PtrToColorTable = Ptr_New()
-        
-      ENDIF ELSE BEGIN 
-        Point_Lun, lun, 0
-          ; Count the number of records
-        nrecs = 0
-        WHILE NOT eof(lun) DO BEGIN 
-          readf,lun,rec
-          nrecs = nrecs+1
-        ENDWHILE
-        Point_Lun, lun, 0
-        ColorTable = bytarr(3,nrecs)
-        Readf, lun, ColorTable
-        PtrToColorTable = Ptr_New(ColorTable)
-      ENDELSE 
-      free_lun, lun
-    ENDIF ELSE BEGIN 
-      Message,!Error_State.msg,/cont
-      PtrToColorTable = Ptr_New()
-    ENDELSE 
-  ENDELSE 
+  IF NOT isa(filename,/string,/nonempty) THEN BEGIN 
+    Message,'Filename must be non-empty string',/cont
+    return, ptr_new()
+  ENDIF 
+
+  Openr, lun, filename, /get_lun, error=err
+  IF err NE 0 THEN BEGIN 
+    Message,!error_state.msg,/cont
+    return, Ptr_New()
+  ENDIF 
+  rec = ''
+  readf, lun, rec
+  rec = strtrim(strcompress( rec ),2)
+  tmp = str_sep( rec, ' ')
+  IF n_elements(tmp) NE 3 THEN BEGIN 
+    Message,'All Records in color table file MUST have 3 columns!',/cont
+    return, ptr_New()
+  ENDIF
+  nlines = nlines(filename)
+  Point_Lun, lun, 0
+  ColorTable = bytarr(3,nlines)
+  Readf, lun, ColorTable
+  PtrToColorTable = Ptr_New(ColorTable)
+  free_lun, lun
+
   
   Return, PtrToColorTable
 END
