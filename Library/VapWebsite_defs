@@ -3,16 +3,69 @@
 # Modifications
 #
 # $Log$
+# Revision 1.1  2002/12/10 16:09:11  vapdev
+# Renamed VapWebsite to VapWebsite_defs
+#
 # Revision 1.2  2002/12/06 22:54:03  vapdev
 # Continuing work
 #
 # Revision 1.1  2002/12/03 00:12:50  vapdev
 # Initial revision
 #
-@allowed_extensions = qw/jpeg jpg JPEG JPG mov/;
+$website_defs = {
 
-  # Setting this array will cause any product which has this string in
-  # its name to be passed over in processing the website. 
+		   # The allowed filename extensions.
 
-@defunct_satellites = qw/gms gms5 GMS GMS5/;
+		 ALLOWED_EXTENSIONS => qw/jpeg jpg JPEG JPG mov/,
+
+		   # Setting this array will cause any product which
+		   # has this string in its name to be passed over in
+		   # processing the website.
+
+		 DEFUNCT_SATELLITES => qw/gms gms5 GMS GMS5/,
+
+		   # Maps 'type' to webpage base. For overlays, this
+		   # name is expanded to include the satellite
+		   # signifier, qs/sw, since each has it's own page.
+
+		 TYPE2WEBPAGE => {
+				  TROPICAL_STORM => "ts",
+				  OVERLAY => "overlay",
+				  ANIMATION => "anim" },
+
+		   # the order in which the overlays will appear
+		 OVERLAY => {ORDER => qw/GOES_10_4_NEPAC_1 
+					 GOES_8_4_NWATL_1
+					 GOES_10_4_PACHURR_1
+					 GOES_8_4_ATLHURR_1 
+					 GMS_5_1_JAPAN_1
+					 GMS_5_1_WPAC_1
+					 GMS_5_1_FAREAST_1/,
+			     META=>{KEYWORDS => qw/scatterometry 
+						   'cloud imagery'
+						   overlay/},
+			     TITLE=> "Scatterometry/Cloud Imagery Overlay",
+			     HEADING1 => "Here we take scatterometry data and overlay it on cloud imagery from several of the geo-synchronous satellites."},
+
+		   # the order in which the animations will appear
+
+		 ANIMATION => {ORDER => qw/NEPAC 
+					   NWATL 
+					   PACHURR 
+					   ATLHURR 
+					   NWPAC 
+					   NPAC 
+					   INDIAN/,
+			       META=>{KEYWORDS => qs/scatterometry animation/},
+			       TITLE=>"Animations of SeaWinds Wind Field ",
+			       HEADING1 =>"Here we create an interpolated field comprising at least 14 hours of SeaWinds data and create an animation of that field"}
+
+		 TROPICAL_STORM => {ORDER => qw/GOESWEST GOESEAST GMS5/,
+				    META=>{KEYWORDS=> qw/scatterometry 
+							 'cloud imagery' overlays 
+							 'tropical storms'/},
+				    TITLE=>"Tropical Storms",
+				    HEADING1=>"Here we create up to the minute overlays of tropical storms using SeaWinds scatterometry and cloud imagery from the various geo-synchronous satellites!" } 
+		};
+
 

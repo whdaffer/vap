@@ -22,7 +22,7 @@ my $ts_overlay_dir=$ENV{'VAP_TS_OVERLAY'} ||
 
 
 # SAT2SAT converts satellite region specs to the actual names of the
-# Satellites Eventually all the code will just refer to GoesEast,
+# Satellites. Eventually all the code will just refer to GoesEast,
 # GoesWest and GMS5, but we have to deal with some legacy code in the
 # mean time.
 
@@ -37,15 +37,24 @@ $tsoo_defs = {STORMS_HOST => "www.solar.ifa.hawaii.edu",
 				    GOESEASTN => { Region => [260,-10,360,60]}
 				   },
 
-	      SAT2SAT => {
+	      REGION2SAT => {
 			  GOESEASTN=>"GOES8", 
 			  GOESWESTN=>"GOES10",
 			  GMS5 => "GMS5" 
 			 },
+	      SAT2REGION=>{
+			  GOES8 => 'GOESEASTN', 
+			  GOES10=>'GOESWESTN',
+			  GMS5 => 'GMS5'
+			  },
 	      SATELLITES => [qw<GOESEAST GOESWEST GMS5>],
 	      WEB =>{ NAME => { GOESEAST => "Atlantic", 
 				GOESWEST => "E. Pacific",
 				GMS5 => "W. Pacific"}},
+
+	      WEB=>{GOESEAST => {NAME=>"Atlantic", ACTIVE=>1, INSTRUMENT=qw/QS SW/},
+		     GOESWEST => {NAME=>"E. Pacific",ACTIVE=>1, INSTRUMENT=qw/QS SW/},
+		     GMS5 =>     {NAME=>"W. Pacific",ACTIVE=>0, INSTRUMENT=qw/QS SW/}},
 	      STORMRANKING => {
 			       '???' => 0,
 			       DEP => 1,

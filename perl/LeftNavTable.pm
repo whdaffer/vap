@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.7  2002/12/16 23:14:28  vapdev
+# To write the body of the page
+#
 # Revision 1.6  2002/12/04 23:56:20  vapdev
 # Ongoing work
 #
@@ -104,6 +107,9 @@ sub new {
   $overlay_table->setCaption("Cloud Overlays",'TOP');
   $overlay_table->setStyle("{ font: Garamond, 'Times New Roman', serif; font: 10% }");
 
+  my ($overlay_sw_table, $overlay_qs_table);
+
+
      # The actual navigation links are constructed in these two tables
      # and will get the information on which 'regions' to use from the
      # defaults hash defined in $VAP_LIBRARY/overlay_defs_oo. The two
@@ -129,8 +135,9 @@ sub new {
     # that someone has decided to turn not make any SeaWinds on
     # ADEOS-II overlays.
 
+
   if ($self->anyOverlays('SW')) {
-    my $overlay_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $overlay_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
     $overlay_sw_table->setCaption("SeaWinds",'TOP');
     $row=0;
     while ( ($key, $value) = each %{$overlay_defs}) {
@@ -160,7 +167,7 @@ sub new {
 
 
   if ($self->anyOverlays('SW')) {
-    my $overlay_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $overlay_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
     $overlay_qs_table->setCaption("QuikSCAT",'TOP');
     $row=0;
     while ( ($key, $value) = each %{$overlay_defs}) {
@@ -245,11 +252,14 @@ sub new {
   $ts_table->setCaption("Tropical Storms",'TOP');
   $ts_table->setStyle(" { font: Garamond, 'Times New Roman', serif; size: 10%}");
 
+  my ($ts_sw_table, $ts_qs_table);
+
+
     # ============= Seawinds on ADEOS-II =================
 
   if ($self->anyTSOverlays('SW')) {
 
-    my $ts_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $ts_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
     $ts_sw_table->setCaption("SeaWinds",'TOP');
     $row=0;
 
@@ -275,7 +285,7 @@ sub new {
     # ============= Seawinds on QuikSCAT  =================
 
   if ($self->anyTSOverlays('QS')) {
-    my $ts_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $ts_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
     $ts_qs_table->setCaption("QuikSCAT",'TOP');
     $row=0;
     foreach my $sat (@{$tsoo_defs->{SATELLITES}}) {
@@ -298,7 +308,7 @@ sub new {
   }
     # Now put these two tables into the overlay Tropical Storm cell
     # for the Nav Bar
-  $row = 1
+  $row = 1;
   $ts_table->setCell($row++,1,$ts_sw_table) if $ts_sw_table;
   $ts_table->setCell($row,1,$ts_qs_table) if $ts_qs_table;
 
@@ -459,7 +469,7 @@ sub anyOverlays{
 
 sub anyTSOverlays{
 
-  my $web = $tsoo_defs->{WEB}
+  my $web = $tsoo_defs->{WEB};
   if (@_){
     while (my ($k, $v) = each %{$web}) {
       my $i = $v->{INSTRUMENTS};

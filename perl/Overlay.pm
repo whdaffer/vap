@@ -123,6 +123,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.6  2002/12/10 19:57:12  vapdev
+# Ongoing work
+#
 # Revision 1.5  2002/12/09 23:39:23  vapdev
 # Continuing work
 #
@@ -584,8 +587,7 @@ sub _constructFinalBasename{
   my @exts = @_;
   my ($name, $path, $ext) = fileparse($outputname, @exts);
   my @tmp=split(/_/,$self->{REGION});
-  $name .= join("",@tmp[$#tmp-1,$#tmp]);
-  $name .= "_" . $self->{WINDFILTER};
+  $name .= join("_",(@tmp[$#tmp-1,$#tmp],$self->{WINDFILTER}));
   $name .= $ext;
 }
 

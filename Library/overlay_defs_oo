@@ -3,6 +3,9 @@
 # Modification Log;
 #
 # $Log$
+# Revision 1.3  2002/12/06 22:54:03  vapdev
+# Continuing work
+#
 # Revision 1.2  2002/12/03 00:13:28  vapdev
 # Ongoing work
 #
@@ -53,11 +56,26 @@
 #                   RF_ACTION => 0|1,# flag, what to do if rainflag==1. 
 #                                    #  If 0, do not plot rainflagged data, 
 #                                    # if 1, plot it using RF_COLOR.
-#                   RF_COLOR => n} # Color to use when plotting ranflagged data. 
+#                   RF_COLOR => n, # Color to use when plotting ranflagged data. 
 #                                 # An index if using pseudo color, 
 #                                 a 24 bit true color if not.
+#                   INSTRUMENT => qw/QS SW/ }, # A reference to an
+#                                             array (possibly null, or
+#                                             of only one element)
+#                                             containing the names of
+#                                             the instruments which
+#                                             for which overlays are
+#                                             expected. QS=QuikSCAT,
+#                                             SW=SeaWinds on
+#                                             ADEOS-II. To make
+#                                             overlays of only
+#                                             SeaWinds data, use
+#                                             INSTRUMENT=>qs/SW/
+#
 #                 WEB=>{
 #                    NAME => 'name to use on website',
+#                               the string that will actually be used is 
+#                               'Overlay for the `NAME', so chose the string wisely.
 #                    ACTIVE => 0|1 } # 1 means put on website.
 # 		}
 #
@@ -69,6 +87,13 @@
 #         '--region' option. It is the way the software gets at the info in 
 #         this data structure. If you mistype, the software will fail.
 #
+#         This designation also serves as the name in the overlay
+#         webpages. For example: the left hand Nav bar on every page
+#         will have an href like for the N.E. pacific (ir4) that looks
+#         like `overlay_qs.html#GOES10_4_NEPAC_1' which takes the
+#         viewer directly to that portion of the overlay page with
+#         QuikSCAT data data with the N.E. Pacific Goes 10, ir4 view.
+#
 # Note 2: The asctime/desctime are the default times for this
 # overlay. In the abscence of any other time info, i.e. the option
 # --time is not included on input, the software will retrieve the
@@ -76,6 +101,75 @@
 # preceeds the current time. For example, if this software is called thusly,
 #
 # Note 3: All times are in GMT!
+# 
+#
+# Note 4: The meaning of the WEB->{ACTIVE} and {INSTRUMENT} fields. 
+#
+#         Since the webpage is completely rewritten each time a new
+#         product is created, some way is required to convey
+#         information to the Web side of the processing )See
+#         VapWebsite.pm) which regions are actually on the list of
+#         those actively being produced by the automated
+#         processing. That's what these fields are meant to do.
+#
+#         These fields are used to communicate to the VapWebsite.pm
+#         object which overlay regions are being actively created, and
+#         therefore, which to put in the webpages. They don't convey
+#         any information about which overlays for regions actually
+#         get created, they don't control the calls to the creation
+#         routines. That's controlled entirely by which instances of
+#         the creation routine `make_overlay' are occur in the VAP
+#         account crontab.
+#
+#         The field WEB->{ACTIVE} key is one way to turn on/off the
+#         Web processing associated with the region. If WEB->{active}
+#         == 0, this region won't appear in either the left hand
+#         navigation bar or the webpage devoted to that region for
+#         either SeaWinds on QuikSCAT or ADEOS-II. 
+#
+#         Finer control is gained using the hash->{INSTRUMENT}
+#         array. Here you can turn off the creation of this slot on
+#         the webpage for the overlay of this particular region, but
+#         only for, say, SeaWinds on QuikSCAT data, while still
+#         creating a slot for the overlays made using SeaWinds on
+#         ADEOS-II alone.
+#
+#         The {WEB}->{ACTIVE} key is primarily meant to communicate
+#         the usefulness of the cloud data associated with this view,
+#         while the {INSTRUMENT} key is meant to communicate which
+#         wind data to use. Generally one would expect the information
+#         used in these keywords will be more `global,' i.e. if we
+#         decide not to make an overlay of a particular region using
+#         SeaWinds on QuikSCAt data, we'll most likely decide not to
+#         make ANY overlays using that wind data. By the same token,
+#         if we decide not to make overlays in the Japan region using
+#         GMS5 data, we'll decide not to make overlays of *any* region
+#         where GMS5 is the only cloud data available, presumably
+#         because of problems with that instrument/satellite. However,
+#         I don't want to prejudge the situation, so I've coded for
+#         the possibility of other scenarios that require a finer
+#         level of control on which wind/cloud data to use.
+#
+#         However, there's no code (at the moment: Fri Dec 13 11:01:53
+#         2002) in the actual creation routines (see make_overlay and
+#         Overlay.pm) that explicitly disallows making overlays in
+#         regions where these fields say the automated processing
+#         isn't being done: I don't want to completely restrict the
+#         ability to make overlays in these regions, just restrict the
+#         attention of the Web processing objects. This way, I
+#         believe, maintains the most flexibility.
+#
+#         One can always remove, or comment out, a region from this
+#         hash, that makes it completely unavailable to the automated
+#         processing. Or, you can set WINDS->{instruments} to an empty
+#         array, ([]) or to '0'; this will accomplish the same purpose
+#         but maintain this region in case you later change your mind.
+#
+#         Conversely, to start including overlays on the webpage that
+#         are created but haven't been, as yet, put on the webpage,
+#         one must make the relevent modification to one or both of
+#         these fields.
+#
 #
 # auto_goes_overlay --region GOES10_4_NEPAC_1 
 #
@@ -107,9 +201,10 @@ $overlay_defs= {
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0},
+                    RF_COLOR => 0,
+		    INSTRUMENT => qw/QS SW/},
 		 WEB => {
-		    NAME => "N.E. Pac (IR4)",
+		    NAME => "N.E. Pac (ir4)",
 		    ACTIVE => 1}
 		},
 
@@ -133,10 +228,11 @@ $overlay_defs= {
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0},
+                    RF_COLOR => 0,
+		    INSTRUMENT => qw/QS SW/},
 		 WEB => {
-		    NAME => "N.E. Pac (VIS)",
-		    ACTIVE => 0}
+		    NAME => "N.E. Pac (vis)",
+		    ACTIVE => 1}
 		},
                # GOES 10 Visible, Pacific Hurricane
 		GOES_10_4_PACHURR_1 => {  #<-------------------------------|
@@ -158,10 +254,11 @@ $overlay_defs= {
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0},
+                    RF_COLOR => 0,
+		    INSTRUMENT => qw/QS SW/},
 		 WEB => {
 		    NAME => "Pac. Hurr.(ir4)",
-		    ACTIVE => 1}
+		    ACTIVE => qw/QS SW/}
 		},
 
                # Goes 8, ir4, NW Atlantic
@@ -184,10 +281,11 @@ $overlay_defs= {
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0},
+                    RF_COLOR => 0,
+		    INSTRUMENT => qw/QS SW/},
 		 WEB => {
 		    NAME => "N.W. Atl (ir4)",
-		    ACTIVE => 1}
+		    ACTIVE => qw/QS SW/}
 		},
 
                # Goes 8, Visible, NW Atlantic
@@ -210,7 +308,8 @@ $overlay_defs= {
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0},
+                    RF_COLOR => 0,
+		    INSTRUMENT => qw/QS SW/},
 		 WEB => {
 		    NAME => "N.W. Atl (vis)",
 		    ACTIVE => 0}
@@ -236,10 +335,11 @@ $overlay_defs= {
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0},
+                    RF_COLOR => 0,
+		    INSTRUMENT => qw/QS SW/},
 		 WEB => {
 		    NAME => "Atl. Hurr.(ir4)",
-		    ACTIVE => 1}
+		    ACTIVE => qw/QS SW/}
 		},
 
 		# Gms 5, Ir1, West Pacific
@@ -253,7 +353,7 @@ $overlay_defs= {
 		    SENSORNUM  => 1,             # Ir1
 		    ASCTIME    => "23:00",       # Ascending Time 
 		    DESCTIME   => "11:30" },     # Descending time
-		  WINDS => {                   
+		  WINDS => {
 	            DELTA => 4,                  # Go `time' +/- this many hours 
 		    NVECTORS => 2000,            # Need this many vector to continue
 		    CRDECIMATE => [1,1],         # Take all data
@@ -262,7 +362,8 @@ $overlay_defs= {
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0},
+                    RF_COLOR => 0,
+		    INSTRUMENT => qw/QS SW/},
 		 WEB => {
 		    NAME => "W. Pac",
 		    ACTIVE => 0}
@@ -288,9 +389,10 @@ $overlay_defs= {
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0},
+                    RF_COLOR => 0,
+		    INSTRUMENT => qw/QS SW/},
 		 WEB => {
-		    NAME => "Japan",
+		    NAME => "Japan Islands",
 		    ACTIVE => 0}
 		},
 
@@ -314,7 +416,8 @@ $overlay_defs= {
 		    EXCLUDECOLS => "",           # Exclude none
 		    RAINFLAG => 0,
 		    RF_ACTION => 0,
-                    RF_COLOR => 0},
+                    RF_COLOR => 0,
+		    INSTRUMENT => qw/QS SW/},
 		 WEB => {
 		    NAME => "Far East",
 		    ACTIVE => 0}
