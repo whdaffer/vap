@@ -115,6 +115,10 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.5  1998/11/20 19:59:47  vapuser
+; Incorporated goes_overlay24, making whatever other changes
+; were required
+;
 ; Revision 1.4  1998/10/17 00:15:10  vapuser
 ; Added CRDecimate, ExcludeCols, decimate keywords.
 ; Killed a few bugs
@@ -151,7 +155,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                                              ; means exclude columns 
                                              ; 0, 38,39,40 and 75.
 
-                      ps =  ps,$       ; make a postscript instead of a gif
+                      ps =  ps,$       ; make a postscript file.
+                      gif=gif,$        ; Make gif file
                       pid=pid          ; Used with cron jobs
                       
 
@@ -181,7 +186,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   catch, error_status
   IF error_status NE 0 THEN BEGIN
     IF auto_cloud_overlay THEN $
-     printf, llun, 'ERROR: ' + !err_string
+     IF exist(llun) THEN printf, llun, 'ERROR: ' + !err_string
     message, !err_string,/cont
     return
   ENDIF 
@@ -198,7 +203,16 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
 
   ps =  keyword_set( ps );
-  gif = ps NE 1;
+  gif = keyword_set(gif)
+  jpeg = (gif OR ps ) EQ 0;
+
+  CASE 1 OF 
+    ps: OutputType = 'Postscript'
+    gif: OutputType =  'Gif'
+    Jpeg: OutputType =  'Jpeg'
+    ELSE:
+  ENDCASE
+  Message,'File will be output as ' + OutputType,/info
 
   IF N_elements( time_inc ) EQ 0 THEN time_inc = 3
   IF n_elements( wpath ) EQ 0 THEN wpath =  '$VAP_WINDS'
@@ -315,16 +329,16 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
       'GOES': BEGIN 
         IF visual EQ 'PSEUDOCOLOR' THEN BEGIN 
           GOES_OVERLAY, cloud_file, wfiles=wf, $
-           minspeed=2, maxspeed=20, thick=2, $
+           minspeed=2, maxspeed=20, $
             len=2,getoutfile=ofile, $
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, gif=gif,/z
         ENDIF ELSE BEGIN 
           GOES_OVERLAY24,cloud_file,windFiles=wf,$
-           minspeed=2, maxspeed=20, thick=2, $
+           minspeed=2, maxspeed=20, $
             len=2,outfile=ofile, $
              Decimate=decimate, CRDecimate=CRDecimate, $
-              ExcludeCols=ExcludeCols, ps=ps, gif=gif
+              ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg
         ENDELSE 
       END
        'GMS' : BEGIN 
@@ -338,7 +352,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
       END
     ENDCASE 
     IF auto_cloud_overlay THEN BEGIN 
-      openw, wlun, '/tmp/auto_cloud_overlay_gif_file',/get,error=err
+      openw, wlun, '/tmp/auto_cloud_overlay_output_file',/get,error=err
       IF err NE 0 THEN BEGIN
         str =  'ERROR: ' + !err_string
         printf,llun,str
