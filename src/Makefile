@@ -8,6 +8,9 @@
 # Change Log:
 #
 # $Log$
+# Revision 1.6  2003/01/30 19:11:05  vapdev
+# Ooopsss. Need ainf too!
+#
 # Revision 1.5  2003/01/30 19:04:14  vapdev
 # Modified how grid_goes is built
 #
@@ -70,8 +73,8 @@ grid_goes: ${GRIDOBJ}
 grid_goes.o: grid_goes.c
 	${CC} ${CFLAGS} -c grid_goes.c
 
-doy2date.o: doy2date.c
-	${CC} ${CFLAGS} doy2date.c
+#doy2date.o: doy2date.c
+#	${CC} ${CFLAGS} doy2date.c
 
 navig_goes.o: navig_goes.f
 	${F77} navig_goes.f # may use -d_lines  to get aditional output
