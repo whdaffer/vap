@@ -8,6 +8,9 @@ package OTS;
 # Modification Log:
 #
 # $Log$
+# Revision 1.2  2002/12/10 19:57:13  vapdev
+# Ongoing work
+#
 # Revision 1.1  2002/08/08 00:16:47  vapdev
 # Initial Revision
 #
@@ -274,9 +277,11 @@ sub parseTropicalStorms{
 
   my $stormtype=shift @_ || "DEP";
   my $stormnum=$stormranking{$stormtype} || 
-      die "Unknown Storm type of $stormtype!\nAllowed values are DEP, STO, CYC, HUR, TYP\n";
+      $self->_croak(["Unknown Storm type of $stormtype!",
+		     "Allowed values are DEP, STO, CYC, HUR, TYP\n",
+		     "OTS: unknown stormtype!");
   
-  my $starttime=shift @_ || 
+  my $starttime=shift @_ || $self->{STARTTIME};
   my $endtime=shift @_ || $self->{ENDTIME};
 
   $self->{STARTTIME} = $starttime if ($starttime ne $self->{STARTTIME});
