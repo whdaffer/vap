@@ -3,6 +3,9 @@ c $Id$
 c
 c Modification History:
 c $Log$
+c Revision 1.1  1998/10/22 21:43:34  vapuser
+c Initial revision
+c
 c
 c
 c
@@ -110,6 +113,7 @@ c             goto 999
          
 
 c  keep same ELE:
+         j=ELE0+NELE*RESE
          i=LIN0+NLIN*RESL
          LIN=i
 C        write(*,*) 'check lin1/ele1:',LIN,ELE
