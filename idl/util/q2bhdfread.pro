@@ -62,6 +62,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.12  1999/11/12 19:56:23  vapuser
+; Added code to support new DIRTH selected vectors in the
+; new L2B data product. (per Bryan's request)
+;
 ; Revision 1.11  1999/08/23 17:44:52  vapuser
 ; Now reads VD wvc_row_time.
 ;
@@ -253,7 +257,8 @@ FUNCTION q2bhdfread, filename, $
       hdf_sd_endaccess,r
       qual =  fix(qual*cal.cal + cal.offset)
 
-      retstruct.qual = temporary(qual)
+      retstruct.qual = qual
+      retstruct.rain_flag = ((ishft(temporary(qual),-12) AND 3 ) EQ 2)
 
       t2 = systime(1)
       IF Verbose THEN $
@@ -298,6 +303,7 @@ FUNCTION q2bhdfread, filename, $
       hdf_sd_endaccess,r
       sel =  fix(sel*cal.cal + cal.offset)
 
+      retstruct.sel = sel
       t2 = systime(1)
       IF Verbose THEN $
         print,'Time to extract wvc_selection: ', t2-t1
