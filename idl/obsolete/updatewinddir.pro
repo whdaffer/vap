@@ -57,6 +57,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/22 21:19:58  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -117,6 +120,7 @@ PRO updatewinddir
       ENDIF 
       filename = dt2wfnames(new_wfdt)
       IF cnt EQ 0 THEN BEGIN 
+        print,'   Creating file ' + filename[0]
         RecrateHdfData, filename, fake_hdf_files[i],$
            new_wfdt.start_time, new_wfdt.end_time
       ENDIF ELSE BEGIN 
@@ -126,6 +130,7 @@ PRO updatewinddir
                    existing_wfdt.end_time.hour   EQ wfdt.end_time.hour AND $
                    existing_wfdt.end_time.minute    EQ wfdt.end_time.minute, nx )
         IF nx NE 0 THEN BEGIN 
+          print,'   Creating file ' + filename[0]
           RecrateHdfData, filename, fake_hdf_files[i],$
            new_wfdt.start_time, new_wfdt.end_time
         ENDIF 
@@ -168,6 +173,7 @@ PRO updatewinddir
       ENDIF 
       filename = dt2wfnames(new_wfdt)
       IF cnt EQ 0 THEN BEGIN 
+        print,'   Creating file ' + filename[0]
         RecrateHdfData, filename, fake_hdf_files[i],$
            new_wfdt.start_time, new_wfdt.end_time
       ENDIF ELSE BEGIN 
@@ -177,6 +183,7 @@ PRO updatewinddir
                    existing_wfdt.end_time.hour   EQ wfdt.end_time.hour AND $
                    existing_wfdt.end_time.minute    EQ wfdt.end_time.minute, nx )
         IF nx NE 0 THEN BEGIN 
+          print,'   Creating file ' + filename[0]
           RecrateHdfData, filename, fake_hdf_files[i],$
            new_wfdt.start_time, new_wfdt.end_time
         ENDIF 
