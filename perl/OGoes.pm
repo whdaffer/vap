@@ -9,6 +9,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.7  2002/12/06 22:54:03  vapdev
+# Continuing work
+#
 # Revision 1.6  2002/12/06 00:39:22  vapdev
 # Continuing work
 #
@@ -67,15 +70,25 @@
                       [TIME => "yyyy/mm/dd/hh/mm",
                        DELTA => f.g, 
                        LIMITS => [minlon, minlat, maxlon, maxlat],
-                       ABSFLAG => 0|1 ] );
+                       ABSFLAG => 0|1,
+                       ERROROBJ => object_of_type_VapError ] );
+
+
+  One may either specify the combination of SAT/SENSOR or REGION, but
+  one or the other is required!
 
 =over 4
 
+=item * REGION: One of GOESWEST, GOESEAST or GMS5 
+
+         In this case, the sensor will default to IR4 for GOES and IR1
+         for GMS5
+
 =item * SAT: The number of the satellite: 10 for GOES 10, 8 for GOES 8
-             REQUIRED!
+             REQUIRED if REGION isn't specified!
 
 =item * SENSOR: vis, or ir{2,3,4}, as a *string*
-                REQUIRED!
+                REQUIRED if REGION isn't specified!
 
 =item * TIME: string, "YYYY/MM/DD/HH/MM"
               Defaults to current time.
@@ -93,6 +106,16 @@
 
 =item * ERROROBJ: object of type VapError. If not provided by caller,
                   the object creates its own.
+
+=item * LIMITS: a reference to a 4 element array containing the
+                geographical limits of the area of interest. The
+                format is [minlon, minlat, maxlon, maxlat] in East
+                Longitude except where that causes problem by going
+                over the prime meridian. The rule is that minlon must
+                be *numerically* less than maxlon.
+
+                Default = [0,0,0,0] which tells the gridder to grid
+                the whole file.
 
 =back
 
@@ -140,28 +163,49 @@ sub new {
   $self->{DELTA} = 4.0 unless $self->{DELTA};
   $self->{TIME} = VapUtil::systime2idltime(time()) unless $self->{TIME};
   $self->{SYSTIME} = VapUtil::idltime2systime($self->{TIME});
-  $self->{SENSORNUM} = $VapUtil::sensorname2num{$self->{SENSOR}} 
-    if $self->{SENSOR};
-  $self->{SENSOR} = $VapUtil::sensornum2name{$self->{SENSORNUM}} 
-    unless $self->{SENSOR};
+
+
   $self->{REMOTE_ARCHIVE_INFO} = 
     VapUtil::getgoesarchive("$VapUtil::VAP_LIBRARY/goes_archive");
   my $limits = $self->{LIMITS} || [0,0,0,0];
-
-
-  croak "Input Keys SAT and (SENSOR or SENSORNUM)  are required!\n" 
-    unless (exists($self->{SAT}) && 
-	    (exists($self->{SENSOR}) || exists($self->{SENSORNUM})));
-    
   bless $self, ref($class) || $class;
+  $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
+
+  $self->_croak( ["Input Keys REGION or",
+		  "(SAT and (SENSOR or SENSORNUM)) are required!\n"] ,
+		 "OGoes::new failure!")
+    unless ($self->{REGION} || 
+	    ($self->{SAT} && 
+	     ($self->{SENSOR} || $self->{SENSORNUM})));
+    
+  if ($self->{REGION}) {
+    $self->{SENSOR} = "ir4";
+    $self->{SENSORNUM} = 4;
+    if ($self->{REGION} =~ /GOESEAST/i) {
+      $self->{SAT} = 8;
+    } elsif ($self->{REGION} =~ /GOESWEST/i) {
+      $self->{SAT} = 10
+    } else {
+      $self->_croak("Unrecognized REGION " . $self->{REGION},
+		    "Ogoes::new failure");
+    }
+  } else {
+    $self->{SENSORNUM} = $VapUtil::sensorname2num{lc($self->{SENSOR})} 
+      if $self->{SENSOR};
+    $self->{SENSOR} = $VapUtil::sensornum2name{$self->{SENSORNUM}} 
+      unless $self->{SENSOR};
+  }
   $self->{LOCALDIR} = $self->LocalDir();
   $self->{REMOTEDIR} = $self->RemoteDir();
-  my @tmp=VapUtil::fixlonrange(${$limits}[0], ${$limits}[2]);
-  ${$self->{LIMITS}}[0] = $tmp[0];
-  ${$self->{LIMITS}}[2] = $tmp[1];
-  $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
-  $self->{GRIDDED_FILE_NAME_FORMAT} = "GOES%03d_%04d%02d%02d%02d_%04d,%03d,%04d,%03d.dat";
-
+  if ($self->{LIMITS}) {
+    my @tmp=VapUtil::fixlonrange(${$limits}[0], ${$limits}[2]);
+    ${$self->{LIMITS}}[0] = $tmp[0];
+    ${$self->{LIMITS}}[2] = $tmp[1];
+  } else {
+    $self->{LIMITS} = [0,0,0,0];
+  }
+  $self->{GRIDDED_FILE_NAME_FORMAT} = 
+     "GOES%03d_%04d%02d%02d%02d_%04d,%03d,%04d,%03d.dat";
   return $self;
 }
 

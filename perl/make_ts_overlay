@@ -87,7 +87,7 @@ foreach $main::aa (@argnames){
 }
 
 
-my $obj = TropicalStormsOverlay->new(@args);
+my $obj = OTS->new(@args);
 my @msg,
 push @msg, "\n\n=*=*=*=*=*=* Start processing $starttimeasstring =*=*=*=*=*=*=*=*\n\n";
 $obj->Report(\@msg,'INFO');

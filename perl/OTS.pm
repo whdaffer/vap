@@ -8,6 +8,9 @@ package OTS;
 # Modification Log:
 #
 # $Log$
+# Revision 1.3  2002/12/23 19:18:50  vapdev
+# more work
+#
 # Revision 1.2  2002/12/10 19:57:13  vapdev
 # Ongoing work
 #
@@ -20,7 +23,7 @@ package OTS;
 
 use strict;
 use Carp;
-use vars qw/$tsoo_defs/;
+use vars qw/$tsoo_defs $VERSION/;
 
 =head1 NAME
 
@@ -65,7 +68,6 @@ program.
 
 =cut
 
-BEGIN {
 BEGIN {
   $VERSION = "0.9";
 
@@ -272,13 +274,13 @@ sub parseTropicalStorms{
 # Where I've wrapped the line for readibility.
 #
 
-  my $self=shift
+  my $self=shift;
   my @content=@{$self->{FILE_CONTENTS}};
 
   my $stormtype=shift @_ || "DEP";
-  my $stormnum=$stormranking{$stormtype} || 
+  my $stormnum=$self->{DEFAULTS}->{STORMRANKING}->{$stormtype} || 
       $self->_croak(["Unknown Storm type of $stormtype!",
-		     "Allowed values are DEP, STO, CYC, HUR, TYP\n",
+		     "Allowed values are DEP, STO, CYC, HUR, TYP\n"],
 		     "OTS: unknown stormtype!");
   
   my $starttime=shift @_ || $self->{STARTTIME};
@@ -291,7 +293,7 @@ sub parseTropicalStorms{
   my ($hour, $min, $vaptime, $time1, $lat, $lon, $name, $yy);
 
   my %stormranking = %{$self->{DEFAULTS}->{STORMRANKING}};
-
+  my ($hour, $min, $lat, $lon, $type, $yy);
   for (@content){
     chop;
     my ($year,$month,$day,$hhmm,$tlat,$tlon,$tname,$course,$speed,$press,
@@ -345,7 +347,7 @@ sub parseTropicalStorms{
 
 
 sub _getTimeAndType{
-  $self->shift;
+  my $self->shift;
   shift; # shifts next argument into $_
   chomp;
   my ($year,$month,$day,$hhmm,$tlat,$tlon,$tname,$course,$speed,$press,
@@ -442,7 +444,7 @@ sub getClosestObservation{
   # Usage @retarray=getClosestObservation(%hash, $time)
   #
 
-  my $self=shift
+  my $self=shift;
   my ($ref,%hash,$time,$absflag,
 	@obtimes,$mindiff,$ob, $diff,$closest);
 
@@ -532,11 +534,11 @@ sub getClosestBySatellite{
 
   my (@match_data, %match_data, $k, %hash, 
 	$sats, $satellite, $time, $ref);
-  $self=shift;
+  my $self=shift;
   my $research = scalar(@_);
-  $satellite=shift $self->{REGION}
-  $time=shift || $self->{TIME}
-  $absflag=shift || $self->{ABSFLAG};
+  my $satellite=shift || $self->{REGION};
+  my $time=shift || $self->{TIME};
+  my $absflag=shift || $self->{ABSFLAG};
   $self->parseTropicalStorms() if $research;
   my $storms=$self->{STORMS};
 
@@ -554,6 +556,7 @@ sub getClosestBySatellite{
 	$closest=$i;
       }
     }
+    my $ob;
     if ($closest > -1) {
       $ob=$closest;
       @match_data = 
@@ -591,7 +594,8 @@ sub getClosestBySatellite{
 
 
 sub getRegions{
-  my @regions = keys %SatelliteRegions;
+  my $self=shift;
+  my @regions = keys %{$self->{DEFAULTS}->{SATELLITEREGIONS}};
 }
 
 
@@ -607,13 +611,8 @@ sub getRegions{
 =cut
 
 sub getSatellites{
-  my @Satellites
+  my @Satellites;
 }
-
-
-
-
-
 
 
 =pod
@@ -631,10 +630,26 @@ sub stormsFound{
 }
 
 
-sub processStorm{
+=pod
+
+=head1  processStorm
+
+=head2 Usage: makeOverlay("storm name");
+
+  This routine is creates the overlay of the storm and leaves it in $VAP_TS_OVERLAY
+
+=cut
+
+
+sub makeOverlay{
+
+  use OGoes;
+  use OGms;
 
   my $self=shift;
   my $storm = shift;
+  my $region = $self->{REGION};
+  my $wind_delta = $self->{WIND_DELTA};
 
   my ($obnum, $lon, $lat, $time1, $vaptime,
       $storm_type, $winds, $gusts, $press, $course,
@@ -644,17 +659,173 @@ sub processStorm{
 
   $self->Report($msg, "INFO");
   
-  $stormtime=$vaptime
-  $stormtype = $stormtypes{$stormtype};
+  my $stormtime=$vaptime;
+  my $type = $self->{DEFAULTS}->{STORMTYPES}->{$rpt_type};
   $type = 'UNK' if /\?+/;
 
-  $subtitle = 
+  my $subtitle = 
     "Location: Lon: $lon, Lat: $lat, Time: $stormtime, Sus. Winds: $winds (kts)";
 
-  $stormname = $k;
-
-  ($path,$modidltime,@windfiles)= 
-    Qs::FindClosestInTimeAndDistance($match[1], 
-				     $match[2], 
+  my ($path,$modidltime,@windfiles)= 
+    Qs::FindClosestInTimeAndDistance($lon, 
+				     $lat, 
 				     $stormtime,$wind_delta,5, 1);
+
+  my $modidltime = $self->{TIME} if (!$modidltime);
+  $self->Report("Time of closest wind data (modidltime): $modidltime\n"
+		"INFO");
+  my @tmp=split("/",$modidltime);
+  my $idltimestring=join("",@tmp[0 .. 4]);
+  my $idltmpfilestr;
+
+  my $outputname="$region-$type-$k-$idltimestring.jpeg";
+
+  my @maplimits=($lon-10,$lat-10,$lon+10,$lat+10);
+  my $maplimits="[".join(",",@maplimits)."]";
+    
+
+  if ($region eq 'GMS5') {
+    my $gms5datetime = undef;
+    my $gms=OGms( DATETIME => $modidltime);
+    my ($gms5datetime, $gms5mindiff)= $gms->GetClosest;
+    if ($gms5mindiff) {
+      if (abs($gms5mindiff) < $wind_delta*3600) {
+	$test=$gms->GetAll($gms5datetime);
+	$gms5datetime = undef unless $test;
+      }
+    }    
+    $self->_croak("ERROR: Both GMS cloud data and Qscat data are missing!\n",
+		  "OTS: Cloud/Wind data missing!")
+       unless ($gms5datetime || @windfiles) );
+
+    $self->_Report(["  Wind Files time: $idltime +/- $wind_delta hours",
+		    "  For a stormtime of $stormtime\n"],'INFO');
+    $self->_Report("\n  GMS5 time: $gms5datetime\n",'INFO') if $gms5datetime;
+    $idltmpfilestr = "tropical_storms_overlay,\'$gms5datetime\',gmstype=\'ir1\'";
+
+  } elsif ($region eq 'GOESWEST') {
+    use OGoes;
+    my $t0=time();
+    $self->Report("Starting GAG at ".localtime($t0),'INFO');
+    $ogoes = OGoes->new(REGION => "GOESWEST", DATETIME => $modidltime, 
+			ABSFLAG=>0, 
+			LIMITS => \@maplimits);
+    $goesfile=$ogoes->gag;
+    my $t1=time();
+    $self->Report("Finished GAG at ".localtime($t1)."\n",'INFO');
+    $t0 = $t1-$t0;
+    $self->REPORT("GAG took $t0 seconds\n",'INFO');
+    $self->_croak("Both GoesWest data and QuikSCAT data is missing!\n",
+		  "Missing Cloud/Wind data!") 
+	unless ($goesfile || @windfiles);
+    $self->Report("Goesfile: $goesfile\n",'INFO');
+    $idltmpfilestr="tropical_storms_overlay,\'$goesfile\'";
+  } elsif ($region eq 'GOESEAST') {
+    my $t0=time();
+    $self->Report("Starting GAG at ".localtime($t0),'INFO');
+    $ogoes = OGoes->new("GOESEEST", "4", $modidltime, 0, @maplimits);
+    $goesfile=$ogoes->gag;
+    my $t1=time();
+    $self->Report("Finished GAG at ".localtime($t1)."\n",'INFO');
+    $t0 = $t1-$t0;
+    $self->REPORT("GAG took $t0 seconds\n",'INFO');
+    $self->_croak("Both GoesEest data and QuikSCAT data is missing!\n",
+		  "Missing Cloud/Wind data!") 
+	unless ($goesfile || @windfiles);
+    $self->Report("Goesfile: $goesfile\n",'INFO');
+    $idltmpfilestr="tropical_storms_overlay,\'$goesfile\'";
+  } else {
+    die "How the heck did I get here?\n";
+  }
+
+  $idltmpfilestr .= ",crd=[0,0],len=1,maplimits=maplimits";
+  $idltmpfilestr .= ",outfile=outfile";
+
+  if (@windfiles) {
+    $path .= "/" if $path !~ /.*\/$/;
+    $str="\n";
+    $str .= join("\n", @windfiles);
+    $str .= "\n";
+    print "Windfiles to be used: $str";
+    $windfiles="\'$path\' + [\'$windfiles[0]\'";
+
+    for ($i=1;$i<=$#windfiles;$i++){
+      $windfiles .= ",\'$windfiles[$i]\'";
+    }
+    $windfiles .= "]";
+    $idltmpfilestr .= ",windfiles=windfiles";
+    print "Wind files: $windfiles\n";
+  }
+
+  $oplotstring=makeIDLOplotString($lon, $lat);
+  $idltmpfilestr .= ",oplot=oplot";
+
+  
+    ## Open the lockfile and put the current unix time in there.  This
+    ## is the only way we have of gathering output from the IDL
+    ## process. We also use it to communcate that this run is
+    ## 'non-interactive' in the sense that IDL is being started by the
+    ## perl script. This sort of 'non-interactivty' applies both when
+    ## the script is called by the user as well as when it is called
+    ## by cron, an ambiguity which I haven't been able to eliminate.
+
+  $time=timegm(gmtime(time));
+  chdir $TS::TS_OVERLAY_DIR  || die "Can't CD to $TS::TS_OVERLAY_DIR\n";
+  $lockfile="ts_cronjob.$time.lock";
+  open FILE,">$lockfile" || die "Can't open $lockfile\n";
+  print FILE $time;
+  close FILE;
+  
+  $idltmpfilestr .= ",lockfile=lockfile, title=title, subtitle=subtitle\n";
+  $idltmpfilestr .= "exit\n";
+  
+
+    ## Open the tmp file that will be executed by IDL and write the
+    ## command string to it 
+  $tmpfile="ts_tmpfile.$time.pro";
+  print "Tmpfile: $tmpfile\n";
+
+  open TMPFILE, ">$tmpfile" || 
+      die "Can't open IDL TMPFILE\n";
+  print TMPFILE "title=\'$stormtype $stormname :\'\n";
+  print TMPFILE "subtitle=\'$subtitle\'\n";
+  print TMPFILE "maplimits=$maplimits\n";
+  print TMPFILE "windfiles=$windfiles\n" if $windfiles;
+  print TMPFILE "oplot=$oplotstring\n";
+  print TMPFILE "outfile=\'$outputname\'\n";
+  print TMPFILE  "lockfile=\'$lockfile\'\n";   
+
+  print TMPFILE $idltmpfilestr;
+  close TMPFILE;
+
+  
+  $r=system( "$Qs::IDLEXE  $tmpfile")/256;
+  die "Bad return from system( $IDLEXE $tmpfile)\n" if $r != 0;
+  
+  unlink $tmpfile || warn "Couldn't unlink($tmpfile)\n";
+  open FILE, "<$lockfile" || die "Can't reopen $lockfile\n";
+  while (<FILE>){
+    warn $_ && $errcnt++ if /.*ERROR.*/;
+  }
+  close FILE;
+
+  die "Found $errcnt Errors -- Exiting\n" if $errcnt;
+  die "Can't find output file $outputname\n" if !-e $outputname;
+
+  unlink $lockfile || warn "Couldn't unlink($lockfile)\n";
+
+  $newname="$Qs::VAP_WWW_TOP/images/storms/$outputname";
+  $relative_name="/images/storms/$outputname";
+
+  copy $outputname, $newname || 
+      die "Can't copy\n $outputname to $newname\n";
+  copy "$outputname.TN", "$newname.TN" || 
+      die "Can't copy\n $outputname.TN to $newname.TN\n";
+ 
+  unlink $outputname || die "Can't unlink $outputname\n";
+  unlink "$outputname.TN" || die "Can't unlink $outputname.TN\n";
+
+  rewriteStormsPage $relative_name || die "Error rewriting storms.html\n";
+}
+
 1;
