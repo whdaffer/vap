@@ -135,6 +135,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.8  1999/04/08 22:00:36  vapuser
+; Replaced Colorbar with ColBar
+;
 ; Revision 1.7  1999/04/08 16:01:45  vapuser
 ; Various cleanup and bug squashing.
 ;
@@ -747,7 +750,7 @@ y = [0,2]
 x =  where( tlimits(y) LT 0,nx )
 IF nx NE 0 THEN tlimits(y(x)) =  tlimits(y(x)) + 360.
 
-loncent =  avg( tlimits([0,2]) )
+loncent =  mean( tlimits([0,2]) )
 
 IF exist( wind_time_str ) THEN $
  tit =  wind_time_str ELSE $
