@@ -70,9 +70,16 @@
 ;                     used.(def=0.04)
 ;          help -    prints out alot of help mumbo-jumbo
 ;          min_speed - minimum speed to be used in the wind speed
-;                     contour  and wind speed color bar.
+;                     contour  and wind speed color bar. (m/s unless knots=1)
 ;          max_speed - maximum speed to be used in the wind speed
-;                     contour  and wind speed color bar.
+;                     contour  and wind speed color bar. (m/s unless knots=1)
+;
+;            NB: Internal to this routine, all calculations are in
+;                Meters/Second. Only when the speed is reported is the
+;                conversion made to knots. Nevertheless, it seems
+;                wiser to have the input done in whatever units are
+;                used on output.
+;
 ;          debug - useful for debugging. If set, the routine will stop
 ;                  in the context of the error, so that you can
 ;                  investigate the problem, instead of immediately
@@ -90,7 +97,8 @@
 ;          harmonic - Reset the vectors on this harmonic of the
 ;                     fundamental (number of frames)
 ;          knots - flag, report the speed in knots. Otherwise, report
-;                  the speed in meters/second
+;                  the speed in meters/second. Also, if this flag is
+;                  set, min/max speed must bu input as knots.
 ;
 ; ABOUT THE METHOD AND SOME OF THE DESCRIPTIONS:
 ;
@@ -302,6 +310,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.6  1999/10/06 17:05:51  vapuser
+; Took out meters_per_sec keyword, put in knots keyword. Default to
+; meters/sec and max_speed=30. Put in some support code for knots keyword.
+;
 ; Revision 1.5  1999/10/05 17:02:00  vapuser
 ; Changed the 'write_xxx' keywords to just 'xxx', thereby increasing
 ; their uniqueness.  Added the 'harmonic' and 'meters_per_second'.
@@ -390,8 +402,8 @@ PRO ANIMATE_WIND_FIELD, files, $ ; fully qualified grid file name(s) (no default
                         jpeg = jpeg, $          ; Write Jpeg
                         debug = debug       ,$  ; for debugging
                         title=title ,$          ; Title for each frame.
-                        min_speed=min_speed,$  ; Minimum wind speed
-                        max_speed=max_speed,$  ; Maximum wind speed
+                        min_speed=min_speed,$  ; Minimum wind speed (m/s unless knots=1)
+                        max_speed=max_speed,$  ; Maximum wind speed (m/s unless knots=1)
                         length=length,$        ; length of vectors
                         help= help,$           ; set to get help
                         pad= pad,$ ; padding for tv safe, [xpad, ypad ]
@@ -464,10 +476,8 @@ COMMON colors, r_curr, g_curr, b_curr, r_orig, g_orig, b_orig
   '                     ; a lot of other software doesnt break.' 
 
 IF keyword_set( help ) THEN BEGIN
-
   print, hstr
   return
-
 ENDIF 
 
 debug =  keyword_set( debug )
@@ -480,16 +490,63 @@ IF n_elements(files) EQ 0 AND $
   return
 ENDIF 
 
-interpolate   = KEYWORD_SET( interpolate )
-dologo        = (KEYWORD_SET( nologo ) EQ 0)
-pict    = KEYWORD_SET( pict )  
-gif     = KEYWORD_SET( gif )  
-ps      = KEYWORD_SET( ps )   
-tiff    = KEYWORD_SET( tiff )  
-jpeg    = KEYWORD_SET( jpeg )  
+
+read_cfgfile = 0
+cfgname = cfgname()
+cfgpath = '~/.idlcfg/' 
+ff = findfile(cfgpath + cfgname,count=nf)
+IF nf NE 0 THEN BEGIN 
+  read_cfgfile = 1
+ENDIF ELSE BEGIN 
+  IF getenv('VAP_LIB') NE '' THEN BEGIN 
+    cfgpath = deenvvar('$VAP_LIB')
+    ff = findfile(cfgpath + cfgname,count=nf)      
+    read_cfgfile = (nf NE 0)
+  ENDIF
+ENDELSE   
+
+IF read_cfgfile THEN BEGIN 
+  print,' Reading CFG file ' + cfgname
+  read_cfgfile,cfgname, cfg,path=cfgpath
+  IF n_elements(cfg) NE 0 THEN BEGIN 
+    print,'CFG found! Details follow:'
+    help,cfg,/st
+  ENDIF 
+ENDIF 
+  
+
+chkcfg,'INTERPOLATE',interpolate,cfg,/bool
+chkcfg,'NOLOGO',nologo,cfg,/bool
+dologo        = (nologo EQ 0)
+chkcfg,'PICT',pict,cfg,/bool
+chkcfg,'GIF',gif,cfg,/bool
+chkcfg,'PS',ps,cfg,/bool
+chkcfg,'TIFF',tiff,cfg,/bool
+chkcfg,'JPEG',jpeg,cfg,/bool
+
+chkcfg,'HARMONIC',harmonic,cfg
+chkcfg,'THICK',thick,cfg
+chkcfg,'KNOTS',knots,cfg,/bool
+
+chkcfg,'MIN_SPEED',min_speed,cfg
+chkcfg,'MAX_SPEED',max_speed,cfg
+chkcfg,'LENGTH',length,cfg
+chkcfg,'TITLE',title,cfg
+
+
+
+;pict    = KEYWORD_SET( pict )  
+;gif     = KEYWORD_SET( gif )  
+;ps      = KEYWORD_SET( ps )   
+;tiff    = KEYWORD_SET( tiff )  
+;jpeg    = KEYWORD_SET( jpeg )  
+
+
 IF n_elements(harmonic) EQ 0 THEN harmonic = 1;
 IF n_elements(thick) EQ 0 THEN thick = 1
-knots =  keyword_set(knots)
+;knots =  keyword_set(knots)
+
+
 
 IF NOT pict AND $
    NOT gif AND $
@@ -499,10 +556,33 @@ IF NOT pict AND $
 
 mps2knots =  0.514 ; converts meters/sec to knots.
 
-IF n_elements( min_speed ) EQ 0 THEN min_speed =  1 ; meters/sec
-IF n_elements( max_speed ) EQ 0 THEN max_speed =  30; meters/sec
+
+
+IF n_elements( min_speed ) EQ 0 THEN BEGIN 
+  min_speed =  1                ; meters/sec
+  IF knots THEN min_speed = min_speed/mps2knots 
+ENDIF 
+
+
+IF n_elements( max_speed ) EQ 0 THEN BEGIN 
+  max_speed =  30               ; meters/sec
+  IF knots THEN max_speed = max_speed/mps2knots 
+ENDIF 
+
 IF n_elements( length ) EQ 0 THEN length =  3;
-IF n_elements( title ) EQ 0 THEN title =  '' ; meters/sec
+IF n_elements( title ) EQ 0 THEN title =  '' 
+
+  ; To the maintainer. As a optimzation move, do all internal
+  ; calculations in meters/second. Otherwise, we have to keep
+  ; multiplying big arrays by mps2knots instead of just using it when
+  ; we really need it, which is when the colorbar is applied, and this
+  ; is only done if we're putting a logo on! We have to go through the
+  ; rigamorole above with min/max speed to make sure that everything
+  ; was in the right units.
+
+  ; Sorry!
+
+
 ncolors = 29
 
 CASE 1 OF
@@ -518,9 +598,16 @@ CASE 1 OF
 ENDCASE 
 
   ; Check for requests to pad the frames
-padframe =  keyword_set( pad ) OR $
-            keyword_set(tvsafe) OR $
-            keyword_set(titsafe)
+
+chkcfg,'PAD',pad,cfg,/bool
+chkcfg,'TVSAFE',tvsafe,cfg,/bool
+chkcfg,'TITSAFE',titsafe,cfg,/bool
+
+;padframe =  keyword_set( pad ) OR $
+;            keyword_set(tvsafe) OR $
+;            keyword_set(titsafe)
+
+padframe = pad  OR tvsafe OR titsafe
 
 
 eps =  0.000102
@@ -533,30 +620,34 @@ ON_IOERROR, stop
   ; components to get the location of the vector in the next frame of
   ; the animation.
 
-IF NOT(keyword_set(path_inc) ) THEN path_inc =  0.04 
+chkcfg,'PATH_INC',path_inc,cfg
+chkcfg,'LONPAR',lonpar,cfg
+chkcfg,'LATPAR',latpar,cfg
+chkcfg,'VLONPAR',vlonpar,cfg
+chkcfg,'VLATPAR',vlatpar,cfg
+chkcfg,'ANIMPAR',animpar,cfg
 
-IF n_elements( lonpar ) EQ 0 THEN BEGIN
+IF n_elements(path_inc) EQ 0THEN path_inc =  0.04 
+
+IF n_elements( lonpar ) NE 2 THEN BEGIN
   lonpar =  [0.,359]
   message,' Taking default lonpar = [0., 359. ]',/cont
 ENDIF 
 
-IF n_elements( latpar ) EQ 0 THEN BEGIN 
+IF n_elements( latpar ) NE 2 THEN BEGIN 
   latpar =  [-60., 60 ]
   message,' Taking default latpar = [-60., 60]',/cont
 ENDIF 
 
-IF NOT( keyword_set( vlonpar ) ) THEN BEGIN 
-  
-  vlonpar =  [0, 360., 1. ]
-  vlonpar =  [0. >  lonpar(0), 360 <  lonpar(1), 1. ]
-  message,' Taking default vlonpar ',/cont
+IF n_elements(vlonpar ) NE 3 THEN BEGIN 
+  vlonpar =  [0. >  (lonpar(0)-5), 360<(lonpar(1)+5), 1. ]
+  message,' Taking default vlonpar ',/info
   print,vlonpar
 ENDIF 
 
-IF NOT( keyword_set( vlatpar ) ) THEN BEGIN 
-  vlatpar =  [-90., 90, 1. ]
-  vlatpar =  [-90. >  latpar(0), 90 <  latpar(1), 1. ]
-  message,' Taking default vlatpar', /cont
+IF n_elements( vlatpar ) NE 3 THEN BEGIN 
+  vlatpar =  [-90. > (latpar(0)-5), 90 <  (latpar(1)+5), 1. ]
+  message,' Taking default vlatpar', /info
   print,vlatpar
 ENDIF 
 IF n_elements( animpar ) NE 3 THEN BEGIN 
@@ -571,10 +662,30 @@ IF nframes MOD harmonic NE 0 THEN BEGIN
   return
 ENDIF 
 
-IF keyword_set( tvsafe ) THEN $
+IF tvsafe THEN $
  pad = [ round(animpar(0)*0.09375/2.),round(animpar(1)*0.0916667/2.) ]
-IF keyword_set( titsafe) THEN $
+IF titsafe THEN $
  pad =  [ round( animpar(0)*0.184375/2.),round(animpar(1)*0.184/2.) ]
+
+
+message,'path_inc = ' + string(path_inc,form='(f7.2)'),/info
+message,'lonpar   = ' + string(lonpar, form='(2(f7.2,:,","))'),/info
+message,'latpar   = ' + string(latpar, form='(2(f7.2,:,","))'),/info
+message,'vlonpar  = ' + string(vlonpar,form='(3(f7.2,:,","))'),/info
+message,'vlatpar  = ' + string(vlatpar,form='(3(f7.2,:,","))'),/info
+message,'animpar  = ' + string(animpar,form='(3(f7.2,:,","))'),/info
+message,'nologo   = ' + strtrim(nologo,2),/info
+message,'knots    = ' + strtrim(knots,2),/info
+message,'length   = ' + strtrim(length,2),/info
+message,'thick    = ' + strtrim(thick,2),/info
+
+IF knots THEN BEGIN 
+  message,'min_speed (knots) = ' + string( min_speed*mps2knots, form= '(f7.2)' ),/info
+  message,'max_speed (knots) = ' + string( max_speed*mps2knots, form= '(f7.2)' ),/info
+ENDIF ELSE BEGIN 
+  message,'min_speed  = ' + string( min_speed, form= '(f7.2)' ),/info
+  message,'max_speed  = ' + string( max_speed, form= '(f7.2)' ),/info
+ENDELSE 
 
 
   ;
@@ -825,7 +936,9 @@ IF read_success THEN BEGIN
   real_start_time =  systime(1)
   tottime =  0.
   iter =  0l
-  ss =  min_speed >  sqrt( uu0(*,*,0)^2 + vv0(*,*,0)^2 ) <  max_speed ; 
+
+  ss = min_speed> sqrt( uu0(*,*,0)^2 + vv0(*,*,0)^2 )       < max_speed ; 
+
   ;
   ; *********************************** Main LOOP *****************************
   ;
@@ -1022,7 +1135,7 @@ IF read_success THEN BEGIN
           ENDELSE 
         ENDELSE 
         CALCVECTORFIELD
-        ss =  min_speed >  sqrt( uu^2 + vv^2 ) <  max_speed ; 
+          ss =  min_speed > sqrt( uu^2 + vv^2 )<  max_speed ; 
 
       ENDIF 
 
