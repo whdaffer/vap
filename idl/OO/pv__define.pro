@@ -89,6 +89,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/09/30 23:38:15  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -694,7 +697,7 @@ FUNCTION pv::Init, $
     ; Obj_Destroy,self
     return,0
   ENDIF 
-  self.rcsid = "$Id$"
+
 
   IF keyword_set( help ) THEN self-> SelfHelp
 
@@ -1719,6 +1722,22 @@ END
 
 
 
+;============================================
+; Version
+;============================================
+
+FUNCTION PV::Version
+   rcsid = "$Id$"
+   super = Obj_Class(self,/Super,count=cnt)
+   IF cnt NE 0 THEN BEGIN 
+     versions = strarr(cnt+1)
+     versions[0] = rcsid
+     FOR i=0,cnt-1 DO versions[i] = call_method("VERSION",super[i])
+     return,versions
+   ENDIF ELSE return,rcsid
+END
+
+
 ;====================================================
 ;
 ; Object Definition
@@ -1741,7 +1760,6 @@ PRO Pv__define
                                  ; requires redrawing.
             Sensitivity  : 0l, $ ; flag for sensitivity s
                                  ; tate of widget.
-            rcsid        : '',$
             Annotation   : Obj_New(),$ ; for titles, and such
 
  ;------------- Widget quantities ---------------
