@@ -83,6 +83,14 @@
 ;                              ExcludeCols are ignored.
 ;                Pid         : Pid to expect to find in lock file, for
 ;                              cronjob operation.
+;                Interp_file : The interpfile to use.
+;                knots       : Report speed in knots. Also, expect
+;                              min/max speed to be in knot instead of
+;                              meters/sec.
+;                minspeed    : minimum speed (m/s unless knots=1)
+;                maxspeed    : maximum speed (m/s unless knots=1)
+;                Length      : the length of the arrows.
+;                thick       ; The thickness of the arrows.
 ;
 ;
 
@@ -111,6 +119,10 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.9  1999/10/06 17:19:46  vapuser
+; Changed calls to animate_wind_field to reflect changes in that
+; program.
+;
 ; Revision 1.8  1999/10/05 17:09:22  vapuser
 ; Changed default time from 24 to 14. Changed 'write_xxx' to just 'xxx.'
 ; Cleaned up the header. Added some missing code having to do with the
@@ -207,8 +219,13 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
                                             ; NSCAT data
                 Pid         = Pid  , $      ; (I) scalar. PID to expect in 
                                             ; lock file.
-                interp_file= interp_file    ; (I) string. Fully Qualified 
-                                            ; name of interpolated wind file
+                interp_file= interp_file,$ ; (I) string. Fully Qualified 
+                                ; name of interpolated wind file
+                knots     = knots, $ ; Report speed in knots, not meters/sec
+                minspeed  = minspeed,$ ; min speed (m/s unless 'knots' is set)
+                maxspeed  = maxspeed,$ ; max speed (m/s unless 'knots' is set)
+                length    = length, $
+                thick     = thick
 
 
 
@@ -217,6 +234,8 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   CD,current=cur_dir
 
   rcsid = "$Id$"
+
+  mps2knots = 0.514 ; takes meters/sec to knots
 
   user = getenv('USER')
   dateit =  NOT keyword_set( nodate )
@@ -248,8 +267,34 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
    ENDIF 
   ENDIF 
 
-  gif = keyword_set(gif)
-  pict = keyword_set(pict)
+  
+  read_cfgfile = 0
+  cfgname = cfgname()
+  cfgpath = '~/.idlcfg/' 
+  ff = findfile(cfgpath + cfgname,count=nf)
+  IF nf NE 0 THEN BEGIN 
+    read_cfgfile = 1
+  ENDIF ELSE BEGIN 
+    IF getenv('VAP_LIB') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIB')
+      ff = findfile(cfgpath + cfgname,count=nf)      
+      read_cfgfile = (nf NE 0)
+    ENDIF
+  ENDELSE   
+
+  IF read_cfgfile THEN BEGIN 
+    print,' Reading CFG file ' + cfgname
+    read_cfgfile,cfgname, cfg,path=cfgpath
+    IF n_elements(cfg) NE 0 THEN BEGIN 
+      print,'CFG found! Details follow:'
+      help,cfg,/st
+    ENDIF 
+  ENDIF 
+
+  chkcfg,'GIF',gif,cfg,/bool
+  chkcfg,'PICT',pict,cfg,/bool
+  ;gif = keyword_set(gif)
+  ;pict = keyword_set(pict)
 
   IF gif AND pict THEN BEGIN 
     str =  " ERROR: Only one of 'gif' or 'pict' may be set" 
@@ -266,8 +311,10 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 
   CD,current=cur_dir
 
-
+  chkcfg,'TIME_INC',time_inc,cfg
   IF N_elements( time_inc ) EQ 0 THEN time_inc =  14.
+
+  chkcfg,'ROI',roi,cfg
 
   IF n_elements( roi ) NE 0 THEN BEGIN 
     roistr =  READ_AUTO_MOVIE_DEFS( roi )
@@ -286,21 +333,66 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     roistr =  READ_AUTO_MOVIE_DEFS( 'NPAC' )
   ENDELSE 
 
+  chkcfg,'wpath',wpath,cfg
+  chkcfg,'alonpar',alonpar,cfg
+  chkcfg,'alatpar',alatpar,cfg
+  chkcfg,'alonpar',alonpar,cfg
+  chkcfg,'interp_path',interp_path,cfg
+  chkcfg,'anim_path',anim_path,cfg
+  chkcfg,'min_nvect',min_nvect,cfg
+  chkcfg,'decimate',decimate,cfg
+  chkcfg,'crdecimate',crdecimate,cfg
+  chkcfg,'excludecols',excludecols,cfg
+  chkcfg,'animpar',animpar,cfg
+  chkcfg,'minspeed',minspeed,cfg
+  chkcfg,'maxspeed',maxspeed,cfg
+  chkcfg,'length',length,cfg
+  chkcfg,'thick',thick,cfg
+
+  chkcfg,'knots',knots,cfg,/bool
+
   IF n_elements( wpath )       EQ 0 THEN wpath       = roistr.wpath 
-  IF n_elements( alonpar )     EQ 0 THEN alonpar     = roistr.alonpar 
-  IF n_elements( alatpar )     EQ 0 THEN alatpar     = roistr.alatpar 
+  IF n_elements( alonpar )     NE 3 THEN alonpar     = roistr.alonpar 
+  IF n_elements( alatpar )     NE 3 THEN alatpar     = roistr.alatpar 
   IF n_elements( interp_path ) EQ 0 THEN interp_path = roistr.interp_path
   IF n_elements( anim_path )   EQ 0 THEN anim_path   = roistr.anim_path
   IF n_elements( min_nvect )   EQ 0 THEN min_nvect   = roistr.min_nvect
   IF n_elements( decimate )    EQ 0 THEN decimate    = roistr.decimate
   IF n_elements( CRDecimate )  NE 2 THEN CRDecimate  = roistr.CRDecimate
   IF n_elements( ExcludeCols ) EQ 0 THEN ExcludeCols = roistr.ExcludeCols
+  IF n_elements( animpar )     NE 3 THEN animpar     = roistr.anim_par 
 
-  IF n_elements( animpar )     EQ 0 THEN animpar = roistr.anim_par ; [320,240,60]
+  IF n_elements(minspeed) EQ 0 THEN BEGIN 
+    minspeed = 1
+    IF knots THEN minspeed = minspeed*mps2knots
+  ENDIF 
+  IF n_elements(maxspeed) EQ 0 THEN BEGIN 
+    maxspeed = 30
+    IF knots THEN maxspeed = maxspeed*mps2knots
+  ENDIF 
+
+  IF n_elements(length) EQ 0 THEN length = 3
+  IF n_elements(thick) EQ 0 THEN thick = 1
+
+  message,'wpath      = ' + wpath,/info
+  message,'alonpar    = ' + string(alonpar,form='(3(f7.2,:,","))'),/info
+  message,'alatpar    = ' + string(alatpar,form='(3(f7.2,:,","))'),/info
+  message,'interp_path= ' + interp_path ,/info
+  message,'anim_path  = ' + anim_path   ,/info
+  message,'min_nvect  = ' + strtrim(min_nvect,2),/info
+  message,'decimate   = ' + strtrim(decimate,2)    ,/info
+  message,'CRDecimate = ' + string(CRDecimate,form='(2(i2,:,","))')  ,/info
+  message,'ExcludeCols= ' + ExcludeCols,/info
+  message,'animpar    = ' + string(animpar,form='(3(f7.2,:,","))')     ,/info
+  message,'minspeed   = ' + strtrim(minspeed,2),/info
+  message,'maxspeed   = ' + strtrim(maxspeed,2),/info
+  message,'knots      = ' + strtrim(knots,2),/info
+  message,'length      = ' + strtrim(length,2),/info
+  message,'thick      = ' + strtrim(thick,2),/info  
 
 
   roi =  strupcase(roi)
-  MESSAGE,' Looking for roi ' + roi,/cont
+  MESSAGE,' Looking for roi ' + roi,/info
 
 
   ; Get the current GMT doy and hour
@@ -491,14 +583,17 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
       ; There is already an interpolated file to use.
 
     CD,anim_path
-    mps2knots = 0.514 ; takes meters/sec to knots
+    IF knots THEN BEGIN 
+      minspeed = minspeed/mps2knots
+      maxspeed = maxspeed/mps2knots
+    ENDIF 
 
-    lonpar =  roistr.alonpar
-    latpar =  roistr.alatpar
+    lonpar =  alonpar[0:1]
+    latpar =  alatpar[0:1]
     tmp =  (lonpar(0:1) + [-10,10])
     tmp =  fixlonrange(tmp)
-    vlonpar =  [tmp, lonpar(2) ]
-    vlatpar =  latpar
+    vlonpar =  [tmp, alonpar[2] ]
+    vlatpar =  alatpar
     vlatpar(0:1) =  -60 >  (vlatpar(0:1) + [-10,10]) <  60
 
     ANIMATE_WIND_FIELD,Interp_File, $
@@ -508,10 +603,12 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
      vlon = vlonpar, $
      vlat = vlatpar,$
      animpar=animpar,$
-     min_speed=1,  $             ; meters/sec, will be converted to knots 
-     max_speed=30, $             ; in animate_wind_field 
+     min_speed=minspeed,  $       ; min/max speed. M/s unless knots=1
+     max_speed=maxspeed, $        
+     length=length, $
+     thick=thick, $
      title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
-     gif=gif, pict=pict, /knots
+     gif=gif, pict=pict, knots=knots
 
 
 
