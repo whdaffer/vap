@@ -53,6 +53,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1998/11/23 18:04:39  vapuser
+; Expanded some comments
+;
 ; Revision 1.1  1998/11/23 17:46:53  vapuser
 ; Initial revision
 ;
@@ -67,7 +70,11 @@ FUNCTION sizeof, item
      'UNDEFINED': Message,"UNDEFINED items have no size",/cont
      'BYTE'     : ss = 1
      'INTEGER'  : ss = 2
+     'UINT'     : ss = 2
      'LONGWORD' : ss = 4
+     'ULONG'    : ss = 4
+     'LONG64'   : ss = 8
+     'ULONG64'  : ss = 8
      'FLOAT'    : ss = 4
      'DOUBLE'   : ss = 8
      'COMPLEX_FLOAT': ss = 16
