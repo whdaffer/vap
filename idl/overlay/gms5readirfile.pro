@@ -34,6 +34,9 @@
 ; MODIFICATION LOG:
 ;
 ; $Log$
+; Revision 1.2  1999/06/24 18:45:57  vapuser
+; Put in a wayward 'EQ 0'
+;
 ; Revision 1.1  1999/04/02 18:03:59  vapuser
 ; Initial revision
 ;
@@ -63,7 +66,8 @@ FUNCTION Gms5ReadIRFile, filename
 
 
   IF n_elements(gms5initialized) EQ 0 THEN gms5Init
-  IF n_elements(gms5gridtemplate) EQ 0 THEN  restore,gms5_hdftemplates_saveset_file
+  IF n_elements(gms5imagetemplate) EQ 0 THEN  $
+    restore,gms5_hdftemplates_saveset_file
 
   irdata = Hdf_Read(filename, template=gms5imagetemplate )
 
