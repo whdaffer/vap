@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.3  2003/01/17 18:40:09  vapdev
+# Continuing work
+#
 # Revision 1.2  2002/12/04 23:56:20  vapdev
 # Ongoing work
 #
@@ -129,44 +132,56 @@ sub new {
 
 
     # The 'winds' logo
-  $img=$q->img({-src=>"/images/winds_banner_left.jpg", -WIDTH=>"415",
-		-HEIGHT=>"90",-BORDER=>"0",
-		-ALT=>"Winds: Measuring Ocean Winds from Space",
-		-USEMAP=>"#nasa-home"});
-  $banner->setCell(1,1,$img);
-  $banner->setWidth(1,1,"415");
-  $banner->setCellAlign(1,1,"left");
-  $banner->setCellVAlign(1,1,"top");
+#    $img=$q->img({-src=>"/images/winds_banner_left.jpg", -WIDTH=>"415",
+#  		-HEIGHT=>"90",-BORDER=>"0",
+#  		-ALT=>"Winds: Measuring Ocean Winds from Space",
+#  		-USEMAP=>"#nasa-home"});
+#    $banner->setCell(1,1,$img);
+#    $banner->setWidth(1,1,"415");
+#    $banner->setCellAlign(1,1,"left");
+#    $banner->setCellVAlign(1,1,"top");
+
+
+   $img=$q->img({-src=>"/images/vap_banner_left.jpg", -WIDTH=>"460",
+ 		-HEIGHT=>"90",-BORDER=>"0",
+ 		-ALT=>"SeaWinds Daily Wind Report",
+ 		-USEMAP=>"#nasa-home"});
+   $banner->setCell(1,1,$img);
+   $banner->setWidth(1,1,"460");
+   $banner->setCellAlign(1,1,"left");
+   $banner->setCellVAlign(1,1,"top");
 
     # A spacer
-  $img=$q->img({-src=>"/images/spacer.gif", -WIDTH=>"150",
+  $img=$q->img({-src=>"/images/spacer.gif", -WIDTH=>"105",
 		-HEIGHT=>"90",-BORDER=>"0",
-		-ALT=>"Winds: Measuring Ocean Winds from Space"});
+		-ALT=>"SeaWinds Daily Wind Report"});
   $banner->setCell(1,2,$img);
   $banner->setCellBGColor(1,2,"#FFFFFF");
-  $banner->setWidth(1,2,"150");
+  $banner->setWidth(1,2,"105");
   $banner->setCellAlign(1,2,"left");
   $banner->setCellVAlign(1,2,"top");
 
     # Another spacer/gradient
-  $img=$q->img({-src=>"/images/winds_banner_middle.jpg", -WIDTH=>"103",
-		-HEIGHT=>"90",-BORDER=>"0",
-		-ALT=>"Winds: Measuring Ocean Winds from Space"});
-  $banner->setCell(1,3,$img);
-  $banner->setWidth(1,3,"103");
-  $banner->setCellAlign(1,3,"left");
-  $banner->setCellVAlign(1,3,"top");
+   $img=$q->img({-src=>"/images/winds_banner_middle.jpg", -WIDTH=>"103",
+ 		-HEIGHT=>"90",-BORDER=>"0",
+ 		-ALT=>"SeaWinds Daily Wind Report"});
+   $banner->setCell(1,3,$img);
+   $banner->setWidth(1,3,"103");
+   $banner->setCellAlign(1,3,"left");
+   $banner->setCellVAlign(1,3,"top");
 
     # The ADEOS-II spacecraft and caltech imagemap.
 
-  $img=$q->img({-src=>"/images/winds_banner_right1.jpg", -WIDTH=>"161",
-		-HEIGHT=>"90",-BORDER=>"0",
-		-ALT=>"Winds: Measuring Ocean Winds from Space",
-		-USEMAP=>"#jpl-caltech"});
-  $banner->setCell(1,4,$img);
-  $banner->setWidth(1,4,"161");
-  $banner->setCellAlign(1,4,"right");
-  $banner->setCellVAlign(1,4,"top");
+   $img=$q->img({-src=>"/images/winds_banner_right1.jpg", -WIDTH=>"161",
+ 		-HEIGHT=>"90",-BORDER=>"0",
+ 		-ALT=>"SeaWinds Daily Wind Report",
+ 		-USEMAP=>"#jpl-caltech"});
+   $banner->setCell(1,4,$img);
+   $banner->setWidth(1,4,"161");
+   $banner->setCellAlign(1,4,"right");
+   $banner->setCellVAlign(1,4,"top");
+
+
 
 
 #=*-=*-=*-=*-=*-=*- The bottom spacer bar =*-=*-=*-=*-=*-=*-=*-=*-
@@ -176,7 +191,7 @@ sub new {
 
   $img=$q->img({-SRC=>"/images/winds_divider_left.jpg",
 	    -WIDTH=>"415",-HEIGHT=>"5",-BORDER=>"0",
-	-ALT=>"Winds: Measuring Ocean Winds from Space"});
+	-ALT=>"SeaWinds Daily Wind Report"});
   $bottom->setCell(1,1,$img);
   $bottom->setWidth(1,1,"415");
   $bottom->setCellAlign(1,1,"left");
@@ -184,7 +199,7 @@ sub new {
 
   $img=$q->img({-SRC=>"/images/winds_divider_middle.gif",
 	     -WIDTH=>"150",-HEIGHT=>"5",-border=>"0",
-		-ALT=>"Winds: Measuring Ocean Winds from Space"});
+		-ALT=>"SeaWinds Daily Wind Report"});
 
   $bottom->setCell(1,2,$img);
   $bottom->setCellBGColor(1,2,"#5786B3");
@@ -194,7 +209,7 @@ sub new {
 
   $img=$q->img({-SRC=>"/images/winds_divider_right.jpg" ,
 		-WIDTH=>"264",-HEIGHT=>"5",-BORDER=>"0",
-		-ALT=>"Winds: Measuring Ocean Winds from Space"});
+		-ALT=>"SeaWinds Daily Wind Report"});
   $bottom->setCell(1,3,$img);
   $bottom->setWidth(1,3,"264");
   $bottom->setCellAlign(1,3,"right");

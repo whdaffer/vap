@@ -8,7 +8,7 @@
 
        my $vapwww = VapWebsite->new(FILE => `file' | UPDATE=>product,
                                     PROCESSOR_DEFAULTS => hash 
-                                  [,errorobj = VapErrorObject])
+                                  [,errorobj = VapErrorObject])`
 
 
 =over 2
@@ -22,12 +22,23 @@
 =item * UPDATE: name of a Product. This option allows for updating 
                 webpages without actually having to run a processor.
 
-        UPDATE must equal one of the `regions' used in calling one of
-        the particular processors, i.e. one of those inputs that
-        follow the --region switch.
+        UPDATE must equal either OVERLAY, TROPICAL_STORM or
+        ANIMATION. In this case thise object will go out and figure
+        out what should be on the corresponding webpage. Alternatively
+        the keyword may equal 'INDEX','STATUS','SPECIAL','INFO' or
+        'GLOSSARY.' These pages are meant to have more longterm
+        information on them, so they are created by including the
+        contents of a '.template' file, which lives in \$VAP_LIBRARY,
+        directly into the body of the corresponding webpage. Clearly,
+        the contents of these .template files must be valid HTML code.
 
-        Examples are: GOES_10_4_NEPAC_1 for overlays, NEPAC for
-        animations and GOESWEST for tropical storms.
+        This object is `used' by `update_website' which is the actual
+        script you'd call to update the website without actually
+        running one of the processors.
+
+        Examples: 
+
+        To update the QuikSCAT overlays: % update_website OVERLAY Q
 
         FILE or UPDATE is REQUIRED!
 
@@ -230,9 +241,9 @@ sub new{
       $self->{DESTINATION} = $ENV{VAP_ANIM_ARCHIVE};
       $self->{WEBPAGE} = $type2webpage{$self->{TYPE}} .".html";
 
-    } elsif ($update =~ /INDEX/){
+    } elsif ($update =~ /INDEX|GLOSSARY|INFO|SPECIAL|STATUS/){
 
-      $self->{TYPE} = "INDEX";
+      $self->{TYPE} = $update;
       $self->{WEBPAGE} = $type2webpage{$self->{TYPE}} . ".html";
 
     } else {
@@ -625,8 +636,12 @@ sub updateWebsite{
     my $ts_web = $ts_defs->{WEB};
     my $hash = $self->getTSlist;
     my $nrows=@order;
-    $bodytable = HTML::Table->new(-rows=>$nrows,
-				  -cols=>1,
+    $bodytable = HTML::Table->new(#-rows=>$nrows,
+#				  -cols=>1,
+				  -align=>'left',
+				  -cellpadding=>5,
+				  -cellspacing=>5,
+				  -border=>1,
 				  -width=>"80\%");
     my $q=$self->{CGI};
     my $title=$self->{WEB}->{DEFS}->{TROPICAL_STORM}->{TITLE};
@@ -644,8 +659,8 @@ sub updateWebsite{
 
 	my $n_storms_in_region = keys(%{$hash->{$region}});
 	my $caption = $q->a({-name=>"$region"},$ts_web->{$region}->{NAME});
-	$table_this_region = HTML::Table->new( -rows=>$n_storms_in_region,
-					       -cols=>1,
+	$table_this_region = HTML::Table->new(-rows=>$n_storms_in_region,
+					      # -cols=>1,
 					     -border=>1);
 	$table_this_region->setCaption($caption,'TOP');
 
@@ -679,25 +694,26 @@ sub updateWebsite{
 	    my $alt = "$sat2 $storm_type2 $name2 $date2 $type2";
 	    my $createstring = "Created: " . scalar(localtime($mtime));
 	    my $sizestring .= "Size: $size (Kb)";
-	    my $infostring = $q->font({-size=>'-1'},
+	    my $infostring = $q->br() . $q->font({-size=>'-2'},
 				      $createstring . $q->br() . $sizestring);
-	    my $linelink = $q->a({-href=>"/images/storms_archive/$year2/$f",
-#				 -name=>"$_",
-				 -align=>'top'},
-				 $string);
 	    my $img = $q->img({-src=>"/images/storms_archive/$year2/$f",
 			      -align=>'left',
 			       -width=>'200',
 			       -height=>'150'});
+	    my $linelink = $q->a({-href=>"/images/storms_archive/$year2/$f",
+#				 -name=>"$_",
+				 -align=>'top'},
+				 $string);
 	    my $clickableimage = $q->a({-href=>"/images/storms_archive/$year2/$f",
 					-alt=>"$alt",
-					-valign=>'middle',
+					-valign=>'bottom',
 					-width=>'200',
+					-vspace=>'10',
 					-height=>'150'}, $img);
 
 
-	    my $content = $q->br() . $q->p({-align=>'left'}, "$linelink\n$clickableimage");
-	    $content .= $infostring;
+	    my $content = $q->br() . $q->p({-align=>'left'}, "$linelink\n$infostring");
+	    $content .= $clickableimage;
 	    $table_this_storm->setCellVAlign($storm_row,1,'top');
 	    $table_this_storm->setCell($storm_row++,1,$content);
 
@@ -707,10 +723,10 @@ sub updateWebsite{
 	  $table_this_storm=undef;
 
 	} # end loop over storms in region
-
-	$bodytable->setCellVAlign($row,1,'top');
-	$bodytable->setCell($row++,1,
+	$bodytable->setCell($row,1,
 			    $table_this_region->getTable);
+	$bodytable->setCellVAlign($row++,1,'top');
+
 
 
 	$table_this_region=undef
@@ -764,8 +780,12 @@ sub updateWebsite{
 
 
     my $nrows = @order;
-    $bodytable = HTML::Table->new(-rows => $nrows, 
-				  -cols=>1,
+    $bodytable = HTML::Table->new(#-rows => $nrows, 
+#				  -cols=>1,
+				  -align=>'left',
+				  -cellpadding=>5,
+				  -cellspacing=>5,
+				  -border=>1,
 				 -width=>"80\%");
     my $row=1;
 
@@ -780,7 +800,12 @@ sub updateWebsite{
 	#my $string = "Overlay for the ";
 	my $createstring = "Created: " . scalar(localtime($mtime));
 	my $sizestring .= "Size: $size (Kb)";
-	my $infostring = $q->font({-size=>'-1'},"$createstring" . $q->br() . "$sizestring");
+	my $infostring = 
+	    $q->br() . 
+	      $q->font({-size=>'-2'},
+		         "$createstring" . 
+		            $q->br() . 
+		               "$sizestring");
 	my $linelink = $q->a({-href=>"/images/$file",
 			     -name=>"$_",
 			     -align=>'top'},
@@ -792,15 +817,15 @@ sub updateWebsite{
 	my $alt = join( " ", split(/_/,$_));
 	my $clickableimage = $q->a({-href=>"/images/$file",
 				    -alt=>"$alt",
-				    -valign=>'middle',
+				    #-valign=>'middle',
 				    -width=>'200',
 				    -height=>'150'}, $img);
 
 
 	#my $content = $q->p({-align=>'left'}, "$linelink\n$clickableimage$infostring\n");
 	#$content .= $q->br() . $q->br();
-	my $content = $q->br() . $q->p({-align=>'left'}, "$linelink\n$clickableimage\n");
-	$content .= $infostring;
+	my $content = $q->br() . $q->p({-align=>'left'}, "$linelink\n$infostring\n");
+	$content .= $clickableimage;
 	#$content .= $q->p({-align=>'left'},$createstring);
 	#$content .= $q->p({-align=>'left'},$sizestring);
 	#$content .= "$createstring\n$sizestring\n$clickableimage";
@@ -841,9 +866,13 @@ sub updateWebsite{
 
     my @order = @{$order->{ANIMATION}};
     my $nrows = @order;
-    $bodytable = HTML::Table->new(-rows => $nrows, 
-				  -cols=>1,
-				  -width=>"80\%");
+    $bodytable = HTML::Table->new(#-rows => $nrows, 
+				  #-cols=>1,
+				  -cellpadding=>5,
+				  -cellspacing=>5,
+				  -width=>"80\%",
+				 -valign=>"top",
+				 -align=>'left');
     my $row=1;
 
     my $q=$self->{CGI};
@@ -859,100 +888,82 @@ sub updateWebsite{
     foreach (@order){
 
       if ($self->{WEBSPACE}->{$_}) {
+
+	  # We want it to come out looking like:
+      # <p align="left">
+      #  <a name="NEPAC" align="top" href="/images/NEPAC.mov">N.E. Pac</a>
+      #    <font size="-2">        
+      #      Created: Wed Jan 29 14:06:12 2003<br />Size: 648 (Kb)</font></p>
+      #     <a href="/images/NEPAC.mov" hspace="20" vspace="20" >
+      #     <img src="/images/NEPAC.001.jpeg"/></a>
+
+
 	my ($file,$size,$mtime, $first_frame)=@{$self->{WEBSPACE}->{$_}};
 	s/'//g;
 	#my $string = "Animation for the ";
 	my $createstring = "Created: " . scalar(localtime($mtime));
 	my $sizestring = "Size: $size (Kb)";
-	my $infostring = $q->font({-size=>'-1'}, 
-				  "$createstring" . $q->br() . "$sizestring");
+	my $infostring = $q->font({-size=>'-2'}, 
+				  "$createstring" . 
+				  $q->br() . 
+				  "$sizestring");
 	my $name = $self->{ANIMATION}->{DEFS}->{$_}->{WEBNAME};
 	$name =~ s/'//g;
 	my $linelink = $q->a({-href=>"/images/$file",
-					 -name=>"$_",
-					 -align=>'top'},
-					$name );
-	my $img = $q->img({-src=>"/images/$first_frame",
-			  -align=>'left'});
+			      -align=>'top',
+			      -name=>"$_"},
+			     $name );
+	my $img = $q->img({-src=>"/images/$first_frame"});
+			   #,-align=>'left'});
 
 	my $alt = join( " ", split(/_/,$_));
 	my $clickableimage = $q->a({-href=>"/images/$file",
-				    -alt=>"$alt",
-				    -valign=>'middle'}, $img);
+#				    -valign=>'middle',
+				    -alt=>"$alt"}, $img);
 
 
-	my $content = $q->br() . $q->p({-align=>'left'}, "$linelink\n$clickableimage");
-	$content .= $infostring;
+	my $content = $q->p({-align=>'left'}, "$linelink\n$infostring");
+	$content .= $clickableimage;
 	$bodytable->setCell($row++, 1, $content);
       }
     }
-  } elsif ($type =~ /INDEX/){
+  } elsif ($type =~ /INDEX|STATUS|INFO|GLOSSARY|SPECIAL/){
+    my %hash = (STATUS => "Status",
+		INFO =>  "Information",
+		GLOSSARY=> "Glossary",
+		SPECIAL=>  "Special Products");
 
-    $self->startPage("SeaWinds Daily Wind Report",
-		     "Scatterometry, cloud_imagery, overlay, animation," . 
-		     "SeaWinds, QuikSCAT, ADEOS-II",
+    my $title="SeaWinds Wind Report";
+    $title .= ": ". $hash{$type} if ($type !~ /INDEX/);
+    my $keywords = "Scatterometry, cloud_imagery, overlay, animation," . 
+                   "SeaWinds, QuikSCAT, ADEOS-II";
+
+    $self->startPage($title,
+		     $keywords,
 		     "", "OVERLAY",$order);
 
-    $bodytable = HTML::Table->new(-rows => 1, 
-				  -cols=>1,
+    $bodytable = HTML::Table->new(#-rows => 1, 
+				  #-cols=>1,
+				  -align=>'left',
+				  -border=>1,
 				 -width=>"80\%");
-    my $body= <<"EOF";
+    my $file = lc($type) . ".template";
+    $file = $ENV{VAP_LIBRARY} . "/$file";
+    open FILE, "<$file" or 
+      $self->{ERROROBJ}->_croak("Can't open $file for $type!",
+				"VapWebsite:update: .template FILE OPEN ERROR");
+    my $body;
 
-<p>Welcome to the Value Added Products webpage for QuikSCAT and SeaWinds
-on ADEOS-II. This page is merely a filler, you should probably bookmark
-the pages you want to view routinely, so that you can go directly there.
-I'll present a short explanation on this page for those who've never been
-here. There's more specific information concerning the products on this
-webpage located on the <a href="/info.html">information</a> page
-and more information on the SeaWinds instruments and the two missions carrying
-them can be perused at the <a href="http://winds.jpl.nasa.gov">Scatterometer
-Project homepage</a> . If we encounter any item of particular interest,
-we may put it on the <a href="/disk5/vapdev/www/htdocs/special.html">special
-projects</a> page. The status of the various instruments can be found
-on the <a href="/disk5/vapdev/www/htdocs/status.html">status</a>
-page.
-<br>
-<br>
-<br>
-<h2>Synopsis</h2>
-This collection of pages contain the output from several processors of
-two broad types: 'overlays' and 'animations.'
-<br>
-<h3>Overlays</h3>
+      # slurp the whole file into the buffer and put it verbatim into
+      # cell 1,1 of the body table.
 
-The 'overlays' combine the cloud imagery from several geosynchronous
-satellites with SeaWinds scatterometry. They fall into two seperate
-types, the simple overlay, which is region specific and 'tropical
-storm,' were we try to follow cyclonic storms a little more
-closely. Since the geosyncrhonous satellites from which we get our
-cloud imagery are region specific, all of the overlays, regardless of
-type, have some region dependency. These regions are, roughly: North
-Atlantic (GOES8) , North-Eastern Pacific (GOES10) and, in the western
-Pacific (GMS5). We'll occasionally experience outages from these
-satellites, sometimes extended outages. The general rule is: if either
-the wind or the cloud data exists, an overlay will be made.
+    do {
+      local $/ = undef;
+      $body = <FILE>;
+      close FILE;
+    };
 
-
-
-<p>The overlays are further divided by the source of the scatterometry
-data used in the overlay, e.g., there's an <a href="http://overlay_Q.html">QuikSCAT overlay</a>page and an <a href="http://overlay_S.html">SeaWinds overlay page</a>
-
-<h3>Animations</h3>
-
-The animations take data from both scatterometers, create a <a
-href="/glossary.html#synoptic">synoptic</a> <a
-href="/glossary.html#interpolated">interpolated</a>
-field and then create an animation from that field. In this animation,
-the windspeed is conveyed by the color of the backgroup, blue is low
-windspeed and magenta high, and the direction of the wind by the
-motion of the arrows in the animation.  Despite the fact that this
-animation shows things moving, this is not a 'time series.' The wind
-field here is static, in the sense that at each location in the
-picture the direction and speed of the wind doesn't change.
-
-EOF
-
-    $bodytable->setCell(1, 1, $body);    
+    $bodytable->setCell(1, 1, $body); 
 
   } else {
     $self->{ERROROBJ}->_croak("Unknown type! ($type)",
@@ -1174,57 +1185,62 @@ sub startPage{
   my $html = $q->start_html(
 		 -title=>$title,
 		 -meta=>{"Keywords" => $keywords},
-		 -background=>"/images/fuji7.gif",
+		 #-background=>"/images/fuji7.gif",
 			    -bgcolor=>'FCF6F4',
 		 -style=>{
 		      -code=>'A:link {text-decoration:none;},A:visited {text-decoration:none;}'
 		     },
 		 -link=>"336699", -alink=>"003366",-vlink=>"336699",-marginheight=>"0",
-		 -topmargin=>"0", -leftmargin=>"0", -onload=>"init()", -onresize=>"redo()",
-		 -script=>{-language=>"javascript", 
-			   -code=>"var _OLD_ONERROR = window.onerror; window.onerror=null"},
-		 -script=> {-language=>"javascript", 
-			    -src=>"/js/ua.js"},
-		 -script=> {-language=>"javascript1.2", 
-			    -src=>"/js/base.js"},
-		 -script=> {-language=>"javascript1.2", 
-			    -src=>"/js/breadcrumbs.js"},
-		 -script=> {-language=>"javascript",
-			    -code=>"
-                           if (navigator.version < 5)
-                                 window.onerror = _OLD_ONERROR = defaultOnError;
-                           else
-                              window.onerror = _OLD_ONERROR;
-                           "},
-		 -script=>{-language=>"JavaScript", 
-			   -code=>"function blockError(){return true;}
-                              window.onerror = blockError;"},
-		 -script => { -language=>"JavaScript1.2", -src=>"/js/xbStyle.js"},
-		 -script => { -language=>"JavaScript1.2", 
-			      -src=>"/js/xbCollapsibleLists.js"},
-		 -script => { -language=>"JavaScript1.2", 
-			      -src=>"/js/viewSource.js"},
-		 -script => { -language=>"JavaScript", 
-			      -code=> "function init() { return true; }"} 
+		 -topmargin=>"0", -leftmargin=>"0", 
+# 			    -onload=>"init()", -onresize=>"redo()",
+# 		 -script=>{-language=>"javascript", 
+# 			   -code=>"var _OLD_ONERROR = window.onerror; window.onerror=null"},
+# 		 -script=> {-language=>"javascript", 
+# 			    -src=>"/js/ua.js"},
+# 		 -script=> {-language=>"javascript1.2", 
+# 			    -src=>"/js/base.js"},
+# 		 -script=> {-language=>"javascript1.2", 
+# 			    -src=>"/js/breadcrumbs.js"},
+# 		 -script=> {-language=>"javascript",
+# 			    -code=>"
+#                            if (navigator.version < 5)
+#                                  window.onerror = _OLD_ONERROR = defaultOnError;
+#                            else
+#                               window.onerror = _OLD_ONERROR;
+#                            "},
+# 		 -script=>{-language=>"JavaScript", 
+# 			   -code=>"function blockError(){return true;}
+#                               window.onerror = blockError;"},
+# 		 -script => { -language=>"JavaScript1.2", -src=>"/js/xbStyle.js"},
+# 		 -script => { -language=>"JavaScript1.2", 
+# 			      -src=>"/js/xbCollapsibleLists.js"},
+# 		 -script => { -language=>"JavaScript1.2", 
+# 			      -src=>"/js/viewSource.js"},
+# 		 -script => { -language=>"JavaScript", 
+# 			      -code=> "function init() { return true; }"} 
+
 		);
 
     # Outermost table, contains the entire content of the page.
 
-  my $outsidetable = HTML::Table->new(-rows=>3,
+  my $outsidetable = HTML::Table->new(#-rows=>3,
 				      -cols=>2,
 				      -align=>"left",
+				      -border=>'1',
+				      #-background=>"/images/fuji7.gif",
 				      -width=>"100\%");
 
 
   $outsidetable->setColWidth(1,"15\%");
-  $outsidetable->setCellHeight(2,1,"300");
+  #$outsidetable->setCellHeight(2,1,"300");
 
     # For the top navbar
   my $topnavtable=TopNavTable->new();
 
     # For the left navbar
   my $leftnavtable=LeftNavTable->new(TYPE => $type,
-				     #-width=>"20\%",
+				     -width=>"20\%",
+				     -border=>'1',
 				     WEBHOST => $self->{WEB}->{DEFS}->{WEBHOST},
 				     ORDER => $order);
 
@@ -1236,6 +1252,7 @@ sub startPage{
   $outsidetable->setCellColSpan(1,1,2);
   $outsidetable->setCell(2,1,$leftnavtable->getTable);
   $outsidetable->setCellVAlign(2,1,'top');
+  #$outsidetable->setCellWidth(2,1,'10\%');
   $outsidetable->setCell(3,1,$self->{BOTTOMTABLE}->getTable);
   delete $self->{BOTTOMTABLE};
   $outsidetable->setCellColSpan(3,1,2);
@@ -1308,6 +1325,9 @@ sub endPage{
 sub setBody{
   my ($self,$body) = @_;
   $self->{OUTSIDETABLE}->setCell(2,2,$body->getTable);
+  $self->{OUTSIDETABLE}->setCellAlign(2,2,'left');
+  $self->{OUTSIDETABLE}->setCellVAlign(2,2,'top');
+  #$self->{OUTSIDETABLE}->setCellWidth(2,2,'90\%');
   1;
 }
 
