@@ -27,6 +27,10 @@
 
 # Modifications:
 # $Log$
+# Revision 1.5  2001/02/09 18:20:23  vapuser
+# Changed all 'die's to 'croak' Took out 'grida' from the vet
+# check. Added sub Getclosest.
+#
 # Revision 1.4  2000/03/09 16:20:55  vapuser
 # Took Vis out of 'GETALL' and 'CHECKALL'.
 # Put archive info in 'required' file
@@ -49,13 +53,13 @@
 package Gms5;
 require Exporter;
 @ISA =qw(Exporter);
-@EXPORT=qw( $REMOTE_TOPDIR, $LOCAL_TOPDIR, 
-	   Open, Close, List, Get, Cd, Pwd, 
+@EXPORT= (REMOTE_TOPDIR, LOCAL_TOPDIR,
+	   Open, Close, List, Get, Pwd,
 	   CdTop, CdDoc, CdCal, CdGrid, CdGrida, 
 	   CdIr1, CdIr2, CdIr3, CdVis, 
 	   GetCal, GetGrid, GetGrida,
 	   GetDoc, GetIr1, GetIr2, GetIr3, GetVis,
-	   GetAllFileLists, GetAll GetClosest CheckLocal );
+	   GetAllFileLists, GetAll, GetClosest, CheckLocal );
 
 use Net::FTP;
 use Cwd 'chdir', 'getcwd';

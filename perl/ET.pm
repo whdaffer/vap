@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/bin/perl -W
 #
 # $Id$
 #
@@ -14,12 +14,15 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.2  2002/04/30 20:23:22  vapdev
+# Modified the 'use lib' statement
+#
 # Revision 1.1  2001/02/09 18:45:28  vapuser
 # Initial revision
 #
 #
 #
-use lib $ENV{'VAP_SFTWR_TOP'}."/vap/perl";
+use lib $ENV{VAP_SFTWR_PERL}
 package ET;
 use VapUtil;
 use Vapdefs;

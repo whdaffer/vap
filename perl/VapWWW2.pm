@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/bin/perl -w
 #
 # $Id$
 #
@@ -45,6 +45,9 @@
 # Modification History:
 #
 # $Log$
+# Revision 1.2  2002/04/30 20:23:22  vapdev
+# Modified the 'use lib' statement
+#
 # Revision 1.1  2001/02/09 19:12:49  vapuser
 # Initial revision
 #
@@ -52,14 +55,14 @@
 #
 #
 package VapWWW2;
-use lib getenv('VAP_SFTWR_TOP')."/vap/perl"
-use Exporter ();
+use lib $ENV{VAP_SFTWR_PERL};
 use Cwd 'chdir', 'getcwd';
 use Time::Local;
 use Carp;
 use CGI qw(:standard escapeHTML);
 use Vapdefs;
 
+use Exporter ();
 @ISA = qw(Exporter);
 @EXPORT=qw( auto_movie_defs doy2mday_mon 
 	   date2doy date_string  make_yyyymmdd gag grid_goes 

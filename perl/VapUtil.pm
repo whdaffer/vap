@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/bin/perl -w
 #
 #
 # $Id$
@@ -33,6 +33,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.3  2001/08/06 18:35:06  vapuser
+# Rewrote doy2mday_mon
+#
 # Revision 1.2  2001/02/14 22:58:36  vapuser
 # Fixed small bug in doy2mday_mon
 #
@@ -52,13 +55,14 @@ require Exporter;
 	   fixlonrange prepend_yyyymmdd SysNow makeIDLOplotString
 	   makeRandomTag );
 
+use strict;
 use Time::Local;
 use Carp;
 
 sub leapyear{
 
-  $year=shift;
-  $leap_year = ($year % 100 != 0) && ($year % 4 == 0);
+  my $year=shift;
+  my $leap_year = ($year % 100 != 0) && ($year % 4 == 0);
   if ($year % 400 == 0) {
     $leap_year = 1;
   }
@@ -66,83 +70,86 @@ sub leapyear{
 }
 
 sub doy2mday_mon{
-  $doy=shift;
+  my $doy=shift;
   die "DOY out of range: $doy\n" if $doy > 366;
-  $year=shift;
+  my $year=shift;
   # cummulative number of days in the year for the end of each month
-  @doys = (31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365);
+  my @doys = (31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365);
   my $i;
   if (leapyear($year)){
     for ($i=1;$i<=$#doys;$i++){
       $doys[$i]++;
     }
   }
-  $mday=$doy;
+  my $mday=$doy;
   for ($i=0;$i<=$#doys;$i++){
     last if $doys[$i] >= $doy;
   }
   $mday = $doy - $doys[$i-1] if $i>0;
-  $mon = $i+1;
+  my $mon = $i+1;
 
   ($mday,$mon);
 }
 
 sub date2doy{
-  $year=shift;
-  $month=shift;
-  $dom=shift;
-  @days_in_month=( 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 );
-  $mon=$month-1;
-  $i=0;
-  $doy=0;
+  my ($year, $month, $dom)= @_;
+  my @days_in_month=( 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 );
+  my $mon=$month-1;
+  my $i=0;
+  my $doy=0;
   while ($i<$mon) {
     $doy += $days_in_month[$i];
     $i++;
   }
   $doy += $dom;
-  $leap=leapyear($year);
+  my $leap=leapyear($year);
   if ($month>2) {
     $doy += $leap;
   }
  $doy;
 }
 
-sub date_string {
-  @months=("Jan","Feb","Mar","Apr","May","Jun","Jul",
-	 "Aug","Sep","Oct","Nov","Dec");
+# sub date_string {
+#   # obsolete
+#   use File::Basename
 
-  $file=shift;
-  ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,
-	$size,$atime,$mtime,$ctime,$junk)=stat($file);
-  ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime($ctime); 
-  $yday += 1;
-  $mon+=1;
-  if ($hour < 10) {
-    $hour = "0".$hour;
-  }
+#   my $file=shift;
+#   $basename=shift;
+#   $more_basename=shift;
+
+#   my @months=("Jan","Feb","Mar","Apr","May","Jun","Jul",
+# 	 "Aug","Sep","Oct","Nov","Dec");
+
+
+#   my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,
+# 	$size,$atime,$mtime,$ctime,$junk)=stat($file);
+#   my ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime($ctime); 
+#   my $yday += 1;
+#   my $mon+=1;
+#   if ($hour < 10) {
+#     $hour = "0".$hour;
+#   }
+
+#   my ($name,$path,$suffix) = fileparse($file);
+
+#   @tmp=split(/\./,$name);
+#   if ($basename=="") {
+#     $basename=$tmp[0];
+#   }
   
-  @tmp=split("/",$file);
-  $file=$tmp[$#tmp];
-  @tmp=split(/\./,$file);
-  $basename=shift;
-  if ($basename=="") {
-    $basename=$tmp[0];
-  }
-  $more_basename=shift;
-  
-  $ext=$tmp[1];
-  $file = $basename."_".$mon.$mday.$year.$hour.$more_basename;
-  if ($ext){
-    $file .= ".".$ext;
-  }
-  $file;
-}
+#   $ext=$tmp[1];
+#   $file = $basename."_".$mon.$mday.$year.$hour.$more_basename;
+#   if ($ext){
+#     $file .= ".".$ext;
+#   }
+#   $file;
+# }
 
 sub vaptime2decyear{
-  $vaptime=shift || croak "Usage: decimal_year=vaptime2decyear(vaptime)\n";
-  ($year,$month,$day,$hour,$min,$sec)=split "/", $vaptime;
-  $doy=date2doy($year,$month,$day);
-  $decyear=$year + 
+  my $vaptime=shift || croak "Usage: decimal_year=vaptime2decyear(vaptime)\n";
+  my ($year,$month,$day,$hour,$min,$sec)=split "/", $vaptime;
+  my $doy=date2doy($year,$month,$day);
+  my $decyear=$year + 
       $doy/365. + 
 	  $hour/(24*365.) + 
 	      $min/(24*60*365.) + 
@@ -151,39 +158,41 @@ sub vaptime2decyear{
 }
 
 sub systime2decyear{
-  local($systime)=shift || 
+  my $systime = shift || 
       croak "Usage: decimal_year=systime2decyear(systime)\n";
-  local($sec,$min,$hour,$day,$mon,$year)=gmtime( $systime );
+  my ($sec,$min,$hour,$day,$mon,$year)=gmtime( $systime );
   $year += 1900;
   $mon += 1;
-  $doy=date2doy($year,$mon,$day);
-  local($decyear)=$year + 
+  my $doy=date2doy($year,$mon,$day);
+  my $decyear=
+      $year + 
       $doy/365. + 
-	  $hour/(24*365.) + 
-	      $min/(24*60*365.) + 
-		  $sec/(24*3600*365.);
+      $hour/(24*365.) + 
+      $min/(24*60*365.) + 
+      $sec/(24*3600*365.);
   $decyear;
 }
 
 sub parts2decyear{
-  ($year, $month, $day, $hour, $min, $sec ) = @_;
-  $doy=date2doy($year,$month,$day);  
-  local($decyear)=$year + 
+  my ($year, $month, $day, $hour, $min, $sec ) = @_;
+  my $doy=date2doy($year,$month,$day);  
+  my $decyear=
+      $year + 
       $doy/365. + 
-	  $hour/(24*365.) + 
-	      $min/(24*60*365.) + 
-		  $sec/(24*3600*365.);
+      $hour/(24*365.) + 
+      $min/(24*60*365.) + 
+      $sec/(24*3600*365.);
   $decyear;
 }
 
 sub vaptime2systime{
   # converts a string of the format yyyymmddThhmmss to 
   # gmt seconds since 1-jan-1970 00:00:00
-  ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T);
-  $time=shift @_;
-  @time_parts=split(/T/,$time);
+  my $time=shift @_;
+  my ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T);
+  my @time_parts=split(/T/,$time);
   if ($#time_parts == 0) {
-    @hhmm=split( /:/, $time );
+    my @hhmm=split( /:/, $time );
     $time=sprintf( "%02d:%02d", int( $hhmm[0] ), $min ) if ($#hhmm == 0);
     # only the hour:mins segment is there.
     $time=prepend_yyyymmdd( $time );
@@ -196,7 +205,7 @@ sub vaptime2systime{
   $mday=substr( $time_parts[0], 6, 2 );
   ($hour,$min)=split(/:/,$time_parts[1]);
  
-  $secs=timegm( 0, $min, $hour, $mday, $mon-1, $year-1900 );
+  my $secs=timegm( 0, $min, $hour, $mday, $mon-1, $year-1900 );
   $secs;
 }
 
@@ -204,32 +213,30 @@ sub vaptime2systime{
 sub systime2vaptime{
       # Converts seconds to yyyymmddThhmm
       # 
-    ($sec,$min,$hour,$mday,$mon,$year)=gmtime($_[0]);
-    $time=sprintf("%04d%02d%02dT%02d:%02d",
+    my ($sec,$min,$hour,$mday,$mon,$year)=gmtime($_[0]);
+    my $time=sprintf("%04d%02d%02dT%02d:%02d",
 		$year+1900,$mon+1,$mday,$hour,$min);
-    $time;
 }
 
 sub vaptime2idltime{
-  @parsed_time=ParseVapTime( $_[0] );
-  $idltime=join('/',reverse @parsed_time);
-  $idltime
+  my @parsed_time=ParseVapTime( $_[0] );
+  my $idltime=join('/',reverse @parsed_time);
 }
 
 
 sub GetNow {
-  @now=systime2vaptime( gmtime(time) );
-  @now;
+  my @now=systime2vaptime( gmtime(time) );
 }
 
 sub SysNow {
-  $time=timegm(gmtime(time));
-  $time;
+  my $time=timegm(gmtime(time));
 }
 
 sub ParseVapTime{
-  $vaptime=shift || croak "Param #1 <YYYY-MM-DDTHH:MM> is REQUIRED!\n";
-  
+  my (@time_parts, $year, $month, $day, @tmp, $hh, $mm);
+
+  my $vaptime=shift || croak "Param #1 <YYYYMMDDTHH:MM> is REQUIRED!\n";
+
   @time_parts=split('T',$vaptime);
   $year=substr($time_parts[0],0,4);
   $month=substr($time_parts[0],4,2);
@@ -242,17 +249,17 @@ sub ParseVapTime{
 }
 
 sub idltime2systime{
-  $idltime=shift || croak "Param #1 <yyyy/mm/dd/hh/mm[/ss]> is REQUIRED!\n";
-  ($year, $month, $day, $hour, $min, $sec) = split "/", $idltime;
-  $secs=timegm( $sec, $min, $hour, $day, $month-1, $year-1900 );  
+  my $idltime=shift || croak "Param #1 <yyyy/mm/dd/hh/mm[/ss]> is REQUIRED!\n";
+  my ($year, $month, $day, $hour, $min, $sec) = split "/", $idltime;
+  my $secs=timegm( $sec, $min, $hour, $day, $month-1, $year-1900 );  
 }
 
 sub systime2idltime{
-  $secs = shift || croak "Param #1 <unix time> is REQUIRED!\n";
-    ($sec,$min,$hour,$mday,$mon,$year)=gmtime($secs);
-    $time=sprintf("%04d/%02d/%02d/%02d/%02d/%02d",
+  my $secs = shift || croak "Param #1 <unix time> is REQUIRED!\n";
+  my ($sec,$min,$hour,$mday,$mon,$year)=gmtime($secs);
+  my $time=sprintf("%04d/%02d/%02d/%02d/%02d/%02d",
 		$year+1900,$mon+1,$mday,$hour,$min,$sec);
-    $time;
+  $time;
 }
 
 
@@ -263,18 +270,16 @@ sub DeltaTime{
     # delta time is in hours
     # if you want hours and minutes, make hours a 'float.'
 
-  $basetime = shift @_ || die "Basetime (arg 1) undefined\n";
-  $delta = shift @_ || die "delta (arg2) undefined\n";
+  my $basetime = shift @_ || die "Basetime (arg 1) undefined\n";
+  my $delta = shift @_ || die "delta (arg2) undefined\n";
 
-  $base_time = vaptime2systime($basetime) + $delta*3600.;
-  $new_time = systime2vaptime(int($base_time));
-  $new_time;
+  my $base_time = vaptime2systime($basetime) + $delta*3600.;
+  my $new_time = systime2vaptime(int($base_time));
 
 }
 
 sub fixlonrange{
-  $minlon=shift @_;
-  $maxlon=shift @_;
+  my ($minlon, $maxlon) = @_;
   while ($minlon>$maxlon) {
     if ($minlon>180.){
       $minlon-= 360.;
@@ -287,38 +292,21 @@ sub fixlonrange{
 
 
 sub prepend_yyyymmdd{
-  ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T);
-  $tmp_hhmm=sprintf("%02d:$02d",$hour,$min);
-  $hhmm=shift @_ || $tmp_hhmm;
+  my ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T);
+  my $tmp_hhmm=sprintf("%02d:$02d",$hour,$min);
+  my $hhmm=shift @_ || $tmp_hhmm;
   
-  $time=sprintf("%04d%02d%02dT%s",
+  my $time=sprintf("%04d%02d%02dT%s",
 		$year+1900,$mon+1,$mday,$hhmm);
-  $time;
-  
 }
 
 sub makeIDLOplotString{
-  $lon=shift || croak "Param 1 (LON) is REQUIRED\n";
-  $lat=shift || croak "Param 1 (LAT) is REQUIRED\n";
-  $string="{lon: $lon, lat: $lat}";
-#   foreach $k (keys %hash){
-#     if (ref($hash{$k}) =~ /ARRAY.*/) {
-#       $nextstring = "$k:[".join(",",@{$hash{$k}})."]";
-#     } elsif (ref($hash{$k}) =~ /SCALAR.*/) {
-#       $nextstring = "$k:$hash{$k}";
-#     } else {
-#       carp "Hash may only contain SCALARS or ARRAYS! skipping $k\n";
-#       next;
-#     }
-#     $string .= ",$nextstring";
-
-#   }
-#   $string.="}";
-  $string;
+  my $lon=shift || croak "Param 1 (LON) is REQUIRED\n";
+  my $lat=shift || croak "Param 1 (LAT) is REQUIRED\n";
+  my $string="{lon: $lon, lat: $lat}";
 }
 
 sub makeRandomTag{
-  $tag=time();
-  $tag .= ".$$";
+  my $tag=time(). ".$$";
 }
 1;

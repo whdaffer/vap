@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/bin/perl -w
 #
 #
 # $Id$
@@ -19,6 +19,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.1  2001/02/09 19:07:16  vapuser
+# Initial revision
+#
 #
 #
 package TS;
@@ -30,58 +33,61 @@ require Exporter;
 
 
   # for debugging purposes
-use lib '/usr/people/vapuser/perl/';
+
 use Carp;
 use LWP::Simple;
+use lib $ENV{VAP_SFTWR_PERL};
 use VapUtil;
-use Gms5;
+#use Gms5;
 
 BEGIN {
-  $VAP_LIB=$ENV{'VAP_LIB'}   || "/usr/people/vapuser/Qscat/Library";
-  local($defs_file)=$ENV{'TS_DEFS_FILE'} || 
-      "$VAP_LIB/tropical_storm_defs";
+  $TS::VAP_LIBRARY=$ENV{'VAP_LIBRARY'}  || die "VAP_LIBRARY is UNDEFINED!\n";
+  $TS::defs_file=$ENV{'TS_DEFS_FILE'} || 
+      "$VAP_LIBRARY/tropical_storm_defs";
   require $defs_file || die "Can't require $defs_file!\n";
   
   %storms=();
-  
+  1;
 };
 
 sub getTropicalStormsDatafile {
 
-  use vap_util;
+  #use vap_util;
 
-  local($localfile)="$VAP_LIB/$LOCAL_URL";
+  my $localfile="$VAP_LIBRARY/$LOCAL_URL";
+  my $fetch=0;
+  my @in=();
   if (-e $localfile ) {
-    local($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,
+
+    my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,
 	  $size,$atime,$mtime,$ctime,$junk)=stat($localfile);
+    my $lasttime;
+
     if ($^T-$ctime < 3*3600. ) {
       if (open FILE,"<$localfile") {
 	@in=<FILE>;
 	close FILE;
-	@last100=@in[ $#in-99 .. $#in ];
+	my @last100=@in[ $#in-99 .. $#in ];
 	for (@last100) {
 	  last if /^\s+$/;
-	  ($time,$type)=getTimeAndType($_);
+	  my ($time,$type)=getTimeAndType($_);
 	  next if $type =~ /FOR/;
-	  $lasttime=$time;
+	  my $lasttime=$time;
 	}
 	if (!$lasttime) {
 	  $fetch=1;
 	} else {
-	  $testtime=vap_util::systime2decyear($^T);
-	  $diff=($testtime-$lasttime)*365*24;
+	  my $testtime=Vap_Util::systime2decyear($^T);
+	  my $diff=($testtime-$lasttime)*365*24;
 	  $fetch=1 if ($diff > 3 );
 	}
-      } else {
-	$fetch=1;
-      }
-      
-    } else {
-      $fetch=1;
-    }
-  } else {
-    $fetch=1;
-  }
+      } else { $fetch=1;}
+    } else {$fetch=1;}
+  } else {$fetch=1;}
+
+  my $content;
+  my @content;
+
   if ($fetch) {
     $content = get($REMOTE_URL) || die "Can't get($REMOTE_URL)\n";
     open FILE, ">$localfile" || die "Can't open $localfile\n";
@@ -99,22 +105,26 @@ sub parseTropicalStorms{
 # A typical record might look like:
 # 2000 1 05 18.00 UT 12.2 S 82.8 E BABIOLA-00 235 T 09 kt ??? mb 035 045 kt CYC ACT 2000.01571038251 WTXS31 2000.01642190346
 
-  $ref=shift;
-  @content=@{$ref};
-  $stormtype=shift @_ || "DEP";
-  $stormnum=$stormranking{$stormtype} || 
+  my $ref=shift; # Passed a reference to an array.
+
+  my @content=@{$ref};
+
+  my $stormtype=shift @_ || "DEP";
+  my $stormnum=$stormranking{$stormtype} || 
       die "Unknown Storm type of $stormtype!\nAllowed values are DEP, STO, CYC, HUR, TYP\n";
   
-  $starttime=shift @_;
-  $endtime=shift @_;
+  my $starttime=shift @_;
+  my $endtime=shift @_;
+
+  my ($hour, $min, $vaptime, $time1, $lat, $lon, $name, $yy);
 
   for (@content){
     chop;
-    ($year,$month,$day,$hhmm,$tlat,$tlon,$tname,$course,$speed,$press,
+    my ($year,$month,$day,$hhmm,$tlat,$tlon,$tname,$course,$speed,$press,
      $winds,$gusts,$storm_type,$rpt_type,$time2,$station,$time3) = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+\.\d+)\s+UT\s+(\d+\.\d\s*[SN])\s+(\d+\.\d\s*[EW])\s+(\w+-\d+)\s+(\d+|\?+)\s+T\s+(\d+|\?+)\s+kt\s+(\d+|\?+)\s+mb\s+(\d+|\?+)\s+(\d+|\?+)\s+kt\s+(\w+|\?+)\s+(\w+|\?+)\s+(\d+\.\d+)\s+(\w+)\s+(\d+\.\d+).*/;
     ($hour,$min)=split(/\./,$hhmm);
     $vaptime=sprintf("%04d/%02d/%02d/%02d/%02d",$year,$month,$day,$hour,$min);
-    $time1=vap_util::parts2decyear($year,$month,$day,$hour,$min,0);
+    $time1=Vap_Util::parts2decyear($year,$month,$day,$hour,$min,0);
     ($lat,$type) = $tlat=~/(\d+\.\d)\s*([SN])/;
     $lat *= -1 if $type=~/S/;
     ($lon,$type)=$tlon=~/(\d+\.\d)\s*([EW])/;
@@ -153,23 +163,24 @@ sub parseTropicalStorms{
 
 sub getTimeAndType{
   shift;
-  chop;
-  ($year,$month,$day,$hhmm,$tlat,$tlon,$tname,$course,$speed,$press,
+  chomp;
+  my ($year,$month,$day,$hhmm,$tlat,$tlon,$tname,$course,$speed,$press,
    $winds,$gusts,$storm_type,$rpt_type,$time2,$station,$time3) = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+\.\d+)\s+UT\s+(\d+\.\d\s*[SN])\s+(\d+\.\d\s*[EW])\s+(\w+-\d+)\s+(\d+|\?+)\s+T\s+(\d+|\?+)\s+kt\s+(\d+|\?+)\s+mb\s+(\d+|\?+)\s+(\d+|\?+)\s+kt\s+(\w+|\?+)\s+(\w+|\?+)\s+(\d+\.\d+)\s+(\w+)\s+(\d+\.\d+).*/;
 
-  ($hour,$min)=split(/\./,$hhmm);
-  $time=vap_util::parts2decyear($year,$month,$day,$hour,$min,0);
+  my ($hour,$min)=split(/\./,$hhmm);
+  my $time=Vap_Util::parts2decyear($year,$month,$day,$hour,$min,0);
   ($time, $rpt_type);
 }
 
 
 sub getSatelliteInfo{
 
-  $lon=shift || carp "Need a longitude here!\n";
-  $lat=shift || carp "Need a latitude here!\n";
+  my $lon=shift || carp "Need a longitude here!\n";
+  my $lat=shift || carp "Need a latitude here!\n";
+  my %info=();
 
-  foreach $k (keys %SatelliteRegions) {
-    @region=@{$SatelliteRegions{$k}{Region}};
+  foreach my $k (keys %SatelliteRegions) {
+    my @region=@{$SatelliteRegions{$k}{Region}};
     if ( $lon >= $region[0] && $lat>= $region[1] && 
 	$lon <= $region[2] && $lat<= $region[3]) {
       %info = $SatelliteRegions{$k}{Info};
@@ -181,11 +192,13 @@ sub getSatelliteInfo{
 
 sub whichSatellite{
 
-  $lon=shift || croak "Need a longitude here!\n";
-  $lat=shift || croak "Need a latitude here!\n";
+  my $lon=shift || croak "Need a longitude here!\n";
+  my $lat=shift || croak "Need a latitude here!\n";
 
-  foreach $k (keys %SatelliteRegions) {
-    @region=@{$SatelliteRegions{$k}{Region}};
+  my $satellite;
+
+  foreach my $k (keys %SatelliteRegions) {
+    my @region=@{$SatelliteRegions{$k}{Region}};
     if ( $lon >= $region[0] && $lat>= $region[1] && 
 	$lon <= $region[2] && $lat<= $region[3]) {
       $satellite = $k;
@@ -200,10 +213,10 @@ sub getClosestObservation{
   # Usage @retarray=getClosestObservation(%hash, $time)
   #
 
-  local($ref,%hash,$time,$absflag,
-	@obtimes,$mindiff,$ob,$diff,$closest);
+  my ($ref,%hash,$time,$absflag,
+	@obtimes,$mindiff,$ob, $diff,$closest);
 
-  $ref=shift;
+  $ref=shift; # reference to hash
   %hash = %{$ref};
   $time=shift;
   $absflag=shift;
@@ -211,25 +224,33 @@ sub getClosestObservation{
   @obtimes=@{$hash{'time1'}};
   $mindiff=1.e8;
   for ($ob=0;$ob<=$#obtimes;$ob++){
-    $diff=$time-$obtimes[$ob];
+    my $diff=$time-$obtimes[$ob];
     $diff=abs($diff) if ($absflag);
-    if ($diff >= 0 && %diff < $mindiff) {
+    if ($diff >= 0 && $diff < $mindiff) {
       $mindiff=$diff;
       $closest=$ob;
     }
   }
+
   $ob=$closest;
-  ($ob,${hash{lon}}[$ob], ${hash{lat} }[$ob], 
-  ${hash{time1}}[$ob],${hash{vaptime}}[$ob], 
-  ${hash{storm_type}}[$ob], ${hash{winds}}[$ob], 
-  ${hash{gusts}}[$ob], ${hash{press}}[$ob], 
-  ${hash{course}}[$ob], ${hash{speed}}[$ob], 
-  ${hash{rpt_type}}[$ob], ${hash{satellite}}[$ob] );
+
+  ($ob,${hash{lon}}[$ob], 
+   ${hash{lat} }[$ob], 
+    ${hash{time1}}[$ob],
+     ${hash{vaptime}}[$ob], 
+      ${hash{storm_type}}[$ob], 
+       ${hash{winds}}[$ob], 
+        ${hash{gusts}}[$ob], 
+         ${hash{press}}[$ob], 
+          ${hash{course}}[$ob], 
+            ${hash{speed}}[$ob], 
+             ${hash{rpt_type}}[$ob], 
+              ${hash{satellite}}[$ob] );
 }
 
 sub getClosestInRegion{
 
-  local ($ref, %hash, $regions, $region, $time, 
+  my ($ref, %hash, $regions, $region, $time, 
 	 @retdata, @match_data, $obregion);
 
   $ref=shift || croak "Need the observations hash!\n";
@@ -238,7 +259,7 @@ sub getClosestInRegion{
   $region=shift || croak "Need `region' [$regions]!\n"; 
   $time=shift || croak "Need `time' parameter!\n";
 
-  local(@retdata);
+  @retdata = ();
   @match_data=getClosestObservation(\%hash, $time);
   if ($#match_data > 0) {
     $obregion=whichSatellite($match_data[1], $match_data[2] );
@@ -249,7 +270,7 @@ sub getClosestInRegion{
 
 sub getClosestBySatellite{
 
-  local(@match_data, %match_data, $k, %hash, 
+  my (@match_data, %match_data, $k, %hash, 
 	$sats, $satellite, $time, $ref);
 
   $ref=shift || croak "Need the observations hash!\n";
@@ -259,14 +280,14 @@ sub getClosestBySatellite{
   $time=shift || croak "Need `time' parameter!\n";
   $absflag=shift || 0;
 
-  foreach $k (keys %hash) {
-    $closest=-1;
-    @time=@{$hash{$k}{time1}};
-    @sat=@{$hash{$k}{satellite}};
-    $mindiff=1.e10;
-    for ($i=0;$i<=$#time;$i++){
+  foreach my $k (keys %hash) {
+    my $closest=-1;
+    my @time=@{$hash{$k}{time1}};
+    my @sat=@{$hash{$k}{satellite}};
+    my $mindiff=1.e10;
+    for (my $i=0;$i<=$#time;$i++){
       next if !$sat[$i];
-      $diff=$time-$time[$i];
+      my $diff=$time-$time[$i];
       $diff=abs($diff) if $absflag;
       if ($diff >=0 && $diff < $mindiff && $sat[$i] =~ /$satellite/ ) {
 	$mindiff=$diff;
@@ -298,19 +319,21 @@ sub getClosestBySatellite{
 
 
 sub getRegions{
-  @regions = keys %SatelliteRegions;
+  my @regions = keys %SatelliteRegions;
 }
 
 
 sub getSatellites{
-  @Satellites
+  my @Satellites
 }
 
 
-sub oogleWWW{
-  open HTML, "$VAP_WWW_TOP/storms/index.html" || 
-      die "Can't open storms/index.html\n";
-  @lines=<HTML>;
-  close HTML;
-}
+# sub oogleWWW{
+#   open HTML, "$VAP_WWW_TOP/storms/index.html" || 
+#       die "Can't open storms/index.html\n";
+#   my @lines=<HTML>;
+#   close HTML;
+#   @lines
+# }
+
 1;

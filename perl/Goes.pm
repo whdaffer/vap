@@ -9,6 +9,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.2  2002/04/30 20:23:22  vapdev
+# Modified the 'use lib' statement
+#
 # Revision 1.1  2001/02/09 18:46:34  vapuser
 # Initial revision
 #
@@ -18,7 +21,7 @@ package Goes;
 @ISA = qw(Exporter);
 @EXPORT=qw(getAreaFile gag );
 
-use lib getenv('VAP_SFTWR_TOP')."/vap/perl";
+use lib $ENV{VAP_SFTWR_PERL};
 use Cwd 'chdir', 'getcwd';
 use Time::Local;
 use Net::FTP;
@@ -55,8 +58,8 @@ BEGIN {
 
 sub gag{
   
-  local( $time, $absflag, $minlon, $minlat, $maxlon, $maxlat,
-	$gridpath, $startdir, $griddedfile);
+  my ($time, $absflag, $minlon, $minlat, $maxlon, $maxlat,
+	$gridpath, $startdir, $griddedfile, $areafile);
 
   $usage="Usage: gag satellite, sensornum, time, absflag, minlon, minlat, maxlon, maxlat";
   die "$usage\n" if $#_ < 1;
@@ -66,7 +69,7 @@ sub gag{
   $minlat = $_[5] || 0;
   $maxlon = $_[6] || 0;
   $maxlat = $_[7] || 0;
-  local($areafile)=getAreaFile($_[0], $_[1], $time, $absflag );
+  $areafile=getAreaFile($_[0], $_[1], $time, $absflag );
   $gridpath = constructGriddingDir($_[0], $_[1]);
   $startdir=getcwd();
   chdir $gridpath || croak "Can't CD to $gridpath\n";
@@ -77,7 +80,7 @@ sub gag{
 
 sub grid{ 
 
-  local( $areafile, $minlon, $minlat, $maxlon, $maxlat );
+  my ($areafile, $minlon, $minlat, $maxlon, $maxlat );
   $areafile = shift @_ ||
       die "Usage: grid areafile [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";
 
@@ -92,17 +95,13 @@ sub grid{
   $minlat = shift @_ || 0 ;
   $maxlon = shift @_ || 0 ;
   $maxlat = shift @_ || 0 ;
-
+  
   ($minlon, $maxlon) = rectifyLon( $minlon, $maxlon);
 
-#  if ($minlon != 0 || $minlat != 0 || $maxlon != 0 || $maxlat != 0) {
-#    $minlon -= 360 if ($minlon >= 180);
-#    $maxlon -= 360 if ($maxlon >= 180);
-#  }
+  return $gridfile if AlreadyGridded($areafile, $minlon, $minlat, $maxlon, $maxlat );
+  
 
-  $gridfile=AlreadyGridded($areafile, $minlon, $minlat, $maxlon, $maxlat );
-  return $gridfile if $gridfile;
-
+  my $exe_string="";
 
   if ($dir) {
     $exe_string=sprintf( "grid_goes -d %s -f %s -l %04d,%03d,%04d,%03d", 
@@ -118,31 +117,32 @@ sub grid{
   print "About to open gridding processes with exe string\n";
   print "$exe_string\n";
   open ( GRIDDING_PROCESS, "$exe_string |" );
-  @gridding_output = <GRIDDING_PROCESS>;
-  print join "\n", @gridding_output;
-  @errors=grep(/^ *ERROR.*/, @gridding_output);
+  my @gridding_output = <GRIDDING_PROCESS>;
   close GRIDDING_PROCESS;
+  print join "\n", @gridding_output;
+  my @errors=grep(/^ *ERROR.*/, @gridding_output);
   croak "  Bad return from goes gridding software\n" if ($#errors gt -1);
   print "  Done Gridding!\n";
-  $local_gridded_file="$gridding_output[$#gridding_output]";
+  my $local_gridded_file="$gridding_output[$#gridding_output]";
   chop $local_gridded_file;
   $local_gridded_file;
 }
 
 
 sub getAreaFile{
-  local($satellite,$sensor,$vaptime,$localfile,$localdir,
-	$file,$diff,$mindiff,$time,$test_time);
+  my ($satellite,$sensor,$vaptime,$localfile,$localdir,
+      $file,$diff,$mindiff,$time,$test_time);
   $satellite = getSatnum($_[0]);
   $sensor    = $_[1] || croak "(param 2) Need sensor number [1,2,3,4,5] 1=vis, N=irN\n";
   $vaptime   = $_[2] || croak "(param 3) Need vaptime (yyyy/mm/dd/hh/mm (in UT))\n";
   $absflag   = $_[3] || 1;
 
-  ($year,$month,$day,$hour,$min,$sec) = split( "/", $vaptime );
-  $test_time = timegm( 0, $min, $hour, $day, $month-1, $year-1900 );
+  my ($year,$month,$day,$hour,$min,$sec) = split( "/", $vaptime );
+  my $test_time = timegm( 0, $min, $hour, $day, $month-1, $year-1900 );
 
-  ($file, $time,$mindiff,$remoteflag) = 
+  my ($file, $time,$mindiff,$remoteflag) = 
       NearestAreaFile($satellite, $sensor, $test_time, $absflag);
+
 
   if ($mindiff < 45*60 ) {
     if ($remoteflag) {
@@ -152,41 +152,42 @@ sub getAreaFile{
       $localfile="$localdir/$file";
     }
   } else {
-    $hh=$mindiff/3600;
+    my $hh=$mindiff/3600;
     croak "Nearest AREA file ($file) is $hh hours distant! -- Aborting\n";
   }
   $localfile;
 }
 
 sub constructLocalDir{
-  $satellite = getSatnum($_[0]);
-  $sensor    = $_[1] || croak "(param 2) Need sensor number [1,2,3,4,5] 1=vis, N=irN\n";
+  my $satellite = getSatnum($_[0]);
+  my $sensor    = $_[1] || croak "(param 2) Need sensor number [1,2,3,4,5] 1=vis, N=irN\n";
   
-  $sensordir=$sensornum2dir{$sensor};
-  local($dir) = "$ARCHIVETOP/goes$satnum/$sensordir";
+  my $sensordir=$sensornum2dir{$sensor};
+  my $dir = "$ARCHIVETOP/goes$satnum/$sensordir";
   $dir;
 }
 
 sub constructRemoteDir{
-  $satellite = getSatnum($_[0]);
-  $sensor    = $_[1] || croak "(param 2) Need sensor number [1,2,3,4,5] 1=vis, N=irN\n";
-  $sensordir=$sensornum2dir{$sensor};
-  local($dir) = "goes$satnum/$sensordir";
+  my $satellite = getSatnum($_[0]);
+  my $sensor    = $_[1] || croak "(param 2) Need sensor number [1,2,3,4,5] 1=vis, N=irN\n";
+  my $sensordir=$sensornum2dir{$sensor};
+  my$dir = "goes$satnum/$sensordir";
   $dir;
 }
 
 sub constructGriddingDir{
-  $satellite = getSatnum($_[0]);
-  $sensor    = $_[1] || croak "(param 2) Need sensor number [1,2,3,4,5] 1=vis, N=irN\n";
-  $sensordir=$sensornum2dir{$sensor};
-  local($dir) = "$GRIDDINGTOP/goes$satnum/$sensordir";
+  my $satellite = getSatnum($_[0]);
+  my $sensor    = $_[1] || croak "(param 2) Need sensor number [1,2,3,4,5] 1=vis, N=irN\n";
+  my $sensordir=$sensornum2dir{$sensor};
+  my $dir = "$GRIDDINGTOP/goes$satnum/$sensordir";
   $dir;
 }
 
 sub getSatnum{
-  $satellite = $_[0] ||
+  my $satellite = $_[0] ||
       croak "(param 1) Need Satellite location (west|east) or Satellite number (10|8)\n";
-  $satellite =~ tr/[a-z]/[A-Z]/;
+  my $satellite =~ tr/[a-z]/[A-Z]/;
+  my $satnum;
   if ($satellite =~ /(WEST|EAST)/) {
     $satnum=$satloc2satnum{$1}; 
   } else {
@@ -197,27 +198,27 @@ sub getSatnum{
 
 
 sub getLocalAINF {
-  local( $dir, $local_ainf);
+  my ($dir, $local_ainf);
   $dir=constructLocalDir(@_);
   $local_ainf="$dir/area_info";
   open AINF, "<$local_ainf" || croak "Can't open $local_ainf\n";
-  @lainf = <AINF>;
+  my @lainf = <AINF>;
   close AINF;
   @lainf;
 }
 
 sub fetchRemoteAINF {
-  local( $dir, $remote_ainf);
-  $startdir=getcwd();
-  $localdir=constructLocalDir(@_);
-  $local_file="$localdir/noaa_area_info";
+  my ($dir, $remote_ainf);
+  my $startdir=getcwd();
+  my $localdir=constructLocalDir(@_);
+  my $local_file="$localdir/noaa_area_info";
   chdir $localdir || croak "Can't cd to $localdir\n";
 
-  $remotedir=constructRemoteDir(@_);
-  $remote_file="$remotedir/area_info";
-  ($host,$user,$pw) = getgoesarchive();
+  my $remotedir=constructRemoteDir(@_);
+  my $remote_file="$remotedir/area_info";
+  my ($host,$user,$pw) = getgoesarchive();
   
-  $ftp = Net::FTP->new( $host ) || croak "  Can't open new connection to $host\n";
+  my $ftp = Net::FTP->new( $host ) || croak "  Can't open new connection to $host\n";
   $ftp->login ($user, $pw )     || croak "  Can't login to $host using $user/$pw\n";
   $ftp->binary                  || croak "  Can't go to binary\n";
   print "  Getting $remote_file and sending it to $local_file\n";
@@ -235,9 +236,9 @@ sub getRemoteAINF{
   # machine. So the variable $remote_ainf actually refers to a file on
   # this machine.
 
-  $remote_ainf=fetchRemoteAINF($_[0], $_[1]);
+  my $remote_ainf=fetchRemoteAINF($_[0], $_[1]);
   open RAINF, "<$remote_ainf" || croak "Can't open $remote_ainf\n";
-  @rainf= <RAINF>;
+  my @rainf= <RAINF>;
   close RAINF;
   @rainf;
 }
@@ -245,14 +246,14 @@ sub getRemoteAINF{
 
 sub getgoesarchive{ 
 
-  $goes_info_file=shift || "/usr/people/vapuser/Qscat/Library/goes_archive";
+  my $goes_info_file=shift || "/usr/people/vapuser/Qscat/Library/goes_archive";
   open(ARCHIVE_INFO, "<$goes_info_file") || croak "Can't open $goes_info_file file\n";
-  @info=<ARCHIVE_INFO>;
-  $host=$info[0];
+  my @info=<ARCHIVE_INFO>;
+  my $host=$info[0];
   chop $host;
-  $user=$info[1];
+  my $user=$info[1];
   chop $user;
-  $pw=$info[2];
+  my $pw=$info[2];
   chop $pw;
   # return the info.
   ($host, $user, $pw);
@@ -261,13 +262,15 @@ sub getgoesarchive{
 sub getParseAINF{
  ## usage: %filetimes=getParseAINF(satellite_number, sensor_number);
 
-  @ainf=getRemoteAINF($_[0], $_[1]);
+  my @ainf=getRemoteAINF($_[0], $_[1]);
 
     # Now parse the file
+  my ($year, $month, $day, $doy, $hour, $min, $timegm);
+
   for (@ainf){
-    chop;
+    chomp;
     next if /^##.*/;
-    ($file,$date,$time,$doy) = 
+    my ($file,$date,$time,$doy) = 
   /^(AREA\d+):\s+Data\s+Taken\s+on\s+(.*),\s+at\s+(\d+)\s+Hours:.*,\s+DOY\s+=\s+(\d+)/;
     if ($file =~ /AREA\d{2}00/){
 
@@ -275,12 +278,13 @@ sub getParseAINF{
         ## ainf for the xx00 file. Don't know why, but we can't use
         ## the information in the area info file, we must actually
         ## open and read the file. If it isn't here, fetch it first.
-      $testfile="$localdir/$file";
+
+      my $testfile="$localdir/$file";
       if (-e  $testfile ) {
 	if (open XX00FILE, "<$testfile"){
 	    read XX00FILE, $hdr, 64*4;
 	    close XX00FILE;
-	    @hdr=unpack "L4", $hdr;
+	    my @hdr=unpack "L4", $hdr;
 	    $year=int ($hdr[3]/1000);
 	    $doy=int ($hdr[3]-$year*1000);
 	    ($day, $month) = doy2mday_mon($doy, $year);
@@ -306,8 +310,8 @@ sub getParseAINF{
 }
 
 sub NearestAreaFile{
-  local( $satellite, $sensor, $testtime, $absflag, 
-	$diff, $mindiff, $remoteflag, $localdir );
+  my ($satellite, $sensor, $testtime, $absflag, 
+	$diff, $mindiff, $remoteflag, $localdir, $file, $time );
 
   $satellite = $_[0] || croak "(param 1) Need Satellite location (west|east)\n";
   $sensor    = $_[1] || croak "(param 2) Need sensor number [1,2,3,4,5] 1=vis, N=irN\n";
@@ -318,8 +322,8 @@ sub NearestAreaFile{
   $remoteflag=1;
 
   $mindiff = 1.e10;
-  %filetimes=getParseAINF($satellite,$sensor);
-  foreach $k (keys %filetimes){
+  my %filetimes=getParseAINF($satellite,$sensor);
+  foreach my $k (keys %filetimes){
     $diff = $testtime-$filetimes{$k};
     $diff = abs($diff) if $absflag;
 
@@ -331,14 +335,14 @@ sub NearestAreaFile{
       }
     }
   }
-  $remoteflag = checkLocalAreaFile("$localdir/$file", $testtime);
+  my $remoteflag = checkLocalAreaFile("$localdir/$file", $testtime);
   ($file, $time, $mindiff, $remoteflag );
 
 }
 
 sub fetchAREAFile{
 
-  local( $areafile, $num, $sens, $ftp, $localdir, 
+  my( $areafile, $num, $sens, $ftp, $localdir, 
 	$remotedir, $remote_file, $local_file, $host, $user, $pw);
 
   $areafile=shift || croak "(param 1) Need AREAFILE\n";
@@ -351,12 +355,12 @@ sub fetchAREAFile{
   $remotefile="$remotedir/$areafile";
   $localfile="$localdir/$areafile";
       
-  ($host,$user,$pw) = getgoesarchive();
+  my ($host,$user,$pw) = getgoesarchive();
   croak "Can't get goes Archive info\n" unless defined $pw;
 
   print "  Getting $remotefile and sending it to $localfile\n";
   
-  $ftp = Net::FTP->new( $host )       || croak "  Can't open new connection to $host\n"; 
+  my $ftp = Net::FTP->new( $host )       || croak "  Can't open new connection to $host\n"; 
   $ftp->login ($user, $pw )           || croak "  Can't login\n";                        
   $ftp->binary                        || croak "  Can't go to binary\n";                 
   $ftp->get($remotefile,$localfile)   || croak "  Can't get file $remotefile\n";
@@ -366,16 +370,16 @@ sub fetchAREAFile{
 
 sub setMinDiff{
   if ($_[0]) {
-    $_min_time_diff=shift;
-    } else 
-    { carp "Taking default time difference of 45 minutes!\n";
-     $_min_time_diff = 45;
+    $Goes::_min_time_diff=shift;
+    } else { 
+      carp "Taking default time difference of 45 minutes!\n";
+      $Goes::_min_time_diff = 45;
     }
-  $_min_time_diff;
+  $Goes::_min_time_diff;
 }
 
 sub AlreadyGridded {
-  local($areafile, $minlon, $minlat, $maxlon, $maxlat, $gridfile, $gridpath, $usage );
+  my ($areafile, $minlon, $minlat, $maxlon, $maxlat, $gridfile, $gridpath, $usage );
   $usage="Usage: $gridfile=AlreadyGridded($areafile,$minlon,$minlat,$maxlon,$maxlat)\n";
 
   $areafile = shift || croak $usage;
@@ -384,9 +388,9 @@ sub AlreadyGridded {
   $maxlon   = shift || 0 ;
   $maxlat   = shift || 0 ;
 
-  ($path, $stuff, $areanum, $sensornum, @rest) = 
+  my ($path, $stuff, $areanum, $sensornum, @rest) = 
       $areafile =~ /(.*)\/(AREA)(\d{1,1})(\d{1,1})(\d{2,2})/;
-  $satnum = $areanum2satnum{$areanum};
+  my $satnum = $areanum2satnum{$areanum};
   $gridpath=constructGriddingDir($satnum, $sensornum);
 
   
@@ -404,8 +408,8 @@ sub AlreadyGridded {
 	croak "How the hell did I get here?!?\n";
       }
   }
-  ($year,$month,$day,$hour,$min) = readAreaFileHdr($areafile);
-  $t = sprintf("GOES%02d%1d-%04d%02d%02d%02d-%%%04d,%03d,%04d,%03d%%.dat", 
+  my ($year,$month,$day,$hour,$min) = readAreaFileHdr($areafile);
+  my $t = sprintf("GOES%02d%1d-%04d%02d%02d%02d-%%%04d,%03d,%04d,%03d%%.dat", 
 	       $satnum, $sensornum,$year, $month, $day, $hour, 
 	       $minlon, $minlat, $maxlon, $maxlat );
   $gridfile = $t if (-e $t);
@@ -413,7 +417,8 @@ sub AlreadyGridded {
 
 sub readAreaFileHdr{
 
-  local($areafile,@hdr,$year,$doy,$day,$month,$hour,$min);
+  my ($areafile,@hdr,$year,$doy,$day,$month,$hour,$min);
+
   $areafile=shift || 
       croak "Usage: (year,month,day,hour,min) = readAreaFileHdr(areafile)\n";
   open AREAFILE, "<$areafile" || croak "Can't open $areafile\n";
@@ -430,6 +435,8 @@ sub readAreaFileHdr{
 }
 
 sub rectifyLon{
+  my ($minlon, $maxlon);
+
   $minlon=shift || croak "Need MinLon!\n";
   $maxlon=shift || croak "Need MaxLon!\n";
   $minlon -= 360 if $minlon > 180;
@@ -438,14 +445,17 @@ sub rectifyLon{
 }
 
 sub checkLocalAreaFile{
-  $areafile = shift || 
+
+  my $areafile = shift || 
       croak "Usage: $remoteflag=checkLocalAreaFile( $areafile, $filetime)\n";
-  $areafiletime = shift || 
+  my $areafiletime = shift || 
       croak "Usage: $remoteflag=checkLocalAreaFile( $areafile,$filetime )\n";
 
+  my $remoteflat;
+
   if (-e $areafile ) {
-    ($year,$month,$day,$hour,$min) = readAreaFileHdr( $areafile );
-    $time=timegm( 0, $min, $hour, $day, $month-1, $year-1900);
+    my ($year,$month,$day,$hour,$min) = readAreaFileHdr( $areafile );
+    my $time=timegm( 0, $min, $hour, $day, $month-1, $year-1900);
     $remoteflag = $areafiletime-$time > 60*60;
   } else {
     $remoteflag=1;
