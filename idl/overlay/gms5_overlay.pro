@@ -32,7 +32,8 @@
 ;                    quality     = quality, $
 ;                    MapLimits   = MapLimits, $
 ;                    status      = status, $
-;                    thumbnail   = thumbnail
+;                    thumbnail   = thumbnail, $
+;                    config      = config 
 ;
 ;
 ;
@@ -141,6 +142,7 @@
 ;     thumbnail   : if present for output, create a thumbnail that is
 ;                   30% the size of the original and output its name
 ;                   in this variable
+;     config      : flag, if set, will call a overlay configurator
 ;
 ;
 ; OUTPUTS:  A file, either a .gif, .jpeg (the default) or a .ps file,
@@ -207,6 +209,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.6  1999/06/21 14:50:52  vapuser
+; Updated documentation
+;
 ; Revision 1.5  1999/04/08 22:02:43  vapuser
 ; Replaced Colorbar with ColBar
 ;
@@ -263,7 +268,8 @@ PRO gms5_overlay, datetime, gmsType, $
                   quality     = quality, $
                   mapLimits   = mapLimits,$
                   status      = status, $
-                  thumbnail   = thumbnail
+                  thumbnail   = thumbnail, $
+                  config      = config
 
 
 
@@ -278,6 +284,8 @@ PRO gms5_overlay, datetime, gmsType, $
     status = 0
     return
   ENDIF 
+
+  config =  keyword_set(config)
 
   IF NOT isa(datetime,/string,/nonempty) THEN BEGIN 
     Message,"Input parameter DATETIME must be a nonempty STRING!",/cont
@@ -598,6 +606,19 @@ PRO gms5_overlay, datetime, gmsType, $
 
  Hue = fltarr(nlon,nlat)+WaterHue
  Hue[land] = LandHue
+   
+ IF config THEN $
+    CLOUD_OVERLAY_CONFIG, $
+     landwater=hue, $
+       cloudmask=cloudmask, $
+        brightmin=brightmin, $
+         brightmax=brightmax, $
+          satmin=satmin, $
+           satmax=satmax, $
+            lonmin=lonlim[0], $
+             lonmax=lonlim[1], $
+              latmin=latlim[0],$
+                latmax=latlim[1]
 
     ; Define the new Brightness/Saturation mappings
   xx=findgen(100)/99.
