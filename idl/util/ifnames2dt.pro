@@ -63,6 +63,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/08 18:09:23  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -74,13 +77,13 @@ FUNCTION Ifnames2dt, IFNames
    rcsid = "$Id$"
    ; it is assumed the file names have the format xxx-yyyymmddhhmi.ext
   dts = 0
-
+  tIfNames = basename(IFNames)
   IF n_Params() NE 0 THEN BEGIN
-    year  = fix(strmid(IFNames, 4,  4))
-    month = fix(strmid(IFNames, 8,  2))
-    day   = fix(strmid(IFNames, 10, 2))
-    hour  = fix(strmid(IFNames, 12, 2))
-    min   = fix(strmid(IFNames, 14, 2))
+    year  = fix(strmid(tIFNames, 4,  4))
+    month = fix(strmid(tIFNames, 8,  2))
+    day   = fix(strmid(tIFNames, 10, 2))
+    hour  = fix(strmid(tIFNames, 12, 2))
+    min   = fix(strmid(tIFNames, 14, 2))
 
     dts = var_to_dt( year, month, day, hour, min )
     
