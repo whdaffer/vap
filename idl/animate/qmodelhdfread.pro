@@ -67,6 +67,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  2000/01/11 20:45:17  vapuser
+; In line with the addition of metadata to the qmodel object and file, I
+; added code to this module to read and transmit same.
+;
 ; Revision 1.2  1999/03/17 20:58:15  vapuser
 ; fixed error in computation of qmodel.lon/.lat
 ;
@@ -102,8 +106,8 @@ FUNCTION qmodelhdfread, filename
     sds_id = HDF_SD_START(filename,/read) 
     IF sds_id gt 0 THEN BEGIN 
       HDF_SD_FILEINFO,sds_id,datasets,attributes
-      print,'Number of SD data sets: ',datasets
-      print,'Number of attributes:   ',attributes
+      ;print,'Number of SD data sets: ',datasets
+      ;print,'Number of attributes:   ',attributes
       qmodel = qmodel_str()
       lf =  string(10b)
       FOR ai =0,attributes-1 DO BEGIN 
@@ -133,6 +137,12 @@ FUNCTION qmodelhdfread, filename
               tmp = byte(data)
               qmodel.hdr.CreationTime[0:nn-1] = tmp[0:nn-1]
             END 
+            'INTERPTIME': BEGIN 
+              n = n_elements(qmodel.hdr.InterpTime)
+              nn = strlen(data) <  n
+              tmp = byte(data)
+              qmodel.hdr.InterpTime[0:nn-1] = tmp[0:nn-1]
+            END 
             'VERSION': BEGIN 
               n = n_elements(qmodel.hdr.Version)
               nn = strlen(data) <  n
@@ -157,6 +167,7 @@ FUNCTION qmodelhdfread, filename
               tmp = byte(data)
               qmodel.hdr.exclude_cols[0:nn-1] = tmp[0:nn-1]
             END 
+            'WFILES': qmodel.hdr.wfiles = tmp
             ELSE: $
               Message,'Unrecognized Attribute ' + name,/cont
           ENDCASE
@@ -182,12 +193,13 @@ FUNCTION qmodelhdfread, filename
       r = HDF_SD_SELECT( sds_id, r )
       HDF_SD_GETINFO, r, ndims=nd, dims=dims, type=ty, unit=un; , caldata=cal
       HDF_SD_GETDATA,r, U
+      HDF_SD_ENDACCESS,R
 
       r = HDF_SD_NAMETOINDEX(sds_id, 'V')
       r = HDF_SD_SELECT( sds_id, r )
       HDF_SD_GETINFO, r, ndims=nd, dims=dims, type=ty, unit=un; , caldata=cal
       HDF_SD_GETDATA,r, V
-
+      HDF_SD_ENDACCESS,R
 
         ; End Access to this file.
       HDF_SD_END, sds_id
