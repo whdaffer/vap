@@ -86,6 +86,10 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.16  1999/10/05 16:42:52  vapuser
+  ; Added code to capture the Equator times/Longitude. Commented out
+  ; some of the code in qswathextent.
+  ;
   ; Revision 1.15  1999/08/23 17:43:52  vapuser
   ; corrected 'unknown' type, added and changed some arguments
   ; to ::GetAll
@@ -948,7 +952,8 @@ FUNCTION q2b::Get, $
                ExcludeCols = ExcludeCols,$
                data     = data,$
                StartTime = StartTime, $
-               EndTime   = EndTime 
+               EndTime   = EndTime , $
+               infostruct = infostruct
 
   Forward_Function  q2b_str
 
@@ -963,6 +968,13 @@ FUNCTION q2b::Get, $
   IF Arg_Present(data)         THEN data        = self.data        
   IF Arg_Present(StartTime)    THEN StartTime   = self.StartTime   
   IF Arg_Present(EndTime)      THEN EndTime     = self.EndTime     
+
+  IF Arg_Present(infostruct) THEN BEGIN 
+    infostruct = { Start_Time: self.starttime, $
+                   END_Time : self.endtime, $
+                   Equator_Xing_Time : self.eqx.date + 'T' +self.eqx.time, $
+                   Equator_Xing_Lon  : self.eqx.lon}
+  ENDIF 
 
   IF ptr_valid( self.data) THEN BEGIN 
     IF Arg_Present(u)        THEN u         = (*self.data).u       
