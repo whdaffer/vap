@@ -42,7 +42,7 @@
 ;                    config      = config, $
 ;                    scalevec    = scalevec, $
 ;                    gridlines   = gridlines, $
-;                    use_rf      = use_rf, $
+;                    rainflag      = rainflag, $
 ;                    rf_action   = rf_action, $
 ;                    rf_color    = rf_color, $
 ;                    status      = status
@@ -148,9 +148,7 @@
 ;
 ;     Status       : (0), 0 means failure, 1 means success.
 ;
-;     Use_RF       : (I), Flag , 0|1|2 depending on whether you want
-;                    NO flagging (0), MP flagging (1) or 
-;                    NOF flagging (2). Default=0, no flagging
+;     Rainflag       : (I), Flag , 0|1, 0=don't use flag, 1=use flag
 ;
 ;     FL_Action    : (I), flag, 0|1 depending on whether you want to
 ;                    skip plotting rain flagged data (0) or plot it
@@ -216,6 +214,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.10  2000/03/09 21:02:28  vapuser
+; Rewrote goes_overlay24 so that it would do everything in a Z buffer
+; a plane at a time. So, you get 24bit color in an 8 bit environment
+; without having to connect to the X server. Cool, eh?
+;
 ;
 ;
 ;  ===== Removed mod log from goes_overlay24.pro ===
@@ -259,7 +262,7 @@ PRO goes_overlay, goesfile, $
                     scalevec    = scalevec, $
                     gridlines   = gridlines, $
                     status      = status, $
-                    use_rf      = use_rf, $
+                    rainflag      = rainflag, $
                     rf_action   = rf_action, $
                     rf_color    = rf_color 
 
@@ -268,9 +271,9 @@ PRO goes_overlay, goesfile, $
 
 
   status = 1
-  genv,/save
-  tvlct,orig_red,orig_green,orig_blue,/get
-  loadct,0,/silent
+;  genv,/save
+;  tvlct,orig_red,orig_green,orig_blue,/get
+;  loadct,0,/silent
 ;  catch, error
 ;  IF error NE 0 THEN BEGIN 
 ;    Message,!error_state.msg,/cont
@@ -297,9 +300,9 @@ PRO goes_overlay, goesfile, $
 ;  ENDFOR 
 
   IF n_elements(goesfile) EQ 0 THEN BEGIN 
-    Message,'Usage: goes_overlay, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec,use_rf=0|1|2,rf_action=0|1,rf_color=24bitnumber ] ',/cont
-    tvlct,orig_red,orig_green,orig_blue
-    genv,/restore
+    Message,'Usage: goes_overlay, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec,rainflag=0|1,rf_action=0|1,rf_color=24bitnumber ] ',/cont
+;    tvlct,orig_red,orig_green,orig_blue
+;    genv,/restore
     status = 0
     return
   ENDIF 
@@ -356,8 +359,8 @@ PRO goes_overlay, goesfile, $
      ps AND jpeg OR $
      gif AND jpeg THEN BEGIN 
     Message,'Only one of PS, GIF  or JPEG may be set',/cont
-    tvlct,orig_red,orig_green,orig_blue
-    genv,/restore
+;    tvlct,orig_red,orig_green,orig_blue
+;    genv,/restore
     status = 0
     return
   ENDIF 
@@ -455,11 +458,11 @@ PRO goes_overlay, goesfile, $
 
 
 
-  chkcfg,'USE_RF',use_rf,cfg
+  chkcfg,'RAINFLAG',rainflag,cfg
   chkcfg,'RF_ACTION',rf_action,cfg
   chkcfg,'RF_COLOR',rf_color,cfg
 
-  IF n_elements(use_rf) EQ 0 THEN use_rf = 0
+  IF n_elements(rainflag) EQ 0 THEN rainflag = 0
   IF n_elements(rf_action) EQ 0 THEN rf_action = 1
     ; if rf_action=1, plot the rain flagged data as black
   IF n_elements(rf_color) EQ 0 THEN rf_color =  0l
@@ -488,8 +491,8 @@ PRO goes_overlay, goesfile, $
     GoesFilenameStruct = ParseGoesFileName( goesfile )
     IF VarType( GoesFilenameStruct ) NE 'STRUCTURE' THEN BEGIN 
       Message," Trouble parsing " + Goesfile ,/cont
-      tvlct,orig_red,orig_green,orig_blue
-      genv,/restore
+;      tvlct,orig_red,orig_green,orig_blue
+;      genv,/restore
       status = 0
       return
     ENDIF ELSE BEGIN 
@@ -520,8 +523,8 @@ PRO goes_overlay, goesfile, $
     ENDELSE 
     IF NOT Ptr_Valid(ptr) THEN BEGIN 
       Message,'Error Reading ColorTable!',/cont
-      tvlct,orig_red,orig_green,orig_blue
-      genv,/restore
+;      tvlct,orig_red,orig_green,orig_blue
+;      genv,/restore
       status = 0
       return
     ENDIF 
@@ -540,7 +543,7 @@ PRO goes_overlay, goesfile, $
                                  CRDecimate=CRDecimate,$
                                  Decimate=Decimate,$
                                  ExcludeCols=ExcludeCols, $
-                                 use_rf=use_rf, $
+                                 rainflag=rainflag, $
                                  rf_action=rf_action, $
                                  rf_index=rfi)
       t1 = systime(1)
@@ -674,14 +677,18 @@ PRO goes_overlay, goesfile, $
       device,_extra=ps_form
       ; device,font='
     ENDIF ELSE BEGIN 
+      Message,'Setting Z device',/info
       set_plot,'z'
+      Message,'Configuring Z device',/info
       device,set_resolution=[xsize,ysize],z_buff=0
       finalim = bytarr(xsize,ysize,3)
       ;window,/free, /pixmap, xsize=xsize, ysize=ysize
       ;pixmap = !d.window
       !p.font = 0
-      device,font='7x14bold'
+      ;device,font='Helvetica Bold',/tt_font,/font
+      ;device,set_font='-adobe-helvetica-medium-r-normal--14-100-100-100-p-76-iso8859-1'
     ENDELSE 
+    Message,'Done Configuring Z device',/info
 
     loncent = mean(lonrange)
 ;    Map_Set,0,loncent,$
@@ -798,6 +805,9 @@ PRO goes_overlay, goesfile, $
 
       ; Tv the final image. Put on grid lines and plot the vectors.
 
+    IF n_elements(title) NE 0 THEN $
+       Title= title + ' ' + goes_string ELSE $
+       Title= goes_string 
 
       ; Calculate where to put Colorbar
     sz = size( mapIm[*,*,0],/dim)
@@ -848,9 +858,6 @@ PRO goes_overlay, goesfile, $
                   pscolor=ps, /true, table=ct, charsize=0.75, $
                     color=text_color
 
-      IF n_elements(title) NE 0 THEN $
-        Title= title + ' ' + goes_string ELSE $
-        Title= goes_string 
 
       xyouts, 0.5, ytitle, title, align=0.5, $
        /normal, charsize=1.05, color=text_color
@@ -860,7 +867,7 @@ PRO goes_overlay, goesfile, $
             /normal, charsize=1.0, color=text_color
       ENDIF 
 
-      IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
+      IF rainflag NE 0 AND rf_action EQ 1 THEN BEGIN 
         newct = ct
         newct[*,0] =  [rf_color AND 'ff'xl, $
                         ishft(rf_color,-8) AND 'ff'xl, $
@@ -907,8 +914,8 @@ PRO goes_overlay, goesfile, $
             scale=scaleVec,minspeed=minspeed,maxspeed=maxspeed
           IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
             PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
-              thick=thick,minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec,$
-                color=rf_color
+              thick=thick,minspeed=minspeed, maxspeed=maxspeed, $
+                scale=scaleVec, color=rf_color
           ENDIF 
         ENDIF  
 
@@ -926,11 +933,6 @@ PRO goes_overlay, goesfile, $
         ;tvlct,r,g,b
 
 
-        IF i EQ 0 THEN BEGIN 
-          IF n_elements(title) NE 0 THEN $
-            Title= title + ' ' + goes_string ELSE $
-            Title= goes_string 
-        ENDIF 
         xyouts, 0.5, ytitle, title, align=0.5, $
          /normal, charsize=1.05, color=text_color
 
@@ -943,7 +945,7 @@ PRO goes_overlay, goesfile, $
 
 
 
-        IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
+        IF rainflag NE 0 AND rf_action EQ 1 THEN BEGIN 
           newct = ct
           CASE i OF
             0: newct[0,0] = rf_color AND 'ff'xl
@@ -1025,7 +1027,7 @@ PRO goes_overlay, goesfile, $
   IF Verbose THEN print,'Total Time: ', (end_time-start_time)/60. ,' Minutes'
   IF Arg_Present(Outfile) THEN Outfile =  OutputFilename
   ;IF NOT ps THEN Wdelete,pixmap
-  genv,/restore
+;  genv,/restore
 
 END
 

@@ -35,7 +35,7 @@
 ;                    thumbnail   = thumbnail, $
 ;                    config      = config,$
 ;                    scale       = scale, $
-;                    use_rf      = use_rf, $
+;                    rainflag      = rainflag, $
 ;                    rf_action   = rf_action, $
 ;                    rf_color    = rf_color
 ;
@@ -151,9 +151,7 @@
 ;     scale       : flag, if set, the vectors will be scaled by their
 ;                   speed, otherwise, they're all the same length.
 ;
-;     Use_RF       : (I), Flag , 0|1|2 depending on whether you want
-;                    NO flagging (0), MP flagging (1) or 
-;                    NOF flagging (2). Default=0, no flagging
+;     Rainflag       : (I), Flag , 0|1. 0=don't use flag, 1=use flag.
 ;
 ;     RF_Action    : (I), flag, 0|1 depending on whether you want to
 ;                    skip plotting rain flagged data (0) or plot it
@@ -234,6 +232,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.15  2000/03/14 16:12:13  vapuser
+; Made same changes to this routine as in goes_overlay.pro
+; so that'll now run in Z buffer.
+;
 ;
 ; Revision 1.14  2000/03/13 21:03:06  vapuser
 ; Commented out all the tlvct's and loadct's
@@ -322,7 +324,7 @@ PRO gms5_overlay, datetime, gmsType, $
                   thumbnail   = thumbnail, $
                   config      = config, $
                   scaleVec    = scaleVec, $
-                  use_rf      = use_rf, $
+                  rainflag      = rainflag, $
                   rf_action   = rf_action, $
                   rf_color    = rf_color
 
@@ -507,11 +509,11 @@ PRO gms5_overlay, datetime, gmsType, $
 
 
 
-  chkcfg,'USE_RF',use_rf,cfg
+  chkcfg,'RAINFLAG',rainflag,cfg
   chkcfg,'RF_ACTION',rf_action,cfg
   chkcfg,'RF_COLOR',rf_color,cfg
 
-  IF n_elements(use_rf) EQ 0 THEN use_rf = 0
+  IF n_elements(rainflag) EQ 0 THEN rainflag = 0
   IF n_elements(rf_action) EQ 0 THEN rf_action = 1
     ; if rf_action=1, plot the rain flagged data as black
   IF n_elements(rf_color) EQ 0 THEN rf_color =  0l
@@ -771,7 +773,7 @@ PRO gms5_overlay, datetime, gmsType, $
                                CRDecimate=CRDecimate,$
                                Decimate=Decimate,$
                                ExcludeCols=ExcludeCols, $
-                               use_rf=use_rf, rf_action=rf_action, $
+                               rainflag=rainflag, rf_action=rf_action, $
                                rf_index=rfi)
     tt1 = systime(1)
     IF verbose THEN print,' Read_wind_Files took: ', tt1-tt0,$
@@ -888,7 +890,7 @@ PRO gms5_overlay, datetime, gmsType, $
         /normal, charsize=0.75, color=text_color
     ENDIF 
 
-    IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
+    IF rainflag NE 0 AND rf_action EQ 1 THEN BEGIN 
 
       newct = ct
       newct[*,0] =  [rf_color AND 'ff'xl, $
@@ -952,7 +954,7 @@ PRO gms5_overlay, datetime, gmsType, $
           /normal, charsize=0.75, color=text_color
       ENDIF 
 
-      IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
+      IF rainflag NE 0 AND rf_action EQ 1 THEN BEGIN 
 
         newct = ct
         newct[*,0] =  [rf_color AND 'ff'xl, $
