@@ -32,28 +32,31 @@
 ;
 ; OPTIONAL INPUTS:  
 ;
+;
 ;      LonPar: float 3-vector, output fields longitude parameters 
 ;               [ min, max, increment ]. Default=[0.,359.,1]
 ;      LatPar: float 3-vector, output fields latitude parameters 
 ;               [ min, max, increment ]. Default=[-60.,60.,1]
 ;
-;
-;
+
 ;
 ;	
 ; KEYWORD PARAMETERS:  
 ;
-;       rainf: 4-vector, Radius of influence. This is the number of grid cells
+;
+;       rainf: vector, Radius of influence. This is the number of grid cells
 ;            to consider when computing a value for the current grid
-;            cell. Default = [12., 10., 6,   4 ] 
-;       ermax: 4-vector, Maximum Error allowed before the data in the data
-;              field is discarded in favor of the computed model
-;              default = [50., 20., 10., 5.];
+;            cell. It can be any number of iterations, including 1. 
+;            Default = [12., 6, 2 ] 
+;       ermax: vector, Maximum Error allowed before the data in the data
+;              field is discarded in favor of the computed model. This
+;              vector must have the same number of elements as 'rainf'
+;              default = 50.*[1,1,1]
 ;
 ;       ofile: fully qualified output filename. Data will be written
 ;            to this file in a manner consistent with the routine
 ;            _ANIMATE_WIND_FIELD_ in addition to being output to the
-;            variables UI/VI, if they are present.
+;            variables UI/VI, if they are present. 
 ;              
 ;        reuse (I) flag, if set, reuse the UI/VI in the call to
 ;            succor. Requires UI/VI be passed in and have the correct
@@ -116,6 +119,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/10/12 22:37:14  vapuser
+; More keywords, write using QmodelWrite.
+;
 ; Revision 1.3  1998/10/07 00:08:07  vapuser
 ; Add some more keywords.
 ;
@@ -131,7 +137,8 @@
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
 
-FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
+FUNCTION runsuccor, u,v,lon,lat,ui,vi,$
+                    lonpar,latpar,$
                     rainf = rainf, $
                     ermax = ermax, $
                     ofile = ofile, $
@@ -149,7 +156,7 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
 
   hstr = lf +    "Usage: result=runsuccor(u,v,lon,lat$" + lf
   hstr = hstr + "  [[,ui,vi,]|[ofile=ofile]]$ " + lf 
-  hstr = hstr + "  [ lonpar, latpar, rainf=rainf, ermax=ermax,$ " +  lf 
+  hstr = hstr + "  [ lonpar,latpar, rainf=rainf, ermax=ermax,$ " +  lf 
   hstr = hstr + "  help=0|1, reuse=reuse, native=native ])" + lf + lf 
   hstr = hstr + "  Where... " + lf + lf 
   hstr = hstr + "  U: The U component (I)" + lf
@@ -174,10 +181,10 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
   hstr = hstr + "    runs, should be a decreasing sequence. Each entry is the " +lf
   hstr = hstr + "    number of grid cells away from the current cell to " + lf
   hstr = hstr + "    consider when calculating the current cell " + lf
-  hstr = hstr + "    (def=[12.,10,6,4]) "+lf
+  hstr = hstr + "    (def=[12.,6,2]) "+lf
   hstr = hstr + "  ERMAX: The 'Maximum difference' between the data and " + LF
   hstr = hstr + "    model field allowed " + lf
-  hstr = hstr + "    (Def=[50.,20.,10,.5] " + lf
+  hstr = hstr + "    (Def=[50.,50,50] " + lf
   hstr = hstr + "  REUSE: Flag, if set, use the UI/VI that are passed in directly"+lf
   hstr = hstr + "    in the call to succor, rather than creating them." + lf
   hstr = hstr + "  NATIVE: (I) Flag, if set and Ofile is set, don't output " + lf
@@ -212,9 +219,10 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,lonpar,latpar,$
   ENDIF 
   IF N_elements(lonpar) ne 3 THEN lonpar = [0.,359,1]
   IF N_elements(latpar) NE 3 THEN latpar = [-60.,60,1]
-  IF n_elements(rainf) NE 4 THEN rainf = [12., 10., 6,   4 ] 
-  IF N_Elements(ermax) NE 4 THEN ermax = [50., 20., 10., 5.]
+  IF n_elements(rainf) eq 0 THEN rainf = [12., 6, 2 ] 
+  IF N_Elements(ermax) eq 0 THEN ermax = [50., 50,50]
 
+  print,rainf,ermax
   good = where( finite(u) AND finite(v), ngood)
   IF ngood NE 0 THEN BEGIN 
     CreationTime = (IdlDt2VapTime(Today()))[0]
