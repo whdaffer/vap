@@ -69,6 +69,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/10/13 18:24:41  vapuser
+; Correct misspelling in ShortName
+;
 ; Revision 1.3  1998/10/12 22:06:53  vapuser
 ; Fixed some bugs
 ;
@@ -110,12 +113,15 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
       nlon = s[1]
       nlat = s[2]
 
-      lonpar = fltarr(3)
-      lonpar[0,1] =  region[0,2]
-      lonpar[2] =  (region[2]-region[1])/nlon
-
-      latpar[0,1] =  region[1,3]
-      latpar[2] =  (region[3]-region[1])/nlat
+      IF n_elements(lonpar) NE 3 THEN BEGIN 
+        lonpar = fltarr(3)
+        lonpar[0,1] =  region[[0,2]]
+        lonpar[2] =  (region[2]-region[1])/nlon
+      ENDIF 
+      IF n_elements(latpar) NE 3 THEN BEGIN 
+        latpar[0,1] =  region[[1,3]]
+        latpar[2] =  (region[3]-region[1])/nlat
+      ENDIF 
 
    ENDIF ELSE BEGIN 
      IF n_elements(Lonpar) ne 3 AND $
