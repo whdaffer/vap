@@ -65,6 +65,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/05 22:48:02  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -92,6 +95,7 @@ IF n_elements( q2b_defined ) eq 0 OR redefine THEN BEGIN
           sel2   : lonarr(  numcells)   ,$                
           idx    : lonarr(  numcells)   ,$                
           row    : 0L                   ,$                
+          rowtime: ''                   ,$
           qual   : lonarr(  numcells)   ,$                
           nambig : lonarr(  numcells)   ,$                
           mu     : fltarr(  numcells)   ,$                
