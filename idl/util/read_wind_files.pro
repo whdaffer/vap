@@ -102,6 +102,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/07 00:12:21  vapuser
+; Added (Start|End)Time keywords
+;
 ; Revision 1.2  1998/10/06 00:17:09  vapuser
 ; Added Start/End Time.
 ;
@@ -214,13 +217,21 @@ FUNCTION read_wind_files, files, $
          s = q-> Get( StartTime = ST, Endtime=ET)
          IF strlen(st) NE 0 THEN BEGIN 
            tmp = str_sep(st,'/')
-           IF fix(tmp[0]) NE 0 THEN $
-            StartTime = Min( StartTime, st )
+           IF fix(tmp[0]) NE 0 THEN BEGIN 
+             tmp2 = str_sep(startTime,'/')
+             IF fix(tmp2[0]) NE 0 THEN $
+               StartTime = Min( [StartTime, st]) ELSE $
+               StartTime = st
+           ENDIF 
          ENDIF 
          IF strlen(et) NE 0 THEN BEGIN 
            tmp = str_sep(et,'/')
-           IF fix(tmp[0]) NE 0 THEN $
-            EndTime = Min( EndTime, et )
+           IF fix(tmp[0]) NE 0 THEN BEGIN 
+             tmp2 = str_sep(EndTime,'/')
+             IF fix(tmp2[0]) NE 0 THEN $
+               EndTime = Max( [EndTime, et]) ELSE $
+               EndTime = et
+           ENDIF 
          ENDIF 
          IF nofill THEN BEGIN 
            good = where( finite(u) AND finite(v), ngood )
