@@ -1,7 +1,10 @@
 ;+
 ; NAME:  Sizeof
 ; $Id$
-; PURPOSE:  Return the size of 1 of whatever makes up the input item
+; PURPOSE: Return the size of 1 of whatever makes up the input
+;          item. Basically , the size of item[0], if the input is an
+;          array.
+;
 ;
 ; AUTHOR:  William Daffer
 ;
@@ -14,7 +17,7 @@
 ;   Item: The item whose size you want to know.
 ;
 ; OPTIONAL INPUTS:  None
-;	
+;       
 ; KEYWORD PARAMETERS:  None
 ;
 ; OUTPUTS:  
@@ -38,15 +41,21 @@
 ;
 ; ISSUES:
 ;
-;   Strings and Structures: Do they have a 'size' in the way a byte
-;   does.  I've decided the answer is no, but someone might be able to
-;   argue otherwise convincingly .
+;   Strings and Structures; Do they have a 'size' in the way a byte
+;   does.  I've decided the answer is no for structures, requiring the
+;   use of the routine 'totsize' to determine thier size, while the
+;   answer is a qualified yes for strings. But someone might be able to
+;   argue otherwise convincingly. If you want to find out the total size
+;   of a string (or an array of strings), use my routine 'totsize'.
 ;
 ; EXAMPLE:  
 ;
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/11/23 17:46:53  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;
