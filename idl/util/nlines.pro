@@ -32,15 +32,21 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 21:33:45  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1999, William Daffer
 ; No Warranties!
 ;-
 
-FUNCTION nlines, file
+FUNCTION nlines, file, noshell=noshell
   IF n_params() LT 1 THEN return,-1
   IF NOT isa(file,/string,/nonempty) THEN return,-1 
-  spawn, 'wc -l ' + file, nlines,count=cnt
+  IF keyword_set(noshell) THEN BEGIN 
+    args =  ['wc', '-l', file]
+    spawn, args, nlines,count=cnt, /noshell
+  ENDIF ELSE spawn,'wc -l ' + file, nlines, count=cnt
   return,long(nlines[0])
 END
   
