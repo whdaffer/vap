@@ -1,11 +1,14 @@
 #!/usr/bin/perl5  
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <99/09/08 14:15:44 vapuser>
+# Time-stamp: <99/09/21 15:46:34 vapuser>
 # $Id$
 #
 # Modification History:
 #
 # $Log$
+# Revision 1.7  1999/09/08 21:16:00  vapuser
+# Changes some definitions in the BEGIN{} section.
+#
 # Revision 1.6  1999/08/21 00:06:48  vapuser
 # added hurricane alley targets
 #
@@ -232,7 +235,9 @@ sub date_index{
 	       'daily_atlhurr.mov',
 	       'daily_pachurr.mov',
 	       'GOES104NEPAC1.jpeg',
+	       'GOES104PACHURR1.jpeg',
 	       'GOES84NWATL1.jpeg',
+	       'GOES84ATLHURR1.jpeg',
 	       'GMS51WPAC1.jpeg',
 	       'GMS51JAPAN1.jpeg',
 	       'GMS51FAREAST1.jpeg'
@@ -247,7 +252,9 @@ sub date_index{
 	       'pachurr_anim',
 #	       'npac_evol_anim',
 	       'goes104nepac1',
+	       'goes104pachurr1',
 	       'goes84nwatl1',
+	       'goes84atlhurr1',
 	       'gms51wpac1',
 	       'gms51japan1',
 	       'gms51fareast1'
@@ -263,7 +270,9 @@ sub date_index{
 	    'pachurr_anim'   => 'daily_pachurr.mov',
 #	    'npac_evol_anim' => 'daily_npac_evol.mov',
 	    'goes104nepac1'  => 'GOES104NEPAC1.jpeg',
+	    'goes104pachurr1'  => 'GOES104PACHURR1.jpeg',
 	    'goes84nwatl1'   => 'GOES84NWATL1.jpeg',
+	    'goes84atlhurr1'   => 'GOES84ATLHURR1.jpeg',
 	    'gms51wpac1'     => 'GMS51WPAC1.jpeg',
 	    'gms51japan1'    => 'GMS51JAPAN1.jpeg', 
 	    'gms51fareast1'  => 'GMS51FAREAST1.jpeg'
