@@ -9,6 +9,10 @@
 # Mods:
 #
 # $Log$
+# Revision 1.2  2002/08/12 22:57:31  vapdev
+# Added 'template' argument, so that it's a little more flexible.
+# Default to template = 'wind.0\#\#.jpeg'
+#
 # Revision 1.1  2001/02/09 19:44:34  vapuser
 # Initial revision
 #
@@ -31,10 +35,10 @@ if ("$3" == "") then
 else
   set type="$3"
 endif
+set log=/tmp/DMCONVERT_$$.log
 
-
-dmconvert -f $type -p video,comp=qt_cvid,squal=0.9,tqual=0.9,rate=30 -n $template,start=1,end=60,step=1 $template $outputfile >&! /tmp/DMCONVERT.LOG
-cat /tmp/DMCONVERT.LOG
-rm /tmp/DMCONVERT.LOG
+dmconvert -f $type -p video,comp=qt_cvid,squal=0.9,tqual=0.9,rate=30 -n $template,start=1,end=60,step=1 $template $outputfile >&! $log
+cat $log
+rm $log
 echo Done\!; date
 exit
