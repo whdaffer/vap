@@ -213,6 +213,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.12  2000/02/28 18:05:07  vapuser
+; Added rain flag code. Spruced up documentation.
+;
 ; Revision 1.11  1999/10/11 17:25:23  vapuser
 ; Added code to support user/system 'config file.'
 ;
@@ -935,6 +938,17 @@ PRO goes_overlay24, goesfile, $
     y = xyz[1]
     y = [3*y+2, 2*y+3]/5
 
+;    doing_rf =  use_rf NE 0 AND rf_action EQ 1 
+;    IF doing_rf THEN BEGIN 
+;      nn = n_elements(ct[0,*]
+;      rr = rf_color AND 'ff'xl
+;      gg = ishft(rf_color,-8) AND 'ff'xl
+;      bb = ishft(rf_color,-16) AND 'ff'xl,1
+;      newct = bytarr(3,nn+1)
+;      newct[*,0:nn-1] = ct
+;      newct[*,nn] = [rr,gg,bb]
+;    ENDIF ELSE newct = ct
+
     IF ps THEN BEGIN 
       ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
              position=[0.25,y[0], 0.75, y[1]], $
@@ -947,7 +961,7 @@ PRO goes_overlay24, goesfile, $
                Title='Wind Speed (m/s)',Min=minspeed, $
                  max=maxspeed,divisions=4, format='(f5.0)', $
                   pscolor=ps, /true, table=ct, charsize=0.75, $
-                    color='ffffff'x 
+                    color='ffffff'xl
     ENDELSE 
 
 
@@ -972,6 +986,40 @@ PRO goes_overlay24, goesfile, $
     ENDIF 
 
 
+    IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
+;      tt1 = long(tvrd(tru=3))
+;      tt1 = (ishft(tt1[*,0:ys-1,2],16) or $
+;            ishft(tt1[*,0:ys-1,1],8) or $
+;            tt1[*,0:ys-1,0])   
+;      x = where(tt1[*,ys/2], nx )
+;      x =  x[[0:nx-1]]
+;      y = where( tt1[x[0]:x[1],0:ys-1], ny )
+;      y = y[ [0:ny-1] ]
+      
+;      text =  'Rain Contaminated Data'
+;      nchar = strlen(text)
+;      npix = nchar*!d.x_ch_size ; the 'width' of this line, more or less.
+;      npix = npix + !d.y_ch_size + 4 ; 2*2 FOR the  the borders
+;      xl = (!d.x_size - npix)/2
+;      yl = y[0]-!d.y_ch_size-4-2
+;      xyouts,xl,yl,text,/device
+;      im = bytarr(!d.y_ch_size,!d.y_ch_size,3)
+;      im[*,*,0] =  
+;      im[*,*,1] =  
+;      im[*,*,2] =  
+;      tv,im,xl,yl,true=3
+      newct = ct
+      newct[*,0] =  [rf_color AND 'ff'xl, $
+                      ishft(rf_color,-8) AND 'ff'xl, $
+                       ishft(rf_color,-16) AND 'ff'xl]
+      
+      Colbar,pos=[0.49,0.005,0.51,0.025],bottom=0,ncolors=1,min=0,max=1,$
+           table=newct,/true,/noannot,color='ffffff'xl
+      xyouts,0.49,0.005,'Rain ',align=1,/normal
+      xyouts,0.51,0.005,' Flagged',/normal
+      
+      
+    ENDIF 
 
     CASE 1 OF 
       gif: BEGIN 
