@@ -1,11 +1,14 @@
 #!/usr/bin/perl5  
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <98/10/20 09:04:24 vapuser>
+# Time-stamp: <98/10/27 08:16:56 vapuser>
 # $Id$
 #
 # Modification History:
 #
 # $Log$
+# Revision 1.3  1998/10/22 21:37:09  vapuser
+# To much work to relate. Do a diff if you really care.
+#
 #
 #
 package vap_perl;
@@ -21,7 +24,7 @@ require Exporter;
 	   ParseWindFileNames GetWindFiles GetNow DeltaTime 
 	   ParseVapTime vaptime2idltime );
 
-use Cwd 'chdir';
+use Cwd 'chdir', 'getcwd';
 use Time::Local;
 BEGIN {
     # Get ENV variables
@@ -417,8 +420,8 @@ sub gag {
   $goes_type="goes".$satnum." ".$sensor_dir{$sensornum};
 
     # Get ENV variables
-  $ARCHIVETOP=$ENV{'VAP_GOES_TOPDIR'} || "/disk2/vap/goes";
-  $GRIDDINGTOP=$ENV{'VAP_GOES_GRIDDED_TOPDIR'} || "/disk2/vap/goes/gridded_files";
+  #$ARCHIVETOP=$ENV{'VAP_GOES_TOPDIR'} || "/disk2/vap/goes";
+  #$GRIDDINGTOP=$ENV{'VAP_GOES_GRIDDED_TOPDIR'} || "/disk2/vap/goes/gridded_files";
 
   
     # Get Current Greenwich Mean Time
@@ -552,10 +555,10 @@ sub gag {
         # file is up to date by running mkai in the target
         # directory. See if the area file there is the same one.
 
-    $cwd=$ENV{'PWD'};
+    $cwd=Cwd::getcwd();
     chdir $local_path || die "Couldn't cd to $local_path to run mkai\n";
-    $t=getcwd;
-    print "No in $t\n";
+    $t=Cwd::getcwd();
+    print "Now in $t\n";
     $exe_str = "/usr/people/vapuser/bin/mkai ";
     if ($user =~ /root/){
       ($name,$passwd,$uid,$gid,$quota,$comment,$gcos,$dir,$shell) = 
