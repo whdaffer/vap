@@ -65,6 +65,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/10/30 22:15:21  vapuser
+; Added some comments, squashed some bugs.
+;
 ; Revision 1.3  1998/10/29 15:54:07  vapuser
 ; put in isFile keyword for handling files.
 ;
@@ -88,6 +91,7 @@ FUNCTION DeEnvVar, path, isFile=isFile
    IF strpos(path, '$') EQ -1 THEN BEGIN 
      IF isFile THEN return, path ELSE BEGIN 
        IF GetChar(path,/last) NE '/' THEN return,path+'/'
+     ENDELSE 
    ENDIF 
 
    np = n_elements(path)
