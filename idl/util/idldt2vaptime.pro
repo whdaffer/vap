@@ -58,6 +58,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/17 00:24:34  vapuser
+; Did something, can't recall what.
+;
 ; Revision 1.2  1998/10/07 00:08:25  vapuser
 ; fixed a bug
 ;
@@ -76,6 +79,7 @@ FUNCTION idldt2vaptime, idldt
   ;
   retarray = ''
   nn = n_elements(idldt)
+  dims = size(idldt,/dim)
   IF nn EQ 0 THEN BEGIN 
     idldt =  (today())[0]
     nn = 1
@@ -85,7 +89,9 @@ FUNCTION idldt2vaptime, idldt
 
     IF Tag_Names( idldt, /STRUCTURE_NAME ) EQ 'IDLDT' THEN BEGIN 
 
-      IF nn GT 1 THEN retarray = strarr(nn) ELSE retarray = ''
+      IF nn GT 1 THEN $
+        retarray = make_array(dimens=dims,/string) ELSE $
+        retarray = ''
       FOR i=0,nn-1 DO BEGIN 
         year   = strtrim( idldt[i].year ,2 )
         month  = fix( idldt[i].month  )
