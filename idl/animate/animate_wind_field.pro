@@ -75,10 +75,13 @@
 ;                     contour  and wind speed color bar. (m/s unless knots=1)
 ;
 ;            NB: Internal to this routine, all calculations are in
-;                Meters/Second. Only when the speed is reported is the
-;                conversion made to knots. Nevertheless, it seems
-;                wiser to have the input done in whatever units are
-;                used on output.
+;                Meters/Second. And the units of U/V are *ALWAYS* M/S,
+;                since this is how they appear in the data. DO NOT
+;                CONVERT THEM TO KNOTS if you want to display the
+;                colorbar as knots. Only when the speed is reported is
+;                the conversion made to knots. Nevertheless, it seems
+;                wiser to have the input of the min_speed and max_speed
+;                keywords done in whatever units are used on output.
 ;
 ;          debug - useful for debugging. If set, the routine will stop
 ;                  in the context of the error, so that you can
@@ -98,7 +101,15 @@
 ;                     fundamental (number of frames)
 ;          knots - flag, report the speed in knots. Otherwise, report
 ;                  the speed in meters/second. Also, if this flag is
-;                  set, min/max speed must bu input as knots.
+;                  set, min/max speed must be input as knots.
+;
+;
+;                  Nota Bene! The dimensions of U and V are always
+;                  M/S, this is how they appear in the data! Don't
+;                  convert them to knots in order to have the colorbar
+;                  display as knots. The KNOTS keyword applies only to
+;                  how the speed colorbar is configured and the units
+;                  of the min_speed/max_speed keywords.
 ;
 ; ABOUT THE METHOD AND SOME OF THE DESCRIPTIONS:
 ;
@@ -310,6 +321,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.9  2000/02/28 19:19:22  vapuser
+; Fixed a problem with the Title.
+;
 ; Revision 1.8  2000/01/13 17:43:24  vapuser
 ; Changed call to qmodel->get from the old 'procedure' to the newer
 ; 'function'.  this is required since there is no procedure
@@ -377,65 +391,67 @@
 ;
 PRO ANIMATE_WIND_FIELD, files, $ ; fully qualified grid file name(s) (no default)
                         ddims = ddims,$ ; dimension of grid (3 by 2 array )
-                                   ; ( [ [ start_lon, stop_lon, lon_inc ],
-                                   ;   [ [ start_lat, stop_lat, lat_inc ] )
-                                ; (def = [ [0, 359. 2.5],[-90.,90.,2.5]])
-                                ; Unneccessary if the file is an HDF file.
-                        lonpar = lonpar, $  ; longitude dims of output animation 
-                                   ; [ start_lon, stop_lon ]
-                                   ; (def=[0.,359]
-                                   ; Unnecessary if HDF file
-                        latpar =  latpar, $  ; latitude dims of output animation
-                                   ; [ start_lat, stop_lat]
-                                   ; (def=[-60.,60])
-                                   ; Unnecessary if HDF file
-                        ui     = ui,$ ; Interpolated wind field's U comp
-                        vi     = vi,$ ; Interpolated wind fields V comp
-                        vlonpar = vlonpar,$ ; long dims of vector field
-                                            ; [ start, stop, inc ]
-                                            ; (def=[0>(lonpar(0)-10),
-                                            ;       (lonpar(1)+10)<360,1]
-                        vlatpar = vlatpar,$ ; lat dims of vector field
-                                            ; [ start, stop, inc ]
-                                            ; (def=[-90>(latpar(0)-10),(
-                                            ;             latpar(1)+10)<90,1])
-                        animpar = animpar,$ ; window and animation parameters
-                                            ; [ xsize, ysize, num frames ]
-                                            ; (def=[640,480,60])
-                        path_inc= path_inc,$ ; scale factor to determine how far
-                                             ; along projected path a vector moves
-                        gif =  gif, $ ; flag to write gif file 
-                                                  ; (the default)
-                        pict= pict ,$  ; flag to write pict file
-                        ps= ps,$      ; flag to write postscript file
-                        tiff= tiff,$      ; flag to write tiff
-                                                      ; file
-                        jpeg = jpeg, $          ; Write Jpeg
-                        debug = debug       ,$  ; for debugging
-                        title=title ,$          ; Title for each frame.
-                        min_speed=min_speed,$  ; Minimum wind speed (m/s unless knots=1)
-                        max_speed=max_speed,$  ; Maximum wind speed (m/s unless knots=1)
-                        length=length,$        ; length of vectors
-                        help= help,$           ; set to get help
-                        pad= pad,$ ; padding for tv safe, [xpad, ypad ]
-                        save_first= save_first,$
-                        interpolate=interpolate,$
-                        nologo= nologo,$   ; flags, set if you don't
-                                           ; want a logo
-                        tvsafe = tvsafe ,$ ; sets pad = 
-                                           ; [xsize*0.15,ysize*0.15]
-                        titsafe = titsafe,$;Title safe, 
-                                           ; Adds an additional 
-                                           ; 10% pad onto tvsafe. 
-                                           ; Implies tvsafe.
-                        thick = thick, $   ; Thickness of vectors (def=1)
-                        harmonic=harmonic, $; 
-                         knots  = knots; report the speed in knots, instead of 
-                                       ; the default of m/s
-                        noxinter= noxinter ; obsolete, does nothing, 
-                                ; it's just here so 
-                                ; a lot of other software doesn't
-                                ; break.
+                               ; ( [ [ start_lon, stop_lon, lon_inc ],
+                               ;   [ [ start_lat, stop_lat, lat_inc ] )
+                            ; (def = [ [0, 359. 2.5],[-90.,90.,2.5]])
+                            ; Unneccessary if the file is an HDF file.
+                    lonpar = lonpar, $  ; longitude dims of output animation 
+                               ; [ start_lon, stop_lon ]
+                               ; (def=[0.,359]
+                               ; Unnecessary if HDF file
+                    latpar =  latpar, $  ; latitude dims of output animation
+                               ; [ start_lat, stop_lat]
+                               ; (def=[-60.,60])
+                               ; Unnecessary if HDF file
+                    ui     = ui,$ ; Interpolated wind field's U comp
+                    vi     = vi,$ ; Interpolated wind fields V comp
+                    vlonpar = vlonpar,$ ; long dims of vector field
+                                        ; [ start, stop, inc ]
+                                        ; (def=[0>(lonpar(0)-10),
+                                        ;       (lonpar(1)+10)<360,1]
+                    vlatpar = vlatpar,$ ; lat dims of vector field
+                                        ; [ start, stop, inc ]
+                                        ; (def=[-90>(latpar(0)-10),(
+                                        ;             latpar(1)+10)<90,1])
+                    animpar = animpar,$ ; window and animation parameters
+                                        ; [ xsize, ysize, num frames ]
+                                        ; (def=[640,480,60])
+                    path_inc= path_inc,$ ; scale factor to determine how far
+                                         ; along projected path a vector moves
+                    gif =  gif, $ ; flag to write gif file 
+                                              ; (the default)
+                    pict= pict ,$  ; flag to write pict file
+                    ps= ps,$      ; flag to write postscript file
+                    tiff= tiff,$      ; flag to write tiff
+                                                  ; file
+                    jpeg = jpeg, $          ; Write Jpeg
+                    debug = debug       ,$  ; for debugging
+                    title=title ,$          ; Title for each frame.
+                    min_speed=min_speed,$  ; Minimum wind speed 
+                                           ; (m/s unless knots=1)
+                    max_speed=max_speed,$  ; Maximum wind speed 
+                                           ; (m/s unless knots=1)
+                    length=length,$        ; length of vectors
+                    help= help,$           ; set to get help
+                    pad= pad,$ ; padding for tv safe, [xpad, ypad ]
+                    save_first= save_first,$
+                    interpolate=interpolate,$
+                    nologo= nologo,$   ; flags, set if you don't
+                                       ; want a logo
+                    tvsafe = tvsafe ,$ ; sets pad = 
+                                       ; [xsize*0.15,ysize*0.15]
+                    titsafe = titsafe,$;Title safe, 
+                                       ; Adds an additional 
+                                       ; 10% pad onto tvsafe. 
+                                       ; Implies tvsafe.
+                    thick = thick, $   ; Thickness of vectors (def=1)
+                    harmonic=harmonic, $; 
+                     knots  = knots; report the speed in knots, instead of 
+                                   ; the default of m/s
+                    noxinter= noxinter ; obsolete, does nothing, 
+                            ; it's just here so 
+                            ; a lot of other software doesn't
+                            ; break.
 
 
 COMMON prs, long_sel, lats_sel, lons, lats, uu, vv, uu_sel, vv_sel, $
@@ -565,20 +581,22 @@ IF NOT pict AND $
    NOT tiff AND $
    NOT jpeg THEN gif =  1
 
-mps2knots =  0.514 ; converts meters/sec to knots.
+mps2knots =  1./0.51479 ; converts meters/sec to knots.
 
 
 
 IF n_elements( min_speed ) EQ 0 THEN BEGIN 
   min_speed =  1                ; meters/sec
-  IF knots THEN min_speed = min_speed/mps2knots 
+  IF knots THEN min_speed = min_speed*mps2knots 
 ENDIF 
 
 
 IF n_elements( max_speed ) EQ 0 THEN BEGIN 
   max_speed =  30               ; meters/sec
-  IF knots THEN max_speed = max_speed/mps2knots 
+  IF knots THEN max_speed = max_speed*mps2knots 
 ENDIF 
+
+
 
 IF n_elements( length ) EQ 0 THEN length =  3;
 IF n_elements( title ) EQ 0 THEN title =  '' 
@@ -590,6 +608,11 @@ IF n_elements( title ) EQ 0 THEN title =  ''
   ; is only done if we're putting a logo on! We have to go through the
   ; rigamorole above with min/max speed to make sure that everything
   ; was in the right units.
+
+  ; Later, after we report the min/max speed, we'll convert back to
+  ; m/s, keeping it in these units until the final step, when, if
+  ; needed, we convert to knots in order to put the color bars on the
+  ; frames.
 
   ; Sorry!
 
@@ -638,7 +661,7 @@ chkcfg,'VLONPAR',vlonpar,cfg
 chkcfg,'VLATPAR',vlatpar,cfg
 chkcfg,'ANIMPAR',animpar,cfg
 
-IF n_elements(path_inc) EQ 0THEN path_inc =  0.04 
+IF n_elements(path_inc) EQ 0 THEN path_inc =  0.04 
 
 IF n_elements( lonpar ) NE 2 THEN BEGIN
   lonpar =  [0.,359]
@@ -691,8 +714,13 @@ message,'length   = ' + strtrim(length,2),/info
 message,'thick    = ' + strtrim(thick,2),/info
 
 IF knots THEN BEGIN 
-  message,'min_speed (knots) = ' + string( min_speed*mps2knots, form= '(f7.2)' ),/info
-  message,'max_speed (knots) = ' + string( max_speed*mps2knots, form= '(f7.2)' ),/info
+  message,'min_speed (knots) = ' + string( min_speed, form= '(f7.2)' ),/info
+  message,'max_speed (knots) = ' + string( max_speed, form= '(f7.2)' ),/info
+
+  ; Now convert the speeds back to m/s for optimal code.
+  min_speed = min_speed/mps2knots
+  max_speed = max_speed/mps2knots
+
 ENDIF ELSE BEGIN 
   message,'min_speed  = ' + string( min_speed, form= '(f7.2)' ),/info
   message,'max_speed  = ' + string( max_speed, form= '(f7.2)' ),/info
