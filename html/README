@@ -1,0 +1,8 @@
+$Id$
+
+The HTML code in this directory, the images in the ./images
+subdirectory and the Javascript scripts in the ./js subdirectory are
+the static parts of the VAP website. The rest of the website is
+created by the VAP perl code.
+
+
