@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.5  1998/10/07 00:10:35  vapuser
+  ; Squashed a bug having to do with (Start|End)Time
+  ;
   ; Revision 1.4  1998/10/05 22:54:41  vapuser
   ; Added Start/EndTime to Read,Set,Get
   ; and Object Definition
@@ -148,7 +151,7 @@
   ;
   ; ===============================================================
 
-FUNCTION q2b::init, $
+FUNCTION Q2B::Init, $
             u,     $ ; fltarr [4,n,m]
             v,     $ ; "         "
             lon,   $ ; fltarr [n,m]
@@ -201,15 +204,22 @@ FUNCTION q2b::init, $
     IF N_Elements( data_struct ) NE 0 THEN BEGIN 
       name = Tag_Names( data_struct, /structure_name ) 
       IF name EQ 'Q2BDATA' OR name EQ 'QMODEL' THEN BEGIN 
-        self.nrecs =  N_Elements(data_struct)
-        self.ncells = N_Elements(data_struct(0).su)
+        IF name EQ 'Q2BDATA' THEN BEGIN 
+          self.nrecs =  N_Elements(data_struct)
+          self.ncells = N_Elements(data_struct(0).su)
+          self.model = 0
+        ENDIF ELSE BEGIN 
+          Self.nrecs = -1
+          self.ncells = -1
+          self.model = 1
+        ENDELSE 
         self.data =  ptr_new( data_struct )
-        IF N_Elements( eqx ) NE 0 THEN self.eqx = eqx
         status = 1
       ENDIF ELSE BEGIN
         STR = 'Input Data Structure must be of type Q2BDATA or QMODEL'
         Message,str,/cont
       ENDELSE 
+      IF N_Elements( eqx ) NE 0 THEN self.eqx = eqx
         ; Get the extent of the data
       ; self-> GetExtent
     ENDIF ELSE BEGIN 
@@ -434,7 +444,7 @@ FUNCTION q2b::init, $
     ENDIF 
   ENDIF ELSE self-> SetExcludeCols
   return,status
-END
+END ; End Init
 
 
   ; ===============================================================
@@ -483,15 +493,17 @@ FUNCTION q2b::Set, $
   recalc_extent = 0
   status = 1
 
-  IF N_Elements(crdecimate) EQ 2 THEN BEGIN 
-    self.crdecimate = [ 0> crdecimate[0] < self.ncells, $
-                        0> crdecimate[1] < self.nrecs ]
+  IF NOT self.model THEN BEGIN 
+    IF N_Elements(crdecimate) EQ 2 THEN BEGIN 
+      self.crdecimate = [ 0> crdecimate[0] < self.ncells, $
+                          0> crdecimate[1] < self.nrecs ]
+    ENDIF 
+    IF N_Elements(decimate) NE 0 THEN self.decimate = (1> decimate < 99)
+    IF N_Elements(ExcludeCols) NE 0 AND $
+      VarType(ExcludeCols) EQ 'STRING' THEN BEGIN  
+      self-> SetExcludeCols,ExcludeCols
+    ENDIF     
   ENDIF 
-  IF N_Elements(decimate) NE 0 THEN self.decimate = (1> decimate < 99)
-  IF N_Elements(ExcludeCols) NE 0 AND $
-    VarType(ExcludeCols) EQ 'STRING' THEN BEGIN  
-    self-> SetExcludeCols,ExcludeCols
-  ENDIF     
 
   IF n_Elements(StartTime) NE 0 THEN self.StartTime =  StartTime
   IF n_Elements(EndTime) NE 0 THEN self.EndTime =  EndTime
@@ -821,9 +833,23 @@ FUNCTION q2b::ConfigDataPtr, $
    status = 0
    IF ptr_valid( self.data ) THEN ptr_free, self.data
    IF N_Elements(data_struct) NE 0 THEN BEGIN 
-     self.nrecs =  N_Elements( data_struct )
-     self.ncells =  N_Elements( data_struct[0].su )
-     self.data =  Ptr_New( data_struct )
+     name =  Tag_Names( date_struct, /Structure_name)
+     IF name EQ 'Q2BDATA' OR name EQ 'QMODEL' THEN BEGIN 
+       IF name EQ 'Q2BDATA' THEN BEGIN 
+         self.nrecs =  N_Elements( data_struct )
+         self.ncells =  N_Elements( data_struct[0].su )
+         self.model = 0
+       ENDIF ELSE BEGIN 
+         Self.nrecs = -1
+         self.ncells = -1
+         self.model = 1
+       ENDELSE 
+       self.data =  Ptr_New( data_struct )
+       
+     ENDIF ELSE BEGIN 
+        STR = 'Input Data Structure must be of type Q2BDATA or QMODEL'
+        Message,str,/cont
+     ENDELSE 
      ; self->GetExtent
      status = 1
    ENDIF ELSE BEGIN 
@@ -975,9 +1001,14 @@ FUNCTION Q2b::Read, filename
     ELSE: BEGIN 
 
       IF Hdf_IsHdf(filename) THEN BEGIN 
-        data = q2bhdfread(filename,eqx=eqx,$
-                        StartTime=StartTime,$
-                        EndTime=EndTime)
+        IF IsQ2b( filename ) THEN BEGIN 
+          data = q2bhdfread(filename,eqx=eqx,$
+                            StartTime=StartTime,$
+                            EndTime=EndTime)
+        ENDIF ELSE BEGIN 
+          Message,"Not a Q2B HDF file " + filename,/cont
+          return,0
+        ENDELSE 
         IF Vartype(eqx) EQ 'STRUCTURE' THEN self.eqx = eqx
         IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
           status = 1
@@ -1052,8 +1083,8 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
             crdecimate=crdecimate,$
             excludecols = excludecols, $
             Silent=Silent
-   status = 1
-   
+
+   status = 1   
    Silent = Keyword_Set( Silent )
 
    Catch,error
@@ -1066,149 +1097,185 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
      return,0
    ENDIF 
 
-   ncells = self.ncells
-   nrecs = self.nrecs
-   west = 0
-   IF n_elements(limit) EQ 4 THEN $
-     lonrange = FixLonRange( [limit[0],limit[2]],west=west )
-
-   IF N_elements(decimate) NE 0 THEN self.decimate=1> decimate < 99
-   IF N_Elements(crdecimate) EQ 2 THEN $
-    self.CRDecimate=fix( $
-                        [ 0> CRDecimate[0] < self.ncells, $
-                          0> CRDecimate[1] < self.nrecs ] )
-
-   crdecimate = self.crdecimate
-   decimate = self.decimate
-   junk = where( self.crdecimate, njunk )
-   IF njunk NE 0 THEN BEGIN 
-     decimate = self.crdecimate
-     IF decimate[0] LE 1 AND decimate[1] LE 1 THEN decimate = 1
-   ENDIF 
-
-   IF n_elements(excludeCols) NE 0 AND $
-      VarType(excludeCols) EQ 'STRING' THEN BEGIN 
-     IF strlen( excludeCols) NE 0 THEN self-> SetExcludeCols,excludeCols
-   ENDIF 
-   PtrToExcludeCols = self.ExcludeCols
-
    IF ptr_valid( self.data ) THEN BEGIN 
+     IF self.model THEN BEGIN 
+
+       name = Tag_Names( (*self.data), /Structure_Name )
+
+       IF name eq 'QMODEL' THEN BEGIN 
+
+         U = *((*self.data).u)
+         V = *((*self.data).v)
+         LonPar = (*self.data).hdr.lonpar
+         LatPar = (*self.data).hdr.latpar
+         NLon = (*self.data).hdr.nlon
+         NLat = (*self.data).hdr.nlat
+         lon = ( findgen( nlon )*lonpar[2] + lonpar[0] )#replicate(1, nlat )
+         lat =  replicate(1,nlon)#( findgen(nlat)*LatPar[2]-LatPar[0] )
+
+         IF N_Elements( Limit ) EQ 4 THEN BEGIN 
+           xx = where( lon GE limit[0] AND lon LE limit[2] AND $
+                       lon GE limit[1] AND lon LE limit[3], nxx )
+           IF nxx NE 0 THEN BEGIN 
+             u = u[xx]
+             v = v[xx]
+             lon = lon[xx]
+             lat = lat[xx]
+             status = 1
+           ENDIF ELSE status = 0
+         ENDIF ELSE $
+           Message,'Limit must be 4-vector: Ignored',/cont
+       ENDIF ELSE BEGIN 
+         Message,'Unknown Structure Type ' + name,/cont
+         status = 0
+       ENDELSE 
+     ENDIF ELSE BEGIN 
+
+         ; Not model date.
+
+       ncells = self.ncells
+       nrecs = self.nrecs
+       west = 0
+       IF n_elements(limit) EQ 4 THEN $
+         lonrange = FixLonRange( [limit[0],limit[2]],west=west )
+
+       IF N_elements(decimate) NE 0 THEN self.decimate=1> decimate < 99
+       IF N_Elements(crdecimate) EQ 2 THEN $
+        self.CRDecimate=fix( $
+                            [ 0> CRDecimate[0] < self.ncells, $
+                              0> CRDecimate[1] < self.nrecs ] )
+
+       crdecimate = self.crdecimate
+       decimate = self.decimate
+       junk = where( self.crdecimate, njunk )
+       IF njunk NE 0 THEN BEGIN 
+         decimate = self.crdecimate
+         IF decimate[0] LE 1 AND decimate[1] LE 1 THEN decimate = 1
+       ENDIF 
+
+       IF n_elements(excludeCols) NE 0 AND $
+          VarType(excludeCols) EQ 'STRING' THEN BEGIN 
+         IF strlen( excludeCols) NE 0 THEN self-> SetExcludeCols,excludeCols
+       ENDIF 
+       PtrToExcludeCols = self.ExcludeCols
+
      
-;     IF Ptr_Valid( self.extent ) THEN BEGIN 
-;       extent = *self.extent
-;       lonextent = extent[*,*,0]
-;       latextent = extent[*,*,1]
-;       IF west THEN BEGIN 
-;         xx = where( lonextent GT 180, nxx )
-;         IF nxx NE 0 THEN lonextent(xx) =  lonextent(xx) - 360. 
+;      IF Ptr_Valid( self.extent ) THEN BEGIN 
+;        extent = *self.extent
+;        lonextent = extent[*,*,0]
+;        latextent = extent[*,*,1]
+;        IF west THEN BEGIN 
+;          xx = where( lonextent GT 180, nxx )
+;          IF nxx NE 0 THEN lonextent(xx) =  lonextent(xx) - 360. 
+;        ENDIF 
+;        good = where( lonextent GE lonrange[0] AND lonextent LE lonrange[1] AND $
+;                      latextent GT limit[1] AND latextent LE limit[3], ngood )
+;        IF ngood eq 0 THEN BEGIN 
+;             ; Only care if no data.
+;          return, 0
+;        ENDIF 
 ;       ENDIF 
-;       good = where( lonextent GE lonrange[0] AND lonextent LE lonrange[1] AND $
-;                     latextent GT limit[1] AND latextent LE limit[3], ngood )
-;       IF ngood eq 0 THEN BEGIN 
-;            ; Only care if no data.
-;         return, 0
-;       ENDIF 
-;      ENDIF 
 
        ; If we got here, there's data to be extracted!
-     lon =  (*self.data).lon
-     lat =  (*self.data).lat
+       lon =  (*self.data).lon
+       lat =  (*self.data).lat
 
-     IF N_Elements(ambig) eq 0 THEN ambig = 0
-     IF n_elements( limit ) NE 0 THEN BEGIN 
-       IF n_elements( limit ) EQ 4 THEN BEGIN 
-         IF west THEN BEGIN 
-           xx = where( lon GT 180, nxx )
-           IF nxx NE 0 THEN lon(xx) = lon(xx)-360.
-         ENDIF 
-         selection = where( $
-                           lon GE lonrange[0] AND $
-                           lon LE lonrange[1] AND $
-                           lat GE limit[1] AND $
-                           lat LE limit[3], n_selection )
+       IF N_Elements(ambig) eq 0 THEN ambig = 0
+       IF n_elements( limit ) NE 0 THEN BEGIN 
+         IF n_elements( limit ) EQ 4 THEN BEGIN 
+           IF west THEN BEGIN 
+             xx = where( lon GT 180, nxx )
+             IF nxx NE 0 THEN lon(xx) = lon(xx)-360.
+           ENDIF 
+           selection = where( $
+                             lon GE lonrange[0] AND $
+                             lon LE lonrange[1] AND $
+                             lat GE limit[1] AND $
+                             lat LE limit[3], n_selection )
 
-         IF n_selection EQ 0 THEN BEGIN 
-           IF NOT Silent THEN Message,' No data in selected area!',/cont
+           IF n_selection EQ 0 THEN BEGIN 
+             IF NOT Silent THEN Message,' No data in selected area!',/cont
+             return,0
+           ENDIF 
+         ENDIF ELSE BEGIN 
+           Message,'Limit keyword must have 4 elements '
            return,0
+         ENDELSE 
+       ENDIF 
+       IF ambig EQ 0 THEN BEGIN 
+           ; The 'selected' ambiguity has been specifically requested.
+         u   = (*self.data).su 
+         v   = (*self.data).sv 
+       ENDIF ELSE BEGIN 
+         IF ambig LT 5 THEN BEGIN 
+           u   = reform((*self.data).u[ambig-1,*])
+           v   = reform((*self.data).v[ambig-1,*])
+         ENDIF ELSE BEGIN 
+           ; Ambiguity = 5 means use model field.
+           u = (*self.data).mu
+           v = (*self.data).mv
+         ENDELSE 
+       ENDELSE 
+
+       IF n_elements( limit ) NE 0 THEN BEGIN 
+         Unpack_Where, lon, selection, c, r
+           ; We're really interested only in the rows.
+           ; Later, when we get more involved, we'll zero out the
+           ; columns of the first and last rows that we're putting in
+           ; these arrays that weren't actually selected.
+         R=minmax(r)
+         u   = u(*,r[0]:r[1])
+         v   = v(*,r[0]:r[1])
+         lon = lon(*,r[0]:r[1])
+         lat = lat(*,r[0]:r[1])
+       ENDIF 
+
+       IF Ptr_Valid(PtrToExcludeCols) THEN BEGIN 
+         excludecols =  0> *PtrToExcludeCols < (self.ncells-1)
+         u[excludecols,*] = !values.f_nan
+         v[excludecols,*] = !values.f_nan
+       ENDIF 
+
+         ; We could just eliminate the unwanted vectors, but it will
+         ; be good, I think, to maintain the underlying ncells by nrecs
+         ; shape of the arrays. So, until I decide otherwise, I'll just
+         ; turn the unwanted ones into NaNs. Will have to revisit later.
+
+       IF n_elements(decimate) EQ 2 THEN BEGIN 
+
+         cols = decimate[0]
+         rows = decimate[1]
+         s = size(u)
+         nc = s[1]
+         nr = s[2]
+
+         IF cols GT 1 THEN BEGIN 
+           junk = lonarr( nc )
+           junk(lindgen( nc/cols )*cols) =  1
+           junk = where(junk EQ 0, njunk )
+           u[junk,*] = !values.f_nan
+           v[junk,*] = !values.f_nan
          ENDIF 
+
+         IF rows GT 1 THEN BEGIN 
+           junk = lonarr( nr )
+           junk(lindgen( nr/rows )*rows) =  1
+           junk = where(junk EQ 0, njunk )
+           u[*,junk] = !values.f_nan
+           v[*,junk] = !values.f_nan
+         ENDIF 
+
        ENDIF ELSE BEGIN 
-         Message,'Limit keyword must have 4 elements '
-         return,0
+
+         IF decimate GT 1 THEN BEGIN 
+           junk = lonarr( n_elements( u ) ) 
+           junk( lindgen( n_elements(u)/decimate )*decimate ) =  1
+           junk = where( junk EQ 0, njunk)
+           u[junk] = !values.f_nan
+           v[junk] = !values.f_nan
+           junk=0
+         ENDIF
        ENDELSE 
-     ENDIF 
-     IF ambig EQ 0 THEN BEGIN 
-         ; The 'selected' ambiguity has been specifically requested.
-       u   = (*self.data).su 
-       v   = (*self.data).sv 
-     ENDIF ELSE BEGIN 
-       IF ambig LT 5 THEN BEGIN 
-         u   = reform((*self.data).u[ambig-1,*])
-         v   = reform((*self.data).v[ambig-1,*])
-       ENDIF ELSE BEGIN 
-         ; Ambiguity = 5 means use model field.
-         u = (*self.data).mu
-         v = (*self.data).mv
-       ENDELSE 
-     ENDELSE 
-
-     IF n_elements( limit ) NE 0 THEN BEGIN 
-       Unpack_Where, lon, selection, c, r
-         ; We're really interested only in the rows.
-         ; Later, when we get more involved, we'll zero out the
-         ; columns of the first and last rows that we're putting in
-         ; these arrays that weren't actually selected.
-       R=minmax(r)
-       u   = u(*,r[0]:r[1])
-       v   = v(*,r[0]:r[1])
-       lon = lon(*,r[0]:r[1])
-       lat = lat(*,r[0]:r[1])
-     ENDIF 
-
-     IF Ptr_Valid(PtrToExcludeCols) THEN BEGIN 
-       excludecols =  0> *PtrToExcludeCols < (self.ncells-1)
-       u[excludecols,*] = !values.f_nan
-       v[excludecols,*] = !values.f_nan
-     ENDIF 
-
-       ; We could just eliminate the unwanted vectors, but it will
-       ; be good, I think, to maintain the underlying ncells by nrecs
-       ; shape of the arrays. So, until I decide otherwise, I'll just
-       ; turn the unwanted ones into NaNs. Will have to revisit later.
-
-     IF n_elements(decimate) EQ 2 THEN BEGIN 
-
-       cols = decimate[0]
-       rows = decimate[1]
-       s = size(u)
-       nc = s[1]
-       nr = s[2]
-
-       IF cols GT 1 THEN BEGIN 
-         junk = lonarr( nc )
-         junk(lindgen( nc/cols )*cols) =  1
-         junk = where(junk EQ 0, njunk )
-         u[junk,*] = !values.f_nan
-         v[junk,*] = !values.f_nan
-       ENDIF 
-
-       IF rows GT 1 THEN BEGIN 
-         junk = lonarr( nr )
-         junk(lindgen( nr/rows )*rows) =  1
-         junk = where(junk EQ 0, njunk )
-         u[*,junk] = !values.f_nan
-         v[*,junk] = !values.f_nan
-       ENDIF 
-
-     ENDIF ELSE BEGIN 
-
-       IF decimate GT 1 THEN BEGIN 
-         junk = lonarr( n_elements( u ) ) 
-         junk( lindgen( n_elements(u)/decimate )*decimate ) =  1
-         junk = where( junk EQ 0, njunk)
-         u[junk] = !values.f_nan
-         v[junk] = !values.f_nan
-         junk=0
-       ENDIF
      ENDELSE 
    ENDIF ELSE BEGIN 
      Message,$
@@ -1245,51 +1312,57 @@ END
   ; ==========================================
 
 PRO Q2B::GetExtent
-   IF (self.eqx.date NE '' AND self.eqx.time NE '' ) THEN BEGIN 
-     extent = QSwathExtent(self.eqx.lon)
-     IF Ptr_Valid(self.extent) THEN Ptr_Free,self.extent
-     IF NOT Finite(extent[0]) THEN $ 
-       self.extent = Ptr_New( extent,/no_copy ) ELSE $
-       self.extent = Ptr_New()
+   IF self.model THEN BEGIN 
+     lonpar = (*self.data).hdr.lonpar
+     latpar = (*self.data).hdr.latpar
+     self.extent = ptr_new([ lonpar[0], latpar[0], lonpar[1], latpar[1] ] )
    ENDIF ELSE BEGIN 
-       ; No equator crossing info. Have to figure it out ourselves.
-       ; First try to find a equator crossing longitude. If that can't
-       ; be determined then calculate the extent directly from the
-       ; data.
-      data = *(self.data)
-      ncells = self.ncells
-      lat = data.lat[ncells/2:ncells/2+1,*]
-      lon = data.lon[ncells/2:ncells/2+1,*]
-      xx = where( lat AND lon, nxx )
-      IF nxx NE 0 THEN BEGIN 
-        latmin = min(abs(lat(xx)),ilatmin)
-        IF latmin LE 0.25 THEN BEGIN 
-          extent = QSwathExtent(lon[xx[ilatmin]])
-          IF Finite(extent[0]) THEN $ 
-            self.extent = Ptr_New( extent,/no_copy ) ELSE $
-            self.extent = Ptr_New()
-        ENDIF ELSE BEGIN 
-         ; We don't have a equator crossing, determine the extent
-         ; directly from the data
-          good = where( data.lon[2,*] NE 0. AND $
-                        data.lon[self.ncells/2,*] NE 0. AND $
-                        data.lon[self.ncells-3,*] AND 0. AND $
-                        data.lat[2,*] NE 0. AND $
-                        data.lat[self.ncells/2,*] NE 0. AND $
-                        data.lat[self.ncells-3,*] AND 0., ngood )
-          IF ngood GE self.nrecs/10 THEN BEGIN 
-            extent =  [ $
-                       [[ data.lon[ [2, ncells/2, self.ncells-3],good]]],$
-                       [[ data.lat[ [2, ncells/2, self.ncells-3],good]]] $
-                      ]
-            IF ptr_valid( self.extent ) THEN ptr_free, self.extent
-            self.extent = ptr_new( extent,/no_copy )
+     IF (self.eqx.date NE '' AND self.eqx.time NE '' ) THEN BEGIN 
+        extent = QSwathExtent(self.eqx.lon)
+       IF Ptr_Valid(self.extent) THEN Ptr_Free,self.extent
+       IF NOT Finite(extent[0]) THEN $ 
+         self.extent = Ptr_New( extent,/no_copy ) ELSE $
+         self.extent = Ptr_New()
+     ENDIF ELSE BEGIN 
+         ; No equator crossing info. Have to figure it out ourselves.
+         ; First try to find a equator crossing longitude. If that can't
+         ; be determined then calculate the extent directly from the
+         ; data.
+        data = *(self.data)
+        ncells = self.ncells
+        lat = data.lat[ncells/2:ncells/2+1,*]
+        lon = data.lon[ncells/2:ncells/2+1,*]
+        xx = where( lat AND lon, nxx )
+        IF nxx NE 0 THEN BEGIN 
+          latmin = min(abs(lat(xx)),ilatmin)
+          IF latmin LE 0.25 THEN BEGIN 
+            extent = QSwathExtent(lon[xx[ilatmin]])
+            IF Finite(extent[0]) THEN $ 
+              self.extent = Ptr_New( extent,/no_copy ) ELSE $
+              self.extent = Ptr_New()
           ENDIF ELSE BEGIN 
-            IF ptr_valid( self.extent ) THEN ptr_free, self.extent
-            self.extent = ptr_new()
+           ; We don't have a equator crossing, determine the extent
+           ; directly from the data
+            good = where( data.lon[2,*] NE 0. AND $
+                          data.lon[self.ncells/2,*] NE 0. AND $
+                          data.lon[self.ncells-3,*] AND 0. AND $
+                          data.lat[2,*] NE 0. AND $
+                          data.lat[self.ncells/2,*] NE 0. AND $
+                          data.lat[self.ncells-3,*] AND 0., ngood )
+            IF ngood GE self.nrecs/10 THEN BEGIN 
+              extent =  [ $
+                         [[ data.lon[ [2, ncells/2, self.ncells-3],good]]],$
+                         [[ data.lat[ [2, ncells/2, self.ncells-3],good]]] $
+                        ]
+              IF ptr_valid( self.extent ) THEN ptr_free, self.extent
+              self.extent = ptr_new( extent,/no_copy )
+            ENDIF ELSE BEGIN 
+              IF ptr_valid( self.extent ) THEN ptr_free, self.extent
+              self.extent = ptr_new()
+            ENDELSE 
           ENDELSE 
-        ENDELSE 
-      ENDIF ELSE self.extent = ptr_new()
+        ENDIF ELSE self.extent = ptr_new()
+     ENDELSE 
    ENDELSE 
 END
 
@@ -1445,11 +1518,15 @@ PRO q2b__define
            StartTime: '',$        ; Start time of data (yyyy/mm/dd/hh/mm)
            EndTime  : '',$        ; End time of data (yyyy/mm/dd/hh/mm)
            type     : '',$        ; 'SVH', 'HDF' or '???'
-           ncells   : 0l,$        ; number of crosstrack cells
+           model    : 0l,$        ; Indicates model data (which means 
+                                  ; ncells and nrecs are meaningless)
+           ncells   : 0l,$        ; number of crosstrack cells 
+                                  ; (see note on 'model')
            nrecs    : 0l,$        ; number of records 
+                                  ; (see note on 'model')
 
-           decimate: 0l,$
-                                  ; takes all points. Note interaction
+           decimate: 0l,$         ;
+                                  ; n=>Take every n-th point. Note interaction
                                   ; with keyword 'crdecimate.'
 
            crdecimate: intarr(2),$; Row Column Decimate. Allows user to 
@@ -1461,8 +1538,8 @@ PRO q2b__define
                                   ; exectly like 'decimate,' except it
                                   ; referes to the individual columns
                                   ; and rows. So, crdecimate=[2,3]
-                                  ; means take every other column and
-                                  ; every third row.  NB, A zero entry
+                                  ; means take every 2nd column and
+                                  ; every 3rd row.  NB, A zero entry
                                   ; means the same as an entry of '1',
                                   ; namely take every element in that
                                   ; dimension, i.e. [0,2] means take
@@ -1477,7 +1554,7 @@ PRO q2b__define
            eqx      : eqx,$       ; 'EQX' structure 
                                   ; (e.g. {EQX,date:'',time:'',lon:0.})
            data     : ptr_new(),$ ; Pointer to structure of type
-                                  ; 'Q2BDATA'.
+                                  ; 'Q2BDATA' or 'QMODEL'
            extent   : ptr_new() } ; pointer to array of size [n,3,2] 
                                   ; which gives a proxy to the
                                   ; location of the actual data. This
