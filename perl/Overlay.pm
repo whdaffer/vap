@@ -7,39 +7,110 @@
 
 =head2 SYNOPSIS
 
-  $overly_obj = Overlay->new( REGION=>region, 
-                              WINDFILTER=> 'filter',
-                              TIME => 'yyyy/mm/dd/hh/mm',
-                              WINDPATH => 'path-to-wind-data',
-                              DELTA => n,
-                              SATNAME => 'name',
-                              SATNUM => 'num',
-                              SENSORNUM => 'num',
-                              LONLIM=>[lonmin,lonmax],
-                              LATLIM=>[latmin,latmax],
-                              CRDECIMATE=>[x,y],
-                              EXCLUDCOLS=>"exclude_string",
-                              RAINFLAG=>0|1,
-                              RF_ACTION=>0|1,
-                              RF_COLOC=>color,
-                              LENGTH=>n,
-                              TELME=>0|1,
-                              HELP=>0|1);
 
-  These keywords control the type of overlay done, see the
-  documentation of the IDL routine 'cloud_overlay.pro' for a full
-  description of each key.
+   overlyobj = Overlay->new(REGION=>region,
+	    TIME=>'yyyy/mm/dd/hh/mm',(in GMT)
+	    WINDPATH => 'PATH_TO_WIND_FILES',
+	    WINDFILTER=> WINDFILTER, (i.e. 'Q' or 'S' (REQUIRED!)
+	    WINDDELTA => n.m, (number of hours around TIME to look for wind data)
+            IMAGEDELTA => f.g, image data closest to TIME must be 
+                          no more than this delta prior. if ABS flag is set, 
+                          this interval extends on both sides of TIME, i.e. 
+                          the image data may be later than TIME.
+	    SATNAME => SATELLITE_NAME, (.e.g. 'goes')
+	    SATNUM =>  SATELLITE_NUMBER, (e.g. 10 for goes10)
+	    SENSORNUM => SENSOR_NUMBER, (e.g. 1=vis, 2=ir2, 3=ir3, 4=ir4)
+	    LONLIM => [lonmin, lonmax],
+	    LATLIM => [latmin,latmax],
+	    CRDECIMATE => [Col,Row],
+	    EXCLUDECOLS => idl-array-submatrix-desg (as string)
+	    TELLME =>: Calculates, reports and exits
 
-  Almost all of the time this object will be `used' by the script
-  called by cron to make the standard VAP overlay products. As such it
-  will generally only use the keys `REGION,' and 'TIME.' The object
-  then uses REGION as a key into the hash defined in
-  $VAP_LIBRARY/overlay_defs. The other keys (WINDPATH, WINDFILTER,
-  SATNAME, SATNUM, SENSORNUM, LONLIM, LATLIM, CRDECIMATE, EXCLUDECOLS,
-  RAINFLAG, RF_ACTION, RF_COLOR, DELTA and LENGTH) exists to allow the
-  user to specify the information contained in overlay_defs. TELLME
-  writes out what processing would be undertaken and then exits
-  without actually doing the processing; HELP emits a usage message.
+    where:
+
+
+      WINDFILTER: (REQUIRED) one letter switch which tells 
+                  which wind data to use.
+
+        Possible filters are: Q|q for QuikSCAT data
+        S|s for SeaWinds.
+
+        Currently there's no plan to do combined overlays.
+
+        This is NOT a shell file glob, but a regular switch,
+        so input it EXACTLY as shown!
+
+
+
+      REGION: the designation for the region as it appears in the
+        _overlay_defs_oo_ file. (See file \$VAP_LIBRARY/overlay_defs_oo for
+        the complete list of predefined regions.) If absent, the
+        program falls over to using the information given (some of
+        which can be defaulted) in the combination of the
+        satname/satnum/sensornum/lon/lat options.
+
+          If REGION is absent the required minimal set of keys is:
+          WINDFILTER, SATNUM, SATNUM, SENSORNUM, LONLIM, LATLIM
+
+
+
+      TIME: the GMT time of the `run'. This time will determine which
+           cloud and wind data are used and the behavior of the object
+           depends on which other keys are present.
+
+           If REGION is present but TIME is not, the data used in the
+           run will be determined using the ASCTIME/DESCTIME in the hash
+           defined in the \$VAP_LIBRARY/overlay_defs_oo. The object will
+           choose the time closest but not exceeding to the current
+           time.
+
+           If TIME is present at object creation, the object will use
+           that time whether REGION (and hence the ASCTIME/DESCTIME
+           implied) is present or not.
+
+      WINDDELTA: defines the `window' around the value given in TIME
+        in which to search for wind data
+
+      PATH_TO_WIND_FILES: pretty self explanatory.
+        Default given by environmental variable 'VAP_DATA_TOP'
+
+      SATNAME: Name of satellite, Currently only 'goes' works
+        Maybe someday we'll be able to use GMS
+
+      SATNUM: Satellite Number (Currently only 10 and 8 work, since 
+        we can only do 'GOES' satellites
+
+      SENSORNUM: 1=vis, 2=ir2, 3=ir3, 4=ir4
+
+      LONLIM: Followed by two values: e.g. '--lonlim [minlon, maxlon]'
+        Defaults are dependent on the satellite
+
+      LATLIM: Similar to --lon, but in latitude
+
+      CRDECIMATE: the col/row decimation
+        Default=[2,2]
+
+      EXCLUDECOLS: See documentation for cloud_overlay.pro for the format
+         of this string (default = '').
+
+      LENGTH: Length fo the Vectors overplotting the cloud data
+
+      RAINFLAG: Determines what to do with Rain Flagged wind data.
+         0=ignore, 1=use (default=0)
+
+      RF_ACTION: What to do if rainflag==1
+         0=don't plot rainflagged vectors. 1=plot using rf_color
+
+      RF_COLOR: Color to use when plotting rainflagged vectors if rf_action==1
+         this color depends on the device environment. It's an index in 8-bit
+         color and a true 24 bit color in 24 bit color environment.
+
+      TELLME: Calculates, reports the values for all the variables and exits
+        Use this option to find out what the defaults are in any given situation
+
+      If one wishes to grid and overlay an arbitrary region not predefined
+      in the overlay_defs file, one must use the combination of
+      satname/satnum/sensornum/lon/lat to do so.
 
   The minimal set of keywords required by this object are REGION and
   WINDFILTER. The rest will take appropriate defaults.
@@ -52,6 +123,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.4  2002/12/06 22:54:03  vapdev
+# Continuing work
+#
 # Revision 1.3  2002/12/06 00:39:22  vapdev
 # Continuing work
 #
@@ -361,22 +435,6 @@ sub setupProcessing{
   $self->{GRIDDED_FILE} = $gridded_file;
   $self->{GMSTYPE} = $gmstype || "";
 
-
-    ## Now get the wind files!
-
-  
-
-  1;
-}
-
-
-#=============================================================
-# ReportStatus
-#=============================================================
-sub _reportStatus{
-  my $self=shift;
-  my $subject = shift || carp "Need subject line!\n";
-  my $message = shift || "NULL MESSAGE\n";;
   1;
 }
 
@@ -407,6 +465,7 @@ sub _createLockfile{
 sub runIDL{
   my ($self,$gridded_file,$gmstype) = @_;
 
+    # build the IDL batch file.
   my $idl_tmp_file = $self->_buildTmpfile();
 
   my $exe_str="idl $idl_tmp_file";
@@ -434,29 +493,10 @@ sub runIDL{
 				    "jpg.tn","jpg.TN","JPG.tn","JPG.TN",
 				    "jpeg.tn","jpeg.TN","JPEG.tn","JPEG.TN"
 				  );
-  $self->_moveOutput();
-  $self->_redoHTML();
+
   1;
 }
 
-#=============================================================
-# _moveOutput
-#    Move the newly created overlay files to the overlay archive in 
-#    the WWW area
-#==================================================================
-
-sub _moveOutput{
-  my $self=shift;
-  1;
-}
-#=============================================================
-# _redoHTML
-#    ReWrite the webpage
-#==================================================================
-sub _redoHTML{
-  my $self=shift;
-  1;
-}
 
 #=============================================================
 # _buildTmpfile
@@ -471,7 +511,7 @@ sub _buildTmpfile{
 
   my $lock_file = $self->_createLockfile();
   my $gridded_file = $self->{GRIDDED_FILE};
-  my $delta = $self->{DELTA};
+  my $delta = $self->{WINDDELTA};
   my ($idl_time_string, $idl_tmp_file, $exe_str);
   $idl_time_string=$self->{TIME};
   $idl_tmp_file=$ENV{VAP_TMPFILES_DIR}. "$0_idl_called_by_perl_$$.pro";
@@ -584,6 +624,19 @@ sub _checkForErrors{
 
 
 #=============================================================
+# ReportStatus
+# not used for anything, at the moment.
+#=============================================================
+sub _reportStatus{
+  my $self=shift;
+  my $subject = shift || carp "Need subject line!\n";
+  my $message = shift || "NULL MESSAGE\n";;
+  1;
+}
+
+
+
+#=============================================================
 # _croak
 #  Wrapper for errorobject->ReportAndDie
 #==================================================================
@@ -601,8 +654,39 @@ sub _checkForErrors{
 #=============================================================
 #
 #=============================================================
+sub deliver{
+  my $self=shift;
+
+    #move the output files to their final resting place
+  $self->_moveOutput();
+
+    # call the website rewriting object to rewrite the website page.
+  $self->_redoHTML();
+
+  1;
+}
 
 
+#=============================================================
+# _moveOutput
+#    Move the newly created overlay files to the overlay archive in 
+#    the WWW area
+#==================================================================
+
+sub _moveOutput{
+  my $self=shift;
+  my $outputname = $self->{OUTPUTNAME};
+  my $thumbnail = $self->{THUMBNAIL}
+  1;
+}
+#=============================================================
+# _redoHTML
+#    ReWrite the webpage
+#==================================================================
+sub _redoHTML{
+  my $self=shift;
+  1;
+}
 
 #=============================================================
 #
