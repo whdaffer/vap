@@ -1,4 +1,3 @@
-#!/usr/bin/perl
 #
 #
 # Perl Package: Gms5
@@ -27,6 +26,10 @@
 
 # Modifications:
 # $Log$
+# Revision 1.6  2002/05/07 20:40:36  vapdev
+# Set -w and `use strict' and then fixing bugs. Start trying to standardize
+# the methods used.
+#
 # Revision 1.5  2001/02/09 18:20:23  vapuser
 # Changed all 'die's to 'croak' Took out 'grida' from the vet
 # check. Added sub Getclosest.
@@ -52,35 +55,44 @@
 #
 package Gms5;
 require Exporter;
-@ISA =qw(Exporter);
-@EXPORT= (REMOTE_TOPDIR, LOCAL_TOPDIR,
-	   Open, Close, List, Get, Pwd,
+use strict;
+use vars qw/@ISA @EXPORT $startdir $user $local_host $REMOTE_HOST 
+	    $LOCAL_TOPDIR $REMOTE_TOPDIR $ftp/;
+
+use subs qw/Open, Close, List, Get, Pwd,
 	   CdTop, CdDoc, CdCal, CdGrid, CdGrida, 
 	   CdIr1, CdIr2, CdIr3, CdVis, 
 	   GetCal, GetGrid, GetGrida,
 	   GetDoc, GetIr1, GetIr2, GetIr3, GetVis,
-	   GetAllFileLists, GetAll, GetClosest, CheckLocal );
+	   GetAllFileLists, GetAll, GetClosest, CheckLocal/;
+
+@ISA =qw(Exporter);
+@EXPORT= ($REMOTE_TOPDIR, $LOCAL_TOPDIR,
+	   &Open, &Close, &List, &Get, &Pwd,
+	   &CdTop, &CdDoc, &CdCal, &CdGrid, &CdGrida, 
+	   &CdIr1, &CdIr2, &CdIr3, &CdVis, 
+	   &GetCal, &GetGrid, &GetGrida,
+	   &GetDoc, &GetIr1, &GetIr2, &GetIr3, &GetVis,
+	   &GetAllFileLists, &GetAll, &GetClosest, &CheckLocal );
 
 use Net::FTP;
 use Cwd 'chdir', 'getcwd';
 use Carp;
 use Time::Local;
-use VapUtil;    
+use VapUtil;
 
 BEGIN {
+  $REMOTE_HOST = "";
+  $REMOTE_TOPDIR="";
   $startdir=getcwd();
   $user=$ENV{'USER'};
-  $local_host="$ENV{'HOST'}.jpl.nasa.gov";
+  $local_host=$ENV{'HOST'} . ".jpl.nasa.gov";
 
-  $VAP_LIB=$ENV{'VAP_LIB'} || "/usr/people/vapuser/Qscat/Library";
+  $Gms5::VAP_LIB=$ENV{'VAP_LIBRARY'} || croak "ENV var VAP_LIBRARY is undefined!\n";
 
-  require $VAP_LIB."/gms5_archive";
+  require $Gms5::VAP_LIB."/gms5_archive";
 
-  $LOCAL_TOPDIR= $ENV{'VAP_GMS_TOPDIR'} || 
-      "$ENV{'VAP_ROOT'}/gms5" || 
-	  "/disk5/vap/gms5";
-
-  
+  $LOCAL_TOPDIR= $ENV{'VAP_GMS_TOP'} || croak "ENV var VAP_GMS_TOPDIR is undefined\n";
 }
 
 sub GetIntersection {
@@ -96,35 +108,37 @@ sub GetIntersection {
   # files are current.
 
   
-  $type=$_[0] || "ir1";
+  my $type = shift || "ir1";
   chdir $LOCAL_TOPDIR || croak "Can't cd to $LOCAL_TOPDIR\n";
   chdir $type || croak "Can't CD to $type\n";
   open ARCHIVE, "<archive.filelist";
-  @files= <ARCHIVE>;
+  my @files= <ARCHIVE>;
   close ARCHIVE;
   chdir "..";
 
-  $dircnt=1;
-  foreach $file (@files) {
-    $tmp=substr($file,0,10);
+  my %filecnt=();
+  my $dircnt=1;
+  foreach my $file (@files) {
+    my $tmp=substr($file,0,10);
     $filecnt{$tmp}++;
   }
 
-  @dirs=('grid', 'grida'); #removed cal and doc from list
-  foreach $dir (@dirs) {
+  my @dirs=('grid', 'grida'); #removed cal and doc from list
+  foreach my $dir (@dirs) {
     chdir $dir || croak "Can't CD to $dir\n";
     open ARCHIVE, "<archive.filelist";
     @files= <ARCHIVE>;
     close ARCHIVE;
     chdir "..";
     $dircnt++;
-    foreach $file (@files) {
-      $tmp=substr($file,0,10);
+    foreach my $file (@files) {
+      my $tmp=substr($file,0,10);
       $filecnt{$tmp}++;
     }
   }
 
-  foreach $datetime ( keys %filecnt ){
+  my @datetimes;
+  foreach my $datetime ( keys %filecnt ){
     push @datetimes, $datetime if ($filecnt{$datetime} == $dircnt);
   }  
 
@@ -136,7 +150,7 @@ sub GetIntersection {
 sub GetAllFileLists {
 
   Open(); # unless defined ($ftp);
-
+  my @list=();
 #   CdDoc();
 #   @list=List("*.Z");
 #   open FILE, ">archive.filelist";
@@ -196,10 +210,11 @@ sub GetAllFileLists {
 }
 sub GetAll {
 
-  $datetime=shift;
+  my $datetime=shift;
   croak "Need datetime!\n" unless $datetime;
 
-  $test = CheckAll($datetime);
+  my $test = CheckAll($datetime);
+  my @list;
 #  if ($test) {
 
     Open(); #unless defined ($ftp);
@@ -220,15 +235,15 @@ sub GetAll {
     CdGrid();
     @list=List("$datetime*");
     carp "No Grid files found for $datetime\n" if $#list<0;
-    $file="$datetime.hdf.Z";
+    my $file="$datetime.hdf.Z";
     GetGrid( $file);
 
 
-     CdIr1();
-     @list=List("$datetime*");
-     carp "No Ir1 files found for $datetime\n" if $#list<0;
-     $file="$datetime.hdf.Z";
-     GetIr1( $file);
+  CdIr1();
+  @list=List("$datetime*");
+  carp "No Ir1 files found for $datetime\n" if $#list<0;
+  $file="$datetime.hdf.Z";
+  GetIr1( $file);
 
   #   CdIr2();
   #   @list=List("$datetime*");
@@ -248,13 +263,13 @@ sub GetAll {
 #     $file="$datetime.hdf.Z";
 #     GetVis( $file);
 
-      CdGrida();
-      @list=List("$datetime*");
-      carp"No Grida files found for $datetime\n" if $#list<0;
-      $file="$datetime.hdf.Z";
-      GetGrida( $file);
+  CdGrida();
+  @list=List("$datetime*");
+  carp"No Grida files found for $datetime\n" if $#list<0;
+  $file="$datetime.hdf.Z";
+  GetGrida( $file);
 
-    Close();
+  Close();
 #  }
   $test;
   
@@ -263,30 +278,29 @@ sub GetAll {
 
 sub Open  {
   # Open remote connection
-  $machine= shift || $remote_host;
-  $ftp = Net::FTP->new( $machine );
-  croak "Can't create ftp object!\n" unless $ftp;
+  my $machine= shift || $REMOTE_HOST;
+  $ftp = Net::FTP->new( $machine ) ||
+    croak "Can't create ftp object!\n";
   $ftp->login("anonymous","$user\@catspaw.jpl.nasa.gov") || 
-      croak "Can't open connection to $machine\n";
+    croak "Can't log on to $machine\n";
   # CD to topdir 
   $ftp->binary;
-  $ftp->cwd($remote_top_gms_dir) || croak "Can't remote cd to $remote_top_cms_dir\n" ;
 }
 
 sub Close {
-  $ftp->quit || croak "Can't close connection to $remote_host\n";
+  $ftp->quit || croak "Can't close connection to $REMOTE_HOST\n";
 }
 
 
 sub List {
-  $glob= shift || "*";
-  @ls = $ftp->ls( $glob );
+  my $glob= shift || "*";
+  my @ls = $ftp->ls( $glob );
   carp "No such file" unless $ls[0];
   @ls = join("\n", @ls);
 }
 
 sub Get {
-  $file = shift;
+  my $file = shift;
   croak "Gms5::Get No file!\n" unless $file;
   $ftp->get( $file );
 
@@ -327,7 +341,7 @@ sub CdVis   { $ftp->cwd("$REMOTE_TOPDIR/hdf/vis/4km"  ) ||
 
 
 sub GetDoc { 
-  $file=shift;
+  my $file=shift;
   croak "No File\n" unless $file;
   CdDoc();
   Get $file unless (-e $file);
@@ -336,7 +350,7 @@ sub GetDoc {
 
 
 sub GetCal {
-  $file=shift;
+  my $file=shift;
   croak "No File\n" unless $file;
   CdCal();
   Get $file unless (-e $file);
@@ -344,41 +358,41 @@ sub GetCal {
 
 
 sub GetGrid {
-  $file=shift;
+  my $file=shift;
   croak "No File\n" unless $file;
   CdGrid();
   Get $file unless (-e $file);
 }
 
 sub GetGrida {
-  $file=shift;
+  my $file=shift;
   croak "No File\n" unless $file;
   CdGrida();
   Get $file unless (-e $file);
 }
 
 sub GetIr1 {
-  $file=shift;
+  my $file=shift;
   croak "No File\n" unless $file;
   CdIr1();
   Get $file unless (-e $file);
 }
 
 sub GetIr2 {
-  $file=shift;
+  my $file=shift;
   croak "No File\n" unless $file;
   CdIr2();
   Get $file unless (-e $file);
 }
 sub GetIr3 {
-  $file=shift;
+  my $file=shift;
   croak "No File\n" unless $file;
   CdIr3;
   Get $file unless (-e $file);
 }
 
 sub GetVis {
-  $file=shift;
+  my $file=shift;
   croak "No File\n" unless $file;
   CdVis;
   Get $file unless (-e $file);
@@ -390,11 +404,11 @@ sub CheckAll {
   # there, 0 otherwise currently, this include doc/cal/grid/grida/ir1
   # and vis.  It' checks the local archive first, then the remote.
 
-  $datetime=shift; croak "No datetime\n" unless $datetime;
+  my $datetime=shift; croak "No datetime\n" unless $datetime;
 
   return 1 if CheckLocal($datetime);
-  $ret=1;
-
+  my $ret=1;
+  my @list=();
   Open(); # unless defined ($ftp);
 
 
@@ -465,26 +479,28 @@ sub CheckAll {
 sub Gms5DateTime2SysTime{
 
   croak "Need datetime!\n" if !$_[0];
+  my ($year,$month,$day,$hour,$min,$timegm);
   $year=substr($_[0],0,2);
   $year += 2000 if $year < 90; # kludge
   $month=substr($_[0],2,2);
   $day=substr($_[0],4,2);
   $hour=substr($_[0],6,2);
   $min=substr($_[0],8,2);
-  $timegm=timegm( 0, $min, $hour, $day, $month-1, $year);
+  my $timegm=timegm( 0, $min, $hour, $day, $month-1, $year);
   $timegm;
 }
 
 sub GetClosest{
-  $idltime = shift || croak "<param1> yyyy/mm/dd/hh/mm is REQUIRED\n";
-  $absflag=shift || 0;
-  $time=idltime2systime($idltime);
+  my $idltime = shift || croak "<param1> yyyy/mm/dd/hh/mm is REQUIRED\n";
+  my $absflag=shift || 0;
+  my $time=idltime2systime($idltime);
   GetAllFileLists();
-  @datetimes=GetIntersection();
+  my @datetimes=GetIntersection();
+  my ($diff,$datetime,$mindiff);
   if (@datetimes) {
     $mindiff=1.e10;
     for (@datetimes) {
-      $gmstime=Gms5DateTime2SysTime($_);
+      my $gmstime=Gms5DateTime2SysTime($_);
       $diff=$time-$gmstime;
       $diff = abs($diff) if $absflag;
       if ($diff > 0 && $diff < $mindiff ) {
@@ -497,7 +513,7 @@ sub GetClosest{
 }
 
 sub CheckLocal {
-  local( $datetime, $absflag, @datetimes, $gmstime, $diff, $mindiff);
+  my( $datetime, $absflag, @datetimes, $gmstime, $diff, $mindiff, @there);
 
   $datetime = shift || croak "<param1> yymmddhhmm is REQUIRED\n";
   @datetimes = GetIntersection();
