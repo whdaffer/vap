@@ -48,6 +48,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.6  2001/12/08 00:02:37  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.5  1999/11/11 23:05:51  vapuser
 ; Replace 'nulls' with 'spaces'
 ;
@@ -89,19 +92,26 @@ FUNCTION parsernoaaheader, header
     ntags =  n_elements(tmp)
     tags = strarr(ntags)
     values = tags
-    FOR ii=0,ntags-1 DO BEGIN 
-      tmp2 = strsplit(strcompress(tmp[ii],/remove_all),'=',/extract)
-      tag =  strupcase(strcompress(tmp2[0],/remove_all))
-      value =  strupcase(strtrim( tmp2[1],2 ))
-      s = strpos(value,';')
-      IF s NE -1 THEN $
-        value = strmid(value,0,s)
-      IF tag NE 'SPARE_METADATA_ELEMENT' THEN BEGIN 
-        IF nn EQ 0 AND ii EQ 0 THEN $
-          retstruct =  create_struct( tag, value ) ELSE $
-          retstruct =  create_struct( retstruct, tag, value ) 
-      ENDIF 
-    ENDFOR 
+    done = 0
+    ii = 0
+    WHILE ii LT  ntags AND NOT done DO BEGIN 
+      IF stregex(tmp[ii],"spare_metadata_element",/boolean,/fold_CASE) THEN BEGIN 
+        done = 1
+      ENDIF ELSE BEGIN 
+        tmp2 = strsplit(strcompress(tmp[ii],/remove_all),'=',/extract)
+        tag =  strupcase(strcompress(tmp2[0],/remove_all))
+        value =  strupcase(strtrim( tmp2[1],2 ))
+        s = strpos(value,';')
+        IF s NE -1 THEN $
+          value = strmid(value,0,s)
+        IF tag NE 'SPARE_METADATA_ELEMENT' THEN BEGIN 
+          IF nn EQ 0 AND ii EQ 0 THEN $
+            retstruct =  create_struct( tag, value ) ELSE $
+            retstruct =  create_struct( retstruct, tag, value ) 
+        ENDIF 
+      ENDELSE 
+      ii = ii+1
+    ENDWHILE 
   ENDFOR 
 
   tags = tag_names(retstruct)
