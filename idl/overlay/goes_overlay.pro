@@ -135,6 +135,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.7  1999/04/08 16:01:45  vapuser
+; Various cleanup and bug squashing.
+;
 ; Revision 1.6  1998/11/13 22:03:16  vapuser
 ; Added standard header
 ;
@@ -1061,7 +1064,7 @@ xyz = Convert_Coord( 0, ys+sz[1]/scalef,/device,/to_normal)
 y = xyz[1]
 y = [3*y+2, 2*y+3]/5
 
-ColorBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
             position=[0.25,y[0], 0.75, y[1]], $
               Title='Wind Speed (knots)',Min=minspeed, $
                max=maxspeed,divisions=4, format='(f5.0)', $

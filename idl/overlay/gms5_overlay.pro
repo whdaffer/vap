@@ -207,6 +207,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.4  1999/04/08 20:19:12  vapuser
+; Changed color24 to rgb2true
+;
 ; Revision 1.3  1999/04/06 18:35:43  vapuser
 ; Changed default x/y size to defaulting xsize to 960 and
 ; ysize to whatever has same ratio as (long_range)/(lat_range)
@@ -718,13 +721,13 @@ PRO gms5_overlay, datetime, gmsType, $
 
 
   IF ps THEN BEGIN 
-    ColorBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+    ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
      position=[0.25,y[0], 0.75, y[1]], $
      Title='Wind Speed (knots)',Min=minspeed, $
      max=maxspeed,divisions=4, format='(f5.0)', $
      pscolor=ps, /true, table=ct, charsize=0.75
   ENDIF ELSE BEGIN 
-    ColorBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+    ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
      position=[0.25,y[0], 0.75, y[1]], $
      Title='Wind Speed (knots)',Min=minspeed, $
      max=maxspeed,divisions=4, format='(f5.0)', $

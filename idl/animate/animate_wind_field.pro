@@ -247,7 +247,7 @@
 ;    in conjunction with the land elevation database and the color table gives
 ;    the pretty color land mask. This routine is a link image routine, with all
 ;    the woes attendant upon it for being so.
-;    COLORBAR - puts a color bar on each frame
+;    COLBAR - puts a color bar on each frame
 ;    UNPACK_WHERE - turns a 1 dim vector output from the 'where' IDL 
 ;    internal call to a 1,2,3 OR 4 dim array, depending on the input.
 ;
@@ -297,6 +297,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  1999/04/08 16:59:14  vapuser
+; Added call to readcolortable.pro and cleaned up some comments.
+;
 ; Revision 1.2  1998/10/17 00:19:40  vapuser
 ; Worked on file reading section, incorporated use
 ; of 'qmodel' object. Killed some bugs.
@@ -1184,7 +1187,7 @@ IF read_success THEN BEGIN
 
           y =  coords(1,*)
           y1 =  y(0) &  y2= y1 + (1-y(0))/4.
-          COLORBAR,bottom=1,ncolors=ncolors,position=[0.25,y1,0.75,y2],$
+          COLBAR,bottom=1,ncolors=ncolors,position=[0.25,y1,0.75,y2],$
            Title='Wind Speed (knots)',division=4,min=0,max=max_speed*mps2knots, $
            charsize=0.65,format='(F4.0)'
           y1 =  y(0)  ; + (1-y(0))/6.
@@ -1200,7 +1203,7 @@ IF read_success THEN BEGIN
          device, set_resolution=[ap(0),ap(1)]
 
            ; We have to re-establish the coordinate system, since the
-           ; COLORBAR procedure destroy's it by it's call to 'PLOT' so
+           ; COLBAR procedure destroy's it by it's call to 'PLOT' so
            ; another call to map_set.
 
          MAP_SET,latcent,loncent,/noborder, $

@@ -181,6 +181,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.6  1999/04/08 20:18:23  vapuser
+; Changed color24 to rgb2true
+;
 ; Revision 1.5  1999/03/03 17:26:00  vapuser
 ; Took out landel stuff (don't need it anymore and it
 ; uses a *lot* of memory. Made some other memory usage
@@ -725,13 +728,13 @@ PRO goes_overlay24, goesfile, $
     y = [3*y+2, 2*y+3]/5
 
     IF ps THEN BEGIN 
-      ColorBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+      ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
              position=[0.25,y[0], 0.75, y[1]], $
                Title='Wind Speed (knots)',Min=minspeed, $
                  max=maxspeed,divisions=4, format='(f5.0)', $
                   pscolor=ps, /true, table=ct, charsize=0.75
     ENDIF ELSE BEGIN 
-      ColorBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+      ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
              position=[0.25,y[0], 0.75, y[1]], $
                Title='Wind Speed (knots)',Min=minspeed, $
                  max=maxspeed,divisions=4, format='(f5.0)', $
