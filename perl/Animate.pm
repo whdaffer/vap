@@ -86,6 +86,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.7  2002/12/17 22:33:20  vapdev
+# ongoing work
+#
 # Revision 1.6  2002/12/03 00:13:28  vapdev
 # Ongoing work
 #
@@ -102,7 +105,6 @@ use File::Copy;
 use File::Basename;
 use vars qw/$VERSION $usage/;
 
-@Animate::ISA = qw/ VapError/;
 
 # Make sure we can get the Perl code we need.
 BEGIN{
@@ -145,16 +147,14 @@ sub new {
   bless $self, ref($class) || $class;
 
     # Set the Error reporting object.
-  $self->{ERROROBJ} = VapError->new() or
-    $self->_croak("$0:Error creating VapError object!\n",
-		  "$0: ERROR CREATING ERROR OBJECT");
+  $self->{ERROROBJ} = VapError->new();
 
 
     # Read the defaults file
   $self->ReadDefsFile;
 
     # Make sure this is a valid region
-  $self->_croak("Invalid REGION! ". $self->{REGION} .
+  $self->{ERROROBJ}->_croak("Invalid REGION! ". $self->{REGION} .
 		" valid regions are \n". 
 		join("\n",keys(%{$self->{ROIS}})). "\n",
 		"$0:INVALID REGION")
@@ -168,14 +168,14 @@ sub new {
   $self->{STARTTIME} = $^T;
   my $hash = $self->{ROIS}->{$region};
   my $working_dir = $self->{WORKING_DIR} = $hash->{anim_path};
-  $self->_croak("$0:Can't find working directory $working_dir\n",
+  $self->{ERROROBJ}->_croak("$0:Can't find working directory $working_dir\n",
 		"$0:NONEXISTENT WORKING DIR")
     unless (-e $working_dir);
-  chdir $working_dir or $self->_croak("$0:Can't CD to $working_dir",
+  chdir $working_dir or $self->{ERROROBJ}->_croak("$0:Can't CD to $working_dir",
 				      "$0: CD error!");
 
   $self->{TMPFILE_DIR} = $ENV{VAP_OPS_TMPFILES};
-  $self->_croak("TMPFILE directory doesn't exist!\n",
+  $self->{ERROROBJ}->_croak("TMPFILE directory doesn't exist!\n",
 		"$0: NONEXISTENT TMPFILE DIRECTORY!")
     unless (-e $self->{TMPFILE_DIR});
 
@@ -198,7 +198,7 @@ sub CreateLockFile {
   my $froi = lc $roi;
   my $file="$dir/$user.auto_movie_$froi.$$.lock";
   open FILE, ">$file" or 
-    $self->_croak("$0: Error opening $file: $!\n",
+    $self->{ERROROBJ}->_croak("$0: Error opening $file: $!\n",
 		  "FILE OPEN ERROR");
   print FILE "$$\n";
   close FILE;
@@ -219,7 +219,7 @@ sub CreateTmpFile{
   my $froi = lc $roi;
   my $file="$user.auto_movie_$froi.$$.pro";
   open FILE, ">$file" or 
-    $self->_croak("$0: Error opening $file: $!\n",
+    $self->{ERROROBJ}->_croak("$0: Error opening $file: $!\n",
 		  "FILE OPEN ERROR");
   my $date_time = $self->{TIME};
   my $exe_str = "auto_movie,\'$date_time\',roi=\'$roi\'";
@@ -241,18 +241,18 @@ sub CreateTmpFile{
 #==================================================================
 sub Make_Anim{
   my $self=shift;
-  $self->_croak("$0:Error creating Lock File\n",
+  $self->{ERROROBJ}->_croak("$0:Error creating Lock File\n",
 	       "$0:LOCKFILE CREATION ERROR")
     unless $self->CreateLockFile;
-  $self->_croak("$0:Error creating IDL TMP .pro File\n",
+  $self->{ERROROBJ}->_croak("$0:Error creating IDL TMP .pro File\n",
 	       "$0:IDL TMPFILE CREATION ERROR")
     unless $self->CreateTmpFile;
   my $tmpfile=$self->{TMPFILE};
   my $r=system("idl $tmpfile")/256;
-  $self->_croak("$0: IDL runtime error\n",
+  $self->{ERROROBJ}->_croak("$0: IDL runtime error\n",
 		"$0: IDL Runtime error") unless
 		  $r==0;
-  $self->_croak(
+  $self->{ERROROBJ}->_croak(
          "$0: Errors reported during run of auto_movie.pro\n\n".
 		  "Errors are:\n\n".
 		  $self->{IDL_OUTPUT}."\n",
@@ -277,7 +277,7 @@ sub ReadDefsFile{
   # open the file 
   my $file=shift || $self->{DEFAULTS_FILE};
   open (DEFS,"<$file") ||
-    $self->_croak("$0: Can't open $file!:$!\n",
+    $self->{ERROROBJ}->_croak("$0: Can't open $file!:$!\n",
 		  "$0:OPEN ERROR");
 
   my $lines;
@@ -326,7 +326,7 @@ sub getOutput {
   my $region=lc $self->{REGION};
   my $file=$self->{TMPFILE_DIR} . "/auto_movie_mov_filename_".$region."_".$$;
   open (FILE, "<$file") ||
-    $self->_croak("$0: Error opening $file:$!\n",
+    $self->{ERROROBJ}->_croak("$0: Error opening $file:$!\n",
 		  "$0: FILE OPEN ERROR!");
   my $mov_file = <FILE>;
   my $ext=<FILE>;
@@ -364,7 +364,7 @@ sub CheckForErrors{
   my $self=shift;
   my $lockfile=$self->{LOCKFILE};
   open LOCKFILE, "<$lockfile" || 
-    $self->_croak("$0:Error opening $lockfile:$!\n",
+    $self->{ERROROBJ}->_croak("$0:Error opening $lockfile:$!\n",
 		  "$0:FILE OPEN ERROR");
   my $lines;
   do {
@@ -386,17 +386,3 @@ sub WriteWebpage{
   my $self=shift;
   1;
 }
-#==================================================================
-# _croak:
-#  Wrapper for errorobject->ReportAndDie
-#==================================================================
-
-sub _croak {
-  my $self=shift;
-  my $msg=shift || "NULL MESSAGE\n";
-  my $subject =shift || "NULL SUBJECT";
-  my $errobj=$self->{ERROROBJ};
-  $errobj->ReportAndDie($subject, $msg);
-  1;
-}
-1;

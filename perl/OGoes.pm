@@ -9,6 +9,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.8  2002/12/30 22:08:58  vapdev
+# ongoing
+#
 # Revision 1.7  2002/12/06 22:54:03  vapdev
 # Continuing work
 #
@@ -143,7 +146,6 @@ BEGIN {
 use lib $ENV{VAP_SFTWR_PERL};
 use VapUtil;
 use VapError;
-@OGoes::ISA = qw(VapError);
 
 #----------------------------------------------------------
 #
@@ -171,7 +173,7 @@ sub new {
   bless $self, ref($class) || $class;
   $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
 
-  $self->_croak( ["Input Keys REGION or",
+  $self->{ERROROBJ}->_croak( ["Input Keys REGION or",
 		  "(SAT and (SENSOR or SENSORNUM)) are required!\n"] ,
 		 "OGoes::new failure!")
     unless ($self->{REGION} || 
@@ -186,7 +188,7 @@ sub new {
     } elsif ($self->{REGION} =~ /GOESWEST/i) {
       $self->{SAT} = 10
     } else {
-      $self->_croak("Unrecognized REGION " . $self->{REGION},
+      $self->{ERROROBJ}->_croak("Unrecognized REGION " . $self->{REGION},
 		    "Ogoes::new failure");
     }
   } else {
@@ -280,7 +282,6 @@ sub grid{
       $local_gridded_file="$gridding_output[$#gridding_output]";
       chomp $local_gridded_file;
     }
-    $local_gridded_file;
   }
   $local_gridded_file;
 }

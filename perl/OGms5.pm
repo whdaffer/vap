@@ -116,7 +116,6 @@ require "gms5_archive_oo" or croak "Can't `require' gms5_archive_oo!\n";
 use VapUtil;
 use VapError;
 
-@OGms5::ISA = qw/VapError/;
 
 #=============================================================
 #
@@ -149,13 +148,13 @@ sub new {
   $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
   my $remote_host = $self->{REMOTE_HOST};
   $self->{FTPOBJ} = FTP->new("$remote_host") || 
-    $self->_croak("$0:Error creating FTP object for $remote_host!\n",
+    $self->{ERROROBJ}->_croak("$0:Error creating FTP object for $remote_host!\n",
 		  "Error Initializing FTP object");
 
   my $user = "anonymous";
   my $password = $self->{USER}."\@".$self->{LOCAL_HOST};
   $self->{FTPOBJ}->login($user, $password) ||
-    $self->_croak("$0:Error in FTP login",
+    $self->{ERROROBJ}->_croak("$0:Error in FTP login",
 		  "$0:Error Logging on to $remote_host using\n" . 
 		  "$user and $password!\n");
   if ($self->GetAllFileLists()) {
@@ -176,7 +175,7 @@ sub GetAllFileLists{
   $self->{GETALLFILELISTS}->{LATESTGET} = time();
   for (@{$self->{INTERESTING_GMS_PRODUCTS}}){
     $self->GetListing( "$_" ) or 
-      $self->_croak("Can't get listing for $_\n",
+      $self->{ERROROBJ}->_croak("Can't get listing for $_\n",
 		    "$0:Listing Error!");
   }
   1;
@@ -210,12 +209,12 @@ sub GetListing{
   my $dir=shift or croak "Usage: obj->get(directory)\n";
   my $glob = shift || "*.Z";
   chdir $self->{LOCAL_TOPDIR} or 
-    $self->_croak("Can't CD to ".$self->{LOCAL_TOPDIR}."\n",
+    $self->{ERROROBJ}->_croak("Can't CD to ".$self->{LOCAL_TOPDIR}."\n",
 		  "$0:CD error");
   chdir $dir;
   my $remote_dir = $self->{REMOTE_TOPDIR}. "/$dir";
   my $ftp = $self->{FTPOBJ};
-  $ftp->cwd($remote_dir) or  $self->_croak("Can't CD to $remote_dir\n", 
+  $ftp->cwd($remote_dir) or  $self->{ERROROBJ}->_croak("Can't CD to $remote_dir\n", 
 					   "$0:CD error");
   open FILE ,">archive.filelist";
   print $ftp->ls($glob);
@@ -250,7 +249,7 @@ head2 SYNOPSIS @datetime = GetIntersection(type);
 sub GetIntersection{
   my $self->shift;
   my $type->shift or 
-    $self->_croak("Usage: obj->GetIntersection(type)\n",
+    $self->{ERROROBJ}->_croak("Usage: obj->GetIntersection(type)\n",
 		  "Usage error");
 
   my @interesting = $self->{INTERESTING_GMS5_PRODUCTS};
@@ -259,13 +258,13 @@ sub GetIntersection{
     $msg .= "Perhaps you should have a look at that variable!\n";
     $msg .= "See $VAP_LIBRARY/gms5_archive_oo\n";
     my $subject="$type NOT IN ". join(" ",@interesting);
-    $self->_croak($msg,$subject);
+    $self->{ERROROBJ}->_croak($msg,$subject);
   }
   chdir $self->{LOCAL_TOPDIR} || 
-    $self->_croak("Can't CD to ".$self->{LOCAL_TOPDIR}."\n",
+    $self->{ERROROBJ}->_croak("Can't CD to ".$self->{LOCAL_TOPDIR}."\n",
 		  "CD Error");
   chdir $type or 
-    $self->_croak("Can't CD to ".$self->{LOCAL_TOPDIR}."$type\n",
+    $self->{ERROROBJ}->_croak("Can't CD to ".$self->{LOCAL_TOPDIR}."$type\n",
 		  "CD Error");
   open ARCHIVE, "<archive.filelist";
   my @files= <ARCHIVE>;
@@ -282,7 +281,7 @@ sub GetIntersection{
   my @dirs=qw(grid grida);
 
   foreach my $dir (@dirs) {
-    chdir $dir || $self->_croak ("Can't CD to $dir\n",
+    chdir $dir || $self->{ERROROBJ}->_croak ("Can't CD to $dir\n",
 				 "CD Error!\n");;
     open ARCHIVE, "<archive.filelist";
     @files= <ARCHIVE>;
@@ -330,13 +329,13 @@ sub GetAll{
   my $self=shift;
   my $datetime = shift || $self->{DATETIME};
   $self->{DATETIME} = $datetime;
-  $self->_croak("Datetime hasn't been set yet!\n",
+  $self->{ERROROBJ}->_croak("Datetime hasn't been set yet!\n",
 		"No Datetime set in GetAll\n") unless $self->{DATETIME};
 
   if ($self->CheckAll()) {
     for (@{$self->{INTERESTING_GMS5_PRODUCTS}}){
       $self->Get("$_","$datetime") or 
-	$self->_croak("Can't get $datetime in $_\n",
+	$self->{ERROROBJ}->_croak("Can't get $datetime in $_\n",
 		      "$0:Retrieve Error");
     }
   }
@@ -357,12 +356,12 @@ sub Get{
   $self->{DATETIME} = $datetime;  
   $dir = $self->{REMOTE_TOPDIR}."/$dir";
   chdir $dir or 
-    $self->_croak("Can't CD to $dir\n",
+    $self->{ERROROBJ}->_croak("Can't CD to $dir\n",
 		  "$0:CD Error");
     # The assumption here is that the file is named $datetime.hdf.Z
   my $ftp=$self->{FTPOBJ};
   $ftp->binary("$datetime.hdf.Z") or 
-    $self->_croak("Can't get $datetime.hdf.Z\n",
+    $self->{ERROROBJ}->_croak("Can't get $datetime.hdf.Z\n",
 		  "$0:Ftp Fetch Error!");
   1;
 }
@@ -381,7 +380,7 @@ sub CheckAll{
   return 1 if $self->CheckLocal;
   my $ftp=$self->{FTPOBJ};
   foreach (@{$self->{INTERESTING_GMS5_PRODUCTS}}){
-    $self->_croak("$datetime not in $_\n",
+    $self->{ERROROBJ}->_croak("$datetime not in $_\n",
 		  "$0: Intersection problem!") 
       unless $ftp->list("$datetime.hdf.Z");
   }
@@ -405,19 +404,6 @@ sub CheckLocal{
 		      $self->GetIntersection($datetime))) != 0;
 }
 
-
-#=============================================================
-#
-#
-#
-#=============================================================
-
-sub _croak{
-  my $self=shift;
-  my $msg = shift or croak "$0: Need message!\n";
-  my $subject = shift || "Generic Subject";
-  $self->{ERROROBJ}->ReportAndDie($subject, $msg);
-}
 
 #============================================
 #
@@ -449,7 +435,7 @@ sub GetClosest{
   my $self=shift ;
   my $idltime=shift ||  $self->{DATETIME};
   $self->{DATETIME} = $idltime;
-  $self->_croak("$0:DATETIME hasn't been set yet!\n",
+  $self->{ERROROBJ}->_croak("$0:DATETIME hasn't been set yet!\n",
 		    "$0:GetClosest: no DATETIME") unless $self->{DATETIME};
   my $absflag=shift || 0;
   my $time=idltime2systime($idltime);
@@ -459,7 +445,7 @@ sub GetClosest{
     $self->GetAllFileLists;
   }
   my @datetimes = $self->GetIntersection() or 
-    $self->_croak("$0:Intersection problem\n",
+    $self->{ERROROBJ}->_croak("$0:Intersection problem\n",
 		  "$0:Intersection Problem!");
 
   my ($diff,$datetime,$mindiff);

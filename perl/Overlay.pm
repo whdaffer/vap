@@ -23,8 +23,10 @@
 	    LONLIM => [lonmin, lonmax],
 	    LATLIM => [latmin,latmax],
 	    CRDECIMATE => [Col,Row],
-	    EXCLUDECOLS => idl-array-submatrix-desg (as string)
-	    TELLME =>: Calculates, reports and exits
+	    EXCLUDECOLS => idl-array-submatrix-desg (as string),
+            LOG => "/file/to/log/messages/to",
+            ERROR => "/file/to/log/errors/to",
+	    TELLME => Calculates, reports and exits )
 
     where:
 
@@ -105,6 +107,10 @@
          this color depends on the device environment. It's an index in 8-bit
          color and a true 24 bit color in 24 bit color environment.
 
+      LOG : Send non-error messages to this file. Default = STDOUT.
+
+      ERROR: Send error messages to this file. Default = STDERR.
+
       TELLME: Calculates, reports the values for all the variables and exits
         Use this option to find out what the defaults are in any given situation
 
@@ -123,6 +129,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.7  2002/12/20 23:45:26  vapdev
+# Ongoing ... well, you know.
+#
 # Revision 1.6  2002/12/10 19:57:12  vapdev
 # Ongoing work
 #
@@ -283,14 +292,14 @@ EOF
 
 }
 
-use lib qw/ $ENV{VAP_SFTWR_PERL} $ENV{VAP_LIBRARY}/;
+use lib $ENV{VAP_SFTWR_PERL};
+use lib $ENV{VAP_LIBRARY};
 use OGoes;
 use OGms5;
 use Winds;
 use VapUtil;
 use VapError;
 
-@Overlay::ISA = qw/VapError/;
 
 #=============================================================
 #
@@ -298,21 +307,23 @@ use VapError;
 
 sub new {
   my $class = shift;
-  my $self;
+  my $self = {@_};
 
   my $defsfile = "overlay_defs_oo";
   my $msgdefsfile = $ENV{VAP_LIBRARY} . "/overlay_defs_oo";
-  $self = {@_};
-  $self->{ERROROBJ} = VapError->new() or 
-    croak "Error creating VapError Object!\n";
+  $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
+  bless $self, ref($class) || $class;
 
-  $self->_croak("Can't find defaults file $msgdefsfile!\n",
-		"CAN'T FIND DEFS FILE!") unless (! -e $msgdefsfile );
-  do { require "$defsfile"; } or 
-    $self->_croak("Can't `require $msgdefsfile\n",
+  $self->{ERROROBJ}->_croak("Can't find defaults file $msgdefsfile!\n",
+		"CAN'T FIND DEFS FILE!") unless ( -e $msgdefsfile );
+  do { require "$defsfile"; } || 
+    $self->{ERROROBJ}->_croak("Can't `require $msgdefsfile\n",
 		  "ERROR in `REQUIRE' of DEFS!");
 
-
+  $self->{TMPDIR} = $ENV{VAP_OPS_TMPFILES};
+  $self->{USER} = $ENV{USER};
+  $self->{PID} = $$;
+  $self->{WINDPATH} = $ENV{VAP_DATA_TOP};
   my $minusage = "*** Minimally, I need either (REGION,WINDFILTER)\n";
   $minusage .= "or TIME, SATNUM, SENSORNUM, WINDFILTER, LONLIM and LATLIM\n";
   if ($self->{HELP}) {
@@ -332,7 +343,7 @@ sub new {
      # `null' is just a placeholder to make the indexing work out.
 
   $self->{OVERLAY_DEFAULTS} = $overlay_defs;
-  $self->{GMS5_DEFAULTS} = $overlay_defs;
+
   if ($self->{REGION} && $self->{WINDFILTER}) {
     my $region = $self->{REGION};
     my $hash= $self->{OVERLAY_DEFAULTS}->{$region};
@@ -387,6 +398,10 @@ sub new {
 
   $self->{DELTA} = 4 unless $self->{DELTA};
   $self->{SECS} = idltime2systime($self->{TIME});
+  $self->{LIMITS} = [${$self->{LONLIM}}[0], 
+		     ${$self->{LATLIM}}[0],
+		     ${$self->{LONLIM}}[1], 
+		     ${$self->{LATLIM}}[1]];
   return $self;
 }
 
@@ -418,7 +433,7 @@ sub setupProcessing{
 			  DELTA => $self->{IMAGEDELTA},
 			  ABSFLAG => $self->{ABSFLAG},
 			  ERROROBJ => $self->{ERROROBJ});
-    $self->_croak("Error creating OGoes object",
+    $self->{ERROROBJ}->_croak("Error creating OGoes object",
 		  "OGoes initialization failure!") unless $goes;
     my $t = time();
     $gridded_file = $goes->gag();
@@ -438,7 +453,7 @@ sub setupProcessing{
 			 DELTA => $self->{IMAGEDELTA},
 			 ERROROBJ=>$self->{ERROROBJ});
     my ($datetime, $mindiff) = $gms->GetClosest();
-    $self->_croak("No GMS files within $delta of $datetime",
+    $self->{ERROROBJ}->_croak("No GMS files within $delta of $datetime",
 		"No GMS files") unless $datetime;
     $gmstype = $sensor;
     $gridded_file=$datetime;
@@ -461,7 +476,7 @@ sub _createLockfile{
     ".overlay." . $self->{PID};
   $self->{LOCKFILE} = $lockfile;
   open LOCKFILE, ">$lockfile" or 
-    $self->_croak("Open failure for $lockfile\n", "LOCKFILE OPENERROR");
+    $self->{ERROROBJ}->_croak("Open failure for $lockfile\n", "LOCKFILE OPENERROR");
   $lockfile;
 }
 
@@ -483,7 +498,7 @@ sub runIDL{
   my $exe_str="idl $idl_tmp_file";
   my $r=system( $exe_str )/256;
 
-  $self->_croak("Error in IDL\n",
+  $self->{ERROROBJ}->_croak("Error in IDL\n",
 		"ERROR CALLING IDL") if ($r != 0);
   # check for errors
 
@@ -493,18 +508,16 @@ sub runIDL{
 
   # since we've let the IDL name the file, the output should have 
   # the following format. sat_sensor_date_a,b,c,d.jpg
-  $self->{OUTPUTNAME} = $outputname = 
-    $self->_constructFinalBasename($outputname,
-				   "gif","jpg","ps",
-				    "GIF","JPG","PS"
-				  );
-
-  $self->{THUMBNAIL} = $thumbnail = 
-    $self->_constructFinalBasename($thumbnail,
-				   "gif.TN","GIF.TN","GIF.tn","gif.tn",
-				    "jpg.tn","jpg.TN","JPG.tn","JPG.TN",
-				    "jpeg.tn","jpeg.TN","JPEG.tn","JPEG.TN"
-				  );
+  $self->{OUTPUTNAME} = $self->_constructFinalname($outputname,
+						   ".gif",".jpg",".jpeg",".ps",
+						   ".GIF",".JPG",".JPEG",".PS"
+						  );
+  $self->{THUMBNAIL} = $self->_constructFinalname($thumbnail,
+						  ".gif.TN",".GIF.TN",".GIF.tn",".gif.tn",
+						  ".jpg.tn",".jpg.TN",".JPG.tn",".JPG.TN",
+						  ".jpeg.tn",".jpeg.TN",".JPEG.tn",".JPEG.TN",
+						  ".ps.tn", ".PS.tn",".ps.TN", ".PS.TN" 
+						 );
 
   1;
 }
@@ -526,11 +539,11 @@ sub _buildTmpfile{
   my $delta = $self->{WINDDELTA};
   my ($idl_time_string, $idl_tmp_file, $exe_str);
   $idl_time_string=$self->{TIME};
-  $idl_tmp_file=$ENV{VAP_TMPFILES_DIR}. "$0_idl_called_by_perl_$$.pro";
+  $idl_tmp_file=$self->{TMPDIR} ."/$0_idl_called_by_perl_$$.pro";
   print "Writing IDL tmp file $idl_tmp_file\n";
 
   open(TMPFILE,">$idl_tmp_file") || 
-    $self->_croak("Can't open IDL tmpfile\n$idl_tmp_file\n",
+    $self->{ERROROBJ}->_croak("Can't open IDL tmpfile\n$idl_tmp_file\n",
 		  "$0: Bad Open on IDL tmpfile\n");
 
   my $idl_windfilter = $self->{WINDFILTER} =~ /^Q/i? "QS*":"SW*";
@@ -539,9 +552,9 @@ sub _buildTmpfile{
   print TMPFILE "idl_windfilter = '" . $idl_windfilter . "'\n";
   print TMPFILE "idl_time_string = '" . $idl_time_string . "'\n";
   print TMPFILE "delta = $delta\n";
-  print TMPFILE "wpath = '" . $self->{WINDSPATH} . "'\n";
+  print TMPFILE "wpath = '" . $self->{WINDPATH} . "'\n";
   print TMPFILE "lockfile = '". $lock_file . "'\n";
-  print TMPFILE "length = ". $self->{LENGTH};
+  print TMPFILE "length = ". $self->{LENGTH} . "\n";
   print TMPFILE "CRDecimate = [" . 
     join( ",", @{$self->{CRDECIMATE}} ) . "]\n";
   print TMPFILE "ExcludeCols = '" . $self->{EXCLUDECOLS} . "'\n";
@@ -575,20 +588,27 @@ EOF
 
 }
 #=============================================================
-# _constructFinalBasename
+# _constructFinalname
+#
 #    Construct the name this file will have in the overlay archive
-#    portion of the WWW area
+#    portion of the WWW area, That name will include the region and
+#    windfilter info, which isn't included in the filename constructed
+#    by the IDL routine cloud_overlay
+#
 #==================================================================
 
-sub _constructFinalBasename{
-
+sub _constructFinalname{
   my $self = shift;
   my $outputname = shift;
   my @exts = @_;
   my ($name, $path, $ext) = fileparse($outputname, @exts);
   my @tmp=split(/_/,$self->{REGION});
-  $name .= join("_",(@tmp[$#tmp-1,$#tmp],$self->{WINDFILTER}));
+  my $tmp=join("_",(@tmp[$#tmp-1,$#tmp],$self->{WINDFILTER}));
+  $name .= "_$tmp";
   $name .= $ext;
+  $name = "$path/$name";
+  rename $outputname, $name;
+  $name;
 }
 
 
@@ -600,15 +620,17 @@ sub _constructFinalBasename{
 sub _getOutputname{
   my $self = shift;
   my $file_with_name = $ENV{VAP_OPS_OVERLAY} . 
-    "/auto_cloud_overlay_output_file";
+    "/auto_cloud_overlay_output_file.". $self->{PID};
   open FILE,"<$file_with_name" or 
-    $self->_croak("Couldn't open $file_with_name: $!\n",
+    $self->{ERROROBJ}->_croak("Couldn't open $file_with_name: $!\n",
 		  "CLOUD_OVERLAY: OPENERROR, FILE_WITH_NAME");
   my $outputfile = <FILE>;
   my $thumbnail = <FILE>;
+  chomp $outputfile;
+  chomp $thumbnail;
   close FILE;
-  $self->{OUTPUTFILE} = $outputfile;
-  $self->{THUMBNAIL} = $thumbnail;
+  $outputfile = $self->{OUTPUTFILE} = $ENV{VAP_OPS_OVERLAY} . "/$outputfile";
+  $thumbnail = $self->{THUMBNAIL} = $ENV{VAP_OPS_OVERLAY} . "/$thumbnail";
   ($outputfile, $thumbnail);
 }
 
@@ -617,11 +639,11 @@ sub _getOutputname{
 # CheckForErrors
 #  Replaces VapUtil::CheckForErrors
 #==================================================================
-sub _checkForErrors{
+sub CheckForErrors{
   my $self=shift;
   my $lockfile = shift || $self->{LOCKFILE};
   open FILE, "$lockfile" or 
-    $self->_croak("Error opening $lockfile for reading\n",
+    $self->{ERROROBJ}->_croak("Error opening $lockfile for reading\n",
 		  "LOCKFILE OPENERROR (READ)");
   my @lines = <FILE>;
   close FILE;
@@ -629,7 +651,7 @@ sub _checkForErrors{
   if (@errors) {
     my $string = "cloud_overlay had errors!\n Printing\n$lockfile:\n\n";
     $string .=  join("\n", @lines ) . "\n";
-    $self->_croak($string, "ERRORS IN LOCKFILE!");
+    $self->{ERROROBJ}->_croak($string, "ERRORS IN LOCKFILE!");
   }
 }
 
@@ -648,11 +670,11 @@ sub _reportStatus{
 
 
 #=============================================================
-# _croak
+# {ERROROBJ}->_croak
 #  Wrapper for errorobject->ReportAndDie
 #==================================================================
 
-# sub _croak {
+# sub {ERROROBJ}->_croak {
 #   my $self=shift;
 #   my $msg=shift || "NULL MESSAGE\n";
 #   my $subject =shift || "NULL SUBJECT";
@@ -661,47 +683,14 @@ sub _reportStatus{
 #   1;
 # }
 
-
-#=============================================================
-#
-#=============================================================
-sub deliver{
+sub getOutputname{
   my $self=shift;
-
-    #move the output files to their final resting place
-  $self->_moveOutput();
-
-    # call the website rewriting object to rewrite the website page.
-  $self->_redoHTML();
-
-  1;
+  return $self->{OUTPUTNAME};
 }
 
-
-#=============================================================
-# _moveOutput
-#    Move the newly created overlay files to the overlay archive in 
-#    the WWW area
-#==================================================================
-
-sub _moveOutput{
+sub getThumbnail{
   my $self=shift;
-  my $outputname = $self->{OUTPUTNAME};
-  my $thumbnail = $self->{THUMBNAIL};
-    
-  1;
+  return $self->{THUMBNAIL};
 }
-#=============================================================
-# _redoHTML
-#    ReWrite the webpage
-#==================================================================
-sub _redoHTML{
-  my $self=shift;
-  1;
-}
-
-#=============================================================
-#
-#=============================================================
 
 1;

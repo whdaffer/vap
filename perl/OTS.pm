@@ -8,6 +8,9 @@ package OTS;
 # Modification Log:
 #
 # $Log$
+# Revision 1.4  2002/12/30 22:08:58  vapdev
+# ongoing
+#
 # Revision 1.3  2002/12/23 19:18:50  vapdev
 # more work
 #
@@ -92,8 +95,6 @@ require "VapWebsite_defs";
 use VapUtil;
 use VapError;
 
-@OTS::ISA = qw/VapError/;
-
 
 =pod
 
@@ -145,15 +146,15 @@ sub new {
   my $tropical_storm_defs_file = "tropical_storm_defs_oo";
   my $foo=$ENV{VAP_LIBRARY}. "/tropical_storm_defs_oo";
   require "$tropical_storm_defs_file" ||
-    $self->_croak("Can't require $foo\n:$!",
+    $self->{ERROROBJ}->_croak("Can't require $foo\n:$!",
 		  "ERROR IN `REQUIRE'");
 
   $self->{DEFAULTS} = $tsoo_defs; # Load the tropical storm defaults.
 
-  $self->_croak("REGION is REQUIRED\n",
+  $self->{ERROROBJ}->_croak("REGION is REQUIRED\n",
 		"NO REGION!\n") unless exists $self->{REGION};
   my @allowed_regions = keys %{$self->{DEFAULTS}->{SATELLITE_REGIONS}};
-  $self->_croak( $self->{REGION}. 
+  $self->{ERROROBJ}->_croak( $self->{REGION}. 
 		 " is not an allowed region!\nAllowed regions are". 
                  join("\n",@allowed_regions)."\n" ,
 		 "DISALLOWED REGION!\n") 
@@ -231,10 +232,10 @@ sub getTropicalStormsDatafile {
   if ($fetch) {
     my $remote = $self->{DEFAULTS}->{REMOTE_URL};
     $content = get($remote) or 
-      $self->_croak("Can't get($remote)\n",
+      $self->{ERROROBJ}->_croak("Can't get($remote)\n",
 		    "OTS:ERROR GETTING remote TS data file");
     open FILE, ">$localfile" or 
-      $self->_croak("Can't open $localfile\n",
+      $self->{ERROROBJ}->_croak("Can't open $localfile\n",
 		    "OTS:ERROR OPENING LOCAL FILE!");
     print FILE $content;
     close FILE;
@@ -279,7 +280,7 @@ sub parseTropicalStorms{
 
   my $stormtype=shift @_ || "DEP";
   my $stormnum=$self->{DEFAULTS}->{STORMRANKING}->{$stormtype} || 
-      $self->_croak(["Unknown Storm type of $stormtype!",
+      $self->{ERROROBJ}->_croak(["Unknown Storm type of $stormtype!",
 		     "Allowed values are DEP, STO, CYC, HUR, TYP\n"],
 		     "OTS: unknown stormtype!");
   
@@ -644,7 +645,7 @@ sub stormsFound{
 sub makeOverlay{
 
   use OGoes;
-  use OGms;
+  use OGms5;
 
   my $self=shift;
   my $storm = shift;
@@ -657,9 +658,10 @@ sub makeOverlay{
 
   my $msg= "\n\n --- Storm $storm: $lon, $lat, $time1, $vaptime, $storm_type, $winds, $press\n\n";
 
-  $self->Report($msg, "INFO");
+  $self->Report($msg, "LOG");
   
   my $stormtime=$vaptime;
+  my $year = strsub($vaptime,0,4);
   my $type = $self->{DEFAULTS}->{STORMTYPES}->{$rpt_type};
   $type = 'UNK' if /\?+/;
 
@@ -672,92 +674,103 @@ sub makeOverlay{
 				     $stormtime,$wind_delta,5, 1);
 
   my $modidltime = $self->{TIME} if (!$modidltime);
-  $self->Report("Time of closest wind data (modidltime): $modidltime\n"
-		"INFO");
+  $self->Report("Time of closest wind data (modidltime): $modidltime\n",
+		"LOG");
   my @tmp=split("/",$modidltime);
   my $idltimestring=join("",@tmp[0 .. 4]);
   my $idltmpfilestr;
 
-  my $outputname="$region-$type-$k-$idltimestring.jpeg";
+  my $outputname="$region-$type-$storm-$idltimestring.jpeg";
 
   my @maplimits=($lon-10,$lat-10,$lon+10,$lat+10);
   my $maplimits="[".join(",",@maplimits)."]";
     
 
+    ## Determine whether it's a GMS5 or GOES region. If the latter,
+    ## find and/or grid the appropriate GOES file, if the former, FTP
+    ## the appropriate GMS5 files here.
+
   if ($region eq 'GMS5') {
+
     my $gms5datetime = undef;
     my $gms=OGms( DATETIME => $modidltime);
     my ($gms5datetime, $gms5mindiff)= $gms->GetClosest;
     if ($gms5mindiff) {
       if (abs($gms5mindiff) < $wind_delta*3600) {
-	$test=$gms->GetAll($gms5datetime);
+	my $test=$gms->GetAll($gms5datetime);
 	$gms5datetime = undef unless $test;
       }
-    }    
-    $self->_croak("ERROR: Both GMS cloud data and Qscat data are missing!\n",
+    }
+    $self->{ERROROBJ}->_croak("ERROR: Both GMS cloud data and Qscat data are missing!\n",
 		  "OTS: Cloud/Wind data missing!")
-       unless ($gms5datetime || @windfiles) );
+      unless ($gms5datetime || @windfiles );
 
-    $self->_Report(["  Wind Files time: $idltime +/- $wind_delta hours",
-		    "  For a stormtime of $stormtime\n"],'INFO');
-    $self->_Report("\n  GMS5 time: $gms5datetime\n",'INFO') if $gms5datetime;
+    $self->_Report(["  Wind Files time: $vaptime +/- $wind_delta hours",
+		    "  For a stormtime of $stormtime\n"],'LOG');
+    $self->_Report("\n  GMS5 time: $gms5datetime\n",'LOG') if $gms5datetime;
     $idltmpfilestr = "tropical_storms_overlay,\'$gms5datetime\',gmstype=\'ir1\'";
 
   } elsif ($region eq 'GOESWEST') {
-    use OGoes;
+
     my $t0=time();
-    $self->Report("Starting GAG at ".localtime($t0),'INFO');
-    $ogoes = OGoes->new(REGION => "GOESWEST", DATETIME => $modidltime, 
+    $self->Report("Starting GAG at ".localtime($t0),'LOG');
+    my $ogoes = OGoes->new(REGION => "GOESWEST", DATETIME => $modidltime, 
 			ABSFLAG=>0, 
 			LIMITS => \@maplimits);
-    $goesfile=$ogoes->gag;
+    my $goesfile=$ogoes->gag;
     my $t1=time();
-    $self->Report("Finished GAG at ".localtime($t1)."\n",'INFO');
+    $self->Report("Finished GAG at ".localtime($t1)."\n",'LOG');
     $t0 = $t1-$t0;
-    $self->REPORT("GAG took $t0 seconds\n",'INFO');
-    $self->_croak("Both GoesWest data and QuikSCAT data is missing!\n",
+    $self->REPORT("GAG took $t0 seconds\n",'LOG');
+    $self->{ERROROBJ}->_croak("Both GoesWest data and QuikSCAT data is missing!\n",
 		  "Missing Cloud/Wind data!") 
 	unless ($goesfile || @windfiles);
-    $self->Report("Goesfile: $goesfile\n",'INFO');
+    $self->Report("Goesfile: $goesfile\n",'LOG');
     $idltmpfilestr="tropical_storms_overlay,\'$goesfile\'";
+
   } elsif ($region eq 'GOESEAST') {
+
     my $t0=time();
-    $self->Report("Starting GAG at ".localtime($t0),'INFO');
-    $ogoes = OGoes->new("GOESEEST", "4", $modidltime, 0, @maplimits);
-    $goesfile=$ogoes->gag;
+    $self->Report("Starting GAG at ".localtime($t0),'LOG');
+    my $ogoes = OGoes->new("GOESEEST", "4", $modidltime, 0, @maplimits);
+    my $goesfile=$ogoes->gag;
     my $t1=time();
-    $self->Report("Finished GAG at ".localtime($t1)."\n",'INFO');
+    $self->Report("Finished GAG at ".localtime($t1)."\n",'LOG');
     $t0 = $t1-$t0;
-    $self->REPORT("GAG took $t0 seconds\n",'INFO');
-    $self->_croak("Both GoesEest data and QuikSCAT data is missing!\n",
+    $self->REPORT("GAG took $t0 seconds\n",'LOG');
+    $self->{ERROROBJ}->_croak("Both GoesEest data and QuikSCAT data is missing!\n",
 		  "Missing Cloud/Wind data!") 
 	unless ($goesfile || @windfiles);
-    $self->Report("Goesfile: $goesfile\n",'INFO');
+    $self->Report("Goesfile: $goesfile\n",'LOG');
     $idltmpfilestr="tropical_storms_overlay,\'$goesfile\'";
   } else {
-    die "How the heck did I get here?\n";
+    $self->{ERROROBJ}->_croak(["How the heck did I get here?\n",
+		   "region != GMS5 or GOESEAST/GOESWEST",
+		   "region = $region"],
+		   "OTS: error, undefined region!");
   }
 
   $idltmpfilestr .= ",crd=[0,0],len=1,maplimits=maplimits";
   $idltmpfilestr .= ",outfile=outfile";
 
+  my $windfiles;
   if (@windfiles) {
     $path .= "/" if $path !~ /.*\/$/;
-    $str="\n";
+    my $str="\n";
     $str .= join("\n", @windfiles);
     $str .= "\n";
-    print "Windfiles to be used: $str";
+    $self->Report("Windfiles to be used: $str", 'LOG');
     $windfiles="\'$path\' + [\'$windfiles[0]\'";
 
-    for ($i=1;$i<=$#windfiles;$i++){
+    for (my $i=1;$i<=$#windfiles;$i++){
       $windfiles .= ",\'$windfiles[$i]\'";
     }
     $windfiles .= "]";
     $idltmpfilestr .= ",windfiles=windfiles";
-    print "Wind files: $windfiles\n";
+    # "Wind files: $windfiles\n";
   }
 
-  $oplotstring=makeIDLOplotString($lon, $lat);
+  my $oplotstring=makeIDLOplotString($lon, $lat);
   $idltmpfilestr .= ",oplot=oplot";
 
   
@@ -769,63 +782,72 @@ sub makeOverlay{
     ## the script is called by the user as well as when it is called
     ## by cron, an ambiguity which I haven't been able to eliminate.
 
-  $time=timegm(gmtime(time));
-  chdir $TS::TS_OVERLAY_DIR  || die "Can't CD to $TS::TS_OVERLAY_DIR\n";
-  $lockfile="ts_cronjob.$time.lock";
-  open FILE,">$lockfile" || die "Can't open $lockfile\n";
+  my $time=timegm(gmtime(time));
+  chdir $self->{DEFAULTS}->{TS_OVERLAY_DIR}  || 
+   $self->{ERROROBJ}->_croak("Can't CD to $TS::TS_OVERLAY_DIR",
+		 "OTS::CD error!");
+  my $lockfile="ts_cronjob.$time.lock";
+  open FILE,">$lockfile" || 
+   $self->{ERROROBJ}->_croak("Can't open $lockfile",
+		 "OTS: Open error on lockfile!");
   print FILE $time;
   close FILE;
-  
+
   $idltmpfilestr .= ",lockfile=lockfile, title=title, subtitle=subtitle\n";
   $idltmpfilestr .= "exit\n";
-  
 
     ## Open the tmp file that will be executed by IDL and write the
     ## command string to it 
-  $tmpfile="ts_tmpfile.$time.pro";
-  print "Tmpfile: $tmpfile\n";
+
+  my $tmpfile="ts_tmpfile.$time.pro";
+  $self->Report("Tmpfile: $tmpfile\n", 'LOG');
 
   open TMPFILE, ">$tmpfile" || 
-      die "Can't open IDL TMPFILE\n";
-  print TMPFILE "title=\'$stormtype $stormname :\'\n";
+    $self->{ERROROBJ}->_croak("Can't open IDL TMPFILE\n",
+		  "OTS: Open error on tmpfile!");
+
+  print TMPFILE "title=\'$storm_type $storm :\'\n";
   print TMPFILE "subtitle=\'$subtitle\'\n";
   print TMPFILE "maplimits=$maplimits\n";
   print TMPFILE "windfiles=$windfiles\n" if $windfiles;
   print TMPFILE "oplot=$oplotstring\n";
   print TMPFILE "outfile=\'$outputname\'\n";
-  print TMPFILE  "lockfile=\'$lockfile\'\n";   
+  print TMPFILE  "lockfile=\'$lockfile\'\n";
 
   print TMPFILE $idltmpfilestr;
+  print TMPFILE "exit\n";
   close TMPFILE;
 
-  
-  $r=system( "$Qs::IDLEXE  $tmpfile")/256;
-  die "Bad return from system( $IDLEXE $tmpfile)\n" if $r != 0;
-  
-  unlink $tmpfile || warn "Couldn't unlink($tmpfile)\n";
-  open FILE, "<$lockfile" || die "Can't reopen $lockfile\n";
+  my $r=system( "$VapUtil::IDLEXE  $tmpfile")/256;
+  $self->{ERROROBJ}->_croak("Bad return from system( $IDLEXE $tmpfile)\n",
+		"OTS: Bad return from SYSTEM!") if $r != 0;
+
+  unlink $tmpfile || $self->Report("Couldn't unlink($tmpfile)\n",'LOG');
+  open FILE, "<$lockfile" || 
+    $self->{ERROROBJ}->_croak("Can't reopen $lockfile\n",
+		  "OTS: Failure reopening locfile!");
+  my $errcnt = 0;
   while (<FILE>){
-    warn $_ && $errcnt++ if /.*ERROR.*/;
+    $self->Report($_,'LOG') && $errcnt++ if /.*ERROR.*/;
   }
   close FILE;
 
-  die "Found $errcnt Errors -- Exiting\n" if $errcnt;
-  die "Can't find output file $outputname\n" if !-e $outputname;
+  $self->{ERROROBJ}->_croak("Found $errcnt Errors -- Exiting\n",
+		"OTS: ERRCNT > 0!") if $errcnt;
+  $self->{ERROROBJ}->_croak("Can't find output file $outputname\n",
+		"Can't find OUTPUTNAME") if (! -e $outputname);
 
-  unlink $lockfile || warn "Couldn't unlink($lockfile)\n";
+  unlink $lockfile || $self->Report("Couldn't unlink($lockfile)\n",'LOG');
 
-  $newname="$Qs::VAP_WWW_TOP/images/storms/$outputname";
-  $relative_name="/images/storms/$outputname";
-
-  copy $outputname, $newname || 
-      die "Can't copy\n $outputname to $newname\n";
-  copy "$outputname.TN", "$newname.TN" || 
-      die "Can't copy\n $outputname.TN to $newname.TN\n";
- 
-  unlink $outputname || die "Can't unlink $outputname\n";
-  unlink "$outputname.TN" || die "Can't unlink $outputname.TN\n";
-
-  rewriteStormsPage $relative_name || die "Error rewriting storms.html\n";
+  $self->{OUTPUTNAME} = $outputname;
+  $outputname;
 }
+
+
+sub outputname{
+  my $self = shift;
+  return $self->{OUTPUTNAME};
+}
+
 
 1;

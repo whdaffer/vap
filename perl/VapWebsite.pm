@@ -43,7 +43,7 @@
 
 
 =cut
-
+package VapWebsite;
 use strict;
 use Carp;
 use Cwd;
@@ -90,31 +90,29 @@ use TopNavTable;
 use VapUtil;
 use VapError;
 
-@VapWebsite::ISA = qw/VapError/;
-
 sub new{
   my $class = shift;
   my $self={@_};
   $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
   bless $self, ref($class) || $class;
 
-  $self->_croak("Need filename!\n",
+  $self->{ERROROBJ}->_croak("Need filename!\n",
 		"VapWebsite::new No filename!") unless $self->{FILE};
 
-  $self->_croak("file ". $self->{FILE} . " doesn't exist!\n",
+  $self->{ERROROBJ}->_croak("file ". $self->{FILE} . " doesn't exist!\n",
 		"VapWebsite: non-existent file!") unless (-e $self->{FILE});
 
   my $file = $self->{FILE};
   my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
       $atime,$mtime,$ctime,$junk)=stat($file);
-  $self->_croak("file ". $file . " is empty!\n",
+  $self->{ERROROBJ}->_croak("file ". $file . " is empty!\n",
 		"VapWebsite: non-existent file!") unless ($size > 0);
 
   $self->{MTIME} = $mtime;
   $self->{SIZE} = $size;
 
   my $defs = "VapWebsite_defs";
-  require $defs or $self->_croak("Can't `require' $defs\n", 
+  require $defs || $self->{ERROROBJ}->_croak("Can't `require' $defs\n", 
 				 "VapWebsite: require ERROR");
 
   $self->{WEB}->{DEFS} = $website_defs;
@@ -122,7 +120,7 @@ sub new{
 
   $self->parseFilename;
 
-    return $self;
+  return $self;
 }
 
 =pod
@@ -141,8 +139,8 @@ sub parseFilename{
   my $self=shift;
   my $file = $self->{FILE};
 
-  my @allowed_extensions = @{$self->{DEFAULTS}->{ALLOWED_EXTENTIONS}};
-  my %type2webpage = %{$self->{DEFAULTS}->{TYPE2WEBPAGE}};
+  my @allowed_extensions = @{$self->{WEB}->{DEFS}->{ALLOWED_EXTENSIONS}};
+  my %type2webpage = %{$self->{WEB}->{DEFS}->{TYPE2WEBPAGE}};
   my ($name, $path, $ext) = fileparse($file,@allowed_extensions);
   $self->{NAME} = $name;
   $self->{PATH} = $path;
@@ -166,14 +164,15 @@ sub parseFilename{
 
       my ($region, $stormtype, $name, $date,$insttype) = 
 	($name =~ /(\w+)-(\w+)-(\w+)-(\d+)-(\w+)\..*/);
+      my $year = strsum($date,0,4);
       $self->{TYPE} = "TROPICAL_STORM";
-      $self->{DESTINATION} = $ENV{VAP_TS_ARCHIVE};
+      $self->{DESTINATION} = $ENV{VAP_TS_ARCHIVE} . "/$year";
       $self->{WEBPAGE} = $type2webpage{$self->{TYPE}};
       $self->{WHICH_SEAWINDS} = $insttype;
       my $tropical_storm_defs_file = "tropical_storm_defs_oo";
       my $foo=$ENV{VAP_LIBRARY}. "/tropical_storm_defs_oo";
       require "$tropical_storm_defs_file" ||
-	$self->_croak("Can't require $foo\n:$!",
+	$self->{ERROROBJ}->_croak("Can't require $foo\n:$!",
 		      "ERROR IN `REQUIRE'");
 
       $self->{TROPICAL_STORM}->{DEFS} = $tsoo_defs; 
@@ -198,25 +197,27 @@ sub parseFilename{
         # plus the other parts of the name uniquely determine the
         # satellite/sensor/region information.
 
-      my ($number,$ext);
-      my ($sat, $satnum, $sensor, $date, $limits, $region,$type) = split(/_/,$name);
-      ($type,$ext) =~ split ".", $type;
+      my ($sat, $satnum, $sensor, $date, $limits, $region,$num,$type) = 
+	split(/_/,$name);
       $self->{SYMLINK} = $ENV{VAP_WWW_TOP} ."/images/" . 
-	join("_", ($sat, $satnum, $sensor, $region, $type)) . "$ext";
+	join("_", ($sat, $satnum, $sensor, $region, $num,$type)) . "$ext";
       $self->{TYPE} = "OVERLAY";
       $self->{REGION} = join('_',($sat,$satnum,
-				  $VapUtil::sensorname2num{$sensor},
-				  $region));
+				  $VapUtil::sensorname2num{lc($sensor)},
+				  $region, $num));
       $self->{WHICH_SEAWINDS} = $type;
       $self->{DESTINATION} = $ENV{VAP_OVERLAY_ARCHIVE};
       $self->{WEBPAGE} = $type2webpage{$self->{TYPE}} . "_$type.html";
 
+
+      #### ----- start here! Why isn't it including $defsfile but is including $msgdefsfile! ---- ###
+
       my $defsfile = "overlay_defs_oo";
       my $msgdefsfile = $ENV{VAP_LIBRARY} . "/overlay_defs_oo";
-      $self->_croak("Can't find defaults file $msgdefsfile!\n",
-		    "CAN'T FIND DEFS FILE!") unless (! -e $msgdefsfile );
-      do { require "$defsfile"; } or 
-	$self->_croak("Can't `require $msgdefsfile\n",
+      $self->{ERROROBJ}->_croak("Can't find defaults file $msgdefsfile!\n",
+		    "CAN'T FIND DEFS FILE!") unless ( -e $msgdefsfile );
+      require "$defsfile"  || 
+	$self->{ERROROBJ}->_croak("Can't `require $msgdefsfile\n",
 		      "ERROR in `REQUIRE' of DEFS!");
       $self->{OVERLAY}->{DEFS} = $overlay_defs;
 
@@ -236,7 +237,7 @@ sub parseFilename{
       # `wind.001.ext.' So we check for the $self->{EXT} field here.
       #
 
-    $self->_croak("No EXT field in hash!\n","MISSING EXT FIELD!");
+    $self->{ERROROBJ}->_croak("No EXT field in hash!\n","MISSING EXT FIELD!");
     my ($region, $date) = $name =~ /(\w+)_(\w+)/;
     $self->{TYPE} = "ANIMATION";
     $self->{REGION} = $region;
@@ -247,7 +248,7 @@ sub parseFilename{
     $self->{SYMLINK} = $ENV{VAP_WWW_TOP} . "/images/$region.$ext";
 
     my $defsfile = $ENV{VAP_LIBRARY}. "/auto_movie_defs.dat";
-    $self->_croak("Body::new. Empty file:\n$defsfile",
+    $self->{ERROROBJ}->_croak("Body::new. Empty file:\n$defsfile",
 		  "Can't find $defsfile") if (! (-e $defsfile));
     my $hash = VapUtil::auto_movie_defs($defsfile);
     $self->{ANIMATION}->{DEFS} = $hash;
@@ -281,14 +282,19 @@ sub moveFile{
   my $type = $self->{TYPE};
   my $region = $self->{REGION};
   my $destination = $self->{DESTINATION} . "/". $name;
+
   $self->{WWWFILE} = $destination;
   my $src = $self->{FILE};
-  copy $src, $destination or 
-    $self->_croak( ["Error copying", $src, "to ", $destination],
-		   "VapWebside::movefile. Copy Error!");
+  copy $src, $destination || 
+    $self->{ERROROBJ}->_croak( "Error copying $src to  $destination",
+		   "VapWebside::moveFile. Copy Error!");
 
 
-  if ($type =~ /OVERLAY/i){
+    # This following section pertains only to OVERLAYS and ANIMATIONS,
+    # as they require the creation of symlinks. The TROPICAL_STORM
+    # files just get copied to their location directory.
+
+  if ($type =~ /OVERLAY/i) {
 
     my $symlink = $self->{SYMLINK};
     $self->redoSymlink($destination, $symlink);
@@ -303,7 +309,7 @@ sub moveFile{
 
     unlink $wwwframe;
     copy($first_frame, $wwwframe ) or 
-      $self->_croak("$0: Error copying $first_frame to $wwwframe:$!\n",
+      $self->{ERROROBJ}->_croak("$0: Error copying $first_frame to $wwwframe:$!\n",
 		   "$0: COPY ERROR");
 
     # Delete the symlink from the images subdirectory to the real file
@@ -325,6 +331,7 @@ sub moveFile{
     unlink $first_frame;
 
   } else {
+
     my $msg="Unknown type <$type>\n";
     my $msg2 = $self->{ERROROBJ}->{MSG};
     if ($msg2) {
@@ -334,7 +341,7 @@ sub moveFile{
     } else {
       $msg .= $msg2;
     }
-    $self->_croak($msg, "Unknown product type!");
+    $self->{ERROROBJ}->_croak($msg, "Unknown product type!");
   }
   1;
 
@@ -365,11 +372,11 @@ sub redoSymlink{
 
   if (-e $symlink) {
     unlink $symlink or 
-      $self->_croak("$0: Can't unlink $symlink:$!\n",
+      $self->{ERROROBJ}->_croak("$0: Can't unlink $symlink:$!\n",
 		    "$0: DELETE ERROR!");
   }
   symlink $file,$symlink or 
-    $self->_croak("$0: Can't symlink $symlink to $file!:$!\n",
+    $self->{ERROROBJ}->_croak("$0: Can't symlink $symlink to $file!:$!\n",
 		  "$0: SYMLINK ERROR!");
   1;
 }
@@ -392,7 +399,7 @@ sub redoSymlink{
 
 
 
-sub UpdateWebsite{
+sub updateWebsite{
   my $self=shift;
   my $file=$self->{FILE};
     # Move the file to the website, update the links.
@@ -405,16 +412,15 @@ sub UpdateWebsite{
     if (ref($msg2) eq 'ARRAY') {
       $msg2 = join("\n", @{$msg});
     } 
-  } else {
     $msg .= $msg2;
   }
-  $self->_croak($msg, "VapWebsite: CP ERROR") unless $status;
+  $self->{ERROROBJ}->_croak($msg, "VapWebsite: CP ERROR") unless $status;
 
   my $dir=$ENV{VAP_WWW_TOP} . "/images";
-  opendir DIR, "$dir" or 
-    $self->_croak("VapWebsite: Can't open images directory!\n",
+  opendir DIR, "$dir" ||
+    $self->{ERROROBJ}->_croak("VapWebsite: Can't open images directory!\n",
 		  "Error opening directory!");
-  my @imagedir_files = grep(!/\.\.?/, readdir(DIR));
+  my @imagedir_files = grep(!/^\.\.?/, readdir(DIR));
   closedir DIR;
 
   my $type=$self->{TYPE};
@@ -433,7 +439,7 @@ sub UpdateWebsite{
 
       # Regular overlay
 
-    my $re = $self->{WHICH_SEAWINDS} . "\?:.*_\\.((jpg|JPG|jpeg|JPEG)\$";
+    my $re = $self->{WHICH_SEAWINDS} . "\\.(?:jpg|JPG|jpeg|JPEG)\$";
 
     @imagedir_files = grep(/$re/, @imagedir_files);
 
@@ -448,7 +454,7 @@ sub UpdateWebsite{
       my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,
 	  $size,$atime,$mtime,$ctime,$junk)=stat($file);
 
-      my $self->{WEBSPACE}->{$region} = [$_,$size/1024.0, $mtime];
+      $self->{WEBSPACE}->{$region} = [$_,$size/1024.0, $mtime];
 
 
     }
@@ -456,10 +462,10 @@ sub UpdateWebsite{
 
 
     my $q=$self->{CGI};
-    my @order = @{$self->{DEFS}->{OVERLAY}->{ORDER}};
-    my $title=$self->{DEFS}->{OVERLAY}->{TITLE};
-    my $keywords =$self->{DEFS}->{OVERLAY}->{META}->{KEYWORDS};
-    my $h1=$self->{DEFS}->{OVERLAY}->{HEADING1};
+    my @order = @{$self->{WEB}->{DEFS}->{OVERLAY}->{ORDER}};
+    my $title=$self->{WEB}->{DEFS}->{OVERLAY}->{TITLE};
+    my $keywords =$self->{WEB}->{DEFS}->{OVERLAY}->{META}->{KEYWORDS};
+    my $h1=$self->{WEB}->{DEFS}->{OVERLAY}->{HEADING1};
 
       #### ===== here we start building the page ======= ###
 
@@ -468,35 +474,37 @@ sub UpdateWebsite{
 
 
     my $nrows = @order;
-    my $table = HTML::Table(-rows => $nrows, -cols=>1);
+    my $table = HTML::Table->new(-rows => $nrows, -cols=>1);
     my $row=1;
 
     foreach (@order){
 
-      my ($file,$size,$mtime)=$self->{WEBSPACE}->{$_};
-      my $name = $self->{OVERLAY}->{DEFS}->{$_}->{WEB}->{NAME};
-      my $string = "Overlay for the ";
-      my $statstring = "Created: " . scalar(localtime($mtime)) . "\n";
-      $statstring .= "Size: $size (Kb)\n";
-      my $linelink = $q->a({-href=>"images/$file",
-			   -name=>"'" . $_ . "'",
-			   -align=>'left'},
-			   $name );
-      my $img = $q->img({-src=>"/images/$file",
-			-valign=>'top'});
+      if ($self->{WEBSPACE}->{$_}){
+	my ($file,$size,$mtime)=@{$self->{WEBSPACE}->{$_}};
+	my $name = $self->{OVERLAY}->{DEFS}->{$_}->{WEB}->{NAME};
+	my $string = "Overlay for the ";
+	my $statstring = "Created: " . scalar(localtime($mtime)) . "\n";
+	$statstring .= "Size: $size (Kb)\n";
+	my $linelink = $q->a({-href=>"images/$file",
+			     -name=>"'" . $_ . "'",
+			     -align=>'left'},
+			     $name );
+	my $img = $q->img({-src=>"/images/$file",
+			  -valign=>'top'});
+	my $alt = join( " ", split(/_/,$_));
+	my $clickableimage = $q->a({-href=>"images/$file",
+				    -alt=>"'" . $alt . "'",
+				    -valign=>'top',
+				    -width=>'200',
+				    -height=>'150',}, $img);
 
-      my $clickableimage = $q->a({-href=>"images/$file",
-				  -alt=>"'" . split(/_/,$_) . "'",
-				  -valign=>'top',
-				  -width=>'200',
-				  -height=>'150',}, $img);
 
+	my $p1 = $q->p({-align=>'left'}, "$string$linelink\n$statstring\n");
+	my $p2 = $q->p({-align=>'left'}, $clickableimage);
+	my $content = "$p1\n$p2\n";
 
-      my $p1 = $q->p({-align=>'left'}, "$string$linelink\n$statstring\n");
-      my $p2 = $q->p({-align=>'left'}, $clickableimage);
-      my $content = "$p1\n$p2\n";
-
-      $table->setCell($row++, 1, $content);
+	$table->setCell($row++, 1, $content);
+      }
     }
 
     $html .= $table;
@@ -512,19 +520,19 @@ sub UpdateWebsite{
       my $region = Animfilename2region($_);
       my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,
 	  $size,$atime,$mtime,$ctime,$junk)=stat($file);
-      my $self->{WEBSPACE}->{$region} = [$_, $size/1024.0, $mtime];
+      $self->{WEBSPACE}->{$region} = [$_, $size/1024.0, $mtime];
     }
 
 
-    my @order = @{$self->{DEFS}->{ANIMATION}->{ORDER}};
+    my @order = @{$self->{WEB}->{DEFS}->{ANIMATION}->{ORDER}};
     my $nrows = @order;
-    my $table = HTML::Table(-rows => $nrows, -cols=>1);
+    my $table = HTML::Table->new(-rows => $nrows, -cols=>1);
     my $row=1;
 
     my $q=$self->{CGI};
-    my $title=$self->{DEFS}->{OVERLAY}->{TITLE};
-    my $keywords =$self->{DEFS}->{OVERLAY}->{META}->{KEYWORDS};
-    my $h1=$self->{DEFS}->{OVERLAY}->{HEADING1};
+    my $title=$self->{WEB}->{DEFS}->{OVERLAY}->{TITLE};
+    my $keywords =$self->{WEB}->{DEFS}->{OVERLAY}->{META}->{KEYWORDS};
+    my $h1=$self->{WEB}->{DEFS}->{OVERLAY}->{HEADING1};
 
       #### ===== here we start building the page ======= ###
 
@@ -533,30 +541,33 @@ sub UpdateWebsite{
 
     foreach (@order){
 
-      my ($file,$size,$mtime)=$self->{WEBSPACE}->{$_};
+      if ($self->{WEBSPACE}->{$_}) {
+	my ($file,$size,$mtime)=@{$self->{WEBSPACE}->{$_}};
 
-      my $string = "Animation for the ";
-      my $statstring = "Created: " . scalar(localtime($mtime)) . "\n";
-      $statstring .= "Size: $size (Kb)\n";
-      my $name = $self->{ANIMATION}->{DEFS}->{$_};
-      my $linelink = $q->a({-href=>"/images/$file",
-			   -name=>"'" . $_ . "'",
-			   -align=>'left'},
-			   $name );
-      my $frame = "/images/". $_ . ".001.frame.mov";
-      my $img = $q->img({-src=>"'$frame'",
-			-valign=>'top'});
+	my $string = "Animation for the ";
+	my $statstring = "Created: " . scalar(localtime($mtime)) . "\n";
+	$statstring .= "Size: $size (Kb)\n";
+	my $name = $self->{ANIMATION}->{DEFS}->{$_};
+	my $linelink = $q->a({-href=>"/images/$file",
+			     -name=>"'" . $_ . "'",
+			     -align=>'left'},
+			     $name );
+	my $frame = "/images/". $_ . ".001.frame.mov";
+	my $img = $q->img({-src=>"'$frame'",
+			  -valign=>'top'});
 
-      my $clickableimage = $q->a({-href=>"/images/$file",
-				  -alt=>"'" . split(/_/,$_) . "'",
-				  -valign=>'top'}, $img);
+	my $alt = join( " ", split(/_/,$_));
+	my $clickableimage = $q->a({-href=>"/images/$file",
+				    -alt=>"'" . $alt . "'",
+				    -valign=>'top'}, $img);
 
 
-      my $p1 = $q->p({-align=>'left'}, "$string$linelink\n$statstring\n");
-      my $p2 = $q->p({-align=>'left'}, $clickableimage);
-      my $content = "$p1\n$p2\n";
+	my $p1 = $q->p({-align=>'left'}, "$string$linelink\n$statstring\n");
+	my $p2 = $q->p({-align=>'left'}, $clickableimage);
+	my $content = "$p1\n$p2\n";
 
-      $table->setCell($row++, 1, $content);
+	$table->setCell($row++, 1, $content);
+      }
     }
 
     $html .= $table . $q->end_html;
@@ -594,10 +605,10 @@ sub UpdateWebsite{
 sub filename2region{
   my ($self, $file)= @_;
 
-  $self->_croak("Missing file parameter!\n", 
+  $self->{ERROROBJ}->_croak("Missing file parameter!\n", 
 		"VapWebsite::filename2region: Argument Error");
   my ($name, $path ) = fileparse($file);
-  $self->_croak("File is not fully qualified!\n$file\n", 
+  $self->{ERROROBJ}->_croak("File is not fully qualified!\n$file\n", 
 		  "VapWebsite::filename2region: NO PATH ") if (!$path);
   my $overlay = $ENV{VAP_OVERLAY_ARCHIVE};
   my $anim = $ENV{VAP_ANIM_ARCHIVE};
@@ -661,7 +672,7 @@ sub filename2region{
 
 
   } else {
-    $self->_croak("Unknown path!\n$path\n",
+    $self->{ERROROBJ}->_croak("Unknown path!\n$path\n",
 		  "VapWebsite::filename2region: Path error!");
   }
   
@@ -669,24 +680,28 @@ sub filename2region{
 }
 
 sub TSfilename2region{
-  my ($self, $name) = @_;
+  my ($self, $file) = @_;
   my ($region, $stormtype, $name, $date,$insttype) = 
-    ($name =~ /(\w+)-(\w+)-(\w+)-(\d+)-(\w+)\..*/);
+    ($file =~ /(\w+)-(\w+)-(\w+)-(\d+)-(\w+)\..*/);
   $region;
 }
 
 sub Animfilename2region{
+
+  # files look like nepac_200301020345.mov
+
   my ($self, $name) = @_;
-  my ($number, @junk);
-  my ($sat, $sensor, $date, $limits, $type, $region) = split(/_/,$name);
-      ($region,$number,@junk) = $region =~ /(\w+)_(\d)?\.\w+/;
+  my ($region,$date, $junk) = $name=~ /(\w+)_(\d)?\.\w+/;
   $region;
 }
 
 sub Overlayfilename2region{
+
+  # names look like GOES_10_IR4_NEPAC_1_Q.jpeg
+
   my ($self, $name) = @_;
-  my ($sat, $satnum, $sensor, $date, $limits, $region, $junk) = split(/_/,$name);
-  $region = join("_", ($sat, $satnum, $sensornum2name{$sensor}, $region));
+  my ($sat, $satnum, $sensor, $region, $num, $type) = split(/_/,$name);
+  $region = join("_", ($sat, $satnum, $VapUtil::sensorname2num{lc($sensor)}, $region, $num));
 }
 
 sub startPage{

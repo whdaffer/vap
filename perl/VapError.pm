@@ -4,6 +4,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.7  2002/12/16 23:14:55  vapdev
+# ongoing work
+#
 # Revision 1.6  2002/12/10 19:57:12  vapdev
 # Ongoing work
 #
@@ -44,10 +47,10 @@
 
 =head2 KEYS
 
-=item * INFO_HANDLE the filehandle that Report(...,INFO) sends the
+=item * LOG: the filehandle that Report(...,LOG) sends the
         message to, by default this equals *STDOUT
 
-=item * ERROR_HANDLE: the filehandle the Report(...,ERROR) sends the
+=item * ERROR: the filehandle the Report(...,ERROR) sends the
         message to, by default *STDERR
 
 =item * MAIL_ADDRESSES: The list of addresses to send mail to. This
@@ -62,7 +65,7 @@
 
     $error_object -> Report(message,SEVERITY);
 
-    Here SEVERITY is either "INFO" or "ERROR"
+    Here SEVERITY is either "LOG" or "ERROR"
 
   When the user wants to send a message and terminate:
 
@@ -94,19 +97,19 @@
                => value format, They get placed  directly into the
                object.  Any arguments are acceptable but the  only
                fields being used right now (Thu Aug  8 11:08:36 2002)
-               are INFO_HANDLE, ERROR_HANDLE and MAIL_ADDRESSES.
+               are LOG, ERROR and MAIL_ADDRESSES.
 
                Stay tuned for any changes. 
 
 =item* Report(message,severity):
 
-    Send a <message> to the $self->{INFO_HANDLE} if <severity> ==
-    INFO otherwise sent it to $self->{ERROR_HANDLE}
+    Send a <message> to the $self->{LOG} if <severity> ==
+    LOG otherwise sent it to $self->{ERROR}
 
 
 =item* Log(message):
 
-    A synonym for `Report(message,INFO)' with the added element that the
+    A synonym for `Report(message,LOG)' with the added element that the
     message is prefixed with the current local time.
 
 
@@ -134,7 +137,7 @@ package VapError;
 use strict;
 use Carp;
 
-use vars qw($vap_error_defs $VAP_LIBRARY *STDOUT *STDERR);
+use vars qw/$vap_error_defs $VAP_LIBRARY *STDOUT *STDERR/;
 
 BEGIN {
   croak  "ENV variable VAP_LIBRARY is undefined!\n"
@@ -183,9 +186,9 @@ sub new {
 
 =head2 Usage: $obj->Report(message,severity)
 
-  if `severity' == info|INFO, send message to $self->{INFO_HANDLE} (by
+  if `severity' == info|LOG, send message to $self->{LOG} (by
   default STDOUT unless overridden in the call to `new') otherwise
-  send it to ERROR_HANDLE (by default STDERR)
+  send it to ERROR (by default STDERR)
 
 =cut
 
@@ -195,8 +198,7 @@ sub Report{
   $message = join("",@{$message}) if ref($message) eq 'ARRAY';
   my $severity = shift || "ERROR";
   $severity = uc $severity;
-  my $handle= $severity."_HANDLE";
-  my $fh=$self->{$handle};
+  my $fh=$self->{$severity};
   print $fh $message;
   1;
 }
@@ -230,7 +232,7 @@ sub ReportAndDie{
   my $address = shift;
   my $addresses;
   if (ref($self->{ERROR_MAIL_ADDRESSES}) eq 'ARRAY') {
-    $addresses = join " ", $self->{ERROR_MAIL_ADDRESSES};
+    $addresses = join " ", @{$self->{ERROR_MAIL_ADDRESSES}};
   } else {
     $addresses = $self->{ERROR_MAIL_ADDRESSES};
   }
@@ -240,12 +242,13 @@ sub ReportAndDie{
 
   $addresses = "$address $addresses"; 
   if ($self->{IS_BATCH}) {
-    open PIPE, "|mailx -s'$subject' $addresses" or 
-      croak "Can't open `mailx':$!\n";
+    $subject = '"' . $subject . '"';
+    my $exe = "|mailx -s $subject  $addresses ";
+    open PIPE, $exe || croak "Can't open `mailx':$!\n";
     print PIPE "$message\n";
     close PIPE;
     my $final_message = "Message: $message\nsent to $addresses\n\n";
-    my $fh=$self->{ERROR_HANDLE} ;
+    my $fh=$self->{ERROR} ;
     print $fh $final_message;
   }
   confess "And now, I die --- ".scalar(localtime(time))."!\n";
@@ -261,9 +264,9 @@ sub ReportAndDie{
 
 =head2 Usage: $obj->Log(message)
 
- Send message to $self->{INFO_HANDLE} (by default STDOUT unless
- overridden in the call to `new') if `severity' == info|INFO,
- otherwise send it to ERROR_HANDLE (by default STDERR)
+ Send message to $self->{LOG} (by default STDOUT unless
+ overridden in the call to `new') if `severity' == info|LOG,
+ otherwise send it to ERROR (by default STDERR)
 
 =cut
 
@@ -271,7 +274,7 @@ sub Log{
   my $self=shift;
   my $msg=shift;
   $msg = scalar(localtime) . ": " . $msg;
-  $self->Report($msg, "INFO");
+  $self->Report($msg, "LOG");
   1;
 }
 

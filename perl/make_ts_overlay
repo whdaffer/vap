@@ -52,8 +52,9 @@ The cloud data closest to TIME will be used in the overlay.
 =cut
 
 use strict;
-use TropicalStormsOverlay;
+use OTS; # Object oriented Tropical Storms Overlay module
 use GetOpt::Long;
+use VapWebsite;
 
 my $starttime = $^T;
 my $starttimeasstring = scalar(localtime($^T));
