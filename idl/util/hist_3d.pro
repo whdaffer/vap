@@ -44,6 +44,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/07 22:52:52  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998,William Daffer
 ;-
@@ -76,7 +79,7 @@ IF n_elements(min2) EQ 0 THEN min2 = m2
 IF n_elements(min3) EQ 0 THEN min3 = m3
 IF n_elements(max1) EQ 0 THEN max1 = mx1
 IF n_elements(max2) EQ 0 THEN max2 = mx2
-IF n_elements(max3) EQ 0 THEN max3 = mx2
+IF n_elements(max3) EQ 0 THEN max3 = mx3
 IF n_elements(bin1) EQ 0 THEN bin1 = 1L
 IF n_elements(bin2) EQ 0 THEN bin2 = 1L
 IF n_elements(bin3) EQ 0 THEN bin3 = 1L
