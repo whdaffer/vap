@@ -12,6 +12,13 @@
 #   (i.e. what has become known as 'vaptime')
 # 
 # $Log$
+# Revision 1.8  2001/02/09 18:30:06  vapuser
+# Added calls to vap_perl::VapMailErrorMsg.  Also changed the way
+# auto_movie.pl gets the name of the output .mov file. auto_movie.pro
+# now writes it out to tmpfiledir/auto_movie_mov_filename and
+# auto_movie.pl reads that name in, just like cloud_overlay {perl/idl}
+# duo.
+#
 #
 # Revision 1.7  2000/02/09 18:22:43  vapuser
 # Took out '/nodate' switch in call to auto_movie.pro.
@@ -41,6 +48,7 @@
 #
 #
 require 5.000;
+use lib '/usr/people/vapuser/perl';
 use vap_perl;
 use Cwd 'chdir';
 use File::Copy ;
