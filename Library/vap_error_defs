@@ -1,0 +1,33 @@
+# $Id$
+#
+# Defaults used in Error reporting/Recovery.
+#
+# Modification History
+#
+# $Log$
+#
+#
+# 
+#
+# When I'm on vacation, send mail to 
+# Mike Spencer, vapuser and me@yahoo
+#
+#
+#%vap_defs=( Error_Mail_Address =>
+#   ["vapuser\@catspaw.jpl.nasa.gov", 
+#     "michael.spencer\@jpl.nasa.gov,
+#	     "whdaffer\@yahoo.com"] );
+#
+# If you don't want the email messages, Mike, just 
+# change that hash to:
+#
+#%vap_defs=( Error_Mail_Address =>
+#   ["vapuser\@catspaw.jpl.nasa.gov", 
+#	     "whdaffer\@yahoo.com"] );
+#
+# Hash containing defaults for Error processing.
+# At the moment, the only default is Email addresses. 
+#
+%vap_error_defs=( ERROR_MAIL_ADDRESS =>
+	    ["William.Daffer\@jpl.nasa.gov",
+	     "whdaffer\@attbi.com.net"]);,
