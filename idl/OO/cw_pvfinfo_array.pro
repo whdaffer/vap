@@ -62,6 +62,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/22 23:42:34  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -183,7 +186,7 @@ FUNCTION cw_pvfinfo_array_init, tlb, base=base, $
     ELSE : BEGIN 
       Message,"infostructs must be a Object (linkedlist) a Ptr_Arr or a Structure!",/cont
       return,0l
-    ENDIF 
+    END
   ENDCASE 
 
   IF n_elements(filenames) NE n_info  OR $
