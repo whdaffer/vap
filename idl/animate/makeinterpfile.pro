@@ -19,6 +19,7 @@
 ;                                   Wpath=Wpath, Filter=Filter,$
 ;                                   Lonpar=lonpar, Latpar=Latpar,
 ;                                   Rainf=Rainf, Ermax=Ermax, $
+;                                   min_Nvect=min_Nvect,$
 ;                                   Decimate=Decimate,$
 ;                                   CRDecimate=CRDecimate,$
 ;                                   ExcludeCols=ExcludeCols,$
@@ -74,6 +75,8 @@
 ;              field is discarded in favor of the computed model
 ;              default = [50., 20., 10., 5.];
 ;
+;   Min_Nvect - (I) scalar: Don't make interp file if there are less 
+;               this number of vectors. (default=-1, i.e. make it regardless)
 ;   Decimate - (I) scalar: take every nth vector, i.e. 2=> take
 ;                  every other, 3=> take every 3rd. (Defaults to 1,
 ;                  meaning take evey vector)
@@ -168,6 +171,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/15 02:15:48  daffer
+; Added Ofile keyword
+;
 ; Revision 1.2  1998/10/07 18:30:54  vapuser
 ; Some Comment work
 ;
@@ -225,8 +231,10 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                                                   ;  in Wind Files
                          Nscat     = Nscat, $     ; (I) flag, if set, expect 
                                                   ;  Nscat data
-                         NoFile = NoFile, $       ; (I), flag, if set, don't write file.
-                         Ofile = Ofile ,$         ; (I/O). If present on input, this will
+                         NoFile = NoFile, $       ; (I), flag, if set, don't write 
+                                                  ; file.
+                         Ofile = Ofile ,$         ; (I/O). If present on input, 
+                                                  ; this will
                                                   ; be the name of the
                                                   ; output file. If
                                                   ; present as a
@@ -234,7 +242,9 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                                                   ; the name of the
                                                   ; output file will
                                                   ; be returned in it.
-
+                         min_Nvect = Min_Nvect,$  ; Don't make interp file if there
+                                                  ; are less than this number 
+                                                  ; of vectors.
                          Decimate = Decimate, $   ; See Explanation above
                          CRDecimate=CRDecimate,$  ; See Explanation above
                          ExcludeCols=ExcludeCols  ; See Explanation above
@@ -248,7 +258,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
 
   Nscat = Keyword_set(Nscat)
   IF n_elements(Wfiles) eq 0 THEN BEGIN 
-    IF n_Elements(date_time) NE 0 THEN date_time = idldt2vaptime(today())
+    IF n_Elements(date_time) EQ 0 THEN date_time = TodayAsString(sep='/')
     IF n_elements(time_inc) NE 0 THEN time_inc = 26
     IF n_elements(Wpath) EQ 0 THEN Wpath = getenv('VAP_WINDS')
     IF N_Elements(filter) EQ 0 THEN BEGIN 
@@ -257,6 +267,17 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
      Wfiles = GetWindFiles(date_time,delta=time_inc,path=wpath, $
                            filter=filter, count=cnt, nscat=nscat)
   ENDIF 
+
+  IF strlen( Wfiles[0] ) EQ 0 AND N_Elements(Wfiles) EQ 0 THEN BEGIN 
+    Message,'Error in GetWindFiles',/cont
+    return,0
+  ENDIF 
+
+  minnvect = 1.e30
+  IF n_elements(min_nvect) ne 0 THEN BEGIN 
+    IF min_nvect NE -1 THEN minnvect = min_nvect
+  ENDIF 
+
 
   data = Read_Wind_Files( Wfiles, nscat=nscat, $
                         Decimate=Decimate, $
@@ -271,6 +292,15 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     V   = data[*,1]
     Lon = data[*,2]
     Lat = data[*,3]
+
+      ; check to see if there are enough vectors.
+    IF n_elements(U) LT minNvect THEN BEGIN 
+      nu =strtrim( n_elements(u),2)
+      mnu = strtrim( minNVect,2 )
+      Message,'Too Few vectors!',/cont
+      print,'U has only ', nu, ' min NVect = ', mnu
+      return,0
+    ENDIF 
 
     IF N_elements(LonPar) NE 3  THEN LonPar =  [0.,359,1.]
     IF N_elements(LatPar) NE 3  THEN LatPar =  [-60.,60.,1.]
@@ -301,15 +331,17 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     ; Well, we've made it here, so the field must be okay. 
 
 
-  IF N_Elements(Ofile) NE 0 THEN outfile = Ofile ELSE BEGIN 
-    Ofile = 'QIF-'
-    tmp = str_sep( EndTime,'/' )
-    nn = n_elements(tmp)
-    FOR i=0,nn-1 DO Ofile = Ofile + tmp[i]
-    Ofile = Ofile + '.hdf'
-  ENDELSE 
 
   IF NOT keyword_set( NoFile) THEN BEGIN 
+    IF N_Elements(Ofile) eq 0 THEN BEGIN 
+      Ofile = 'QIF-'
+      tmp = str_sep( EndTime,'/' )
+      nn = n_elements(tmp)
+      FOR i=0,nn-1 DO Ofile = Ofile + tmp[i]
+      Ofile = Ofile + '.hdf'
+    ENDELSE 
+
+    Ofile = Ofile[0]
       ; Let's write it out.
     Message,' Writing file to ' + Ofile,/info
     s = qmodelhdfwrite( Ofile,Ui,Vi, lonpar=lonpar, latpar=Latpar, $
