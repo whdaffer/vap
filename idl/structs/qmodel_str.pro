@@ -3,38 +3,20 @@
 ; $Id$
 ; PURPOSE:  Defines the 'qmodel' structure
 ;
-;
 ; AUTHOR; William Daffer
-;
-;
-; CATEGORY:   Data I/O
-;
-;
+; CATEGORY:   Qscat Vap Data I/O
 ;
 ; CALLING SEQUENCE:  structure=qmodel_str()
-;
-;
 ; 
 ; INPUTS:  
 ;
-;
-;
-;
 ; OPTIONAL INPUTS:  
-;
-;
 ;	
 ; KEYWORD PARAMETERS:  
 ;
-;
-;
 ; OUTPUTS:   1 structure of type QMODEL
 ;
-;
-;
 ; OPTIONAL OUTPUTS:  none
-;
-;
 ;
 ; COMMON BLOCKS:  
 ;
@@ -49,23 +31,14 @@
 ;
 ;
 ; SIDE EFFECTS:  None
-;
-;
-;
 ; RESTRICTIONS:  None
-;
-;
-;
 ; PROCEDURE:  
-;
-;
-;
 ; EXAMPLE:  
-;
-;
-;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/10/17 00:20:27  vapuser
+; Increased LongName to 256 bytes.
+;
 ; Revision 1.3  1998/10/12 22:21:31  vapuser
 ; Added lon and lat
 ;
@@ -97,13 +70,18 @@ FUNCTION qmodel_str
           ShortName    : bytarr(24),$ 
           NLon         : 0l        ,$
           NLat         : 0l        ,$
+          rainf        : ptr_new(), $
+          ermax        : ptr_new(), $
+          crdecimate   : intarr(2), $
+          decimate     : 0l       , $
           LonPar       : fltarr(3) ,$
           LatPar       : fltarr(3) ,$
           Region       : fltarr(4) ,$
           CreationTime : bytarr(16),$ ;vaptime, yyyy/mm/dd/hh/mm
           StartTime    : bytarr(16),$ ;yyyy/mqm/dd/hh/mm
           EndTime      : bytarr(16),$ ;yyyy/mm/dd/hh/mm
-          Version      : bytarr(16) $
+          Version      : bytarr(16),$
+          Exclude_cols : bytarr(16) $
         }
 
     qmodel =  { QMODELDATA,$
@@ -111,7 +89,7 @@ FUNCTION qmodel_str
                 U   : Ptr_New(), $
                 V   : Ptr_New(), $
                 Lon : Ptr_New(), $
-                Lat : Ptr_New()  $
+                Lat : Ptr_New() $
               }
 
     tmp = byte('QMODEL')
