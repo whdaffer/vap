@@ -107,6 +107,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/10/17 00:21:39  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -143,6 +146,7 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
   rcsid = "$Id$"
   cd, current=curdir
   Interp_Files = ''
+  lf =string(10b)
   catch, error
   IF error NE 0 THEN BEGIN 
     Message,!error_State.msg,/cont
@@ -178,7 +182,7 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
 
   IF cnt NE 0 THEN BEGIN 
 
-    junk = (rstrpos( interp_files, '/'))[0] + 1
+    junk = (rstrpos( interp_files[0], '/'))[0] + 1
     len = strlen(interp_files[0])
     basenames = strmid(interp_files, junk, len-junk)
     filetimes = ifnames2dt(basenames)
@@ -203,7 +207,8 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
   ENDIF ELSE make_interp_file = 1
 
   IF make_interp_file THEN BEGIN 
-    Message,'No Interpolated Wind Field Files present in ' + interp_path,/cont
+    Message,'Either no interpolated wind field files present in ' + interp_path + lf + $
+     ' or none in time range' ,/cont
     print,'   Making new interp file '
     cd,interp_path
     field = MakeInterpFile( tdate_time,time_inc, $
