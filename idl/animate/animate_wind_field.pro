@@ -73,8 +73,6 @@
 ;                     contour  and wind speed color bar.
 ;          max_speed - maximum speed to be used in the wind speed
 ;                     contour  and wind speed color bar.
-;          nmc     - if set, the file is an nmc file and has one
-;                    row of data info (obselete, don't use)
 ;          debug - useful for debugging. If set, the routine will stop
 ;                  in the context of the error, so that you can
 ;                  investigate the problem, instead of immediately
@@ -299,6 +297,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/10/06 00:17:44  vapuser
+; Initial revision
+;
 ;
 ; Pre-RCS mods:
 ;
@@ -355,7 +356,6 @@ PRO ANIMATE_WIND_FIELD, files, $ ; fully qualified grid file name(s) (no default
                                             ; (def=[640,480,60])
                         path_inc= path_inc,$ ; scale factor to determine how far
                                              ; along projected path a vector moves
-                        nmc     =  nmc, $         ; flag for nmc files
                         write_gif =  write_gif, $ ; flag to write gif file 
                                                   ; (the default)
                         write_pict= write_pict ,$  ; flag to write pict file
@@ -391,8 +391,16 @@ COMMON prs, long_sel, lats_sel, lons, lats, uu, vv, uu_sel, vv_sel, $
 
 COMMON colors, r_curr, g_curr, b_curr, r_orig, g_orig, b_orig
 
+   rcsid = "$Id$"
 
-rcsid = "$Id$"
+   catch, error
+   IF error NE 0 THEN BEGIN 
+     Message,!error_state.msg,/cont
+     return
+   ENDIF 
+
+
+  GENV,/save ; Save Graphical environment.
 
   lf =  string(10b)
   hstr =  'Usage: ' + lf + $
@@ -412,7 +420,6 @@ rcsid = "$Id$"
   '                      ; [ xsize, ysize, num frames ]' + lf + $
   '  path_inc= path_inc,$ ; scale factor to determine how far' + lf + $
   '                       ; along projected path a vector moves' + lf + $
-  '  nmc     =  nmc, $         ; flag for nmc files' + lf + $
   '  write_gif =  write_gif, $ ; flag to write gif file' + lf + $
   '  write_pict= write_pict ,$  ; flag to write pict file' + lf + $
   '  write_ps= write_ps,$      ; flag to write postscript file' + lf + $
@@ -490,12 +497,6 @@ ON_IOERROR, stop
   ; the animation.
 
 IF NOT(keyword_set(path_inc) ) THEN path_inc =  0.04 
-nmcflag =  keyword_set( nmc )
-IF n_elements( ddims ) EQ 0 THEN BEGIN
-    ddims =  [ [ 0., 359., 1] , $
-               [ -60., 60, 1] ]
-  Message,' Taking default dimensions: 360 x 121 x 1deg grid ',/cont
-ENDIF 
 
 IF n_elements( lonpar ) EQ 0 THEN BEGIN
   lonpar =  [0.,359]
@@ -531,37 +532,6 @@ IF keyword_set( tvsafe ) THEN $
 IF keyword_set( titsafe) THEN $
  pad =  [ round( animpar(0)*0.184375/2.),round(animpar(1)*0.184/2.) ]
 
-
-  ; If the data is being passed directly
-  ; in, Check to make sure ddims agrees with data arrays.
-  ; [xy]f: f means file, x means longitude, y means latitude
-  ; So, xfinc is the increment in the file in the longitude direction.
-  ;
-xfinc =  ddims(2,0)
-yfinc =  ddims(2,1)
-xf0   =  ddims(0,0) &  xf1= ddims(1,0)
-yf0   =  ddims(0,1) &  yf1= ddims(1,1)
-nxf    =  (xf1-xf0)/xfinc+1
-nyf    =  (yf1-yf0)/yfinc+1
-
-
-
-IF exist(UI) AND exist(VI) THEN BEGIN 
-  szui = size( UI )
-  szvi = size( VI )
-  x = where(szui-szvi,nx)
-  IF nx NE 0 THEN BEGIN 
-    Message,'Error: UI must have same dimensions as VI',/cont
-    return
-  ENDIF 
-  sz = size( UI,/Dimensions )
-  IF szui[1] NE nxf AND szui[2] NE nyf THEN BEGIN 
-    Message,'UI/VI disagree with DDIMS ',/cont
-    print,'UI has dimensions ',sz
-    print,'DDims = ', ddims
-    return
-  ENDIF 
-ENDIF 
 
   ;
 first = 1
@@ -599,72 +569,122 @@ landel =  intarr( 12*360, 12*180 + 1 )
 readu,1, landel
 close,1
 
-
+read_success = 1
 IF n_elements(UI) NE 0 AND n_elements(VI) NE 0 THEN BEGIN 
-  read_success = 1
+
   uu0 = temporary(ui)
   vv0 = temporary(vi)
+
+  IF n_elements( ddims ) EQ 0 THEN BEGIN
+      ddims =  [ [ 0., 359., 1] , $
+                 [ -60., 60, 1] ]
+    Message,' Taking default dimensions: 360 x 121 x 1deg grid ',/cont
+  ENDIF 
+
+    ; If the data is being passed directly
+    ; in, Check to make sure ddims agrees with data arrays.
+    ; [xy]f: f means file, x means longitude, y means latitude
+    ; So, xfinc is the increment in the file in the longitude direction.
+    ;
+
+  xfinc =  ddims(2,0)
+  yfinc =  ddims(2,1)
+  xf0   =  ddims(0,0) &  xf1= ddims(1,0)
+  yf0   =  ddims(0,1) &  yf1= ddims(1,1)
+  nxf    =  (xf1-xf0)/xfinc+1
+  nyf    =  (yf1-yf0)/yfinc+1
+
+
+
+  szui = size( UI )
+  szvi = size( VI )
+  x = where(szui-szvi,nx)
+  IF nx NE 0 THEN BEGIN 
+    Message,'Error: UI must have same dimensions as VI',/cont
+    return
+  ENDIF 
+  sz = size( UI,/Dimensions )
+  IF szui[1] NE nxf AND szui[2] NE nyf THEN BEGIN 
+    Message,'UI/VI disagree with DDIMS ',/cont
+    print,'UI has dimensions ',sz
+    print,'DDims = ', ddims
+    return
+  ENDIF 
+
 ENDIF ELSE BEGIN 
-  read_success =  1
+
+  ; Reading from a file, ddims will be defined by the file.
   nfiles =n_elements( files )  
 
   IF nfiles EQ 1 THEN BEGIN 
-    openr, rlun, files(0),/get_lun, error= err
-    IF err EQ  0 THEN BEGIN 
-      IF nmcflag THEN BEGIN 
-          ; The NMC file has one row with data information in it.
-        b = intarr( nxf )
-        readu,rlun,b
-        yr = b( 0 ) & mo = b( 1 ) & day = b( 2 ) & hr = b( 3 )
-        syr = strtrim( string( yr ),2 )
-        smo = strtrim( string( mo ),2 )
-        sday = strtrim( string( day ),2 )
-        shr = strtrim( hr, 2 ) +'Z'
-        fac =  0.01
-        uu0 =  intarr( nxf, nyf ) &  vv0 = uu0
-      ENDIF ELSE BEGIN 
-        uu0=fltarr( nxf,nyf ) & vv0 = uu0
-        fac =  1.
-      ENDELSE 
-      readu,rlun,uu0
-      readu,rlun,vv0
-      free_lun, rlun
-      uu0 =  uu0*fac
-      vv0 =  vv0*fac
-    ENDIF ELSE read_success =  0
+
+      ; Only one file.
+    q = Obj_New('qmodel',file=files[0])
+    IF Obj_Isa(q, 'qmodel') THEN BEGIN 
+      s = q-> getPlotData(U,V,Lon,Lat)
+      uu0 = U
+      vv0 = V
+      fac =  1.
+      q-> get, lonpar = londims, latpar=latdims
+      ddims = [ [londims],[latdims]]
+
+      xfinc =  ddims(2,0)
+      yfinc =  ddims(2,1)
+      xf0   =  ddims(0,0) &  xf1= ddims(1,0)
+      yf0   =  ddims(0,1) &  yf1= ddims(1,1)
+      nxf    =  (xf1-xf0)/xfinc+1
+      nyf    =  (yf1-yf0)/yfinc+1
+
+    ENDIF ELSE BEGIN 
+      Message,'Error initializing Object qmodel with file ' + files[0],/cont
+      read_success =  0
+    ENDELSE 
+
   ENDIF ELSE BEGIN
+
+    ; More than one file, Read the first to get the dimensionality.
+
+    q = Obj_New('qmodel',file=files[0])
+    IF Obj_Isa(q, 'qmodel') THEN BEGIN 
+      s = q-> getPlotData(U,V,Lon,Lat)
+      q-> get, lonpar = londims, latpar =latdims
+      Obj_Destroy,q
+      ddims = [ [londims],[latdims]]
+
+      xfinc =  ddims(2,0)
+      yfinc =  ddims(2,1)
+      xf0   =  ddims(0,0) &  xf1= ddims(1,0)
+      yf0   =  ddims(0,1) &  yf1= ddims(1,1)
+      nxf    =  (xf1-xf0)/xfinc+1
+      nyf    =  (yf1-yf0)/yfinc+1
+
+    ENDIF ELSE read_success =  0
+
     uu0 =  fltarr(nxf,nyf, nfiles) &  vv0=uu0 
-    FOR i=0, nfiles-1 DO BEGIN
-      openr,rlun, files(i), /get_lun, error= err
-      IF err EQ 0 THEN BEGIN
-        IF nmcflag THEN BEGIN 
-            ; The NMC file has one row with data information in it.
-          b = intarr( nxf )
-          readu,rlun,b
-          yr = b( 0 ) & mo = b( 1 ) & day = b( 2 ) & hr = b( 3 )
-          syr = strtrim( string( yr ),2 )
-          smo = strtrim( string( mo ),2 )
-          sday = strtrim( string( day ),2 )
-          shr = strtrim( hr, 2 ) +'Z'
-          fac =  0.01
-          tuu =  intarr( nxf, nyf ) &  tvv = tuu
+    uu0[*,*,0] =  U
+    vv0[*,*,0] =  V
+    file_cntr = 1
+
+    WHILE file_cntr LT nfiles AND read_success EQ 1 DO BEGIN
+      q =  Obj_New('qmodel',file=files[file_cntr])
+      IF Obj_Isa(q, 'qmodel') THEN BEGIN 
+        q-> get, lonpar = londims, latpar=latdims
+        tdims = [[londims],[latdims]]
+        x = where(ddims-tdims,nx)
+        IF nx EQ 0 THEN BEGIN 
+          s = q-> getPlotData(U,V,Lon,Lat)
+          uu0[*,*,file_cntr] = U
+          vv0[*,*,file_cntr] = V
+          Obj_Destroy,q
         ENDIF ELSE BEGIN 
-          tuu=fltarr( nxf,nyf ) & tvv = tuu
-          fac =  1.
+          read_success = 0
+          Message,'All files must have same dimensionality!',/cont
+          print,'  First file had dimensions ',ddims
+          print,'  File ', strtrim(file_cntr,2),' has dimensions ', tdims
         ENDELSE 
-        readu,rlun,tuu, tvv
-        free_lun, rlun
-        x =  where(abs(tuu) LT 0.5, nxx )
-        IF nxx NE 0 THEN tuu(x) =  0.
-        x =  where(abs(tvv) LT 0.5, nxx )
-        IF nxx NE 0 THEN tvv(x) =  0.
-        uu0(*,*,i) =  tuu*fac
-        vv0(*,*,i) =  tvv*fac
-      ENDIF ELSE BEGIN 
-        errors =  [errors, !err_string]
-        read_success =  0
-      ENDELSE 
-    ENDFOR 
+      ENDIF ELSE read_success =  0
+      file_cntr = file_cntr+1
+    ENDWHILE 
   ENDELSE 
 ENDELSE 
 
@@ -724,8 +744,8 @@ IF read_success THEN BEGIN
   xv0 =  vlonpar(0) &  xv1= vlonpar(1) &  xvinc= vlonpar(2)
   yv0 =  vlatpar(0) &  yv1= vlatpar(1) &  yvinc= vlatpar(2)
 
-  nxv =  fix( (xv1-xv0)/xvinc)
-  nyv =  fix( (yv1-yv0)/yvinc)
+  nxv =  long( (xv1-xv0)/xvinc)
+  nyv =  long( (yv1-yv0)/yvinc)
 
   ; offset in the underlying wind field array of xv0 and yv0 
   xfoff =  (xv0 - xf0)/xfinc
@@ -817,7 +837,7 @@ IF read_success THEN BEGIN
 
     IF ( istep-60 GE 0L ) THEN BEGIN 
       frm =  istep-60
-      print,'   frm=',frm
+      ; print,'   frm=',frm
       last_segment =  frm GT cutoff*(nfiles-2) 
       
       ; Okay, we've gone through 60 iterations on the original map to
@@ -1236,7 +1256,7 @@ IF read_success THEN BEGIN
     IF iter GT 60 THEN begin
       et =  systime(1)
       time =  et-st
-      print, ' Elapsed time for iteration ',iter, ' is ', time, ' seconds '
+;      print, ' Elapsed time for iteration ',iter, ' is ', time, ' seconds '
       tottime =  tottime+time
     ENDIF 
     iter =  iter+1
@@ -1260,7 +1280,7 @@ STOP:
   print,!err_string
 
 good_end:
-set_plot,'x'
+genv,/restore
 
 RETURN
 END
