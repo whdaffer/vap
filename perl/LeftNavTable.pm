@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.3  2002/12/02 17:24:07  vapdev
+# Moved to .../perl
+#
 # Revision 1.2  2002/11/27 20:33:18  vapdev
 # Ongoing work
 #
@@ -27,10 +30,10 @@ sub new {
   # Get the defaults for the overlays from the overlay_defs file.
 
   croak "Can't find overlay_defs!\n"
-    unless (-e $ENV{VAP_LIBRARY}."/overlay_defs");
+    unless (-e $ENV{VAP_LIBRARY}."/overlay_defs_oo");
 
-  require "overlay_defs" || 
-    croak "Can't require overlay_defs\n";
+  require "overlay_defs_oo" || 
+    croak "Can't require ".$ENV{VAP_LIBRARY} . "overlay_defs_oo\n";
 
   # Get the defaults for the tropical storms processing 
   # from the tropical_storm_defs file.
@@ -116,9 +119,9 @@ sub new {
 # 			   -width=>"40\%",
 # 			   -border=>1);
 
-  $self = {WESTATLANTIC => $WESTATLANTIC,
-	   EASTPACIFIC => $EASTPACIFIC, 
-	   WESTPACIFIC => $WESTPACIFIC};
+  $self->{WESTATLANTIC} = $WESTATLANTIC;
+  $self->{EASTPACIFIC} = $EASTPACIFIC ;
+  $self->{WESTPACIFIC} = $WESTPACIFIC;
 #	   MAINTABLE => $maintable,
 #	     @_};
   return bless $self, ref($class) || $class;

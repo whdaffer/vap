@@ -5,21 +5,26 @@ use CGI;
 use HTML::Table;
 use LeftNavTable;
 
-my $q=CGI->new();
-my $body=CGI->new();
+my $q=CGI->new(-nodebug=>1);
+my $body=CGI->new(-nodebug=>1);
 
 my $html=$q->start_html(-title=>"Haifung Winds stuff",
 			-meta=>{"Keywords" =>
-				"Scatterometry SeaWinds Winds Oceanography"});
+				qw/Radar Scatterometry SeaWinds 
+                                    Winds Oceanography/});
+
+  # The outer most table. All content is contained in this table
 my $outsidetable = HTML::Table->new(-rows=>3,
 				    -cols=>2,
 				    -align=>"left",
 				    -width=>"100\%",
 				   -border=>1);
 
+  # Contains the top navigation bar.
 my $topbody = HTML::Table->new(-rows=>1,
 			       -cols=>3);
 
+  # The left nav table
 my $leftnavtable = LeftNavTable->new(-rows=>6,
 				    -cols=>1);
 
