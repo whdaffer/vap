@@ -1,6 +1,6 @@
 #!/usr/bin/perl5  
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <00/08/09 11:32:19 vapuser>
+# Time-stamp: <2001-08-06 11:31:29 vapuser>
 # $Id$
 #
 #
@@ -32,6 +32,10 @@
 # Modification History:
 #
 # $Log$
+# Revision 1.10  2000/08/09 18:33:33  vapuser
+# Put a long note in about the possible confusion between 'vaptime' format in
+# the perl code and 'vaptime' format in the IDL code.
+#
 # Revision 1.9  2000/02/28 19:00:35  vapuser
 # Added subroutine VapMailErrorMsg.
 # Got rid of lots of 'die's in date_index and gag.
@@ -137,32 +141,24 @@ sub auto_movie_defs {
 
 sub doy2mday_mon{
   $doy=shift;
+  die "DOY out of range: $doy\n" if $doy > 366;
   $year=shift;
   # cummulative number of days in the year for the end of each month
-  @doys = (31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365) ;
-  $leapyear=leapyear($year);
-
-  if ($leapyear ==1 && $doy > 60 ) {
-    $doy2 -= $leapyear;
-  } else {
-    $doy2 = $doy;
-  }
-  if ($doy2<=31) {
-    $mon=1;
-    $mday=$doy2;
-  } else {
-
-    $i=1;
-    while ( $doys[$i] < $doy2 && $i<=12) {
-      $i++;
+  @doys = (31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365);
+  my $i;
+  if (leapyear($year)){
+    for ($i=1;$i<=$#doys;$i++){
+      $doys[$i]++;
     }
-    $mday = $doy2 - $doys[$i-1];
-    $mon = $i;
-
   }
+  $mday=$doy;
+  for ($i=0;$i<=$#doys;$i++){
+    last if $doys[$i] >= $doy;
+  }
+  $mday = $doy - $doys[$i-1] if $i>0;
+  $mon = $i+1;
 
-  push (@mday_mon, ($mday,$mon) );
-  @mday_mon;
+  ($mday,$mon);
 
 }
 
