@@ -3,6 +3,9 @@
 #
 #
 # $Log$
+# Revision 1.8  2002/08/09 23:40:57  vapdev
+# added -mips3
+#
 # Revision 1.7  2002/05/08 16:01:43  vapdev
 # Removed variables that will now be defined in environment.
 # Changed email addresses
@@ -42,116 +45,64 @@ F77_FLAGS = -KPIC -mips3
 F77LIBs = -lftn
 #LDFLAGS = -shared -mips2
 LDFLAGS = -shared  -mips3
-CLIBS = 
+CLIBS = -lc -lm 
 RSIINC=/usr/local/rsi/idl_5.1/external
 
 
 
-.c.o:
-	$(CC) $(CFLAGS) $<
-
-.f.o:
-	$(F77) $(F77_FLAGS) $<
+#.c.o:
+#	$(CC) $(CFLAGS) $<
+#
+#.f.o:
+#	$(F77) $(F77_FLAGS) $<
 
 
 C_SRCS = \
-	isanumber.c \
 	land_mask.c \
 	succor.c \
 #	succor2.c \
-	wvcsel.c \
-	kprimes.c
+#	isanumber.c \
+#	wvcsel.c \
+#	kprimes.c
 
-F_SRCS = objanl.f subobj.f
+F_SRCS = objanl2.f 
+# subobj.f
 
 SO_OBJS = \
-	isanumber.so \
 	land_mask.so \
-	succor.so \
+	succor.so
+#	isanumber.so \
+ #\
 #	succor2.so \
-	wvcsel.so \
-	kprimes.so
+#	wvcsel.so \
+#	kprimes.so
 
+
+  # the shareable objects won't be installed, they'll be run from wherever 
+  # they're built.
 
 INSTALLABLES=succorf
-INSTALLABLES_TARGET=$(HOME)/bin
+INSTALLABLES_TARGET=../../bin
 
 default: land_mask.so succor.so succorf
 
 
-succor.so: succor.o objanl.o succor.c objanl.f 
+succor.so: succor.o objanl2.o 
 	echo Making succor.so
-	$(CC) $(CFLAGS) -c succor.c
-	$(F77) $(F77_FLAGS) -c objanl.f  
-	$(LD) $(LDFLAGS) -o succor.so succor.o objanl.o $(CLIBS) $(F77LIBS)
+	#$(CC) $(CFLAGS) -c succor.c
+	#$(F77) $(F77_FLAGS) -c objanl.f  
+	$(LD) $(LDFLAGS) -o succor.so succor.o objanl2.o $(CLIBS) $(F77LIBS)
 
-succor-debug.so: succor-debug.o objanl-debug.o objanl.f succor.c
-	echo Making succor-debug.so 
-#	$(CC) $(CFLAGS) -DDEBUG -c -o succor-debug.o succor.c
-#	$(F77) $(F77_FLAGS) -d_lines -c -o objanl-debug.o objanl.f  
-	$(LD) $(LDFLAGS) -o succor-debug.so succor-debug.o \
-	objanl-debug.o $(CLIBS) $(F77LIBS)
+succor.o: succor.c
+	$(CC) $(CFLAGS) -c -o succor.o succor.c
+
+objanl2.o: objanl2.f
+	$(F77) $(F77_FLAGS) -c objanl2.f  
 
 land_mask.so: land_mask.o lndmsk.o
 	echo Makeing land_mask.so
 	$(CC) $(CFLAGS) -c land_mask.c  lndmsk.c
 	$(LD) $(LDFLAGS) -o land_mask.so land_mask.o lndmsk.o $(CLIBS)
-
-
-isanumber.so: isanumber.o isanumber.c 
-	echo Makeing isnumber.so
-	$(CC) $(CFLAGS) -c isanumber.c
-	$(LD) $(LDFLAGS) -o isanumber.so isanumber.o  $(CLIBS)
-
-kprimes.so: kprimes.o kprimes.c
-	echo Makeing kprimes.so
-	$(CC) $(CFLAGS) -c kprimes.c
-	$(LD) $(LDFLAGS) -o kprimes.so kprimes.o  $(CLIBS)
-
-#setfunctions.so: setfunctions.c setfunctions.o
-#	echo Makeing setfunctions.so
-#	$(CC)  $(CFLAGS) -c setfunctions.c
-#	$(LD)  $(LDFLAGS) -o setfunctions.so setfunctions.o $(CLIBS)
-
-#succor.so: succor.o subobj.o 
-#	echo Makeing succor.so
-#	$(CC) $(CFLAGS) -c succor.c
-#	$(F77) $(F77_FLAGS) -c subobj.f
-#	$(LD) $(LDFLAGS) -o succor.so succor.o subobj.o $(CLIBS) $(F77LIBS)
-
-
-succor.o: succor.c
-	$(CC) $(CFLAGS) -c -o succor.o succor.c
-
-succor-debug.o: succor.c
-	$(CC) $(CFLAGS) -DDEBUG -c -o succor-debug.o succor.c
-
-objanl-debug.o: objanl.f
-	$(F77) $(F77_FLAGS) -d_lines -c -o objanl-debug.o objanl.f  
-
-objanl-test.o: objanl-test.f
-	$(F77) $(F77_FLAGS) -c -o objanl-test.o objanl-test.f  
-
-new-succor.so: succor.o objanl-test.o
-	echo Making new-succor.so
-	$(LD) $(LDFLAGS) -o new-succor.so succor.o objanl-test.o $(CLIBS) $(F77LIBS)
-
-
-
-#wvcsel.so: wvcsel.o 
-#	echo Makeing wvcsel.so
-#	$(CC) $(CFLAGS) -c wvcsel.c
-#	$(LD) $(LDFLAGS) -o wvcsel.so  wvcsel.o $(CLIBS)
-
-test_objanl: test_objanl.o objanl.o
-	echo Making test_objanl
-	cc -g -c -mips2 test_objanl.c
-	f77 -g -mips2 -d_lines -o test_objanl test_objanl.o objanl.f -lc -lm -lftn
-
-test_objanl-debug: test_objanl.o objanl.o
-	echo Making test_objanl DEBUG
-	cc -g -c -mips2 -DDEBUG test_objanl.c
-	f77 -g -mips2 -d_lines -o test_objanl test_objanl.o objanl.f -lc -lm -lftn
 
 
 succorf: succorf.f objanl2.f
@@ -160,4 +111,71 @@ succorf: succorf.f objanl2.f
 
 install: 
 	echo Make install
+	if [ ! -d ${INSTALLABLES_TARGET} ]; then \
+		mkdir ${INSTALLABLES_TARGET}; \
+	fi
 	$(CP) $(INSTALLABLES) $(INSTALLABLES_TARGET)
+
+
+# succor-debug.so: succor-debug.o objanl-debug.o objanl.f succor.c
+# 	echo Making succor-debug.so 
+# #	$(CC) $(CFLAGS) -DDEBUG -c -o succor-debug.o succor.c
+# #	$(F77) $(F77_FLAGS) -d_lines -c -o objanl-debug.o objanl.f  
+# 	$(LD) $(LDFLAGS) -o succor-debug.so succor-debug.o \
+# 	objanl-debug.o $(CLIBS) $(F77LIBS)
+
+# isanumber.so: isanumber.o isanumber.c 
+# 	echo Makeing isnumber.so
+# 	$(CC) $(CFLAGS) -c isanumber.c
+# 	$(LD) $(LDFLAGS) -o isanumber.so isanumber.o  $(CLIBS)
+
+# kprimes.so: kprimes.o kprimes.c
+# 	echo Makeing kprimes.so
+# 	$(CC) $(CFLAGS) -c kprimes.c
+# 	$(LD) $(LDFLAGS) -o kprimes.so kprimes.o  $(CLIBS)
+
+# #setfunctions.so: setfunctions.c setfunctions.o
+# #	echo Makeing setfunctions.so
+# #	$(CC)  $(CFLAGS) -c setfunctions.c
+# #	$(LD)  $(LDFLAGS) -o setfunctions.so setfunctions.o $(CLIBS)
+
+# #succor.so: succor.o subobj.o 
+# #	echo Makeing succor.so
+# #	$(CC) $(CFLAGS) -c succor.c
+# #	$(F77) $(F77_FLAGS) -c subobj.f
+# #	$(LD) $(LDFLAGS) -o succor.so succor.o subobj.o $(CLIBS) $(F77LIBS)
+
+
+
+# succor-debug.o: succor.c
+# 	$(CC) $(CFLAGS) -DDEBUG -c -o succor-debug.o succor.c
+
+# objanl-debug.o: objanl.f
+# 	$(F77) $(F77_FLAGS) -d_lines -c -o objanl-debug.o objanl.f  
+
+# objanl-test.o: objanl-test.f
+# 	$(F77) $(F77_FLAGS) -c -o objanl-test.o objanl-test.f  
+
+# new-succor.so: succor.o objanl-test.o
+# 	echo Making new-succor.so
+# 	$(LD) $(LDFLAGS) -o new-succor.so succor.o objanl-test.o $(CLIBS) $(F77LIBS)
+
+
+
+# #wvcsel.so: wvcsel.o 
+# #	echo Makeing wvcsel.so
+# #	$(CC) $(CFLAGS) -c wvcsel.c
+# #	$(LD) $(LDFLAGS) -o wvcsel.so  wvcsel.o $(CLIBS)
+
+# test_objanl: test_objanl.o objanl.o
+# 	echo Making test_objanl
+# 	cc -g -c -mips2 test_objanl.c
+# 	f77 -g -mips2 -d_lines -o test_objanl test_objanl.o objanl.f -lc -lm -lftn
+
+# test_objanl-debug: test_objanl.o objanl.o
+# 	echo Making test_objanl DEBUG
+# 	cc -g -c -mips2 -DDEBUG test_objanl.c
+# 	f77 -g -mips2 -d_lines -o test_objanl test_objanl.o objanl.f -lc -lm -lftn
+
+
+
