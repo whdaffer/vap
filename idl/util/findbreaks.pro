@@ -1,15 +1,32 @@
 ;+
 ; NAME:  findbreaks.pro
 ; $Id$
-; PURPOSE:  Find the place where an the difference between succeeding
-;           elements of an array violates some min max difference
+; PURPOSE:  Find the place where the difference between succeeding
+;           elements of an where vector violates some max difference
 ;           criterion.
+;
+;           The assumption here is that you've done something like the
+; following. Say you have an vector of some quantity with sentinel
+; values representing missing data. Sea Surface Height along Topex
+; track is an example, where missing data occurs when the satellite
+; crosses over land. You want only those segments that have breaks in
+; them of less than 10 points, for instance. You might do something
+; like this
+;
+;    good=where( ssh ne missing_data_sentinel_value, ngood )
+;    breaks = findbreaks(good,10)
+;    
+;   Now, the segments are:
+;
+;   ssh[ good[breaks[0,i]:breaks[1,i]] ] for i=0,nbreaks-1
+;
+;
 ;
 ; AUTHOR:   William Daffer
 ;
 ; CATEGORY:  Utility
 ;
-; CALLING SEQUENCE: breaks=findbreaks( array, test )
+; CALLING SEQUENCE: breaks=findbreaks( where_vector, test )
 ; 
 ; INPUTS:  
 ;
@@ -17,18 +34,23 @@
 ;  test: the Maximum difference allowed before a 'break' is declared 
 ;
 ; OPTIONAL INPUTS:  none
-;	
+;       
 ; KEYWORD PARAMETERS:  none
 ;
 ; OUTPUTS: 
 ;
-;  Success: breaks: the vector containing the beginning of each
-;          segment. The 'i-th' (i=0,1,...) segment of the data is
-;          given by array(breaks[i]:breaks[i+1]-1) except for the last
-;          segment, which consists of 
-;          array(breaks[j]:n_elements(array)-1) 
-;          where j=n_elements(breaks)-1
-; 
+;  Success: 
+;
+;   breaks: A 2d array. The vector breaks[*,0] the beginning of each
+;          segment; the vector breaks[1,*] the end of each segment. 
+;          The 'i-th' (i=0,1,...) segment of the data is
+;          given by array(breaks[0,i]:breaks[1,i]) 
+;
+;  If the array has no breaks the return is the two element array 
+;
+;       return,[0,n_elements(array)-1]
+;
+;
 ;  Error: Scalar -1.
 ;
 ; OPTIONAL OUTPUTS: none 
@@ -46,6 +68,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/07 22:16:41  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -53,18 +78,6 @@
 ;
 FUNCTION findbreaks, array, test
 
-    ; Returns the starting points of each of the segments of an array,
-    ; segments being defined as those where the difference between
-    ; successive elements of the array is less than 'test', defaulting
-    ; to '1'. This is most useful, at least for me, when the array I'm
-    ; testing is an array of indices, such as those obtained using
-    ; 'where.' In this case, I'm trying to segment the array used in
-    ; the 'where' into regions which satify a particular condition. As
-    ; an example, consider an array of latitudes. One might want to
-    ; segment it into those elements within one degree of the equator,
-    ; but still want to know where the first such segment begins (the
-    ; ascending node of a satellite's orbit, for instance) and where
-    ; the second segment begins (the descending node).
 
   breaks = -1
   IF n_params() LT 1 THEN BEGIN 
@@ -84,8 +97,9 @@ FUNCTION findbreaks, array, test
   IF finite(diff[0]) THEN BEGIN 
     x = where( diff GT test, nx )
     IF nx NE 0 THEN BEGIN 
-      breaks = [0, x+1, nn]
-    ENDIF ELSE breaks=[0,nn]
+      breaks = [0,x, x+1,nn-1]
+      breaks = reform(breaks(sort(breaks)),2,nx+1)
+    ENDIF ELSE breaks=[0,nn-1]
   ENDIF 
 
   return, breaks
