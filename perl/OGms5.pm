@@ -30,10 +30,22 @@
                  is in the environmental variable VAP_GMS_TOPDIR but
                  this field is set in the gms5_archive_oo file.
 
+=itme * DATETIME: The time around which to look for data. The objects
+                 considers those files which are within DELTA of
+                 DATETIME. If ABSFLAG == 0 then only files in the
+                 range of DATETIME - DELTA are considered, otherwise
+                 the range DATETIME +/- DELTA is searched, i.e. the
+                 filetime returned may be later than the DATETIME
 
-=item * DATETIME: the `time' of the data where' looking for. Files must be
-                 closer than this number of hours to count as 'found.'
-                 Default = 2.0
+=item * DELTA: the `timerange' in which we look for data. Files must
+                 be closer to DATETIME than this number of hours to
+                 count as 'found.'  If ABSFLAG == 1, the difference
+                 used in the test is DIFF=abs(DATETIME-DELTA),
+                 otherwise it's DIFF=DATETIME-DELTA and 
+                 DIFF must be >0.
+
+                 Default = 6.0. May be entered as a float.
+
 
 =item * INTERESTING_GMS_PRODUCTS: A reference to an array listing the
                  items (directories, really) currently thought
@@ -50,7 +62,7 @@
                  files in the `grid' directory allow one to navigate
                  the data if your area of interest is between 80
                  degrees East longitude, 160 degrees West. Those in
-                 the `grida' cover 70 East to 150 West.
+                 the `grida' covers 70 East to 150 West.
 
                  See
 
@@ -100,10 +112,17 @@ BEGIN {
 
 use lib $ENV{VAP_SFTWR_PERL};
 use lib $ENV{VAP_LIBRARY};
-require "gms5_archive_oo";
+require "gms5_archive_oo" or croak "Can't `require' gms5_archive_oo!\n";
 use VapUtil;
 use VapError;
 
+@OGms5::ISA = qw/VapError/;
+
+#=============================================================
+#
+# new
+#
+#=============================================================
 sub new {
   my $class = shift;
   my $self={};
@@ -121,13 +140,13 @@ sub new {
   $self->{STARTDIR}=getcwd();
   $self->{USER}=$ENV{'USER'};
   $self->{LOCAL_HOST}=$ENV{'HOST'} . ".jpl.nasa.gov";
-
+  $self->{DELTA} = 6 unless $self->{DELTA};
   bless  bless $self, ref($class) || $class;
   $self->_croak( "Need KEY INTERESTING_GMS5_PRODUCTS\n",
 		 "$0->new ERROR!")
     unless exists $self->{INTERESTING_GMS5_PRODUCTS};
 
-  $self->{ERROROBJ} = VapError->new();
+  $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
   my $remote_host = $self->{REMOTE_HOST};
   $self->{FTPOBJ} = FTP->new("$remote_host") || 
     $self->_croak("$0:Error creating FTP object for $remote_host!\n",
@@ -137,10 +156,20 @@ sub new {
   my $password = $self->{USER}."\@".$self->{LOCAL_HOST};
   $self->{FTPOBJ}->login($user, $password) ||
     $self->_croak("$0:Error in FTP login",
-		  "$0:Error Logging on to $remote_host using\n$user and $password!\n");
-  $self->GetAllFileLists();
-  return $self;
+		  "$0:Error Logging on to $remote_host using\n" . 
+		  "$user and $password!\n");
+  if ($self->GetAllFileLists()) {
+    return $self;
+  } else {
+    return undef;
+  }
 }
+
+#=============================================================
+#
+#
+#
+#=============================================================
 
 sub GetAllFileLists{
   my $self=shift;
@@ -168,6 +197,13 @@ head2 Synopsis: GetListing(directory);
 
 
 =cut
+
+
+#=============================================================
+#
+#
+#
+#=============================================================
 
 sub GetListing{
   my $self=shift;
@@ -203,6 +239,12 @@ head2 SYNOPSIS @datetime = GetIntersection(type);
 
 =cut
 
+
+#=============================================================
+#
+#
+#
+#=============================================================
 
 
 sub GetIntersection{
@@ -260,21 +302,29 @@ sub GetIntersection{
 
   $self->{INTERSECTION} = \@datetimes;
   @datetimes;
-
 }
 
 =pod
 
-=head1 GetAll
+=head1 ===========================================================
+
+=head2 GetAll
 
 =head2 Usage: GetAll([datetime])
 
 
-  Retrieves the file specified by `datetime' for each of the
-  'interesting products,' i.e. the directories listed in
+  Retrieves the file specified by datetime for each of the
+  _interesting products_, i.e. the directories listed in
   $self->{INTERESTING_GMS5_PRODUCTS}, unless the file is already here.
 
 =cut
+
+
+#=============================================================
+#
+#
+#
+#=============================================================
 
 sub GetAll{
   my $self=shift;
@@ -293,6 +343,13 @@ sub GetAll{
   1;
 }
 
+
+#=============================================================
+#
+#
+#
+#=============================================================
+
 sub Get{
   my $self=shift;
   my $dir=shift;
@@ -310,6 +367,13 @@ sub Get{
   1;
 }
 
+
+#=============================================================
+#
+#
+#
+#=============================================================
+
 sub CheckAll{
   my $self=shift;
   my $datetime=shift || $self->{DATETIME};
@@ -324,6 +388,13 @@ sub CheckAll{
   1;
 }
 
+
+#=============================================================
+#
+#
+#
+#=============================================================
+
 sub CheckLocal{
   my $self=shift;
   my $datetime=shift || $self->{DATETIME};
@@ -334,6 +405,13 @@ sub CheckLocal{
 		      $self->GetIntersection($datetime))) != 0;
 }
 
+
+#=============================================================
+#
+#
+#
+#=============================================================
+
 sub _croak{
   my $self=shift;
   my $msg = shift or croak "$0: Need message!\n";
@@ -341,16 +419,43 @@ sub _croak{
   $self->{ERROROBJ}->ReportAndDie($subject, $msg);
 }
 
+#============================================
+#
+#GetClosest(['yyyy/mm/dd/hh/mm'])
+#
+# Gets the set of files closest to the input time
+#
+#============================================
+
+=pod
+
+=head1 ===================================================
+
+=head2 GetClosest
+
+=head2 Usage: GetClosest([yyyy/mm/dd/hh/mm])
+
+
+  Retrieves the time of the file closest to datetime.  If datatime
+  isn't supplied in the call, $self->{DATETIME} is used. (The whole
+  process fails if this key hasn't been set). If it is, this time is
+  used and $self->{DATETIME} is replaced.
+
+
+=cut
+
+
 sub GetClosest{
   my $self=shift ;
-  my $idltime=shift ||  
-    $self->_croak("$0:Usage: Need idltime <yyyy/mm/dd/hh/mm>!\n",
-		    "$0:Usage Error");
+  my $idltime=shift ||  $self->{DATETIME};
+  $self->{DATETIME} = $idltime;
+  $self->_croak("$0:DATETIME hasn't been set yet!\n",
+		    "$0:GetClosest: no DATETIME") unless $self->{DATETIME};
   my $absflag=shift || 0;
   my $time=idltime2systime($idltime);
   my $tt=time();
   if (! exists($self->{GETALLFILELISTS}->{LASTGET}) || 
-      ($time - $self->{GETALLFILELISTS}->{LASTGET} > $self->{DELTA} )) {
+      ($time - $self->{GETALLFILELISTS}->{LASTGET}) > $self->{DELTA} ) {
     $self->GetAllFileLists;
   }
   my @datetimes = $self->GetIntersection() or 
@@ -362,9 +467,8 @@ sub GetClosest{
     $mindiff=1.e10;
     for (@datetimes) {
       my $gmstime=$self->DateTime2SysTime($_);
-      $diff=$time-$gmstime;
-      $diff = abs($diff) if $absflag;
-      if ($diff > 0 && $diff < $mindiff ) {
+      $diff=$absflag? abs($time-$gmstime): ($time-$gmstime);
+      if ($diff > 0 && $diff < $mindiff && $diff < $self->{DELTA} ) {
 	$mindiff = $diff;
 	$datetime=$_;
       }
@@ -373,14 +477,28 @@ sub GetClosest{
   ($datetime, $mindiff);
 }
 
+
+#=============================================================
+#
+#
+#
+#=============================================================
+
 sub DateTime2SysTime{
   my $self=shift;
-  my $datetime = shift;
+  my $datetime = shift || $self->{DATETIME};
   my ($year,$month,$day,$hour,$min) = 
     ($datetime =~ /(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
   $year += 2000;
   my $timegm=timegm( 0, $min, $hour, $day, $month-1, $year);
 }
+
+
+#=============================================================
+#
+#
+#
+#=============================================================
 
 DESTROY { 
   my $self=shift;

@@ -4,6 +4,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.4  2002/11/22 22:31:32  vapdev
+# Ongoing work
+#
 # Revision 1.3  2002/08/12 22:56:44  vapdev
 # Continuing work
 #
@@ -191,9 +194,9 @@ sub Report{
   1;
 }
 
-=pod 
+=pod
 
-=head1 ===========================================================================
+=head1 =====================================================================
 
 head2 ReportAndDie
 
@@ -238,14 +241,14 @@ sub ReportAndDie{
     my $fh=$self->{ERROR_HANDLE} ;
     print $fh $final_message;
   }
-  confess "And now, I die at ".scalar(localtime(time))."!\n";
+  confess "And now, I die --- ".scalar(localtime(time))."!\n";
   0;
 }
 
 =pod 
 
 
-=head1 ===========================================================================
+=head1 =======================================================================
 
 =head2 Log
 
@@ -262,6 +265,32 @@ sub Log{
   my $msg=shift;
   $msg = scalar(localtime) . ": " . $msg;
   $self->Report($msg, "INFO");
+  1;
+}
+
+
+
+=pod 
+
+
+=head1 =======================================================================
+
+=head2 _croak
+
+=head2 Usage: $obj->_croak(message)
+
+
+=cut
+#=============================================================
+# _croak(msg, subject)
+#  Wrapper for ReportAndDie
+#==================================================================
+
+sub _croak {
+  my $self=shift;
+  my $msg=shift || "NULL MESSAGE\n";
+  my $subject =shift || "NULL SUBJECT";
+  $self->ReportAndDie($subject, $msg);
   1;
 }
 1;

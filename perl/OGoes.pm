@@ -9,6 +9,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.5  2002/08/08 23:26:16  vapdev
+# General cleanup, work on BEGIN{} block.
+#
 # Revision 1.4  2002/08/07 23:42:34  vapdev
 # Wrap up conversion to OO
 #
@@ -31,6 +34,7 @@
 #  $goesobj = OGoes->new( SAT    => (10|8),
 #                         SENSOR => ("vis"|"irN"),
 #                         [TIME => yyyy/mm/dd/hh/mm,
+#                          DELTA => f.g,
 #                          LIMITS => [minlon, minlat, maxlon, maxlat],
 #                          ABSFLAG => 0|1 ] );
 #
@@ -47,6 +51,52 @@
 #
 #
 #
+
+=pod
+
+=head1 OGoes.pm
+
+
+=head2 USAGE: 
+
+   $obj = OGoes->new( SAT => (10|8), 
+                      SENSOR => ("vis"|"irN"),
+                      [TIME => "yyyy/mm/dd/hh/mm",
+                       DELTA => f.g, 
+                       LIMITS => [minlon, minlat, maxlon, maxlat],
+                       ABSFLAG => 0|1 ] );
+
+=over 4
+
+=item * SAT: The number of the satellite: 10 for GOES 10, 8 for GOES 8
+             REQUIRED!
+
+=item * SENSOR: vis, or ir{2,3,4}, as a *string*
+                REQUIRED!
+
+=item * TIME: string, "YYYY/MM/DD/HH/MM"
+              Defaults to current time.
+
+=item * DELTA: A float. The delta time around TIME to search for
+               data. If ABSFLAG is set this interval extends from
+               DATETIME-DELTA to DATETIME+DELTA, otherwise, the time
+               of the image file must reside in the interval
+               DATETIME-DELTA to DATETIME.
+
+               Default = 4.0
+
+=item * ABSFLAG: 0|1. If 1, check the interval
+                [DATETIME-DELTA,DATETIME+DELTA]
+
+=item * ERROROBJ: object of type VapError. If not provided by caller,
+                  the object creates its own.
+
+=back
+
+
+=cut
+
+
 package OGoes;
 use strict;
 use vars qw($VERSION);
@@ -64,7 +114,10 @@ BEGIN {
     unless $ENV{VAP_SFTWR_PERL};
 }
 
+use lib $ENV{VAP_SFTWR_PERL};
 use VapUtil;
+use VapError;
+@OGoes::ISA = qw(VapError);
 
 #----------------------------------------------------------
 #
@@ -79,19 +132,10 @@ sub new {
 
     # Get the Overlay Defaults
 
-
-
-#    $overlay_defs_file="$VAP_LIB/overlay_defs";
-#    if (-e "$overlay_defs_file") {
-#      local $/=undef;
-#      open FILE, "$overlay_defs_file" or croak "Can't open $overlay_defs_file: $!\n";
-#      eval {require $overlay_defs_file} || croak "require $overlay_defs_file FAILED!: $!\n";
-#    }
-
     # Check for interactivity.
   $self->{_IS_BATCH} = !defined($ENV{'TERM'});
   $self->{_MIN_DIFF_TIME} = 1.5*3600;
-  $self->{TIME} = VapUtil::systime2idltime(time()) if !exists($self->{TIME});
+  $self->{TIME} = VapUtil::systime2idltime(time()) unless $self->{TIME};
   $self->{SYSTIME} = VapUtil::idltime2systime($self->{TIME});
   $self->{SENSORNUM} = $VapUtil::sensorname2num{$self->{SENSOR}} 
     if $self->{SENSOR};
@@ -100,6 +144,7 @@ sub new {
   $self->{REMOTE_ARCHIVE_INFO} = 
     VapUtil::getgoesarchive("$VapUtil::VAP_LIBRARY/goes_archive");
   my $limits = $self->{LIMITS} || [0,0,0,0];
+  $self->{DELTA} = 4.0 unless $self->{DELTA};
 
   croak "Input Keys SAT and (SENSOR or SENSORNUM)  are required!\n" 
     unless (exists($self->{SAT}) && 
@@ -111,6 +156,7 @@ sub new {
   my @tmp=VapUtil::fixlonrange(${$limits}[0], ${$limits}[2]);
   ${$self->{LIMITS}}[0] = $tmp[0];
   ${$self->{LIMITS}}[2] = $tmp[1];
+  $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
   return $self;
 }
 
@@ -170,15 +216,20 @@ sub grid{
     print "$exe_string\n";
     open ( GRIDDING_PROCESS, "$exe_string |" );
     my @gridding_output = <GRIDDING_PROCESS>;
+    close GRIDDING_PROCESS;
+
     print join "\n", @gridding_output;
     my @errors=grep(/^ *ERROR.*/, @gridding_output);
-    close GRIDDING_PROCESS;
 #    $self->{ERROROBJ}->ReportAndDie("GAG Failed!",
 #				    "  Bad return from goes gridding software\n")
-    croak "  Bad return from goes gridding software\n" if ($#errors gt -1);
-    print "  Done Gridding!\n";
-    $local_gridded_file="$gridding_output[$#gridding_output]";
-    chomp $local_gridded_file;
+
+    if ($#errors gt -1){ 
+      print "  Bad return from goes gridding software\n";
+    } else {
+      print "  Done Gridding!\n";
+      $local_gridded_file="$gridding_output[$#gridding_output]";
+      chomp $local_gridded_file;
+    }
     $local_gridded_file;
   }
 }

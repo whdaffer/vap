@@ -52,13 +52,16 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.2  2002/12/03 00:13:28  vapdev
+# Ongoing work
+#
 # Revision 1.1  2002/08/21 18:28:54  vapdev
 # initial revision
 #
 #
 package Overlay;
 use strict;
-use vars qw/%overlay_defs $VERSION $VAP_LIBRARY $usage/;
+use vars qw/$overlay_defs $gms5_defs $VERSION $VAP_LIBRARY $usage/;
 use Carp;
 use Cwd;
 use File::Basename;
@@ -84,102 +87,126 @@ BEGIN {
   croak "ENV var VAP_OPS_TMPFILES is undefined\n" 
     unless $ENV{VAP_OPS_TMPFILES};
 
+  $usage = <<"EOF";
 
-  $usage =  "\nUsage:\n";
-  $usage .= " overlyobj = Overlay->new(REGION=>region,\n\t\t";
-  $usage .= "  TIME=>'yyyy/mm/dd/hh/mm',(in GMT)\n\t\t";
-  $usage .= "  WINDPATH => 'PATH_TO_WIND_FILES',\n\t\t";
-  $usage .= "  WINDFILTER=> WINDFILTER, (i.e. QS or SW or (QS|SW)) (REQUIRED!)\n\t\t";
-  $usage .= "  DELTA => n, (number of hours around TIME to look for wind data)\n\t\t";
-  $usage .= "  SATNAME => SATELLITE_NAME, (.e.g. 'goes')\n\t\t";
-  $usage .= "  SATNUM =>  SATELLITE_NUMBER, (e.g. 10 for goes10)\n\t\t";
-  $usage .= "  SENSORNUM => SENSOR_NUMBER, (e.g. 1=vis, 2=ir2, 3=ir3, 4=ir4)\n\t\t";
-  $usage .= "  LONLIM => [lonmin, lonmax],\n\t\t";
-  $usage .= "  LATLIM => [latmin,latmax], \n\t\t";
-  $usage .= "  CRDECIMATE => [Col,Row],\n\t\t";
-  $usage .= "  EXCLUDECOLS => idl-array-submatrix-desg (as string)\n\t\t";
-  $usage .= "  TELLME =>: Calculates, reports variable values and exits\n\n";
-  $usage .= "  where: \n\n";
+  Usage:
 
+   overlyobj = Overlay->new(REGION=>region,
+	    TIME=>'yyyy/mm/dd/hh/mm',(in GMT)
+	    WINDPATH => 'PATH_TO_WIND_FILES',
+	    WINDFILTER=> WINDFILTER, (i.e. 'Q' or 'S' (REQUIRED!)
+	    WINDDELTA => n.m, (number of hours around TIME to look for wind data)
+            IMAGEDELTA => f.g, image data closest to TIME must be 
+                          no more than this delta prior. if ABS flag is set, 
+                          this interval extends on both sides of TIME, i.e. 
+                          the image data may be later than TIME.
+	    SATNAME => SATELLITE_NAME, (.e.g. 'goes')
+	    SATNUM =>  SATELLITE_NUMBER, (e.g. 10 for goes10)
+	    SENSORNUM => SENSOR_NUMBER, (e.g. 1=vis, 2=ir2, 3=ir3, 4=ir4)
+	    LONLIM => [lonmin, lonmax],
+	    LATLIM => [latmin,latmax],
+	    CRDECIMATE => [Col,Row],
+	    EXCLUDECOLS => idl-array-submatrix-desg (as string)
+	    TELLME =>: Calculates, reports and exits
 
-  $usage .= "    WINDFILTER: (REQUIRED) filter to use for wind data\n";
-  $usage .= "      Possible filters are: Q for QuikSCAT data\n";
-  $usage .= "      S for SeaWinds or B for Both\n";
-  $usage .= "      This is NOT a shell file glob, but a regular expression,\n";
-  $usage .= "      so input it EXACTLY as shown!\n";
-  $usage .= "      This switch is *REQUIRED*\n";
-
-
-  $usage .= "    REGION is the designation for the \n";
-  $usage .= "      region as it appears in the _overlay_defs_ file\n";
-  $usage .= "      See file \$VAP_LIBRARY/overlay_defs_oo for the complete list of \n";
-  $usage .= "      predefined regions. If absent, the program falls over to using the \n";
-  $usage .= "      information given (some of which can be defaulted)\n";
-  $usage .= "      in the combination of the satname/satnum/sensornum/lon/lat\n";
-  $usage .= "      options.\n\n";
-
-  $usage .= "    If REGION is absent the required minimal set of keys is:\n\n";
-  $usage .= "       WINDFILTER, SATNUM, SATNUM, SENSORNUM, LONLIM, LATLIM\n";
+    where:
 
 
+      WINDFILTER: (REQUIRED) one letter switch which tells 
+                  which wind data to use.
 
-  $usage .=   "    TIME: the GMT time of the `run'. This time will determine which\n";
-  $usage .=   "       cloud and wind data are used and the behavior of the object\n";
-  $usage .=   "       depends on which other keys are present.\n";
+        Possible filters are: Q|q for QuikSCAT data
+        S|s for SeaWinds.
 
-  $usage .=   "       If REGION is present but TIME is not, the data used in the\n";
-  $usage .=   "       run will be determined using the ASCTIME/DESCTIME in the hash\n";
-  $usage .=   "       defined in the \$VAP_LIBRARY/overlay_defs_oo. The object will\n";
-  $usage .=   "       choose the time closest but not exceeding to the current\n";
-  $usage .=   "       time.\n";
+        Currently there's no plan to do combined overlays.
 
-  $usage .=   "       If TIME is present at object creation, the object will use\n";
-  $usage .=   "       that time whether REGION (and hence the ASCTIME/DESCTIME\n";
-  $usage .=   "       implied) is present or not.\n\n";
+        This is NOT a shell file glob, but a regular switch,
+        so input it EXACTLY as shown!
 
-  $usage .= "    DELTA: defines the `window' around the value given in TIME\n";
-  $usage .= "      in which to search for wind data\n";
-  $usage .= "    PATH_TO_WIND_FILES: pretty self explanatory.\n";
-  $usage .= "      Default given by environmental variable 'VAP_DATA_TOP'\n";
 
-  $usage .= "    SATNAME: Name of satellite, Currently only 'goes' works\n";
-  $usage .= "      Maybe someday we'll be able to use GMS\n";
 
-  $usage .= "    SATNUM: Satellite Number (Currently only 10 and 8 work, since \n";
-  $usage .= "      we can only do 'GOES' satellites\n";
+      REGION: the designation for the region as it appears in the
+        _overlay_defs_oo_ file. (See file \$VAP_LIBRARY/overlay_defs_oo for
+        the complete list of predefined regions.) If absent, the
+        program falls over to using the information given (some of
+        which can be defaulted) in the combination of the
+        satname/satnum/sensornum/lon/lat options.
 
-  $usage .= "    SENSORNUM: 1=vis, 2=ir2, 3=ir3, 4=ir4\n";
+          If REGION is absent the required minimal set of keys is:
+          WINDFILTER, SATNUM, SATNUM, SENSORNUM, LONLIM, LATLIM
 
-  $usage .= "    LONLIM: Followed by two values: e.g. '--lonlim [minlon, maxlon]'\n";
-  $usage .= "      Defaults are dependent on the satellite\n";
 
-  $usage .= "    LATLIM: Similar to --lon, but in latitude\n";
-  $usage .= "    CRDECIMATE: the col/row decimation\n";
-  $usage .= "      Default=[2,2]\n";
-  $usage .= "    EXCLUDECOLS: See documentation for cloud_overlay.pro for the format\n";
-  $usage .= "       of this string (default = '')\n";
-  $usage .= "    LENGTH: Length fo the Vectors overplotting the cloud data\n";
-  $usage .= "    RAINFLAG: Determines what to do with Rain Flagged wind data.\n";
-  $usage .= "       0=ignore, 1=use (default=0)\n";
-  $usage .= "    RF_ACTION: What to do if rainflag==1\n";
-  $usage .= "       0=don't plot rainflagged vectors. 1=plot using rf_color\n";
-  $usage .= "    RF_COLOR: Color to use when plotting rainflagged vectors if rf_action==1\n";
-  $usage .= "       this color depends on the device environment. It's an index in 8-bit \n";
-  $usage .= "       color and a true 24 bit color in 24 bit color environment.\n";
-  $usage .= "    TELLME: Calculates, reports the values for all the variables and exits\n\n";
-  $usage .= "      Use this option to find out what the defaults are in any given situation\n";
 
-  $usage .= "    If one wishes to grid and overlay an arbitrary region not predefined\n";
-  $usage .= "    in the overlay_defs file, one must use the combination of \n";
-  $usage .= "    satname/satnum/sensornum/lon/lat to do so.\n\n";
+      TIME: the GMT time of the `run'. This time will determine which
+           cloud and wind data are used and the behavior of the object
+           depends on which other keys are present.
+
+           If REGION is present but TIME is not, the data used in the
+           run will be determined using the ASCTIME/DESCTIME in the hash
+           defined in the \$VAP_LIBRARY/overlay_defs_oo. The object will
+           choose the time closest but not exceeding to the current
+           time.
+
+           If TIME is present at object creation, the object will use
+           that time whether REGION (and hence the ASCTIME/DESCTIME
+           implied) is present or not.
+
+      WINDDELTA: defines the `window' around the value given in TIME
+        in which to search for wind data
+
+      PATH_TO_WIND_FILES: pretty self explanatory.
+        Default given by environmental variable 'VAP_DATA_TOP'
+
+      SATNAME: Name of satellite, Currently only 'goes' works
+        Maybe someday we'll be able to use GMS
+
+      SATNUM: Satellite Number (Currently only 10 and 8 work, since 
+        we can only do 'GOES' satellites
+
+      SENSORNUM: 1=vis, 2=ir2, 3=ir3, 4=ir4
+
+      LONLIM: Followed by two values: e.g. '--lonlim [minlon, maxlon]'
+        Defaults are dependent on the satellite
+
+      LATLIM: Similar to --lon, but in latitude
+
+      CRDECIMATE: the col/row decimation
+        Default=[2,2]
+
+      EXCLUDECOLS: See documentation for cloud_overlay.pro for the format
+         of this string (default = '').
+
+      LENGTH: Length fo the Vectors overplotting the cloud data
+
+      RAINFLAG: Determines what to do with Rain Flagged wind data.
+         0=ignore, 1=use (default=0)
+
+      RF_ACTION: What to do if rainflag==1
+         0=don't plot rainflagged vectors. 1=plot using rf_color
+
+      RF_COLOR: Color to use when plotting rainflagged vectors if rf_action==1
+         this color depends on the device environment. It's an index in 8-bit
+         color and a true 24 bit color in 24 bit color environment.
+
+      TELLME: Calculates, reports the values for all the variables and exits
+        Use this option to find out what the defaults are in any given situation
+
+      If one wishes to grid and overlay an arbitrary region not predefined
+      in the overlay_defs file, one must use the combination of
+      satname/satnum/sensornum/lon/lat to do so.
+
+EOF
+
 
 }
 
 use lib qw/ $ENV{VAP_SFTWR_PERL} $ENV{VAP_LIBRARY}/;
-use VapUtil;
-use VapError;
 use OGoes;
 use OGms5;
+use VapUtil;
+use VapError;
+
+@Overlay::ISA = qw/VapError/;
 
 #=============================================================
 #
@@ -188,40 +215,56 @@ use OGms5;
 sub new {
   my $class = shift;
   my $self;
+
   #my $defsfile = $ENV{VAP_LIBRARY} . "/overlay_defs_oo";
   my $defsfile = "overlay_defs_oo";
   croak "Can't find defaults file $defsfile!\n" unless (! -e $defsfile );
   do { require "$defsfile"; } or croak "Can't `require $defsfile\n";
-  if (@_ < 2){
-    print "$usage\n";
-    croak "*** Minimally, I need either (REGION,WINDFILTER)\nor SATTIME, SATNUM, SENSORNUM, WINDFILTER, LON and LAT\n";
-  } else {
-    $self = {@_};
+  $self = {@_};
+  my $minusage = "*** Minimally, I need either (REGION,WINDFILTER)\n";
+  $minusage .= "or TIME, SATNUM, SENSORNUM, WINDFILTER, LONLIM and LATLIM\n";
+  if ($self->{HELP}) {
+    print $usage;
+    print $minusage;
+    exit;
   }
-  $self->{OVERLAY_DEFAULTS} = \%overlay_defs;
+  if (@_ < 2){
+    print "Too few arguments!\n";
+    print "$usage\n";
+    croak $minusage;
+  }
+
+  @{$self->{GOES_NUM2NAME}} = [qw/null vis ir2 ir3 ir4/]; 
+  @{$self->{GMS_NUM2NAME}} = [qw/null ir1 ir2 ir3 vis/];
+
+     # `null' is just a placeholder to make the indexing work out.
+
+  $self->{OVERLAY_DEFAULTS} = $overlay_defs;
+  $self->{GMS5_DEFAULTS} = $overlay_defs;
   if ($self->{REGION} && $self->{WINDFILTER}) {
     my $region = $self->{REGION};
     my $hash= $self->{OVERLAY_DEFAULTS}->{$region};
-    $self->{SATNAME}     = $hash-> {CLOUDS}->{Satellite};
-    $self->{LONLIM}      = $hash-> { CLOUDS }->{ LONLIM      };
-    $self->{LATLIM}      = $hash-> { CLOUDS }->{ LATLIM      };
-    $self->{SATNUM}      = $hash-> { CLOUDS }->{ SATNUM      };
-    $self->{SENSORNUM}   = $hash-> { CLOUDS }->{ SENSORNUM   };
-    $self->{ASCTIME}     = $hash-> { CLOUDS }->{ ASCTIME     };
-    $self->{DESCTIME}    = $hash-> { CLOUDS }->{ DESCTIME    };
-    $self->{NVECTORS}    = $hash-> { WINDS  }->{ NVECTORS    };
-    $self->{CRDECIMATE}  = $hash-> { WINDS  }->{ CRDECIMATE  };
-    $self->{LENGTH}      = $hash-> { WINDS  }->{ LENGTH      };
-    $self->{DELTA}       = $hash-> { WINDS  }->{ DELTA       };
-    $self->{RAINFLAG}    = $hash-> { WINDS  }->{ RAINFLAG    } unless $self->{RAINFLAG};
-    $self->{RF_ACTION}   = $hash-> { WINDS  }->{ RF_ACTION   } unless $self->{RF_ACTION};
-    $self->{RF_COLOR}    = $hash-> { WINDS  }->{ RF_COLOR    } unless $self->{RF_COLOR};
-    $self->{EXCLUDECOLS} = $hash-> { WINDS  }->{ EXCLUDECOLS } unless $self->{EXCLUDECOLS};
+    $self->{SATNAME}     = $hash->{CLOUDS}->{Satellite};
+    $self->{LONLIM}      = $hash->{ CLOUDS }->{ LONLIM      };
+    $self->{LATLIM}      = $hash->{ CLOUDS }->{ LATLIM      };
+    $self->{SATNUM}      = $hash->{ CLOUDS }->{ SATNUM      };
+    $self->{SENSORNUM}   = $hash->{ CLOUDS }->{ SENSORNUM   };
+    $self->{ASCTIME}     = $hash->{ CLOUDS }->{ ASCTIME     };
+    $self->{DESCTIME}    = $hash->{ CLOUDS }->{ DESCTIME    };
+    $self->{NVECTORS}    = $hash->{ WINDS  }->{ NVECTORS    };
+    $self->{CRDECIMATE}  = $hash->{ WINDS  }->{ CRDECIMATE  };
+    $self->{LENGTH}      = $hash->{ WINDS  }->{ LENGTH      };
+    $self->{WINDDELTA}   = $hash->{ WINDS  }->{ DELTA       } unless $self->{WINDDELTA};
+    $self->{RAINFLAG}    = $hash->{ WINDS  }->{ RAINFLAG    } unless $self->{RAINFLAG};
+    $self->{RF_ACTION}   = $hash->{ WINDS  }->{ RF_ACTION   } unless $self->{RF_ACTION};
+    $self->{RF_COLOR}    = $hash->{ WINDS  }->{ RF_COLOR    } unless $self->{RF_COLOR};
+    $self->{EXCLUDECOLS} = $hash->{ WINDS  }->{ EXCLUDECOLS } unless $self->{EXCLUDECOLS};
 
     if (! $self->{TIME} ){
 
-      # Figure out which is closer to current time: the ASCTIME or
-      # DESCTIME that's defined in the overlay_defs_oo hash.
+      # Figure out which of ASCTIME or DESCTIME, defined in the
+      # overlay_defs_oo hash, is closest to, but doesn't exceed, the
+      # current time.
 
       use Time::Local;
       my $nowsecs = $^T;
@@ -236,7 +279,7 @@ sub new {
     }
   } else {
     print "$usage\n";
-    croak "*** Minimally, I need either (REGION,WINDFILTER)\nor SATTIME, SATNUM, SENSORNUM, WINDFILTER, LON and LAT\n"
+    croak $minusage
       unless (defined($self->{WINDFILTER}) && 
 	      defined($self->{SATNAME}) && 
 	      defined($self->{SENSORNUM}) && 
@@ -247,46 +290,300 @@ sub new {
       unless $self->{TIME};
 
   }
+  $self->{IMAGEDELTA} = 3 unless $self->{IMAGEDELTA};
+  $self->{ABSFLAG} = 0 unless $self->{ABSFLAG};
   bless $self, ref($class) || $class;
   $self->{ERROROBJ} = VapError->new() or 
     croak "Error creating VapError Object!\n";
   $self->{DELTA} = 4 unless $self->{DELTA};
   $self->{SECS} = idltime2systime($self->{TIME});
-  $self->ReportStatus();
-  if ($self->{HELP}) {
-    print $usage;
-    exit;
-  } 
-
-  
   return $self;
 }
+
+#=============================================================
+# setupProcessing
+#=============================================================
+
+
+sub setupProcessing{
+  my $self=shift;
+
+  # is this a GMS overlay?
+  my $GMS = $self->{REGION}? 
+    ($self->{REGION} =~ /GMS/) : 
+      ($self->{SATNAME} =~ /GMS/i);
+
+  my ($gmstype, $gridded_file, $delta);
+  if (!$GMS){
+    # Goes!
+    my $sat = $self->{SATNUM};
+    my $sensor = ${$self->{GOES_NUM2NAME}}[$self->{SENSORNUM}];
+    my @lonlim = @{$self->{LONLIM}};
+    my @latlim = @{$self->{LATLIM}};
+    my $limits = [$lonlim[0], $latlim[0], $lonlim[1], $latlim[1]];
+    my $goes = OGoes->new(SAT => $sat,
+			  SENSOR => $sensor,
+			  LIMITS => $limits,
+			  TIME => $self->{TIME}, 
+			  DELTA => $self->{IMAGEDELTA},
+			  ABSFLAG => $self->{ABSFLAG},
+			  ERROROBJ => $self->{ERROROBJ});
+    $self->_croak("Error creating OGoes object",
+		  "OGoes initialization failure!") unless !$goes;
+    my $t = time();
+    $gridded_file = $goes->gag();
+    print "Error gridding file -- Continuing without one!\n" 
+      unless ($gridded_file);
+    $self->{GRIDDED_FILE} = $gridded_file;
+    $t=time() - $t;
+    print "Gridding took $t seconds!\n";
+  } else {
+    # GMS!
+    my $sensor = ${$self->{GMS_NUM2NAME}}[$self->{SENSORNUM}];
+    my @lonlim = @{$self->{LONLIM}};
+    my @latlim = @{$self->{LATLIM}};
+    my $limits = [$lonlim[0], $latlim[0], $lonlim[1], $latlim[1]];
+    my $gms = OGms5->new(DATETIME => $self->{TIME},
+			 LIMITS=>$limits,
+			 DELTA => $self->{IMAGEDELTA},
+			 ERROROBJ=>$self->{ERROROBJ});
+    my ($datetime, $mindiff) = $gms->GetClosest();
+    $self->_croak("No GMS files within $delta of $datetime",
+		"No GMS files") unless $datetime;
+    $gridded_file=$datetime;
+    $gmstype = $sensor;
+  }
+  $self->{GRIDDED_FILE} = $gridded_file;
+  $self->{GMSTYPE} = $gmstype || "";
+  ($gridded_file, $gmstype);
+}
+
+
 #=============================================================
 # ReportStatus
 #=============================================================
-sub ReportStatus{
+sub _reportStatus{
   my $self=shift;
+  my $subject = shift || carp "Need subject line!\n";
+  my $message = shift || "NULL MESSAGE\n";;
   1;
 }
+
+#=============================================================
+# _createLockfile
+#
+#   Construct lockfile name, then create the file.
+#==================================================================
+sub _createLockfile{
+  my $self=shift;
+  my $lockfile = $self->{TMPDIR} . "/" . $self->{USER} . 
+    ".overlay." . $self->{PID};
+  $self->{LOCKFILE} = $lockfile;
+  open LOCKFILE, ">$lockfile" or 
+    $self->_croak("Open failure for $lockfile\n", "LOCKFILE OPENERROR");
+  $lockfile;
+}
+
+
+#=============================================================
+# runIDL
+#
+#  Contruct the various temporary files and populate them with the
+#  required lines of IDL code, then execute the temporary file while
+#  parsing the output for errors. Report back any problems.
+#
+#==================================================================
+sub runIDL{
+  my ($self,$gridded_file,$gmstype) = @_;
+
+  my $idl_tmp_file = $self->_buildTmpfile();
+
+  my $exe_str="idl $idl_tmp_file";
+  my $r=system( $exe_str )/256;
+
+  $self->_croak("Error in IDL\n",
+		"ERROR CALLING IDL") if ($r != 0);
+  # check for errors
+
+  $self->CheckForErrors;
+
+  my ($outputname, $thumbnail) =$self->_getOutputname();
+
+  # since we've let the IDL name the file, the output should have 
+  # the following format. sat_sensor_date_a,b,c,d.jpg
+  $self->{OUTPUTNAME} = $outputname = 
+    $self->_constructFinalBasename($outputname,
+				   "gif","jpg","ps",
+				    "GIF","JPG","PS"
+				  );
+
+  $self->{THUMBNAIL} = $thumbnail = 
+    $self->_constructFinalBasename($thumbnail,
+				   "gif.TN","GIF.TN","GIF.tn","gif.tn",
+				    "jpg.tn","jpg.TN","JPG.tn","JPG.TN",
+				    "jpeg.tn","jpeg.TN","JPEG.tn","JPEG.TN"
+				  );
+  $self->_moveOutput();
+  $self->_redoHTML();
+  1;
+}
+
+#=============================================================
+# _moveOutput
+#    Move the newly created overlay files to the overlay archive in 
+#    the WWW area
+#==================================================================
+
+sub _moveOutput{
+  my $self=shift;
+}
+#=============================================================
+# _redoHTML
+#    ReWrite the webpage
+#==================================================================
+sub _redoHTML{
+  my $self=shift;
+}
+
+#=============================================================
+# _buildTmpfile
+#    Construct the tmpfile that will contain the IDL commands.
+#==================================================================
+
+sub _buildTmpfile{
+
+  my $self=shift;
+  # The IDL routines like time as yyyy/mm/dd/hh/mm. 
+  # So, construct this time string.
+
+  my $lock_file = $self->_createLockfile();
+
+  my ($idl_time_string, $idl_tmp_file, $exe_str);
+  $idl_time_string=$self->{TIME};
+  $idl_tmp_file=$ENV{VAP_TMPFILES_DIR}. "$0_idl_called_by_perl_$$.pro";
+  print "Writing IDL tmp file $idl_tmp_file\n";
+
+  open(TMPFILE,">$idl_tmp_file") || 
+    $self->_croak("Can't open IDL tmpfile\n$idl_tmp_file\n",
+		  "$0: Bad Open on IDL tmpfile\n");
+
+  my $idl_windfilter = $self->{WINDFILTER} =~ /^Q/i? "QS*":"SW*";
+
+  print TMPFILE "gridded_file = '". $gridded_file . "'\n";
+  print TMPFILE "idl_windfilter = '" . $idl_windfilter . "'\n";
+  print TMPFILE "idl_time_string = '" . $idl_time_string . "'\n";
+  print TMPFILE "delta = $delta\n";
+  print TMPFILE "wpath = '" . $winds_path . "'\n";
+  print TMPFILE "lockfile = '". $lock_file . "'\n";
+  print TMPFILE "length = $length";
+  print TMPFILE "CRDecimate = [" . 
+    join( ",", @{$self->{CRDECIMATE}} ) . "]\n";
+  print TMPFILE "ExcludeCols = '" . $excludecols . "'\n";
+  my $limits = $self->{LIMITS};
+  my $maplimits = "[ $limts[0], $limits[1], $limits[2], $limits[3]]";
+
+  print TMPFILE "mapLimits = $maplimits\n";
+
+  my $exe_str = << "EOF";
+
+  cloud_overlay, gridded_file, idl_windfilter, idl_time_string, delta,$
+    wpath = wpath, lockfile=lockfile, length=length, $
+    crdecimate=crdecimate, excludecols=excludecols
+
+  EOF
+
+  $exe_str .= ",\$\nrainflag = $rainflag" if $rainflag;
+  $exe_str .= ",\$\n rf_action=$rf_action" if $rf_action;
+  $exe_str .= ",\$\n rf_color=$rf_color\n" if $rf_color;
+  $exe_str .= ",\$\n gmsType='" . $gmstype . "'" 
+    if ($gmstype);
+
+  print TMPFILE "\n$exe_str\n";
+  print TMPFILE "\nexit\n";
+
+  close TMPFILE;
+  $self->{IDLTMPFILE} = $idl_tmp_file;
+
+}
+#=============================================================
+# _constructFinalName
+#    Construct the name this file will have in the overlay archive
+#    portion of the WWW area
+#==================================================================
+
+sub _constructFinalName{
+
+  my $self = shift;
+  my @exts = @_;
+  my ($name, $path, $ext) = fileparse($outputname, @exts);
+  my @tmp=split(/_/,$self->{REGION});
+  $name .= join("",@tmp[$#tmp-1,$#tmp]);
+  $name .= "_" . $self->{WINDFILTER};
+  $name .= $ext;
+}
+
+
+#=============================================================
+# _getOutputname
+#  Get the name of the output file.
+#==================================================================
+
+sub _getOutputname{
+  my $self = shift;
+  my $file_with_name = $ENV{VAP_OPS_OVERLAY} . 
+    "/auto_cloud_overlay_output_file";
+  open FILE,"<$file_with_name" or 
+    $self->_croak("Couldn't open $file_with_name: $!\n",
+		  "CLOUD_OVERLAY: OPENERROR, FILE_WITH_NAME");
+  my $outputfile = <FILE>;
+  my $thumbnail = <FILE>;
+  close FILE;
+  $self->{OUTPUTFILE} = $outputfile;
+  $self->{THUMBNAIL} = $thumbnail;
+  ($outputfile, $thumbnail);
+}
+
+
+#=============================================================
+# CheckForErrors
+#  Replaces VapUtil::CheckForErrors
+#==================================================================
+sub _checkForErrors{
+  my $self=shift;
+  my $lockfile = shift || $self->{LOCKFILE};
+  open FILE, "$lockfile" or 
+    $self->_croak("Error opening $lockfile for reading\n",
+		  "LOCKFILE OPENERROR (READ)");
+  my @lines = <FILE>;
+  close FILE;
+  my @errors = grep /ERROR/, @lines;
+  if (@errors) {
+    my $string = "cloud_overlay had errors!\n Lines from lockfile:\n\n";
+    $string .= join("\n", @lines ) . "\n";
+    $self->_croak{$string, "ERRORS IN LOCKFILE!");
+  }
+}
+
+
 #=============================================================
 # _croak
 #  Wrapper for errorobject->ReportAndDie
 #==================================================================
 
-sub _croak {
-  my $self=shift;
-  my $msg=shift || "NULL MESSAGE\n";
-  my $subject =shift || "NULL SUBJECT";
-  my $errobj=$self->{ERROROBJ};
-  $errobj->ReportAndDie($subject, $msg);
-  1;
-}
+# sub _croak {
+#   my $self=shift;
+#   my $msg=shift || "NULL MESSAGE\n";
+#   my $subject =shift || "NULL SUBJECT";
+#   my $errobj=$self->{ERROROBJ};
+#   $errobj->ReportAndDie($subject, $msg);
+#   1;
+# }
 
 
 #=============================================================
 #
 #=============================================================
-#sub 
+
 
 
 #=============================================================
