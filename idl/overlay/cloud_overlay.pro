@@ -1,9 +1,7 @@
 ;+
 ; NAME: CLOUD_OVERLAY
 ;
-; Time-stamp: <98/09/09 10:47:45 vapuser>
-; MODIFICATION HISTORY: 
-;
+; Time-stamp: <98/09/09 10:49:17 vapuser>
 ;
 ;
 ;
@@ -15,12 +13,6 @@
 ;
 ; AUTHOR: William Daffer
 ;
-;
-; DATE:  18-Dec-1996
-;
-;
-;   VER = 0.9
-; 
 ;
 ; CATEGORY: Plotting, image
 ;
@@ -69,6 +61,11 @@
 ; EXAMPLE: 
 ;
 ;
+; $Id$
+;
+; Modification History:
+;
+; $Log$
 ;
 ;-
 
@@ -89,6 +86,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                       
 
 
+ Rcs_id = "$Id$";
   catch, error_status
   IF error_status NE 0 THEN BEGIN
     IF auto_cloud_overlay THEN $
