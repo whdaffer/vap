@@ -7,6 +7,9 @@
 # bestiary of environmental variables be defined.
 #
 # $Log$
+# Revision 1.5  2003/01/31 01:09:03  vapdev
+# Some last minute touchups!
+#
 # Revision 1.4  2003/01/30 22:55:37  vapdev
 # GOES/GMS5 work directories
 #
@@ -36,7 +39,7 @@
 
 # --- Work directories
 echo making working directories
-mkdir -p $VAP_OPS_ANIM/{NEPAC,NPAC,NWATL,PACHURR,ATLHURR,INDIAN}
+mkdir -p $VAP_OPS_ANIM/{NEPAC,NPAC,NWATL,PACHURR,ATLHURR,INDIAN,NWPAC}
 mkdir -p $VAP_OPS_OVERLAY
 mkdir -p $VAP_OPS_TS_OVERLAY
 mkdir -p $VAP_OPS_TMPFILES
