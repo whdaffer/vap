@@ -86,6 +86,11 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.3  1998/10/01 17:52:44  vapuser
+  ; Modified 'version' method so that it will report
+  ; the versions of member classes. Put in some error handling
+  ; so that it'll ignore calls to undefined 'version' methods.
+  ;
   ; Revision 1.2  1998/10/01 15:38:51  vapuser
   ; Added 'Version' Method. Returns rcsid string. Eliminated rcsid member.
   ; It's now a string local to the version method.
@@ -466,10 +471,13 @@ FUNCTION q2b::Set, $
                eqx    = eqx ,$
                decimate    =  decimate,$
                crdecimate  = crdecimate, $
-               ExcludeCols = ExcludeCols
+               ExcludeCols = ExcludeCols, $
+               StartTime= StartTime, $
+               EndTime= EndTime
    
 
   recalc_extent = 0
+  status = 1
 
   IF N_Elements(crdecimate) EQ 2 THEN BEGIN 
     self.crdecimate = [ 0> crdecimate[0] < self.ncells, $
@@ -480,9 +488,11 @@ FUNCTION q2b::Set, $
     VarType(ExcludeCols) EQ 'STRING' THEN BEGIN  
     self-> SetExcludeCols,ExcludeCols
   ENDIF     
+
+  IF n_Elements(StartTime) NE 0 THEN self.StartTime =  StartTime
+  IF n_Elements(EndTime) NE 0 THEN self.EndTime =  EndTime
     
   IF ptr_valid( self.data ) THEN BEGIN 
-    status = 1
       ; ==========
       ; Set U 
       ; ========== 
@@ -864,11 +874,25 @@ FUNCTION q2b::Get, $
                nrecs    = nrecs   , $
                decimate = decimate, $
                crdecimate  = crdecimate,$
-               ExcludeCols = ExcludeCols
-               data     = data
+               ExcludeCols = ExcludeCols,$
+               data     = data,$
+               StartTime = StartTime, $
+               EndTime   = EndTime 
 
   Forward_Function  q2b_str
-  status = 0
+
+  IF Arg_Present(decimate)     THEN decimate  = self.decimate
+  IF Arg_Present(crdecimate)   THEN crdecimate  = self.crdecimate
+  IF Arg_Present(ExcludeCols)  THEN ExcludeCols = self.ExcludeCols
+  IF Arg_Present(filename)     THEN filename    = self.filename     
+  IF Arg_Present(eqx)          THEN eqx         = self.eqx         
+  IF Arg_Present(type)         THEN type        = self.type        
+  IF Arg_Present(ncells)       THEN ncells      = self.ncells      
+  IF Arg_Present(nrecs)        THEN nrecs       = self.nrecs       
+  IF Arg_Present(data)         THEN data        = self.data        
+  IF Arg_Present(StartTime)    THEN StartTime   = self.StartTime   
+  IF Arg_Present(EndTime)      THEN EndTime     = self.EndTime     
+
   IF ptr_valid( self.data) THEN BEGIN 
     IF Arg_Present(u)        THEN u         = (*self.data).u       
     IF Arg_Present(v)        THEN v         = (*self.data).v       
@@ -884,21 +908,27 @@ FUNCTION q2b::Get, $
     IF Arg_Present(mv)       THEN mv        = (*self.data).mv      
     IF Arg_Present(su)       THEN su        = (*self.data).su      
     IF Arg_Present(sv)       THEN sv        = (*self.data).sv      
-    IF Arg_Present(filename) THEN filename  = self.filename
-    IF Arg_Present(eqx)      THEN eqx       = self.eqx      
-    IF Arg_Present(type)     THEN type      = self.type     
-    IF Arg_Present(ncells)   THEN ncells    = self.ncells   
-    IF Arg_Present(nrecs)    THEN nrecs     = self.nrecs    
-    IF Arg_Present(data)     THEN data      = self.data
     status = 1
-  ENDIF ELSE $
+  ENDIF ELSE BEGIN 
     Message,'Data Ptr NOT valid, use Q2B::ConfigDataPtr to configure',/cont
+    IF Arg_Present(u)        OR $
+     Arg_Present(v)        OR $
+     Arg_Present(lon)      OR $
+     Arg_Present(lat)      OR $
+     Arg_Present(sel)      OR $
+     Arg_Present(sel2)     OR $
+     Arg_Present(nambig)   OR $
+     Arg_Present(qual)     OR $
+     Arg_Present(row)      OR $
+     Arg_Present(idx)      OR $
+     Arg_Present(mu)       OR $
+     Arg_Present(mv)       OR $
+     Arg_Present(su)       OR $
+     Arg_Present(sv)       THEN status = 0
+  ENDELSE 
 
-  IF Arg_Present(decimate) THEN decimate  = self.decimate
-  IF Arg_Present(crdecimate) THEN crdecimate  = self.crdecimate
-  IF Arg_Present(ExcludeCols)  THEN ExcludeCols = self.ExcludeCols
 
-  return,status
+  RETURN,status
    
 END
 
@@ -908,7 +938,7 @@ END
   ;
   ; ==========================================
 
-FUNCTION q2b::read, filename
+FUNCTION Q2b::Read, filename
 
   Forward_Function q2bhdfread, q2bsvhread
   status = 0
@@ -925,11 +955,15 @@ FUNCTION q2b::read, filename
     END
 
     'HDF': BEGIN 
-      data = q2bhdfread(filename,eqx=eqx)
+      data = q2bhdfread(filename,eqx=eqx,$
+                        StartTime=StartTime,$
+                        EndTime=EndTime)
       IF Vartype(eqx) EQ 'STRUCTURE' THEN self.eqx = eqx
       IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
         status = 1
         self.type = 'HDF'
+        self.StartTime = StartTime
+        self.EndTime = EndTime
       ENDIF 
 
     END 
@@ -937,7 +971,9 @@ FUNCTION q2b::read, filename
     ELSE: BEGIN 
 
       IF Hdf_IsHdf(filename) THEN BEGIN 
-        data = q2bhdfread(filename,eqx=eqx)
+        data = q2bhdfread(filename,eqx=eqx,$
+                        StartTime=StartTime,$
+                        EndTime=EndTime)
         IF Vartype(eqx) EQ 'STRUCTURE' THEN self.eqx = eqx
         IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
           status = 1
@@ -950,6 +986,8 @@ FUNCTION q2b::read, filename
         IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
           status = 1
           self.type = 'SVH'
+          self.StartTime = StartTime
+          self.EndTime = EndTime
         ENDIF 
       ENDELSE 
     END
@@ -960,6 +998,8 @@ FUNCTION q2b::read, filename
     self.nrecs  =  N_Elements( data )
     self.ncells =  N_Elements( data(0).su )
     self.data   =  ptr_new(data)
+    self.StartTime = "0000/00/00/00/00"
+    self.EndTime = "0000/00/00/00/00"
     ; self-> GetExtent
   ENDIF ELSE status = 0
 
@@ -1320,8 +1360,10 @@ FUNCTION q2b::Version
    rcsid = "$Id$"
 
      ; Find version number for member objects.
-   Tags = Tag_Names(self)
+   s=execute( 'tags=tag_names({' + 'q2b' + '})' ) 
    n_tags = n_elements(Tags)
+   i = 0
+
    WHILE i LE n_tags-1 DO BEGIN 
 
      catch, error
@@ -1335,11 +1377,13 @@ FUNCTION q2b::Version
      ENDIF 
      
      IF VarType( self.(i) ) EQ 'OBJECT' THEN BEGIN 
-       V =  Call_Method( "VERSION", self.(i) )
-       nv = N_Elements(V)
-       IF exist(member_versions) THEN $
-          member_versions =  [ member_versions, v ] ELSE $
-          member_versions =  v
+       IF Obj_Valid( self.(i) ) THEN BEGIN 
+         V =  Call_Method( "VERSION", self.(i) )
+         nv = N_Elements(V)
+         IF exist(member_versions) THEN $
+            member_versions =  [ member_versions, v ] ELSE $
+            member_versions =  v
+       ENDIF 
      ENDIF 
      i =  i+1
    ENDWHILE 
@@ -1356,7 +1400,10 @@ FUNCTION q2b::Version
                     "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
            error = 0
            i = i+1
-         ENDIF ELSE return,''
+         ENDIF ELSE BEGIN 
+           Message,!error_state.msg,/cont
+           return,''
+         ENDELSE 
        ENDIF 
 
        V  = call_method("VERSION",super[i])
@@ -1378,7 +1425,7 @@ FUNCTION q2b::Version
       versions =  [versions, member_versions ] 
 
    Catch,/cancel
-  return,versions
+  return,versions(uniq(versions,sort(versions)))
 END
 
   ; ==========================================
@@ -1391,6 +1438,8 @@ PRO q2b__define
    eqx = eqx_str(1)
   junk = { Q2B,$
            filename : '',$        ; Name of file containing data (if there)
+           StartTime: '',$        ; Start time of data (yyyy/mm/dd/hh/mm)
+           EndTime  : '',$        ; End time of data (yyyy/mm/dd/hh/mm)
            type     : '',$        ; 'SVH', 'HDF' or '???'
            ncells   : 0l,$        ; number of crosstrack cells
            nrecs    : 0l,$        ; number of records 
