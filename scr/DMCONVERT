@@ -1,0 +1,30 @@
+#!/bin/csh -f
+#
+# Wrapper to calls to dmconvert.
+#
+#
+# $Id$
+# 
+#
+# Mods:
+#
+# $Log$
+#
+if ("$1" == "") then 
+  echo usage: DMCONVERT outputfile \[type\]
+  exit
+endif
+echo Starting DMCONVERT; date
+echo DISPLAY = $DISPLAY
+set outputfile=$1
+if ("$2" == "") then 
+  set type=qt
+else
+  set type="$2"
+endif
+
+dmconvert -f $type -p video,comp=qt_cvid,squal=0.9,tqual=0.9,rate=30 -n gwind.0\#\#,start=1,end=60,step=1 gwind.0\#\# $outputfile >&! /tmp/DMCONVERT.LOG
+cat /tmp/DMCONVERT.LOG
+rm /tmp/DMCONVERT.LOG
+echo Done\!; date
+exit
