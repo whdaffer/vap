@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.19  2000/01/11 20:39:47  vapuser
+  ; Added a 'self-destruct' method
+  ;
   ; Revision 1.18  1999/11/12 19:55:46  vapuser
   ; Added code to support new DIRTH selected vectors in the
   ; new L2B data product. (per Bryan's request)
@@ -222,7 +225,32 @@ FUNCTION Q2B::Init, $
             decimate=decimate ,$
             crdecimate=crdecimate ,$
             ExcludeCols=ExcludeCols, $
-            Verbose=Verbose
+            Verbose=Verbose, $
+
+                ; All 'rf_' or '_rf' are Rain Flag quantities.
+                ;
+                ; use_rf determines which flag (if any) to use. it may
+                ; be specified as a string or a number. The string is
+                ; the name of the flag without the 'rain_flag' part
+                ; from q2b_rnoaa_str with the empty string standing
+                ; for no rain flagging or the numbers 0,1,2 with 0=no
+                ; flagging, 1=use the 'MP' flag and 2= use the 'NOF'
+                ; flag.
+                ;
+                ; rf_action determines whether to skip plotting the
+                ; data (rf_action=0) or plot it with whatever quantity
+                ; is given in rf_color (rf_action=1)
+                ;
+                ; rf_color is either the color index, if 8-bit env, or
+                ; the 24 bit color itself with which rain flagged data
+                ; is plotted, provided rf_action=1.
+                ;
+
+               use_rf    = use_rf, $ ; ''|'MP'|'NOF' or 0|1|2
+               rf_action = rf_action, $ ; 0|1
+               rf_color  = rf_color     ; color_index(8bit)|color(24bit)
+               
+             
 
 
   Forward_Function  q2b_str  
@@ -239,6 +267,23 @@ FUNCTION Q2B::Init, $
     return,0
   ENDIF 
 
+
+
+  IF n_elements(use_rf) EQ 0 THEN use_rf =  0
+  IF n_elements(rf_action) EQ 0 THEN  rf_action=0
+  IF n_elements(rf_color) EQ 0 THEN rf_color = 'ffffff'xl
+
+  IF isa(use_rf,/string,/nonempty) THEN BEGIN 
+    use_rf = strupcase(use_rf)
+    CASE use_rf OF 
+      'MP': self.rain_flag = 1;
+      'NOF': self.rain_flag = 2;
+      ELSE: self.rain_flag = 0
+    ENDCASE 
+  ENDIF ELSE self.rain_flag =  use_rf
+
+  self.rain_flag_action = rf_action
+  self.rain_flag_color = rf_color
   
   status = 0
   self.filename = '<No Name>'
@@ -538,11 +583,49 @@ FUNCTION q2b::Set, $
                crdecimate  = crdecimate, $
                ExcludeCols = ExcludeCols, $
                StartTime= StartTime, $
-               EndTime= EndTime
+               EndTime= EndTime, $
+
+                ; All 'rf_' or '_rf' are Rain Flag quantities.
+                ;
+                ; use_rf determines which flag (if any) to use. it may
+                ; be specified as a string or a number. The string is
+                ; the name of the flag without the 'rain_flag' part
+                ; from q2b_rnoaa_str with the empty string standing
+                ; for no rain flagging or the numbers 0,1,2 with 0=no
+                ; flagging, 1=use the 'MP' flag and 2= use the 'NOF'
+                ; flag.
+                ;
+                ; rf_action determines whether to skip plotting the
+                ; data (rf_action=0) or plot it with whatever quantity
+                ; is given in rf_color (rf_action=1)
+                ;
+                ; rf_color is either the color index, if 8-bit env, or
+                ; the 24 bit color itself with which rain flagged data
+                ; is plotted, provided rf_action=1.
+                ;
+
+               use_rf    = use_rf, $ ; ''|'MP'|'NOF' or 0|1|2
+               rf_action = rf_action, $ ; 0|1
+               rf_color  = rf_color     ; color_index(8bit)|color(24bit)
+               
+               
    
 
   recalc_extent = 0
   status = 1
+
+  IF n_elements(use_rf) NE 0 THEN BEGIN 
+    IF isa(use_rf,/string,/nonempty) THEN BEGIN 
+      use_rf = strupcase(use_rf)
+      CASE use_rf OF 
+        'MP': self.rain_flag = 1;
+        'NOF': self.rain_flag = 2;
+        ELSE: self.rain_flag = 0
+      ENDCASE 
+    ENDIF ELSE self.rain_flag =  use_rf
+  ENDIF 
+  IF n_elements(rf_action) NE 0 THEN self.rain_flag_action = 0> rf_action < 1
+  IF n_elements(rf_color) NE 0 THEN self.rain_flag_color = 0> rf_color < !d.n_colors-1
 
   IF NOT self.model THEN BEGIN 
     IF N_Elements(crdecimate) EQ 2 THEN BEGIN 
@@ -961,6 +1044,9 @@ FUNCTION q2b::Get, $
                data     = data,$
                StartTime = StartTime, $
                EndTime   = EndTime , $
+               use_rf    = use_rf, $
+               rf_action = rf_action, $
+               rf_color  = rf_color, $
                infostruct = infostruct
 
   Forward_Function  q2b_str
@@ -975,7 +1061,13 @@ FUNCTION q2b::Get, $
   IF Arg_Present(nrecs)        THEN nrecs       = self.nrecs       
   IF Arg_Present(data)         THEN data        = self.data        
   IF Arg_Present(StartTime)    THEN StartTime   = self.StartTime   
-  IF Arg_Present(EndTime)      THEN EndTime     = self.EndTime     
+  IF Arg_Present(EndTime)      THEN EndTime     = self.EndTime  
+  IF Arg_Present(rf_action)    THEN rf_action   = self.rain_flag_action
+  IF Arg_Present(rf_color)     THEN rf_color    = self.rain_flag_color
+  IF Arg_Present(use_rf)       THEN BEGIN 
+    tmp = ['No Flagging','Use MP flag', 'Use NOF flag']
+    use_rf = tmp[self.rain_flag]
+  ENDIF 
 
   IF Arg_Present(infostruct) THEN BEGIN 
     infostruct = { Start_Time: self.starttime, $
@@ -1154,7 +1246,7 @@ END
   ;
   ; 
   ; All the elements that are excluded using
-  ; decimate/CRDecimate/ExcludeCols are returned as NANs. PlotVect
+  ; decimate/CRDecimate/ExcludeCols are returned as NaNs. PlotVect
   ; knows about NaNs.
 
 
@@ -1166,7 +1258,8 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
             decimate=decimate, $
             crdecimate=crdecimate,$
             excludecols = excludecols, $
-            Silent=Silent
+            Silent=Silent, $
+            rf_index=rf_index
 
    status = 1   
    nodata = -2
@@ -1177,10 +1270,10 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
    Catch,error
    IF error NE 0 THEN BEGIN 
      Catch,/Cancel
-;     ok = Dialog_Message(!Error_State.msg)
-;     Message,!Error_State.msg,/cont
-     ok = Dialog_Message(!Err_string)
-     Message,!Err_string,/cont
+     ok = Dialog_Message(!Error_State.msg)
+     Message,!Error_State.msg,/cont
+;     ok = Dialog_Message(!Err_string)
+;     Message,!Err_string,/cont
      return,GenericFailure
    ENDIF 
 
@@ -1199,6 +1292,9 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
 
    crdecimate = self.crdecimate
    decimate = self.decimate
+   use_rf = self.rain_flag
+   rf_action = self.rain_flag_action
+
    junk = where( self.crdecimate, njunk )
    IF njunk NE 0 THEN BEGIN 
      decimate = self.crdecimate
@@ -1277,6 +1373,12 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
          lat =  (*self.data).lat
 
          IF N_Elements(ambig) eq 0 THEN ambig = 0
+         IF self.rain_flag NE 0 THEN BEGIN 
+           IF self.rain_flag EQ 1 THEN $
+             rf = (*self.data).mp_rain_flag 
+             rf = (*self.data).nof_rain_flag
+         ENDIF
+
          CASE ambig OF 
            0:BEGIN 
              ; The 'selected' ambiguity has been specifically
@@ -1332,10 +1434,11 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
            ; columns of the first and last rows that we're putting in
            ; these arrays that weren't actually selected.
          R=minmax(r)
-         u   = u(*,r[0]:r[1])
-         v   = v(*,r[0]:r[1])
-         lon = lon(*,r[0]:r[1])
-         lat = lat(*,r[0]:r[1])
+         u   = u[*,r[0]:r[1]]
+         v   = v[*,r[0]:r[1]]
+         lon = lon[*,r[0]:r[1]]
+         lat = lat[*,r[0]:r[1]]
+         IF self.rain_flag GT 0 THEN rf = rf[*,r[0]:r[1]]
        ENDIF 
 
        IF Ptr_Valid(PtrToExcludeCols) THEN BEGIN 
@@ -1385,6 +1488,16 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
          ENDIF
        ENDELSE 
 
+       rf_index = -1l;
+       IF self.rain_flag NE 0 THEN BEGIN 
+         rf_index = where(rf EQ 2, nrf)
+         IF nrf NE 0 THEN BEGIN 
+           IF self.rain_flag_action EQ 0 THEN BEGIN 
+             u[rf_index] = !values.f_nan
+             v[rf_index] = !values.f_nan
+           ENDIF 
+         ENDIF 
+       ENDIF 
      ENDELSE   ; Come from if self.model
    ENDIF ELSE BEGIN 
      Message,$
@@ -1715,11 +1828,32 @@ PRO q2b__define
                                   ; [1,0] = [1,1]= decimate=1 = take
                                   ; every vector.
 
+
            ExcludeCols: ptr_new(),$ ; pointer to vector of array indices 
-                                    ; of columns to exclude from plotting.
+                                     ;of columns to exclude from plotting.
+
+           Rain_Flag: 0 , $     ; 0= don't use any rain flag, 
+                                ; i.e. don't remove or otherwise
+                                ; process data that has been rain
+                                ; flagged.
+
+
+                                  ; 1 = use MP rain flag
+                                  ; 2 = use NOF rain flag
+
+           Rain_Flag_Action: 0,$  ; 0 = don't plot rain flagged data
+                                  ; 1 = plot with color =
+                                  ; rain_flag_color
+
+           rain_flag_color: 0l, $ ; Either the color index or the color 
+                                ;itself to be used in plotting rain 
+                                ; flagged data (depending on whether
+                                ; the display is in 8 bit or 24 bit color.
+                    
 
            eqx      : eqx,$       ; 'EQX' structure 
                                   ; (e.g. {EQX,date:'',time:'',lon:0.})
+
            data     : ptr_new(),$ ; Pointer to structure of type
                                   ; 'Q2BDATA' or 'QMODEL' or 'RQ2BDATA'
            extent   : ptr_new() } ; pointer to array of size [n,3,2] 

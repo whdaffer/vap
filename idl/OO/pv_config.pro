@@ -31,6 +31,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.11  2000/01/11 20:37:59  vapuser
+; Fixed a few minor bugs.
+;
 ; Revision 1.10  1999/11/12 19:53:28  vapuser
 ; Added code to support new DIRTH selected vectors in the
 ; new L2B data product. (per Bryan's request)
@@ -837,6 +840,21 @@ PRO PV_CONFIG_Events, Event
 
   
   CASE Descript OF 
+    'RAINFLAG': BEGIN 
+      Widget_Control, (*info).RainFlagId, Get_Value=newRainFlag
+      self-> get,rain_flag = rain_flag, rf_action=rf_a
+      IF rain_flag NE newRainFlag THEN BEGIN 
+        self-> set,use_rf = newRainFlag
+        Widget_Control,(*info).RFActColId,map=newRainFlag NE 0
+      ENDIF 
+    END 
+    'RAINFLAGACTION': BEGIN 
+      Widget_Control, (*info).RainFlagActionId, $
+        Get_Value=newRainFlagAction
+      self-> get,rf_action=rf_a
+      IF rf_a NE newRainFlagAction THEN $
+        Widget_Control,(*info).RainFlagColorId,map=newRainFlagAction
+    END 
 ;    'PREVDIMS': BEGIN
 ;      Print, 'Event for PREVDIMS'
 ;      (*info).prevdimsindex = event.index
@@ -973,13 +991,44 @@ PRO PV_CONFIG_Events, Event
       Widget_Control, (*info).ThirdColorId,    Get_Value = ThirdColor 
       Widget_Control, (*info).FourthColorId,   Get_Value = FourthColor
       Widget_Control, (*info).Model1ColorId,   Get_Value = Model1Color
-      Widget_Control, (*info).DIRTHColorId,   Get_Value = DirthColor
+      Widget_Control, (*info).DIRTHColorId,    Get_Value = DirthColor
       Widget_Control, (*info).AmbigId,         Get_Value = NewAmbiguities
       Widget_Control, (*info).DecimateCwButId, Get_Value = DecimateCwButVal
       Widget_Control, (*info).ExcludeColsId,   Get_Value = NewExcludeCols
       Widget_Control, (*info).FinfoArrId,      Get_Value=FinfoArrVal
+      Widget_Control, (*info).RainFlagId,      Get_Value=NewRainFlag
+      Widget_Control, (*info).RainFlagACtionId,Get_Value=NewRainFlagAction
+      Widget_Control, (*info).RainFlagColorId, Get_Value=NewRainFlagColor
 
+    
+      self-> get,rain_flag = rain_flag, rf_action=rf_a,rf_color=rf_c
+      IF rain_flag NE newRainFlag THEN BEGIN 
+        self-> set,use_rf = newRainFlag
+        Widget_Control,(*info).RFActColId,map=newRainFlag NE 0
+        (*info).redraw = 1
+      ENDIF 
+      IF rf_a NE newRainFlagAction THEN BEGIN 
+        self-> set,rf_action = newRainFlagAction
+        Widget_Control,(*info).RainFlagColorId,map=newRainFlagAction
+        (*info).redraw = 1
+      ENDIF 
+
+      s = execute( 'newRainFlagColor= ' + newRainFlagColor[0])
+      IF NOT s THEN BEGIN 
+        ok = dialog_message("Can't set new color for Rain Flagged, try again")
+        Widget_Control,(*info).RainFlagColorId,Set_value=rf_c       
+      ENDIF ELSE BEGIN 
+        IF rf_c NE newRainFlagColor THEN BEGIN 
+           rf_c = newRainFlagColor
+          self-> set,rf_Color = newRainFlagColor
+          (*info).redraw = 1
+        ENDIF
+      ENDELSE 
       
+      IF !d.n_colors GT 256 THEN $
+        rf_c = "'" + string(rf_c,form='(z6.6)') + "'x" ELSE $
+        rf_c = strtrim(rf_c,2)
+
 
         ; Handle requests to delete data and/or change plotting
         ; status.
@@ -1210,7 +1259,7 @@ PRO pv_config, GROUP=Group
     'Color Bar']
 
       ConfigureChoiceBgroupId = CW_BGROUP( BASE2, junk, $
-      ROW=2, $
+      ROW=3, $
       EXCLUSIVE=1, $
       Event_Func='ConfigChoiceBgroup_Events',$
       UVALUE='CONFIGURECHOICEBGROUP', $
@@ -1423,8 +1472,10 @@ PRO pv_config, GROUP=Group
   self-> get,Decimate = Decimate_by, CRDecimate_by=CRDecimate_by
   jj=where( CRDecimate_by, njj )
   cwdecimatebutval = ( njj NE 0 )
-  
-  DecimateBaseId = Widget_Base( TopVecConfigId, Col=2 )
+
+  decAndRfbase = Widget_base(TopVecConfigID,col=2)
+  ;DecimateBaseId = Widget_Base( TopVecConfigId, Col=2 )
+  DecimateBaseId = Widget_Base(DecAndRFBase, Col=2 )
     ; 1st column, CW_Bgroup of 1d /versus 2d decimation
   Decimate_Choices = [ '1D Decimation', '2D Decimation']
   DecimateCwButId = CW_BGroup( DecimateBaseId, $
@@ -1464,9 +1515,33 @@ PRO pv_config, GROUP=Group
                                 Title='Rows',$
                                 Uvalue='DECIMATE_2D_ROWS')
 
+  self-> get,rain_flag = rain_flag, rf_action=rf_a,rf_color=rf_c
+  IF rf_c GT 255 THEN BEGIN 
+     v = "'" + string(rf_c,form='(z6.6)') + "'x"
+  ENDIF ELSE rf_c = strtrim(rf_c,2)
+
+  junkId = Widget_Base(DecAndRFBase,row=2)
+  RainFlagID = cw_bgroup(junkid, ['None','MP','NOF'],row=1,$
+                         /exclusive,/return_index,/no_release,$
+                         set_value=rain_flag,$
+                        UVALUE='RAINFLAG',$
+                        Label_Top='Rain Flagging Option')
+  RFActColId = widget_base(junkid,col=1,map=rain_flag NE 0)
+  RainFlagActionID = CW_Bgroup(RFActColId,["Don't Plot","Plot with Color..."],/exclusive,$
+                               /return_index,/no_release,$
+                               set_value=rf_a,$
+                              UVALUE='RAINFLAGACTION',$
+                              label_top='When Plotting Rain Flagged Data?')
+  RainFlagColorId = CW_Field(RFActColId,$
+                             Title='Color of Rain Flagged Data',$
+                             value=rf_c,/return_events,/string,/col,$
+                            UVALUE='RAINFLAGCOLOR')
+  widget_control,RainFlagColorId,map=rf_a
+
+
   self-> get, ExcludeCols = ExcludeCols
-  Junkid = Widget_Base(TopVecConfigId,Col=1)
-  ExcludeColsId = CW_Field(JunkId,$
+  ;Junkid = Widget_Base(TopVecConfigId,Col=1)
+  ExcludeColsId = CW_Field(TopVecConfigId,$
                            title='Columns To Exclude',$
                            Value=ExcludeCols, $
                            Uvalue='EXCLUDECOLS',$
@@ -1831,6 +1906,10 @@ PRO pv_config, GROUP=Group
                     Decimate2DBaseId  : Decimate2DBaseId,$
                     Decimate2DCol     : Decimate2DCol,$
                     Decimate2DRow     : Decimate2DRow,$
+                    RainFlagID        : RainFlagID ,$
+                    RFActColId        : RFActColId ,$
+                    RainFlagActionID  : RainFlagActionID ,$
+                    RainFlagColorId   : RainFlagColorId,$
                     ExcludeColsId     : ExcludeColsId,$
 
 ; --------------   Data List Base -------------------------
