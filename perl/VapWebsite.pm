@@ -6,16 +6,36 @@
 
 =head2 USAGE
 
-       my $vapwww = VapWebsite->new(FILE => `file',
-                                    PROCESSOR_DEFAULTS = hash [,
-                                    errorobj = VapErrorObject])
+       my $vapwww = VapWebsite->new(FILE => `file' | UPDATE=>product,
+                                    PROCESSOR_DEFAULTS => hash 
+                                  [,errorobj = VapErrorObject])
 
 
 =over 2
 
 =item * FILE: FULLY QUALIFIED name of the file to move. All necessary
              information as to where the file lives should be
-             contained in the name. This input is REQUIRED!
+             contained in the name. 
+
+
+
+=item * UPDATE: name of a Product. This option allows for updating 
+                webpages without actually having to run a processor.
+
+        UPDATE must equal one of the `regions' used in calling one of
+        the particular processors, i.e. one of those inputs that
+        follow the --region switch.
+
+        Examples are: GOES_10_4_NEPAC_1 for overlays, NEPAC for
+        animations and GOESWEST for tropical storms.
+
+        FILE or UPDATE is REQUIRED!
+
+=item * WINDFILTER: When using UPDATE to update overlay or tropical
+                    storm webpagers, one needs the WINDFILTER keyword
+                    to further differentiate between QuikSCAT and
+                    SeaWinds webpages.
+
 
 =item * PROCESSOR_DEFAULTS: a hash containing the `defaults' used by
                             whatever particular processor was
@@ -81,18 +101,42 @@ BEGIN {
 
   $usage = << "EOF";
 
-    obj = VapWebsite->new(FILE => 'file',PROCESSOR_DEFAULTS => hash
+    obj = VapWebsite->new(
+
+                      (FILE => 'file',
+
+                          -- or --
+
+                       UPDATE=> 'product_type'[, WINDFILTER=>'filter',])
+                          ,PROCESSOR_DEFAULTS => hash
                           [,errorobj=errorobject])
 
-    'FILE'   : the result of some processor (overlay, animation,
+    -- where --
+
+    'FILE'   is the result of some processor (overlay, animation,
              tropical storm overlay). This object moves the file to
              the proper location in the web space and updates the
              proper webpage.
 
-    PROCESSOR_DEFAULTS: the defaults used by whatever processor created FILE,
-    that is, the contents of files VAP_LIBRARY/{overlay_defs_oo,
-    tropical_storm_defs_oo or auto_movie_defs.dat (suitably munged by
-    Animate.pm, of course, since this last file isn't perl eval'able).
+            -- or, to just update the website for a particular product --
+
+    UPDATE and, depending on the product, WINDFILTER
+
+    WINDFILTER is required for those updates (the overlays) that
+    require further differentiation between products based on QuikSCAT
+    ro SeaWinds data.
+
+    One or the other is required, either FILE alone or UPDATE and
+    possibly WINDFILTER.
+
+    The 'product_type' is one of OVERLAY, ANIMATION or TROPICAL_STORM.
+
+
+    PROCESSOR_DEFAULTS: the defaults used by whatever processor
+                        created FILE, that is, the contents of files
+                        overlay_defs_oo, tropical_storm_defs_oo or
+                        auto_movie_defs.dat, contained in VAP_LIBRARY.
+
 
 EOF
 
@@ -116,27 +160,52 @@ sub new{
   $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
   bless $self, ref($class) || $class;
 
-  $self->{ERROROBJ}->_croak("Need filename!\n",
-		"VapWebsite::new No filename!") unless $self->{FILE};
+  if ($self->{UPDATE} =~ /OVERLAY|TROPICAL/) {
+    $self->{ERROROBJ}->_croak("OVERLAY|TROPICAL_STORM: Need windfilter!\n",
+	    "VapWebsite::new (update) No windfilter for overlay products!") 
+      unless $self->{WINDFILTER};
+    my $update = $self->{UPDATE};
+    if ($update =~ /OVERLAY/) {
+    } elsif ($update =~ /TROPICAL_STORM/) {
+    } elsif ($update =~ /ANIMATION/) {
+    } else {
+      $self->{ERROROBJ}->_croak("Unknown update product: <$update>!\n",
+	       "VapWebsite::new (update) Unknown update product!");
+    }
 
-  $self->{ERROROBJ}->_croak("file ". $self->{FILE} . " doesn't exist!\n",
-		"VapWebsite: non-existent file!") unless (-e $self->{FILE});
 
-  my $file = $self->{FILE};
-  my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
-      $atime,$mtime,$ctime,$junk)=stat($file);
-  $self->{ERROROBJ}->_croak("file ". $file . " is empty!\n",
-		"VapWebsite: non-existent file!") unless ($size > 0);
+  } else {
 
-  $self->{errorobj}->_croak("Processor defaults weren't passed!\n",
-			    "VapWebsite: No processor defaults!") 
-    unless $self->{PROCESSOR_DEFAULTS};
-  $self->{MTIME} = $mtime;
-  $self->{SIZE} = int($size/1024.0 + 0.5);
+      # Not and 'UPDATE'. need a filename!
+
+    $self->{ERROROBJ}->_croak("Need filename!\n",
+		  "VapWebsite::new No filename!") unless $self->{FILE};
+
+    $self->{ERROROBJ}->_croak("file ". $self->{FILE} . " doesn't exist!\n",
+		  "VapWebsite: non-existent file!") unless (-e $self->{FILE});
+
+    my $file = $self->{FILE};
+    my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+	$atime,$mtime,$ctime,$junk)=stat($file);
+    $self->{ERROROBJ}->_croak("file ". $file . " is empty!\n",
+		  "VapWebsite: non-existent file!") unless ($size > 0);
+
+    $self->{errorobj}->_croak("Processor defaults weren't passed!\n",
+			      "VapWebsite: No processor defaults!") 
+      unless $self->{PROCESSOR_DEFAULTS};
+    $self->{MTIME} = $mtime;
+    $self->{SIZE} = int($size/1024.0 + 0.5);
+
+    my ($name0, $path0) = fileparse($0);
+    $self->{NAME0} = $name0;
+    $self->parseFilename;
+
+  }
 
   my $defs = "VapWebsite_defs";
   my $defsfile = $ENV{VAP_LIBRARY} . "/$defs";
-  open DEFSFILE, "<$defsfile" or $self->{ERROROBJ}->_croak("Can't open $defsfile\n", 
+  open DEFSFILE, "<$defsfile" or 
+    $self->{ERROROBJ}->_croak("Can't open $defsfile\n", 
 				 "VapWebsite: open ERROR");
   do {
     local $/=undef;
@@ -149,12 +218,11 @@ sub new{
   $self->{CGI} = VapCGI->new(-nodebug=>1);
   $self->{BOTTOMTABLE}= BottomNavTable->new;
 
-  my ($name0, $path0) = fileparse($0);
-  $self->{NAME0} = $name0;
-  $self->parseFilename;
 
   return $self;
 }
+
+
 
 =pod
 
