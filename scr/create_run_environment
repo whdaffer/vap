@@ -7,6 +7,9 @@
 # bestiary of environmental variables be defined.
 #
 # $Log$
+# Revision 1.3  2003/01/30 19:56:59  vapdev
+# some other nigglies
+#
 # Revision 1.2  2003/01/30 19:41:55  vapdev
 # bash script error
 #
@@ -30,7 +33,7 @@
 
 # --- Work directories
 echo making working directories
-mkdir -p $VAP_OPS_ANIM
+mkdir -p $VAP_OPS_ANIM/{NEPAC,NPAC,NWATL,PACHURR,ATLHURR,INDIAN}
 mkdir -p $VAP_OPS_OVERLAY
 mkdir -p $VAP_OPS_TS_OVERLAY
 mkdir -p $VAP_OPS_TMPFILES
@@ -38,9 +41,13 @@ mkdir -p $VAP_OPS_LOGFILES
 
 # --- Goes and GMS stuff
 echo GMS/GOES working directories
-mkdir -p $VAP_GOES_TOP
-mkdir -p $VAP_GOES_GRIDDED_TOP
-mkdir -p $VAP_GMS_TOP
+mkdir -p $VAP_GOES_TOP/goes{8,10}/ir{1,2,3,4}
+mkdir -p $VAP_GOES_TOP/goes{8,10}/vis
+mkdir -p $VAP_GOES_GRIDDED_TOP/goes{8,10}/ir{1,2,3,4}
+mkdir -p $VAP_GOES_GRIDDED_TOP/goes{8,10}/vis
+mkdir -p $VAP_GMS_TOP/ir{1,2,3}
+mkdir -p $VAP_GMS_TOP/vis
+mkdir -p $VAP_GMS_TOP/{grid,grida}
 
 # --- WWW directories
 echo WWW top
