@@ -25,7 +25,8 @@
 ;             color = color ,$
 ;             start_index = start_index ,$
 ;             ncolors = ncolors, $
-;             thick =  thick 
+;             thick =  thick, $
+;             Dots=Dots 
 ; 
 ; INPUTS:  
 ;
@@ -57,6 +58,7 @@
 ;    start_index : When using speed to determine the color, use this
 ;                  color index as the starting index
 ;    ncolors     : And use this many colors.
+;    Dots        : Flag, if set, don't plot vectors, plot dots.
 ;
 ;   
 ;
@@ -91,6 +93,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/23 22:22:36  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1996, California Institute of Technology
@@ -106,7 +111,8 @@ PRO plotvect,u,v,x,y, $
              color = color ,$
              start_index = start_index ,$
              ncolors = ncolors, $
-             thick =  thick 
+             thick =  thick , $
+             Dots=Dots 
 
   lf = string(10b)
   IF n_params() NE 4 THEN BEGIN 
@@ -131,7 +137,7 @@ PRO plotvect,u,v,x,y, $
   IF N_Elements( minspeed )    EQ 0 THEN minspeed =  2
   IF N_Elements ( maxspeed )   EQ 0 THEN maxspeed =  37
   IF N_elements( thick )       EQ 0 THEN thick =  0
-
+  Dots = Keyword_set(Dots)
   skip = skip > 1
     
   good1 = where(finite(u) AND finite(v),ngood1)
@@ -181,16 +187,10 @@ PRO plotvect,u,v,x,y, $
   y0 = y2-dy/2.
   y1 = y0+dy
   nn = N_Elements(x0)
-    ; Check to see if the start and end points of a majority of
-    ; vectors occupy more than one pixel on the screen. If not, just
-    ; plot the speed with a filled diamond symbol.
-  start = convert_coord(x0,y0,/data,/to_device)
-  stop =  convert_coord(x1,y1,/data,/to_device)
-  norm = sqrt( (stop[0,*]-start[0,*])^2 + (stop[1,*]-start[1,*])^2)
-  m = mean(norm,/double)
-  usersym, [0,1,2,1], [0,1,0,-1], /fill
 
-  IF m GT 2 THEN BEGIN 
+  IF Dots THEN BEGIN 
+    plots,x2,y2,psym=3, color=col
+  ENDIF ELSE BEGIN 
     FOR i=0l,nn-1 DO BEGIN     ;Each point
         Plots,[x0[i],x1[i],$
                x1[i]-(ct*dx[i]-st*dy[i]),$
@@ -200,9 +200,6 @@ PRO plotvect,u,v,x,y, $
                y1[i],y1[i]-(ct*dy[i]-st*dx[i])], $
               color=col(i), thick= thick
     ENDFOR 
-  ENDIF ELSE BEGIN 
-    ; plots,x2,y2,psym=8, color=col
-    plots,x2,y2,psym=3, color=col
   ENDELSE 
 
 RETURN 
