@@ -3,7 +3,7 @@
 
 #define PHYREC 1024
 #define LPERP PHYREC/32
-#define FILENAME "/usr/people/vapuser/idl/linkimage/LANDMASK.DAT"
+#define FILENAME "/usr/people/vapuser/lib/LANDMASK.DAT"
 #define SIGN_OF(x) ((x)<0.0 ? -1 : 1)
 
 FILE *lunfil;
@@ -50,7 +50,10 @@ FILE *lunfil;
 /*
  * Modification Log:
  *
- * $Log$:
+ * $Log$
+ * Revision 1.1  1999/04/09 22:56:57  vapuser
+ * Initial revision
+ *:
  *
  *
  * $Id$
