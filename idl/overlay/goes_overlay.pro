@@ -3,6 +3,10 @@
 ; put on pretty colors and overlay winds, if there are any.
 ; $Id$
 ; $Log$
+; Revision 1.2  1998/10/17 00:14:39  vapuser
+; worked on CRDecimate and ExcludeCols keywords.
+; Killed a few bugs.
+;
 ; Revision 1.1  1998/09/09 17:34:51  vapuser
 ; Initial revision
 ;
@@ -648,7 +652,8 @@ ENDIF
 t3 =  systime(1)
 print,' sea section took ', (t3-t2)/60., ' minutes '
 
-MAP_SET, latcent, loncent,  limit=tlimits[ [1,0,3,2] ],/noborder;, title=title_str
+MAP_SET, latcent, loncent,  $
+ limit=tlimits[ [1,0,3,2] ],/noborder ;, title=title_str
 
 
 t1 =  systime(1)
@@ -709,8 +714,9 @@ ENDELSE
 xy =  convert_coord( [ xs + xsiz/2, (ny-40)/scalef ] , /dev, /to_data )
 y =  xy[1]
 
-;
-; over plot the wind vectors, if there are any.
+  ;
+  ; over plot the wind vectors, if there are any.
+
 IF plotvect THEN BEGIN 
   good1 = where( finite(uu) AND finite(vv), ngood1)
   IF ngood1 NE 0 THEN BEGIN 
@@ -739,7 +745,8 @@ IF NOT ps THEN BEGIN
   xsiz =  !d.x_size
   ysiz =  !d.y_size
 ENDIF
-  IF ps THEN $
+
+IF ps THEN $
   cbloc = convert_coord( [(xsiz-(10*27)/scalef)/2,$
                           ysiz-32/scalef], /device,/to_normal ) ELSE $
   cbloc = convert_coord( [(xsiz-(10*27)/scalef)/2,$
