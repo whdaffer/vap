@@ -57,6 +57,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1999/01/24 20:06:25  vapuser
+; Changed to accommidate new linkedlist object.
+;
 ; Revision 1.3  1998/11/20 20:02:27  vapuser
 ; Accomidate 24bit color
 ;
@@ -501,7 +504,7 @@ FUNCTION ConfigChoiceBgroup_Events, event
         tvlct,r,g,b,/get
         ii = (*info).ColorIndex
         rgb = [ r[ii], g[ii], b[ii] ]
-        (*info).ColorIndex = Color24(rgb,/transpose)
+        (*info).ColorIndex = Rgb2True(rgb,/transpose)
       ENDIF 
         ; Get the information from the Speed Histogram Object.
       SpeedHisto-> Get, Histo = Histo, XHisto=XHisto, $

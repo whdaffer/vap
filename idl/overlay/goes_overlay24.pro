@@ -181,6 +181,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.5  1999/03/03 17:26:00  vapuser
+; Took out landel stuff (don't need it anymore and it
+; uses a *lot* of memory. Made some other memory usage
+; optimizations. Test status after read_pcgoes.
+;
 ; Revision 1.4  1998/12/07 20:10:31  vapuser
 ; Implemented new method of making overlays, using Lightness/Saturation. Added
 ; new keywords to control this, as well as some other keywords. Updated
@@ -461,7 +466,7 @@ PRO goes_overlay24, goesfile, $
                                max=maxspeed, $
                                top=N_WIND_COLORS-1) + $
                                   WIND_START
-              col24 = color24( veccol, colortable=ct)
+              col24 = Rgb2True( veccol, colortable=ct)
             ENDIF ELSE BEGIN 
               u = 0
               v = 0

@@ -207,6 +207,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  1999/04/06 18:35:43  vapuser
+; Changed default x/y size to defaulting xsize to 960 and
+; ysize to whatever has same ratio as (long_range)/(lat_range)
+; Also biased `bright' vector (bi) to >= 0.2.
+;
 ; Revision 1.2  1999/04/02 17:50:44  vapuser
 ; Removed reference to calibration data. It's not required for
 ; what we're doing.
@@ -686,7 +691,7 @@ PRO gms5_overlay, datetime, gmsType, $
                            max=maxspeed, $
                            top=N_WIND_COLORS-1) + $
                            WIND_START
-          col24 = color24( veccol, colortable=ct)
+          col24 = rgb2true( veccol, colortable=ct)
           t0 = systime(1)
 
         ENDIF 
