@@ -9,13 +9,15 @@
 ;
 ; CALLING SEQUENCE: 1|0 = isanumber(string)
 ; 
-; INPUTS:  String: Scalar string to test for numberness
+; INPUTS:  String: string to test for numberness. May be a vector.
 ;
 ; OPTIONAL INPUTS:  none
 ;	
 ; KEYWORD PARAMETERS:  Verbose: set this flag for verbose output
 ;
-; OUTPUTS:  1 or 0, depending on whether it's a number of not.
+; OUTPUTS:  A intarr of the same dimensions at 'string' containing a 1
+;           or 0, depending on whether it's a number of not.
+;
 ;
 ; OPTIONAL OUTPUTS:  
 ;
@@ -32,6 +34,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/06/17 19:14:36  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -50,24 +55,28 @@ FUNCTION isanumber, field,verbose=verbose
     message,'Input parameter must be of type STRING',/cont
     return,0
   ENDIF 
-
-  unwanted_alphanum = $
-   "!#$%&()*,/:;<=>?@ABCDFHIJKLMNOPQRSTUVWXYZ[\]^_abcdfhijklmnopqrstuvwxyz{|}~"
-  verbose =  keyword_set( verbose )
-  ; Some sanity checks on the string
-  test =  (strpos( field, '-+') NE -1) OR (strpos( field, '+-') NE -1) OR $
-          (strpos( field,"'" ) NE -1) OR (strpos( field,'"') NE -1) OR $
-          (strpos( field,'`') NE -1) OR $
-          NOT (xchar( field, unwanted_alphanum ))
-  IF test THEN BEGIN 
-    IF verbose THEN $
-      message,' field contains illegal alphanumerics: ' + field,/cont
-    result = 0
-  ENDIF ELSE BEGIN 
-    home = GETENV('HOME')
-    env = GetENV('IDL_RELEASE_ENV')
-    linkimage_file = home + '/idl/'+ env + '/linkimage/isanumber.so'
-    result =  call_external( linkimage_file,'isanumber',field)
-  ENDELSE 
+  nf = n_elements(field)
+  result = intarr(nf)
+  FOR f=0,nf-1 DO BEGIN 
+    unwanted_alphanum = $
+     "!#$%&()*,/:;<=>?@ABCDFHIJKLMNOPQRSTUVWXYZ[\]^_abcdfhijklmnopqrstuvwxyz{|}~"
+    verbose =  keyword_set( verbose )
+    ; Some sanity checks on the string
+    test =  (strpos( field[f], '-+') NE -1) OR (strpos( field[f], '+-') NE -1) OR $
+            (strpos( field[f],"'" ) NE -1) OR (strpos( field[f],'"') NE -1) OR $
+            (strpos( field[f],'`') NE -1) OR $
+            NOT (xchar( field[f], unwanted_alphanum ))
+    IF test THEN BEGIN 
+      IF verbose THEN $
+        message,' field contains illegal alphanumerics: ' + field[f],/cont
+      result[f] = 0
+    ENDIF ELSE BEGIN 
+      home = GETENV('HOME')
+      env = GetENV('IDL_RELEASE_ENV')
+      linkimage_file = home + '/idl/'+ env + '/linkimage/isanumber.so'
+      result[f] =  call_external( linkimage_file,'isanumber',field[f])
+    ENDELSE 
+  ENDFOR 
 RETURN, result
 END
+
