@@ -24,7 +24,11 @@
 ;                                   CRDecimate=CRDecimate,$
 ;                                   ExcludeCols=ExcludeCols,$
 ;                                   Nscat=Nscat, noFile=nofile,$
-;                                   u=u,v=v,lon=lon,lat=lat)
+;                                   u=u,v=v,lon=lon,lat=lat, $
+;                                   starttime=starttime, $
+;                                   endtime=endtime, $
+;                                   interptime=interptime, $
+;                                   rflag=rflag)
 ;
 ;
 ; 
@@ -61,22 +65,24 @@
 ;
 ;   WPath: (I) string, path to wind files (def=$VAP_WINDS)
 ;   Filter: (I) string, filter you use when finding wind files.
-;   LonPar: (I/O) if set on input to a 3-vector (n,min,max), these parameters are
+;   LonPar: (I/O) if set on input to a 3-vector (min,max,inc), these parameters are
 ;                 used in creating the interpolated field. If only
 ;                 present as an output variable, these parameters are
 ;                 defaulted and lonpar is set to them on output.
+;                 default=[0.,359.,1]
 ;
 ;   LatPar: (I/O) Same as for LonPar, but for Latitude.
+;                 default=[-60,60,1]
 ;   RaInf: (I) Radius of Influence. vector, Radius of
 ;              influence. This is the number of grid cells to consider
 ;              when computing a value for the current grid
 ;              cell. This vector may contain any number of elements
-;              >0, Default = [12., 6,   2 ] 
+;              >0, Default = [8.,1] 
 ;
 ;   ErMax: (I) vector, Maximum Error allowed before the data in the data
 ;              field is discarded in favor of the computed model.
 ;              Must have the same number of elements as 'rainf'
-;              default = [50., 50,50]
+;              default = replicate(50.,n_elements(rainf))
 ;
 ;   Min_Nvect - (I) scalar: Don't make interp file if there are less 
 ;               this number of vectors. (default=0, i.e. make it regardless)
@@ -99,8 +105,12 @@
 
 ;   StartTime: (O) - the Earliest time which appears in the Wind
 ;                    Files.
-;   EndTime: (O) - the Latesest time which appears in the Wind
+;   EndTime: (O) - the Latest time which appears in the Wind
 ;                  Files.
+;   InterpTime: (I/O) - The 'Time' of the interpolation. If not input,
+;               it will be the mean of the actual timerange defined by
+;               the data. IF input, it must lie between the start/end
+;               time of the actual data, or an error will result. 
 ;   OutFile: (I/O) - If set on input, this will be the name of the
 ;                  output file. If present as a return argument, it
 ;                  will return the name of the output file.
@@ -113,6 +123,7 @@
 ;          directly
 ;   Lat  : (I) 2-d vector. The latitude of the field passed in
 ;          directly
+;   rflag: (I), boolean. If set, remove rainf flagged data.
 ;
 ;
 ;
@@ -128,8 +139,13 @@
 ;                 Creation_Time: The time this field was created.
 ;                 StartTime: Earliest Wind Data time included in this
 ;                            field. String 'yyyy/mm/dd/hh/mm'
-;                 EndTime  : Latesest Wind Data time included in this
+;                 EndTime  : Lateest Wind Data time included in this
 ;                            field. String 'yyyy/mm/dd/hh/mm'
+;                 InterpTime: The 'Time' of this interpolation. Unless
+;                             input, it will be the mean of the
+;                             start/end times. If it is input and it
+;                             is not between these two time, an error
+;                             will result.
 ;                 LonPar:   a 3 vector. [minlon, maxlon,inc]
 ;                 LatPar:   a 3 vector. [minLat, maxLat,inc]
 ; 
@@ -183,12 +199,16 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.15  2000/03/08 21:51:11  vapuser
+; Added some error checking code
+;
 ; Revision 1.14  2000/01/11 20:44:11  vapuser
 ; Added rainf,ermax,crdecimate,decimate and other metadata to the qmodel
 ; object. Added code in this module to use and transmit this metadata.
 ;
 ; Revision 1.13  1999/11/05 17:38:36  vapuser
 ; Corrected some errors in format strings.
+
 ;
 ; Revision 1.12  1999/10/21 22:45:04  vapuser
 ; Added some Messages to relate info about input argument/keywords.
@@ -275,6 +295,13 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                                                   ; in Wind Files
                          EndTime   = EndTime  , $ ; (O) Returned latest time 
                                                   ;  in Wind Files
+                         Interptime = InterpTime,$ ; (I/O) 'Time' of interpolation. 
+                                                  ; If not input, it's the mean of 
+                                                  ; the start/end
+                                                  ; times.  If input,
+                                                  ; it must lie
+                                                  ; between start/end
+                                                  ; times. 
                          Nscat     = Nscat, $     ; (I) flag, if set, expect 
                                                   ;  Nscat data
                          NoFile = NoFile, $       ; (I), flag, if set, don't write 
@@ -297,7 +324,8 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                          U=U, $
                          V=V, $
                          Lons=Lons, $
-                         Lats=Lats
+                         Lats=Lats, $
+                         rflag=rflag 
 
 
   rcsid = "$Id$"
@@ -331,6 +359,8 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
   IF n_elements(excludeCols) NE 0 THEN $
     Message,'ExcludeCols = '+ string(excludeCols), /info
 
+  rflag = keyword_set(rflag)
+
   IF n_elements(u) eq 0 OR $
      n_elements(v) eq 0 OR $
      n_elements(lons) eq 0 OR $
@@ -347,7 +377,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
       ENDIF  
       Wfiles = GetWindFiles(date_time,delta=time_inc,path=wpath, $
                              filter=filter, count=cnt, nscat=nscat)
-    ENDIF 
+    ENDIF ELSE cnt = n_elements(Wfiles)
 
     IF cnt EQ 0 THEN BEGIN 
       Message,'No files for time '+ date_time +' and time_inc ' + $
@@ -371,7 +401,19 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                           CRDecimate=CRDecimate, $
                           ExcludeCols=ExcludeCols, $
                           StartTime=StartTime,$
-                          EndTime=EndTime )
+                          EndTime=EndTime, rainflag=rflag, rf_action=0)
+
+    st = vaptime2idldt(starttime)
+    et = vaptime2idldt(endtime)
+    tt = jul_to_dt( mean( [st.julian,et.julian] ) )
+
+    IF n_elements(interptime) NE 0 THEN BEGIN 
+      it = vaptime2idldt(interptime)
+      IF it.julian LT st.julian OR it.julian GT et.julian THEN BEGIN 
+        Message,"Input INTERPTIME not in Data Time Range!",/cont
+        return,0
+      ENDIF 
+    ENDIF ELSE interptime = idldt2vaptime(tt)
 
     IF n_Elements(data) GT 1 THEN BEGIN 
 
@@ -379,6 +421,14 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
       V   = data[*,1]
       Lon = data[*,2]
       Lat = data[*,3]
+
+      x = where(finite(u) AND finite(v),nx)
+      IF nx NE 0 AND nx LT n_elements(u) THEN BEGIN 
+        u = u[x]
+        v = v[x]
+        lon = lon[x]
+        lat = lat[x]
+      ENDIF 
 
         ; check to see if there are enough vectors.
       IF n_elements(U) LT minNvect THEN BEGIN 
@@ -389,7 +439,9 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
         return,0
       ENDIF 
 
-      
+
+
+
     ENDIF ELSE BEGIN 
       Message,'Error in ReadWindFiles - Aborting',/cont
       return,0
@@ -424,12 +476,19 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     OutFile = OutFile[0]
       ; Let's write it out.
     Message,' Writing file to ' + OutFile,/info
+    nlon = (lonpar[1]-lonpar[0])/lonpar[2]+1
+    nlat = (latpar[1]-latpar[0])/latpar[2]+1
+    loni = (findgen(nlon)*lonpar[2]+lonpar[0])#replicate(1.,nlat)
+    lati = replicate(1.,nlon)#(findgen(nlat)*latpar[2]+latpar[0])
+    c = checkinterpfile(numbad,badlon,badlat,u=ui,v=vi,lon=loni,lat=lati) 
+    IF c EQ 0 THEN print,'Interp Field has ' + strtrim(numbad,2) + ' 2x2 voids!'
     s = qmodelhdfwrite( OutFile,Ui,Vi, lonpar=lonpar, latpar=Latpar, $
                         Version=Versionid, Longname=Longname, $
                         CreationTime=CreationTime, StartTime=StartTime, $
-                        EndTime=EndTime, rainf=rainf, ermax=ermax, $
+                        EndTime=EndTime, interpTime=InterpTime,$
+                        rainf=rainf, ermax=ermax, $
                         crdecimate=crdecimate, decimate=decimate, $
-                        exclude_cols=exclude_cols )
+                        exclude_cols=exclude_cols, wfiles=wfiles)
     IF s NE 1 THEN $
       Message,'Failure writing model to file ' + OutFile,/cont
   ENDIF 
