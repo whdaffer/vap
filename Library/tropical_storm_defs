@@ -1,0 +1,54 @@
+# $Id$
+#
+# Mods:
+#
+# $Log$
+#
+#
+$_storms_host="www.solar.ifa.hawaii.edu";
+$_storms_dir="Tropical/Data";
+local($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime(time()); 
+$year += 1900;
+$yr=$year - int($year/100) * 100;
+$_storms_file=sprintf("tropical%02d", $yr);
+$REMOTE_URL="http://$_storms_host/$_storms_dir/$_storms_file";
+$LOCAL_URL=$_storms_file;
+
+$ROOT_DIR = $ENV{'VAP_ROOT'} || die "Can't get VAP_ROOT env var!\n";
+$TS_OVERLAY_DIR=$ENV{'VAP_TS_OVERLAY'} || "$ROOT_DIR/tropical_storms";
+
+%stormranking=(
+	       '???' => 0,
+	       DEP => 1,
+	       STO => 2,
+	       CYC => 3,
+	       HUR => 3,
+	       TYP => 3);
+
+# Define the regions which each satellite sees.  Then we can quickly
+# determine which satellite to use given the storm's location.
+
+%SatelliteRegions=(
+		   GMS5      => { Region => [70,-60,190,60] },
+		   GOESWESTN => { Region => [180,0,270,60] },
+		   GOESEASTN => { Region => [260,-10,360,60]
+		       }
+		   );
+
+
+
+
+# convert satellite region specs to the actual names of the Satellites
+# Eventually all the code will just refer to GoesEast, GoesWest and
+# GMS5, but we have to deal with some legacy code in the mean time.
+
+%Sat2Sat =( 
+	   GOESEASTN=>"Goes8", 
+	   GOESWESTN=>"Goes10",
+	   GMS5 => "GMS5" 
+	   ); 
+
+@Satellites = ("GOESEAST","GOESWEST","GMS5");
+
+1;
+
