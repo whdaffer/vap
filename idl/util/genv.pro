@@ -3,13 +3,14 @@
 ;
 PRO genv, save= save, clear= clear, restore= restore
 
-COMMON graphenv, device,pmulti,xstyle,ystyle,psym,mtitle,xtitle,ytitle,ztitle,$
+COMMON graphenv, device, window, pmulti,xstyle,ystyle,psym,mtitle,xtitle,ytitle,ztitle,$
                  subtitle , xmargin, ymargin, zmargin, xrange, yrange, zrange, ppos
 
 
 CASE 1 OF 
   keyword_set( save )    : BEGIN
     device  = !d.name
+    window =  !d.window
     pmulti  = !p.multi    
     xstyle  = !x.style    
     ystyle  = !y.style    
@@ -63,6 +64,14 @@ CASE 1 OF
     ENDIF 
 
     set_plot,device
+    IF device EQ 'X' THEN BEGIN
+      catch, error
+      IF error NE 0 THEN BEGIN 
+        message,/reset
+      ENDIF ELSE BEGIN 
+        IF window NE -1 THEN wset, window
+      ENDELSE 
+    ENDIF 
     !p.multi   = pmulti  
     !x.style   = xstyle  
     !y.style   = ystyle  
