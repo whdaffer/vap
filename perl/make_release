@@ -19,16 +19,16 @@ chdir $topdir or die "$!\n";
 my @files;
 
 
-  # The IDL files!
+  # ---------- The IDL files! ---------
 
-mkdir "idl" or die "$!\n" unless (-d "./idl");
-find(\&findidl,".");
-my $newpath="./idl";
-foreach my $f (@files){
-  ($name, $path) = fileparse($f);
-  my $newname = "$newpath/$name";
-  rename($f, $newname) or die "$!\n";
+
+if (! -d "./idl") {
+  my $exe="mv ./vap/idl .";
+  my $r=system($exe)/256;
+  die "$!\n" unless $r==0;
 }
+
+
 
 
   # --------- Perl -------------
