@@ -48,6 +48,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.4  1999/08/31 22:58:05  vapuser
+; Fixed a problem with terminal ';'
+;
 ; Revision 1.3  1999/06/29 20:33:14  vapuser
 ; Changed STARTTIME to DATASTARTTIME.
 ; Similarly for 'endtime'.
@@ -75,6 +78,8 @@ FUNCTION parsernoaaheader, header
   sz = size(header, /dimensions )
   IF ndims GT 1 THEN nrecs =  sz[1] ELSE nrecs =  1
   lf = string(10b)
+  x = where(header EQ 0, nx )
+  IF nx NE 0 THEN header[x] =  32b ; replace nulls with spaces
   FOR nn=0l,nrecs-1 DO BEGIN 
     rec = string(header[*,nn])
     tmp = str_sep( rec, lf )
