@@ -1,0 +1,28 @@
+#!/bin/csh -f
+#
+# $Log$
+#
+# $Id$
+#
+# source /.cshrc
+set path = (/usr/sbin /usr/bsd /sbin /usr/bin /bin /usr/bin/X11 \
+             /usr/etc/ /usr/freeware/bin /usr/people/vapuser/bin \
+             /usr/people/daffer \
+             /usr/people/daffer/bin $path)
+
+source /disk3/rsi/idl_5.1/bin/idl_setup
+source ~vapuser/.aliases
+source /disk2/vap/.vaprc # set up vap environment.
+
+if ("$1" == "") then
+  set type="NEPAC"
+else 
+  set type=$1
+endif
+if ("$2" != "") then 
+  /usr/people/vapuser/perl/auto_movie.pl $type $2
+else 
+  /usr/people/vapuser/perl/auto_movie.pl $type 
+endif 
+exit
+
