@@ -49,6 +49,9 @@
 ; MODIFICATION LOG:
 ;
 ; $Log$
+; Revision 1.1  1999/04/02 17:48:07  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -88,11 +91,11 @@ FUNCTION Gms5ReadAll, datetime, type, lonpar=lonpar
   datastruct = 0
 
   IF vetted THEN BEGIN 
-    caldata = Gms5ReadItem(datetime,'Cal')
-    IF NOT isa(caldata,/struct,name='GMS5CALDATA') THEN BEGIN 
-      Message,"Can't get CAL Data!",/cont
-      return,0
-    ENDIF 
+;    caldata = Gms5ReadItem(datetime,'Cal')
+;    IF NOT isa(caldata,/struct,name='GMS5CALDATA') THEN BEGIN 
+;      Message,"Can't get CAL Data!",/cont
+;      return,0
+;    ENDIF 
       
     ;DocData = Gms5ReadItem(datetime,'Doc')
     Grid    = Gms5ReadItem(datetime,grid)
@@ -111,7 +114,7 @@ FUNCTION Gms5ReadAll, datetime, type, lonpar=lonpar
 
     datastruct = gms5Data_Str()
 
-    datastruct.caldata   = temporary(caldata)
+;    datastruct.caldata   = temporary(caldata)
     datastruct.griddata  = temporary(grid)
     datastruct.imagedata = temporary(image)
 
