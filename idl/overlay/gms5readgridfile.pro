@@ -34,6 +34,9 @@
 ; MODIFICATION LOG:
 ;
 ; $Log$
+; Revision 1.1  1999/04/02 18:03:48  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -59,7 +62,7 @@ FUNCTION Gms5ReadGRIDFile, filename
   ENDIF 
 
 
-  IF n_elements(gms5initialized) THEN gms5Init
+  IF n_elements(gms5initialized) EQ 0 THEN gms5Init
   IF n_elements(gms5gridtemplate) EQ 0 THEN  restore,gms5_hdftemplates_saveset_file
 
   griddata = Hdf_Read(filename, template=Gms5GridTemplate )
