@@ -1,0 +1,53 @@
+#!/bin/bash
+#
+# $Id$
+#
+#
+# Create the run environment for the VAP software. Requires that the
+# bestiary of environmental variables be defined.
+#
+# $Log$
+# Revision 1.2  2003/01/29 00:10:02  vapdev
+# Continuing work
+#
+# Revision 1.1  2003/01/27 16:15:03  vapdev
+# Initial revision
+#
+#
+#
+
+# It's assumed that all the software directories are created in during
+# `cvs export`. At the moment the perl script `make_release' run cvs
+# export and repositions the software so that, for instance, all the
+# IDL code is in one directory, instead several levels of directory tree.
+#
+
+# --- Work directories
+mkdir -p $VAP_OPS_ANIM
+mkdir -p $VAP_OPS_OVERLAY
+mkdir -p $VAP_OPS_TS_OVERLAY
+mkdir -p $VAP_OPS_TMPFILES
+mkdir -p $VAP_OPS_LOGFILES
+
+# --- Goes and GMS stuff
+mkdir -p $VAP_GOES_TOP
+mkdir -p $VAP_GOES_GRIDDED_TOP
+mkdir -p $VAP_GMS_TOP
+
+# --- WWW directories
+if [ ! -d $VAP_WWW_TOP ]; then
+    mkdir -p $VAP_WWW_TOP
+fi
+if [ ! -d $VAP_OVERLAY_ARCHIVE ]; THEN 
+    mkdir -p $VAP_OVERLAY_ARCHIVE
+]
+if [ ! -d $VAP_TS_ARCHIVE ]; then 
+    mkdir -p $VAP_TS_ARCHIVE
+fi
+
+if [ ! -d $VAP_ANIM_ARCHIVE ]; then 
+    mkdir -p $VAP_ANIM_ARCHIVE
+fi
+
+
+
