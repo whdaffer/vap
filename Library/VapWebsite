@@ -1,0 +1,6 @@
+# $Id$
+#
+# Modifications
+#
+# $Log$
+@allowed_extensions = qw/jpeg jpg JPEG JPG mov/;
