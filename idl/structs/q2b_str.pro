@@ -65,6 +65,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/05 23:14:45  vapuser
+; Added Rowtime, a string.
+;
 ; Revision 1.1  1998/10/05 22:48:02  vapuser
 ; Initial revision
 ;
@@ -92,7 +95,7 @@ IF n_elements( q2b_defined ) eq 0 OR redefine THEN BEGIN
           lon    : fltarr(  numcells)   ,$  
           lat    : fltarr(  numcells)   ,$                
           sel    : lonarr(  numcells)   ,$                
-          sel2   : lonarr(  numcells)   ,$                
+;          sel2   : lonarr(  numcells)   ,$                
           idx    : lonarr(  numcells)   ,$                
           row    : 0L                   ,$                
           rowtime: ''                   ,$
@@ -101,7 +104,16 @@ IF n_elements( q2b_defined ) eq 0 OR redefine THEN BEGIN
           mu     : fltarr(  numcells)   ,$                
           mv     : fltarr(  numcells)   ,$                
           su     : fltarr(  numcells)   ,$ ; Selected 'u' 
-          sv     : fltarr(  numcells)   } ; Selected 'v' 
+          sv     : fltarr(  numcells)   ,$ ; Selected 'v' 
+          su2    : fltarr(  numcells)   ,$ ; DIRTH selected 'u' 
+          sv2    : fltarr(  numcells)    } ; DIRTH selected 'v' 
+
+  ; The Level 2B files now have the DIRTH processed vectors. This is
+  ; what will be in the su2,sv2 fields if those vectors are
+  ; present. Otherwise, those fields will be copies of the su/sv
+  ; fields or will be identically 0. Wasteful, I know. But I can't
+  ; think of what else to do.
+
   q2b_defined = 1
 
 ENDIF
