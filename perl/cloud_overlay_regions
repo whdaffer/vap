@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+#
+# Prints the regions currently defined for the perl routine 
+# CLOUD_OVERLAY
+#
+#
+use lib '/usr/people/vapuser/perl';
+use vap_perl;
+
+format STDOUT_TOP = 
+Region name,     Lon:  Min    Max,  Lat: Min   Max, Time: Asc     Desc 
+.
+
+format STDOUT =
+@<<<<<<<<<<<<<<<<<<,    @<<<<,  @<<<<,     @<<<, @<<<,     @<<<<<,  @<<<<<
+$region,           $minlon, $maxlon,   $minlat, $maxlat, $asctime, $desctime
+.
+
+foreach $key ( keys %vap_perl::overlay_defs ) {
+  $region=$key;
+  $lonlim   = $vap_perl::overlay_defs{ $region} { CloudData }{ LonLim  };
+  $latlim   = $vap_perl::overlay_defs{ $region} { CloudData }{ LatLim  };
+  @lonlim   = @$lonlim;
+  @latlim   = @$latlim;
+  $minlon=$lonlim[0];
+  $maxlon=$lonlim[1];
+  $minlat=$latlim[0];
+  $maxlat=$latlim[1];
+  $asctime  = $vap_perl::overlay_defs{ $region }{ CloudData }{ AscTime };
+  $desctime = $vap_perl::overlay_defs{ $region }{ CloudData }{ DescTime};
+
+  write;
+
+}
+
+exit;
