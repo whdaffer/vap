@@ -183,6 +183,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.10  1999/10/06 16:11:17  vapuser
+; rainf=[12.,6,2,1] instead of [12.,6,2]
+;
 ; Revision 1.9  1999/09/22 20:34:08  vapuser
 ; Added check on num elements rainf/ermax
 ;
@@ -398,7 +401,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
   ENDIF 
 
     ; return the field.
-  field = [ [ui],[vi]] 
+  field = [ [[ui]],[[vi]]] 
   return, field
 
 END
