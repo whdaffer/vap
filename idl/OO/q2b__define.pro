@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.6  1998/10/12 22:35:30  vapuser
+  ; Added some calls to IsQ2B and other things I can't remember
+  ;
   ; Revision 1.5  1998/10/07 00:10:35  vapuser
   ; Squashed a bug having to do with (Start|End)Time
   ;
@@ -1503,6 +1506,28 @@ FUNCTION q2b::Version
 
    Catch,/cancel
   return,versions(uniq(versions,sort(versions)))
+END
+
+
+  ; ==========================================
+  ;
+  ; Q2B::GetAll
+  ;
+  ; ==========================================
+PRO Q2B::GetAll, U = U, V=V, Lon=Lon, Lat=Lat, Sel=Sel, $
+       Qual=Qual, idx=idx, nambig=nambig, rtime=rtime, row=row
+
+   lon = (*self.data).lon
+   lat = (*self.data).lat
+   u = (*self.data).u
+   v = (*self.data).v
+   sel = (*self.data).sel
+   qual = (*self.data).qual
+   row = (*self.data).row
+   rtime = (*self.data).rowtime
+   nambig = (*self.data).nambig
+   idx = (*self.data).idx
+   
 END
 
   ; ==========================================
