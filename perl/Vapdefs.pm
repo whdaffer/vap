@@ -9,6 +9,9 @@
 # Modification Log:
 # 
 # $Log$
+# Revision 1.4  2002/08/08 00:03:53  vapdev
+# Intermediary step, so I can update another working directory. Not done yet!
+#
 # Revision 1.3  2002/05/07 20:40:36  vapdev
 # Set -w and `use strict' and then fixing bugs. Start trying to standardize
 # the methods used.
@@ -28,13 +31,13 @@ use Exporter ();
 use Carp;
 use vars qw/@ISA @EXPORT $VAP_LIBRARY $VAP_OPS_TOP $VAP_WINDS $VAP_ANIM $VAP_OVERLAY 
 	    $VAP_WWW_TOP $ARCHIVE $GRIDDINGTOP $IDLEXE $VAP_OVERLAY_ARCHIVE 
-	    $VAP_WWW_TOP $vap_is_batch $VAP_GOES_TOP $VAP_DATA_TOP $VAP_GOES_GRIDDING_TOP 
+	    $VAP_WWW_TOP $VAP_IS_BATCH $VAP_GOES_TOP $VAP_DATA_TOP $VAP_GOES_GRIDDING_TOP 
 	    $auto_movie_defs_file $overlay_defs_file $vap_defs_file/;
 @ISA = qw(Exporter);
-@EXPORT=qw( VAP_LIBRARY VAP_OPS_TOP VAP_WINDS VAP_ANIM 
-	   VAP_OVERLAY VAP_WWW_TOP ARCHIVETOP 
-	   GRIDDINGTOP IDLEXE VAP_OVERLAY_ARCHIVE 
-	   vap_is_batch );
+@EXPORT=qw( $VAP_LIBRARY $VAP_OPS_TOP $VAP_WINDS $VAP_ANIM
+	   $VAP_OVERLAY $VAP_WWW_TOP $ARCHIVETOP 
+	   $GRIDDINGTOP $IDLEXE $VAP_OVERLAY_ARCHIVE 
+	   $VAP_IS_BATCH);
 
 
 BEGIN {
@@ -47,7 +50,7 @@ BEGIN {
     croak "Env var VAP_WWW_TOP is undefined!\n";
   $VAP_GOES_TOP = $ENV{VAP_GOES_TOP} || 
     croak "Env var VAP_GOES_TOP is undefined!\n";
-  $VAP_DATA_TOP = $VAP_DATA_TOP  || 
+  $VAP_DATA_TOP = $ENV{VAP_DATA_TOP}  || 
     croak "ENV var VAP_DATA_TOP is undefined\n";
 
   $VAP_ANIM = "$VAP_OPS_TOP/animate" unless defined($VAP_ANIM);
@@ -59,18 +62,18 @@ BEGIN {
 
     # MOVIE DEFS
   $auto_movie_defs_file="$VAP_LIBRARY/auto_movie_defs.dat";
-  require $auto_movie_defs_file;
+  require $auto_movie_defs_file or croak "'require $auto_movie_defs_file' failed!:$!\n";
 
     # Get the Overlay Defaults
   $overlay_defs_file="$VAP_LIBRARY/overlay_defs";
-  require $overlay_defs_file;
+  require $overlay_defs_file or croak "'require $overlay_defs_file' failed!:$!\n";
 
     # Get generic VAP processing Defaults
-  $vap_defs_file=$VAP_LIBRARY."/vap_defs";
-  require $vap_defs_file;
+  $vap_defs_file="$VAP_LIBRARY/vap_defs";
+  require $vap_defs_file or croak "'require $vap_defs_file' failed!:$!\n";
 
     # Check for interactivity.
-  $vap_is_batch = !defined($ENV{'TERM'});
+  $VAP_IS_BATCH = !defined($ENV{'TERM'});
 
 }
 1;
