@@ -107,6 +107,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  1998/11/23 21:40:17  vapuser
+; Corrected a mispelling
+;
 ; Revision 1.2  1998/10/22 21:19:24  vapuser
 ; Added/Changed some comments, squashed bugs.
 ;
@@ -147,13 +150,13 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
 
 
   rcsid = "$Id$"
-  cd, current=curdir
+  cd, current=savedir
   Interp_Files = ''
   lf =string(10b)
   catch, error
   IF error NE 0 THEN BEGIN 
     Message,!error_State.msg,/cont
-    cd,curdir
+    cd,savedir
     count = 0
     return,''
   END
@@ -189,13 +192,6 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
     len = strlen(interp_files[0])
     basenames = strmid(interp_files, junk, len-junk)
     filetimes = ifnames2dt(basenames)
-;    year  = strmid( basenames,4,4 )
-;    month = strmid(basenames,8,2)
-;    day   = strmid(basenames,10,2)
-;    hour  = strmid(basenames,12,2)
-;    min   = strmid(basenames,14,2)
-
-;    filetimes = var_to_dt( fix(year), fix(month),fix(day),fix(hour),fix(min) )
     tmp = str_sep( tdate_time, '/')
     testtime = var_to_dt( fix(tmp[0]), fix(tmp[1]), fix(tmp[2]), $
                           fix(tmp[3]), fix(tmp[4]) )
@@ -222,22 +218,18 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
                             CRDecimate=CRDecimate, $
                             ExcludeCols=ExcludeCols, $
                             nscat = nscat, $
-                            Ofile = Interp_file)
+                            Outfile = OutFile )
     IF n_Elements(field) NE 0 THEN BEGIN 
         ; 01234567890123456789
         ; XIF-yyyymmddhhmi.hdf
-      year  = fix(strmid( Ofile,  4, 4))
-      month = fix(strmid( Ofile,  6, 2))
-      day   = fix(strmid( Ofile,  8, 2))
-      hour  = fix(strmid( Ofile, 10, 2))
-      min   = fix(strmid( Ofile, 12, 2))
-      filetimes = ifnames2dt(Ofile)
-      ; filetimes = var_to_dt( year, month, day, hour, min )
+      Interp_files = Outfile
+      filetimes = ifnames2dt(Interp_files)
+      count = 1
     ENDIF ELSE BEGIN 
       Message,'Failure in MakeInterpField',/cont
       interp_files = ''
     ENDELSE 
-    cd,curdir
+    cd,savedir
   ENDIF 
 
   return,interp_Files
