@@ -111,6 +111,12 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.8  1999/10/05 17:09:22  vapuser
+; Changed default time from 24 to 14. Changed 'write_xxx' to just 'xxx.'
+; Cleaned up the header. Added some missing code having to do with the
+; lockfile. Turned times into gmt times. Corrected mps to knots
+; conversion.
+;
 ; Revision 1.7  1999/02/04 21:32:26  vapuser
 ; Added a message about the interpolated field.
 ;
@@ -467,7 +473,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 ;       vlat = vlatpar,$
 ;       animpar=animpar,$
 ;       min_speed=1,  $             ; meters/sec, will be converted to knots 
-;       max_speed=40/mps2knots, $   ; in animate_wind_field (max_speed=40 knots)
+;       max_speed=30, $   ; in animate_wind_field (max_speed=30 m/s)
 ;       title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
 ;       gif=gif, pict=pict
 
@@ -503,9 +509,9 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
      vlat = vlatpar,$
      animpar=animpar,$
      min_speed=1,  $             ; meters/sec, will be converted to knots 
-     max_speed=40/mps2knots, $   ; in animate_wind_field (max_speed=40 knots)
+     max_speed=30, $             ; in animate_wind_field 
      title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
-     gif=gif, pict=pict
+     gif=gif, pict=pict, /knots
 
 
 
