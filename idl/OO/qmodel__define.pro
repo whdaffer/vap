@@ -53,6 +53,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.9  2001/02/02 19:18:13  vapuser
+; Added `wfiles' field
+;
 ; Revision 1.8  2000/12/14 23:06:17  vapuser
 ; Fixed a pointer dereference problem in ::cleanup.
 ; General housekeeping.
@@ -181,11 +184,12 @@ END
 ;============================================
 FUNCTION Qmodel::Read, filename 
    status = 0
-   IF n_elements(filename) ne 0 THEN BEGIN 
-     IF VarType( filename ) EQ  'STRING' THEN BEGIN 
-       IF hdf_isHdf(filename) THEN BEGIN 
-         IF IsQmodel(filename) THEN BEGIN 
-           qmodel =  QmodelHdfRead(filename)
+   tfilename =  deenvvar(filename)
+   IF n_elements(tfilename) ne 0 THEN BEGIN 
+     IF VarType( tfilename ) EQ  'STRING' THEN BEGIN 
+       IF hdf_isHdf(tfilename) THEN BEGIN 
+         IF IsQmodel(tfilename) THEN BEGIN 
+           qmodel =  QmodelHdfRead(tfilename)
          IF vartype( qmodel ) EQ 'STRUCTURE' THEN BEGIN 
              IF Ptr_Valid( self.data ) THEN BEGIN 
                (*(self.data))-> destroy
@@ -194,7 +198,7 @@ FUNCTION Qmodel::Read, filename
              self.starttime =  string(qmodel.hdr.StartTime)
              self.endtime =  string(qmodel.hdr.EndTime)
              self.Version =  string(qmodel.hdr.Version)
-             self.filename =  filename
+             self.filename =  tfilename
              self.data = Ptr_New( qmodel,/no_copy )
              status = 1
            ENDIF 
