@@ -155,12 +155,12 @@
 ;                    NO flagging (0), MP flagging (1) or 
 ;                    NOF flagging (2). Default=0, no flagging
 ;
-;     FL_Action    : (I), flag, 0|1 depending on whether you want to
+;     RF_Action    : (I), flag, 0|1 depending on whether you want to
 ;                    skip plotting rain flagged data (0) or plot it
 ;                    with the color given in FL_Color(1), Default = 1,
 ;                    use FL_color.
 ;
-;     FL_Color     : (I), long integer. The 24 bit color to be used
+;     RF_Color     : (I), long integer. The 24 bit color to be used
 ;                    when plotting the rain flagged data, provide
 ;                    FL_Action=1. The default is black. (Although I
 ;                    like '80541e'xl, which is a sort of muddy
@@ -234,6 +234,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+;
+; Revision 1.14  2000/03/13 21:03:06  vapuser
+; Commented out all the tlvct's and loadct's
+;
 ; Revision 1.13  2000/03/01 16:40:08  vapuser
 ; Uncommented 'catch', added a few 'status = 0's in case of
 ; failure.
@@ -491,15 +495,15 @@ PRO gms5_overlay, datetime, gmsType, $
   LandHue =  0> LandHue < 360.
   WaterHue =  0> WaterHue < 360.
 
-  catch, error
-  IF error NE 0 THEN BEGIN 
-    catch,/cancel
-    Message,!error_state.msg,/cont
+;  catch, error
+;  IF error NE 0 THEN BEGIN 
+;    catch,/cancel
+;    Message,!error_state.msg,/cont
 ;    tvlct,orig_red,orig_green,orig_blue
 ;    genv,/restore
-    status = 0
-    return
-  END
+;    status = 0
+;    return
+;  END
 
 
 
@@ -540,26 +544,10 @@ PRO gms5_overlay, datetime, gmsType, $
   N_COLORS = 27
 
   IF NOT ps  THEN BEGIN 
-    set_plot,'x'
     lonpar =  [ lonlim, ( lonlim[1]-lonlim[0] +1)/xsize ]
     latpar =  [ latlim, ( latlim[1]-latlim[0] +1)/ysize ]
-    FOR i=0,1 DO BEGIN 
-      device,get_visual_name= this_visual
-      this_visual =  strupcase(this_visual)
-      IF this_visual NE 'DIRECTCOLOR' AND  $
-         this_visual NE 'TRUECOLOR' THEN BEGIN 
-        IF i EQ 0 THEN device,true=24 ELSE BEGIN 
-          Message,'Visual Class MUST be either DIRECTCOLOR or TRUECOLOR',/cont
-          print,'  You must Exit and restart IDL'
-          print,'  If you continue getting this error, look at you initilization'
-          print," files and make sure you're not setting device,pseudo=8"
-          Message,'ERROR',/cont
-          status = 0
-          return
-        ENDELSE
-      ENDIF 
-    ENDFOR 
-    window,/free, /pixmap, xsize=xsize, ysize=ysize
+    set_plot,'z'
+    device,set_resolution=[xsize,ysize],z_buff=0
   ENDIF ELSE BEGIN 
     lonpar =  [ lonlim, (lonlim[1]-lonlim[0])/(2*72*xsize) ]
     latpar =  [ latlim, (latlim[1]-latlim[0])/(2*72*ysize) ]
@@ -751,7 +739,7 @@ PRO gms5_overlay, datetime, gmsType, $
 
   FOR i=0,2 DO BEGIN 
     tmpIm = Map_Image( Im[*,*,i], $
-                       xs,ys,xsize,ysize,$
+                       xs,ys,mxsize,mysize,$
                        lonmin=lonlim[0],$
                        latmin=latlim[0],$
                        lonmax=lonlim[1],$
@@ -768,22 +756,12 @@ PRO gms5_overlay, datetime, gmsType, $
   im = 0
 
 
-    ; Tv the final PS image
-  IF ps THEN BEGIN 
-    Tv,mapIm,xs,ys,xsize=xsize,ysize=ysize,true=3 
-  ENDIF ELSE BEGIN 
-    Tv,mapIm,xs,ys,true=3
-  ENDELSE 
-
-
-    ; Calculate where to put Colorbar
-  mapIm = temporary(mapIm[*,*,0])
-  sz = size( mapIm,/dim)
-  xyz = Convert_Coord( 0, ys+sz[1]/scalefac,/device,/to_normal)
-  y = xyz[1]
-  y = [3*y+2, 2*y+3]/5
-
-  mapIm = 0; free memory
+;    ; Tv the final PS image
+;  IF ps THEN BEGIN 
+;
+;  ENDIF ELSE BEGIN 
+;      Tv,mapIm[*,*,i],xs,ys
+;  ENDELSE 
 
   nn = where(strlen(windfiles) NE 0 , nf)
   IF nf NE 0 THEN BEGIN 
@@ -853,10 +831,34 @@ PRO gms5_overlay, datetime, gmsType, $
 
   ENDIF   
 
-    ; Plot the vectors (if there are any.)
+
+    ; Calculate where to put Colorbar
+  sz = size( mapIm[*,*,0],/dim)
+  xyz = Convert_Coord( 0, ys+sz[1]/scalefac,/device,/to_normal)
+  y = xyz[1]
+  yCB = [3*y+2, 2*y+3]/5
+
+    ; And the titles
+  gms5_string =  'GMS5 Overlay Test'
+  gms5_string =  'Gms5' + gmsType + '(' + time_string + ')'
+  IF n_elements(title) NE 0 THEN $
+    Title= title + ' ' + gms5_string ELSE $
+    Title= gms5_string 
+
+  IF ps THEN text_color = 0b ELSE text_color = 255b
+  xyz = Convert_Coord(0,ys,/device,/to_normal)
+  ytitle = xyz[1]/2.
+  ysubtitle = xyz[1]/4.
+
+
+
+    ; ====== Plot the vectors (if there are any.) =======
+
+
   nn = n_Elements(u)
-  IF nn GT 1 THEN BEGIN 
-    IF ps THEN BEGIN 
+  IF ps THEN BEGIN 
+    Tv,mapIm,xs,ys,xsize=mxsize,ysize=mysize,true=3 
+    IF nn GT 1 THEN BEGIN 
       tvlct,orig_red,orig_green,orig_blue,/get
       tvlct,transpose(ct)
       PlotVect,u,v,lon,lat,len=length,$
@@ -871,75 +873,121 @@ PRO gms5_overlay, datetime, gmsType, $
              scale=scaleVec,color=1
       ENDIF 
       tvlct,orig_red,orig_green,orig_blue
-    ENDIF ELSE BEGIN 
-      PlotVect, u,v,lon,lat, color=col24, len=length, $
-         thick=thick, scale=scaleVec
-      IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
-        PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
-         thick=thick,minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec,$
-         color=rf_color
-      ENDIF 
-    ENDELSE 
-    t1 = systime(1)
-    IF verbose THEN print,' Plotvect took: ', t1-t0,' Seconds '
-    t0 = t1
-  ENDIF 
+    ENDIF 
 
-
-  IF ps THEN BEGIN 
     ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
-     position=[0.25,y[0], 0.75, y[1]], $
+     position=[0.25,yCB[0], 0.75, yCB[1]], $
      Title='Wind Speed (m/s)',Min=minspeed, $
      max=maxspeed,divisions=4, format='(f5.0)', $
      pscolor=ps, /true, table=ct, charsize=0.75
+
+    xyouts, 0.5, ytitle, title, align=0.5, $
+        /normal, charsize=1.05, color=text_color
+    IF n_elements(subtitle) NE 0 THEN BEGIN 
+      xyouts, 0.5, ysubtitle. subtitle, align=0.5, $
+        /normal, charsize=0.75, color=text_color
+    ENDIF 
+
+    IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
+
+      newct = ct
+      newct[*,0] =  [rf_color AND 'ff'xl, $
+                      ishft(rf_color,-8) AND 'ff'xl, $
+                       ishft(rf_color,-16) AND 'ff'xl]
+
+      Colbar,pos=[0.49,0.005,0.51,0.025],bottom=0,ncolors=1,min=0,max=1,$
+           table=newct,/true,/noannot,color='ffffff'xl
+      xyouts,0.49,0.005,'Rain ',align=1,/normal
+      xyouts,0.51,0.005,' Flagged',/normal
+
+
+    ENDIF 
+
   ENDIF ELSE BEGIN 
-    ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
-     position=[0.25,y[0], 0.75, y[1]], $
-     Title='Wind Speed (m/s)',Min=minspeed, $
-     max=maxspeed,divisions=4, format='(f5.0)', $
-     pscolor=ps, /true, table=ct, charsize=0.75, $
-     color='ffffff'x 
+
+    finalim = bytarr(xsize,ysize,3)
+
+    FOR i=0,2 DO BEGIN 
+
+      tv,mapIm[*,*,i],xs,ys
+      IF nn GT 1 THEN BEGIN 
+        CASE i OF 
+          0: col =  col24 AND 'ff'xl
+          1: col =  ishft(col24,-8) AND 'ff'xl
+          2: col =  ishft(col24,-16) AND 'ff'xl
+        ENDCASE 
+
+        Map_Set, 0, mean(lonpar[0:1]), /noborder, $
+         limit=[ latpar[0], lonpar[0], latpar[1], lonpar[1] ],$
+         Ymargin=[4.,4],/noerase
+
+        PlotVect, u,v,lon,lat, color=col, len=length, $
+          thick=thick, scale=scaleVec, $
+            minspeed=minspeed,maxspeed=maxspeed
+        IF rfi[0] NE -1 AND rf_action NE 0 THEN BEGIN 
+          PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
+           thick=thick,minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec,$
+           color=rf_color
+        ENDIF 
+      ENDIF 
+
+
+        ; ======= Do annotations ==========
+
+
+      col = bytarr(3,n_elements(ct[0,*]))
+      col[0,*] =  ct[i,*]
+
+      ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+       position=[0.25,yCB[0], 0.75, yCB[1]], $
+        Title='Wind Speed (m/s)',Min=minspeed, $
+         max=maxspeed,divisions=4, format='(f5.0)', $
+          pscolor=ps, /true, table=col, charsize=0.75, $
+           color=255
+ 
+      xyouts, 0.5, ytitle, title, align=0.5, $
+          /normal, charsize=1.05, color=text_color
+      IF n_elements(subtitle) NE 0 THEN BEGIN 
+        xyouts, 0.5, ysubtitle, subtitle, align=0.5, $
+          /normal, charsize=0.75, color=text_color
+      ENDIF 
+
+      IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
+
+        newct = ct
+        newct[*,0] =  [rf_color AND 'ff'xl, $
+                        ishft(rf_color,-8) AND 'ff'xl, $
+                         ishft(rf_color,-16) AND 'ff'xl]
+
+        Colbar,pos=[0.49,0.005,0.51,0.025],bottom=0,ncolors=1,min=0,max=1,$
+             table=newct,/true,/noannot,color=255b
+        xyouts,0.49,0.005,'Rain ',align=1,/normal
+        xyouts,0.51,0.005,' Flagged',/normal
+
+
+      ENDIF 
+      finalim[*,*,i] = tvrd()
+    ENDFOR 
+
+
   ENDELSE 
 
+  mapIm = 0
 
-  gms5_string =  'GMS5 Overlay Test'
-  gms5_string =  'Gms5' + gmsType + '(' + time_string + ')'
-  IF n_elements(title) NE 0 THEN $
-    Title= title + ' ' + gms5_string ELSE $
-    Title= gms5_string 
-
-  IF ps THEN text_color = '000000'x ELSE text_color = 'ffffff'x
-  xyz = Convert_Coord(0,ys,/device,/to_normal)
-  y = xyz[1]
-  xyouts, 0.5, y/2., title, align=0.5, $
-      /normal, charsize=1.05, color=text_color
-  IF n_elements(subtitle) NE 0 THEN BEGIN 
-    xyouts, 0.5, y/4., subtitle, align=0.5, $
-      /normal, charsize=0.75, color=text_color
-  ENDIF 
-
-  IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
-
-    newct = ct
-    newct[*,0] =  [rf_color AND 'ff'xl, $
-                    ishft(rf_color,-8) AND 'ff'xl, $
-                     ishft(rf_color,-16) AND 'ff'xl]
-
-    Colbar,pos=[0.49,0.005,0.51,0.025],bottom=0,ncolors=1,min=0,max=1,$
-         table=newct,/true,/noannot,color='ffffff'xl
-    xyouts,0.49,0.005,'Rain ',align=1,/normal
-    xyouts,0.51,0.005,' Flagged',/normal
+  t1 = systime(1)
+  IF verbose THEN print,' Plotvect took: ', t1-t0,' Seconds '
+  t0 = t1
 
 
-  ENDIF 
+
+    ; ======== Write the output ===============
 
 
   CASE 1 OF 
     gif: BEGIN 
-      ;If output is 'gif' quantize it down to 175 colors.
+        ; Quantize it down to 175 colors.
       tt0 = systime(1)
-      tmpim = tvrd(true=3)
-      im = color_Quan( tmpim, 3, r,g,b, colors=175 )
+      im = color_Quan( finalim, 3, r,g,b, colors=175 )
       tt1 = systime(1)
       IF verbose THEN print,' Color_Quan took: ', tt1-tt0,' Seconds '
       tt0 = tt1
@@ -954,22 +1002,20 @@ PRO gms5_overlay, datetime, gmsType, $
       ENDIF 
       IF verbose THEN print,' Write_Gif took: ', tt1-tt0,' Seconds '
       tt0 = tt1
-      Wdelete,!d.window
 
     END
 
     jpeg: BEGIN 
-      tmpim = tvrd(true=3)
-      Write_Jpeg, OutputFilename, tmpim, $
+      
+      Write_Jpeg, OutputFilename, finalim, $
              quality=quality, true=3
       IF arg_present(thumbnail) THEN  BEGIN 
-        dims = size(tmpim,/dimen)
-        thumbnailIm = congrid( tmpim,  dims[0]*0.3, dims[1]*0.3,dims[2] )
+        dims = size(finalim,/dimen)
+        thumbnailIm = congrid( finalim,  dims[0]*0.3, dims[1]*0.3,dims[2] )
         thumbnail = OutputFilename + '.TN'
         Write_Jpeg, thumbnail, temporary(thumbnailIm), $
          quality=quality, true=3
       ENDIF 
-      Wdelete,!d.window
 
     END
 
