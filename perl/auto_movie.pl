@@ -10,6 +10,9 @@
 #   (i.e. what has become known as 'vaptime')
 # 
 # $Log$
+# Revision 1.5  1998/11/25 22:38:27  vapuser
+# Changed pertinent 'renames' to 'copy's
+#
 # Revision 1.4  1998/10/22 21:16:20  vapuser
 # Made it ready to run in Qscat land
 #
@@ -174,6 +177,11 @@ if ( $test_roi[0]) {
   print "Linking $link_file to $newfile\n";
     #delete link_file if it exists
   if (-e $link_file) {
+    print "Deleting $link_file\n";
+    unlink ($link_file ) || die "Couldn't unlink $link_file\n";
+  }
+  if (-l $link_file) {
+    print "Deleting $link_file\n";
     unlink ($link_file ) || die "Couldn't unlink $link_file\n";
   }
   symlink(  $newfile, $link_file ) || die "Can't link $link_file to $newfile, $!\n";  
@@ -181,6 +189,11 @@ if ( $test_roi[0]) {
     # Now do the thumbnail.
    $link_file = "$vap_perl::VAP_WWW_TOP/images/gwind_$froi.001.gif";
    if (-e $link_file) {
+     print "Deleting $link_file\n";
+     unlink ($link_file ) || die  "Couldn't unlink $link_file, $!\n";
+   }
+   if (-l $link_file) {
+     print "Deleting $link_file\n";
      unlink ($link_file ) || die  "Couldn't unlink $link_file, $!\n";
    }
    symlink( $new_gwind_file , $link_file ) || 
