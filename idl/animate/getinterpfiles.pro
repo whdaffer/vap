@@ -51,7 +51,7 @@
 ;     time_inc        : (I) Number of hours to go back from 'date_time' in
 ;                       search of wind files (def=26)
 ;     interp_time_inc : (I) Number of hours to go backward from date_time
-;                       to search for interpolated wind field files (def=2)
+;                       to search for interpolated wind field files (def=3)
 
 ;     interp_path     : (I) string(s), path in which to search for interpolated wind
 ;                       field files (Def=$VAP_OPS_ANIM)
@@ -84,8 +84,9 @@
 ;                       over and the results concatenated. The caller
 ;                       should check the arrangement of files, no
 ;                       promises are made on this end.
-;     windfilefilter  : Same as interpfile filter, but this one is
-;                       used to find the wind files.
+;     windfilter      : Same as interpfile filter, but this one is
+;                       used to find the wind files. Needs to be
+;                       the sort of filter getwindfiles() can use.
 ;
 ;     Min_Nvect       : (I) scalar, Don't make interp file if there are less 
 ;                       than this number of vectors.
@@ -135,6 +136,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.13  2002/08/12 22:55:51  vapdev
+; Fixed a few stupid bugs
+;
 ; Revision 1.12  2002/05/08 16:01:09  vapdev
 ; Removed variables that will now be defined in environment.
 ; Changed email addresses
@@ -189,7 +193,7 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
                                 ; required to create an interp file. 
                                 ; default=14.
    interp_time_inc = interp_time_inc, $ ; Amount of time back from date_time 
-                                ; to look for interp files. Default=2.
+                                ; to look for interp files. Default=3.
    Wpath = Wpath,$              ; Path(s) to wind files 
    Interp_path = Interp_path, $ ; Path(s) to the interpolated files
    decimate=decimate, $         ; (I) scalar, decimate=n means take 
@@ -207,7 +211,7 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
                                    ; searching for interpfiles.
 
 
-   windfilefilter=windfilefilter, $ ; (I), same as interpfilter, but for 
+   windfilter=windfilter, $ ; (I), same as interpfilter, but for 
                                     ; wind files.
 
    Min_Nvect = Min_Nvect, $     ; Don't make interp file if there are less 
@@ -232,7 +236,7 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
 
   IF n_Elements(date_time) EQ 0 THEN date_time = TodayAsString(sep='/');
   IF n_elements(time_inc) EQ 0 THEN time_inc = 14.
-  IF N_Elements(interp_time_inc) EQ 0 THEN interp_time_inc = 2.
+  IF N_Elements(interp_time_inc) EQ 0 THEN interp_time_inc = 3.
   IF n_elements(Interp_Path) EQ 0 THEN Interp_Path = '$VAP_OPS_ANIM'
 
   tdate_time = regularizeVapTime(date_time, /max)
@@ -249,7 +253,7 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
   ENDFOR 
 
   IF n_elements(interp_filter) EQ 0 THEN interp_filter = '*IF-*.hdf'
-  IF n_elements(windfilefilter) EQ 0 THEN windfilefilter = '{Q,S}*'
+  IF n_elements(windfilter) EQ 0 THEN windfilter = '{QS,SW}*'
 
   FOR p=0,n_elements(interp_path)-1 DO BEGIN 
     FOR i=0,n_elements(interp_filter)-1 DO BEGIN 
@@ -301,13 +305,13 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
     cd,interp_path
     field = MakeInterpFile( tdate_time,time_inc, $
                             wpath = wpath, $
-                            filter = windfilefilter,$
+                            filter = windfilter,$
                             min_nvect=Min_Nvect, $
                             decimate=decimate, $
                             CRDecimate=CRDecimate, $
                             ExcludeCols=ExcludeCols, $
                             Outfile = OutFile )
-    ndim = size(field,/n_dim)
+   ndim = size(field,/n_dim)
     IF ndim EQ 2 OR $
        isa(outfile,/string,/nonempty) THEN BEGIN 
         ; 01234567890123456789
