@@ -36,6 +36,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/07 21:23:45  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -54,6 +57,6 @@ IF error NE 0 THEN BEGIN
   return,!Values.F_Nan
 ENDIF 
 
-diff =  array[1:nn-1]-array[0:nn-2]
+diff =  abs(array[1:*]-array)
 return,diff
 END
