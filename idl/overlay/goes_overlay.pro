@@ -214,6 +214,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.11  2000/05/15 22:58:45  vapuser
+; Changed from multi-valued 'use_rf' to the new single-valued rainflag.
+;
 ; Revision 1.10  2000/03/09 21:02:28  vapuser
 ; Rewrote goes_overlay24 so that it would do everything in a Z buffer
 ; a plane at a time. So, you get 24bit color in an 8 bit environment
@@ -699,7 +702,7 @@ PRO goes_overlay, goesfile, $
     IF n_Elements(outfile) EQ 0 THEN BEGIN 
 
       t = long([lonrange[0],limits[1],lonrange[1],limits[3]])
-      lim_str =  '%'+ StrJoin(t,',') +  '%'
+      lim_str =  '%'+ strcompress(StrJoin(t,','),/remove_all) +  '%'
       dlm =  '_'
 
       year =  PadAndJustify(hdr.year, 4 )
