@@ -53,6 +53,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.7  2000/01/11 20:41:51  vapuser
+; Added metadata from the succor run
+;   (rainf,ermax,crdecimate,decimate ...)
+; to the object and code to process same.
+;
 ; Revision 1.6  1999/10/21 23:07:21  vapuser
 ; Added infostruct to 'GET' method. Also, defined self.starttime and
 ; self.endtime, which are inherited from Q2b, so that the Q2B GET method
@@ -154,13 +159,15 @@ END
 ;============================================
 
 PRO qmodel::Cleanup
-   data =  (*self.data)
-   Ptr_Free, data.U
-   Ptr_Free, data.V
-   Ptr_Free, data.Lon
-   Ptr_Free, data.Lat
-   ptr_free, data.hdr.rainf
-   ptr_free, data.hdr.ermax
+   IF ptr_valid(self.data) THEN BEGIN 
+     data =  (*self.data)
+     Ptr_Free, data.U
+     Ptr_Free, data.V
+     Ptr_Free, data.Lon
+     Ptr_Free, data.Lat
+     ptr_free, data.hdr.rainf
+     ptr_free, data.hdr.ermax
+   ENDIF 
    self-> Q2b::Cleanup
 
 END
@@ -183,6 +190,7 @@ FUNCTION Qmodel::Read, filename
              self.starttime =  string(qmodel.hdr.StartTime)
              self.endtime =  string(qmodel.hdr.EndTime)
              self.Version =  string(qmodel.hdr.Version)
+             self.filename =  filename
              self.data = Ptr_New( qmodel,/no_copy )
              status = 1
            ENDIF 
