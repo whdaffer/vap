@@ -90,6 +90,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.11  1998/11/20 20:02:01  vapuser
+; Accomidate 24bit color
+;
 ; Revision 1.10  1998/10/29 22:36:46  vapuser
 ; Added verbose keyword/member
 ;
@@ -180,7 +183,7 @@ PRO pv_draw_events,event
 ;  print,'press = ',event.press
   Button = ButtonTypes[ (event.press AND 7)/2 ]
 
-  Dims= *(self-> GetCurrentDimensions())
+  Dims= self-> GetCurrentDimensions()
   Dims-> Get,Lon = Lon,Lat=Lat,Center=Center
 
   self-> Get,PixId = PixId, Wid=Wid
@@ -263,7 +266,6 @@ PRO Pv_Motion_Events, event
   self->Get,xsize = xsize,ysize=ysize,$
     pixId=PixId, XStatic=xs, YStatic=ys, wid=wid,CurrentDims=CurrentDims
 
-  CurrentDims = *CurrentDims
   EventTypes =  [ 'DOWN','UP','MOTION','SCROLL']
   ThisEvent =  EventTypes(event.type)
   WSET, wid
@@ -300,7 +302,7 @@ PRO Pv_Motion_Events, event
 
 
       limits1 = [xx[0],yy[0],xx[1],yy[1]]
-      Dims = *(self->GetCurrentDimensions())
+      Dims = self->GetCurrentDimensions()
       Dims-> Get,Lon = oldLonrange, Lat=OldLatRange
       limits2 = [ OldLonRange[0], OldLatRange[0],$
                   OldLonRange[1], OldLatRange[1]]
@@ -411,13 +413,14 @@ PRO Pv::WidgetWrite
     self.OutputPath =  OutputPath
     OpenW, Lun, file, /get_lun, error=err 
     IF Err EQ 0 THEN BEGIN 
-      CurrentDimNode =  *(self.DimsList->GetCurrent())
-      Dim = *CurrentDimNode.data
+      CurrentDimNode =  self.DimsList->GetCurrent()
+      Dim = *CurrentDimNode
       Dim->Get,lon = lon,lat=lat,center=center
       limit = [  lon[0], lat[0], lon[1], lat[1]  ]
 
-      junk = self.DataList->GetHead()
-      CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
+      ;junk = self.DataList->GetHead()
+      CurrentPlotDataPtr =  self.DataList->GetHead()
+      ; CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
       IF Ptr_Valid( CurrentPlotDataPtr ) THEN BEGIN 
         WHILE Ptr_Valid(CurrentPLotDataPtr) DO BEGIN 
 
@@ -457,8 +460,9 @@ PRO Pv::WidgetWrite
               ENDIF 
             ENDFOR 
           ENDELSE 
-          CurrentDataNode =  self.DataList->GetNext()
-          CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
+          ;CurrentDataNode =  self.DataList->GetNext()
+          ;CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
+          CurrentPlotDataPtr = self.DataList->GetNext() 
         ENDWHILE 
       ENDIF ELSE Message," There's No Data!",/cont
       Free_Lun, lun
@@ -469,7 +473,7 @@ PRO Pv::WidgetWrite
   self-> ChangeSensitivity, On =  SaveSensitivity
   ; Widget_Control, self.StatusId, Set_Value='Done Writing!'
   self->WriteToStatusBar, 'Done Writing '
-
+  junk = self.DataList->GetHead()
 END
 ;====================================================
 ;
@@ -1144,8 +1148,9 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
     ; Widget_Control, self.StatusId, Set_Value='Drawing...'
     self->WriteToStatusBar,' Drawing ... '
 
-    CurrentDimNode =  *(self.DimsList->GetCurrent())
-    Dim = *CurrentDimNode.data
+    ;CurrentDimNode =  *(self.DimsList->GetCurrent())
+    ;Dim = *CurrentDimNode.data
+    Dim = *(self.DimsList->GetCurrent())
     Dim->Get,lon = lon,lat=lat,center=center
     limit = [  lon[0], lat[0], lon[1], lat[1]  ]
     maplimit = [ lat[0], lon[0], lat[1], lon[1] ]
@@ -1160,8 +1165,9 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
 
 
 
-    junk = self.DataList->GetHead()
-    CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
+    ;junk = self.DataList->GetHead()
+    ;CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
+    CurrentPlotDataPtr = self.DataList->GetHead()
     IF Ptr_Valid( CurrentPlotDataPtr ) THEN BEGIN 
       first = 1
       WHILE Ptr_Valid(CurrentPLotDataPtr) DO BEGIN 
@@ -1256,8 +1262,9 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
           ; Mark this node as already plotted.
         Set_AlreadyPlotted: 
         po-> SetAlreadyPlotted, 1
-        CurrentDataNode =  self.DataList->GetNext()
-        CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
+        ;CurrentDataNode =  self.DataList->GetNext()
+        ;CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
+        CurrentPlotDataPtr =  self.DataList->GetNext()
       ENDWHILE 
         ; Copy new plot to pix map
       self->CopyToPixMap
@@ -1544,7 +1551,7 @@ PRO Pv::Set, xsize       = xsize, $
 
   IF Nlon + Nlat NE 0 THEN BEGIN 
       ; One or the other has changed
-    Dims = *(self-> GetCurrentDimensions())
+    Dims = self-> GetCurrentDimensions()
     dims-> Get, Lon = OldLonRange, Lat=OldLatRange
     limits2 = [ OldLonRange[0], OldLatRange[0], $
                 OldLonRange[1], OldLatRange[1] ]
@@ -1621,7 +1628,7 @@ PRO Pv::Set, xsize       = xsize, $
     ; change dimensions of plotting region
   IF N_Elements(Dimensions) NE 0 THEN BEGIN 
     IF Obj_ISA(Dimensions, 'MAPDIMS' ) THEN BEGIN 
-      CurrentDims = *(self->GetCurrentDimensions())
+      CurrentDims = self->GetCurrentDimensions()
       IF Ptr_Valid(CurrentDims)  THEN BEGIN 
         Dims = *CurrentDims
         Dims-> Get,LonRange = OldLonRange, LatRange=OldLatRange
@@ -1840,9 +1847,9 @@ END
 ;
 ;====================================================
 FUNCTION Pv::GetCurrentDimensions
-   junk = self.DimsList->GetCurrent()
-   IF Ptr_Valid( junk ) THEN $
-     return, (*junk).data ELSE $
+   data = self.DimsList->GetCurrent()
+   IF Ptr_Valid( data ) THEN $
+     return, *data ELSE $
      return, Ptr_New()
 END
 
@@ -1856,8 +1863,8 @@ END
 ;====================================================
 
 PRO Pv::SetCurrentDimensions, LonRange = LonRange, LatRange = LatRange
-   junk = self.DimsList->GetCurrent()
-   CurrentDims =  *(*junk).data
+   data = self.DimsList->GetCurrent()
+   CurrentDims =  *data
    NLon = N_Elements(LonRange) 
    NLat = N_Elements(LatRange) 
    CurrentDims-> Get,LonRange = OldLonRange, LatRange=OldLatRange
@@ -2060,10 +2067,11 @@ PRO Pv::ResetPlotObjects,All = All, AlreadyPlotted=AlreadyPlotted
    AlreadyPlotted = keyword_set(AlreadyPlotted)
    
    n = self.Datalist-> WhichNode()
-   Current = self.DataList-> GetHead()
-   WHILE Ptr_Valid(Current) DO BEGIN 
-     DataPtr = (*Current).data
-     IF Ptr_Valid(DataPtr) THEN BEGIN 
+   ;Current = self.DataList-> GetHead()
+   DataPtr =  self.DataList-> GetHead()
+   WHILE Ptr_Valid(DataPtr) DO BEGIN 
+     ; DataPtr = (*Current)
+;     IF Ptr_Valid(DataPtr) THEN BEGIN 
        po = *DataPtr
        CASE 1 OF 
          ALL: BEGIN 
@@ -2073,8 +2081,8 @@ PRO Pv::ResetPlotObjects,All = All, AlreadyPlotted=AlreadyPlotted
            po-> Set, AlreadyPlotted=0
          END
        ENDCASE 
-     ENDIF 
-     Current = self.DataList-> GetNext()
+;     ENDIF 
+     DataPtr = self.DataList-> GetNext()
    ENDWHILE 
    IF n NE 0 THEN s = self.Datalist-> GotoNode(n)
 
