@@ -42,16 +42,26 @@ use vars qw/$VERSION $usage/;
 # Make sure we can get the Perl code we need.
 BEGIN{
   $VERSION = "0.9";
+
   croak "ENV var VAP_LIBRARY is undefined\n" 
     unless $ENV{VAP_LIBRARY};
+
   croak "ENV var VAP_SFTWR_PERL is undefined\n" 
     unless $ENV{VAP_SFTWR_PERL};
+
   croak "ENV var VAP_OPS_ANIM is undefined\n" 
     unless $ENV{VAP_OPS_ANIM};
+
+  croak "ENV var VAP_WWW_TOP is undefined\n" 
+    unless $ENV{VAP_WWW_TOP};
+
+  croak "ENV var VAP_OPS_TMPFILES is undefined\n" 
+    unless $ENV{VAP_OPS_TMPFILES};
+
   $usage = "$0: obj=Animate->new(REGION=>region [,TIME=>time,DELTA=>DELTA])\n";
 }
 
-use VapUtil qw(&systime2idltime &SysNow);
+use VapUtil; #qw(&systime2idltime &SysNow);
 use VapError;
 
 #==================================================
@@ -61,8 +71,11 @@ use VapError;
 sub new {
   my $class = shift;
   my $self={USER => $ENV{USER},
+	    WIND_FILTER => "{QS,SW}*",
+	    WWW_TOP => $ENV{VAP_WWW_TOP},
 	    @_};
-  croak $usage unless exists $self->{REGION};
+  croak $usage unless $self->{REGION};
+  my $region = $self->{REGION} = uc $self->{REGION};
   $self->{DEFAULTS_FILE} = $ENV{VAP_LIBRARY}."/auto_movie_defs.dat";
   bless $self, ref($class) || $class;
 
@@ -78,19 +91,18 @@ sub new {
 
   $self->_croak("Invalid REGION! ". $self->{REGION} .
 		" valid regions are \n". 
-		join("\n",@{$self->{ROIS}} ). "\n",
+		join("\n",keys(%{$self->{ROIS}})). "\n",
 		"$0:INVALID REGION")
-    unless grep($self->{REGION},@{$self->{ROIS}});
-
+    unless grep($self->{REGION},keys(%{$self->{ROIS}}));
+  
 
   # Set time and working dir, make sure the latter exists and that we
   # can CD to it.
 
   $self->{TIME} = systime2idltime(SysNow()) unless defined $self->{TIME};
   $self->{STARTTIME} = $^T;
-
-  $self->{WORKING_DIR} = $ENV{VAP_OPS_ANIM}."/". lc($self->{REGION});
-  my $working_dir = $self->{WORKING_DIR};
+  my $hash = $self->{ROIS}->{$region};
+  my $working_dir = $self->{WORKING_DIR} = $hash->{anim_path};
   $self->_croak("$0:Can't find working directory $working_dir\n",
 		"$0:NONEXISTENT WORKING DIR")
     unless (-e $working_dir);
@@ -101,7 +113,7 @@ sub new {
   $self->_croak("TMPFILE directory doesn't exist!\n",
 		"$0: NONEXISTENT TMPFILE DIRECTORY!")
     unless (-e $self->{TMPFILE_DIR});
-  
+
   # Return new object
   return $self;
 }
@@ -147,6 +159,7 @@ sub CreateTmpFile{
   my $date_time = $self->{TIME};
   my $exe_str = "auto_movie,\'$date_time\',roi=\'$roi\'";
   $exe_str .= ",pid=$$, lockfile = '". $self->{LOCKFILE}."'";
+  $exe_str .= ",windfilter='".$self->{WIND_FILTER}."'";
   $exe_str .= ",outbase = 'wind'\n";
   $exe_str .= "exit\n";
   print FILE $exe_str;
@@ -179,6 +192,7 @@ sub Make_Anim{
 		  "Errors are:\n\n".
 		  $self->{IDL_OUTPUT}."\n",
 		  "$0:ERRORS IN AUTO_MOVIE.PRO") if $self->CheckForErrors();
+  1;
 }
 
 #==================================================================
@@ -200,20 +214,37 @@ sub ReadDefsFile{
   open (DEFS,"<$file") ||
     $self->_croak("$0: Can't open $file!:$!\n",
 		  "$0:OPEN ERROR");
-  my @rois = ();
-  while (<DEFS>){
-    next if /^;.*$/; # IDL comment line
-    next if /^\s*$/; # empty line
-    my @tmp = split /,/;
-    my $tmp = $tmp[0];
-    @tmp = split(/:/, $tmp);
-    $tmp=$tmp[1];
-    $tmp =~ s/'//g;
-    push @rois, $tmp;
-  }
+
+  my $lines;
+  do {
+    local $/=undef;
+    $lines = <DEFS>;
+  };
   close DEFS;
-  $self->{ROIS} = \@rois;
-  @rois;
+  my @rois=();
+  my @lines = split /^\{\s*/m, $lines;
+  foreach (@lines) {
+    s/\s*//g;
+    next unless /^\s*desig/i;
+    my @t=split/:/;
+    my ($roi,$k) = split /,/,$t[1];
+    $roi =~ s/'//g;
+    my ($kk,$v);
+    for (my $i=2; $i<@t; $i++){
+      $t[$i] =~ s/\s+//g;
+      my $tt=reverse($t[$i]);
+      my $ii=index $tt, ",";
+      $kk=reverse(substr($tt,0,$ii));
+      $v=reverse(substr($tt,$ii+1));
+      $v = eval $v if (index($v,'[') > -1);
+      if ($v=~/\$/) {
+	$v = deenvvar($v);
+      }
+      $self->{ROIS}->{uc $roi}->{$k} = $v;
+      $k=$kk;
+    }
+  }
+  @rois = keys %{$self->{ROIS}};
 }
 
 #==================================================================
@@ -228,20 +259,24 @@ sub ReadDefsFile{
 
 sub MoveOutput{
   my $self=shift;
+
   my $region=lc $self->{REGION};
-  my $file=$self->{TMPFILE_DIR} . "/auto_movie_mov_filename_$$";
+  my $file=$self->{TMPFILE_DIR} . "/auto_movie_mov_filename_".$region."_".$$;
   open (FILE, "<$file") ||
     $self->_croak("$0: Error opening $file:$!\n",
 		  "$0: FILE OPEN ERROR!");
   my $mov_file = <FILE>;
   my $ext=<FILE>;
+  chomp $mov_file;
+  chomp $ext;
   my $first_frame = "wind.001.$ext";
   close FILE;
 
   $self->{MOV_FILE} = $mov_file;
   my ($basename, $path) = fileparse($mov_file);
-  my $wwwmov   = $self->{WWW_TOP}. "/mov_archive/$basename";
-  my $wwwframe = $self->{WWW_TOP}. "/mov_archive/$region.001.$ext";
+  my $wwwmov   = $self->{WWW_TOP}. "/images/mov_archive/$basename";
+  my $wwwframe = $self->{WWW_TOP}. "/images/$region.001.$ext";
+  unlink $wwwframe;
   copy($mov_file, $wwwmov ) || 
     $self->_croak("$0: Error copying $mov_file to\n$wwwmov:$!\n",
 		 "$0: COPY ERROR");
@@ -268,7 +303,7 @@ sub MoveOutput{
 		  "$0: DELETE ERROR!");
 
   # Now the first frame of the movie.
-  $symlink = $self->{WWW_TOP}."/images/$region.001.ext";
+  $symlink = $self->{WWW_TOP}."/images/$region.001.$ext";
   unlink $symlink || 
     $self->_croak("$0: Can't unlink $symlink!:$!\n",
 		  "$0: DELETE ERROR!");
