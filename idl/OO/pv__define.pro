@@ -89,6 +89,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/10/12 22:06:36  vapuser
+; Worked on Qmodel stuff
+;
 ; Revision 1.3  1998/10/01 17:52:35  vapuser
 ; Modified 'version' method so that it will report
 ; the versions of member classes. Put in some error handling
@@ -1214,7 +1217,7 @@ FUNCTION Pv::Read,files
               status = 0
             END
           ENDCASE 
-
+          Ptr_Free, attr.value
         ENDIF ELSE BEGIN 
           Message,"Can't get ShortName attribute from HDF file",/cont
           status = 0
