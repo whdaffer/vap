@@ -82,6 +82,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/12 22:30:26  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -99,6 +102,7 @@ FUNCTION IsQ2B, filename
   ;
   
   rcsid = "$Id$"
+  lf = string(10b)
   catch, error
   IF error NE 0 THEN BEGIN 
     Message,!Error_State.Msg,/cont
@@ -135,7 +139,9 @@ FUNCTION IsQ2B, filename
       ENDIF 
       ai = ai+1
     ENDWHILE 
-    result =  (found AND (strpos( shortname,'Q2B' ) NE -1 ))
+    result =  (found AND $
+               (strpos( shortname,'Q2B' ) NE -1 ) OR  $
+               (strpos( shortname,'QSCATL2B' ) NE -1 ))
   ENDIF ELSE BEGIN 
     Message,"Error opening file " + filename
     result = -1 ; Don't know whether Q2B or not.
