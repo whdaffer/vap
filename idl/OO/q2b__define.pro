@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.14  1999/06/29 20:46:13  vapuser
+  ; Fix name disagreement between Rnoaa file and object.
+  ;
   ; Revision 1.13  1998/11/25 22:42:22  vapuser
   ; Set start/End time when reading Rnoaa data.
   ;
@@ -223,7 +226,7 @@ FUNCTION Q2B::Init, $
   
   status = 0
   self.filename = '<No Name>'
-  self.type = 'UNKOWN'
+  self.type = 'UNKNOWN'
   self.Verbose = keyword_set(Verbose)
 
   IF N_Elements(filename) NE 0 THEN BEGIN 
@@ -1585,7 +1588,8 @@ END
   ;
   ; ==========================================
 PRO Q2B::GetAll, U = U, V=V, Lon=Lon, Lat=Lat, Sel=Sel, $
-       Qual=Qual, idx=idx, nambig=nambig, rtime=rtime, row=row, SU=SU, SV=SV 
+       Qual=Qual, idx=idx, nambig=nambig, rowtime=rowtime, $
+       rownumber=rownumber, SU=SU, SV=SV 
 
    IF arg_present(lon)    THEN lon = (*self.data).lon
    IF arg_Present(lat)    THEN lat = (*self.data).lat
@@ -1596,9 +1600,9 @@ PRO Q2B::GetAll, U = U, V=V, Lon=Lon, Lat=Lat, Sel=Sel, $
    IF arg_Present(sel)    THEN sel = (*self.data).sel
    IF arg_Present(idx)    THEN idx  = (*self.data).idx
    IF arg_Present(qual)   THEN qual = (*self.data).qual
-   IF arg_Present(row)    THEN row  = (*self.data).row
-   IF arg_Present(rtime)  THEN rtime  = (*self.data).rowtime
-   IF arg_Present(nambig) THEN nambig = (*self.data).nambig
+   IF arg_Present(rownumber) THEN rownumber  = (*self.data).row
+   IF arg_Present(rowtime)   THEN rowtime  = (*self.data).rowtime
+   IF arg_Present(nambig)    THEN nambig = (*self.data).nambig
    
 END
 
