@@ -48,6 +48,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/06/29 20:26:11  vapuser
+; Handle the 'SPARE_METADATA_ELEMENT' that will appear
+; in the Rnoaa files.
+;
 ; Revision 1.1  1999/04/09 21:43:42  vapuser
 ; Initial revision
 ;
@@ -89,7 +93,7 @@ FUNCTION parsernoaaheader, header
   FOR i=0,n_elements(tags)-1 DO BEGIN 
     value = retstruct.(i)
     CASE tags[i] OF 
-      'STARTTIME': BEGIN 
+      'DATASTARTTIME': BEGIN 
         value = strcompress(value,/remove_all)
         year = strmid(value,0,4)
         doy = strmid(value,5,3)
@@ -102,7 +106,7 @@ FUNCTION parsernoaaheader, header
              day + '/' + hh + '/' + mm
         retstruct.(i) =  new_start_time
       END
-      'ENDTIME': BEGIN 
+      'DATAENDTIME': BEGIN 
         value = strcompress(value,/remove_all)
         year = strmid(value,0,4)
         doy = strmid(value,5,3)
