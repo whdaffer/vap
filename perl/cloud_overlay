@@ -1,4 +1,4 @@
-#!/usr/bin/perl 
+#!/usr/bin/perl -d
 #
 # NAME: cloud_overlay:
 #
@@ -18,6 +18,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.7  1998/11/20 19:50:44  vapuser
+# updated to handle new 'multi-machine' processing scenario
+#
 # Revision 1.6  1998/11/04 19:37:58  vapuser
 # Added a 'die'
 #
@@ -43,192 +46,121 @@
 
 
 use vap_perl;
-
+use Gms5;
 use Getopt::Long;
 use File::Copy ;
 
-  $usage =  "\nUsage:\n";
-  $usage .= " cloud_overlay --region REGION_DESIGNATION\n";
-  $usage .= "  --time TIME_DESIGNATION (GMT: yyyymmddThh:mm)\n";
-  $usage .= "  --windpath PATH_TO_WIND_FILES\n";
-  $usage .= "  --satname SATELLITE_NAME (.e.g. 'goes')\n";
-  $usage .= "  --satnum  SATELLITE_NUMBER (e.g. 10 for goes10)\n";
-  $usage .= "  --sensornum SENSOR_NUMBER (e.g. 1=vis, 2=ir2, 3=ir3, 4=ir4)\n";
-  $usage .= "  --lon lonmin ( --lon lonmax )\n";
-  $usage .= "  --lat latmin ( --lat latmax )\n";
-  $usage .= "  --crdecimate Col --crdecimate Row\n";
-  $usage .= "  --excludecol idl-array-submatrix-desg (as string)\n";
-  $usage .= "  --tellme: Calculates, reports variable values and exits\n\n";
-  $usage .= "  where: \n";
+$usage =  "\nUsage:\n";
+$usage .= " cloud_overlay --region REGION_DESIGNATION\n";
+$usage .= "  --time TIME_DESIGNATION (GMT: yyyymmddThh:mm)\n";
+$usage .= "  --windpath PATH_TO_WIND_FILES\n";
+$usage .= "  --satname SATELLITE_NAME (.e.g. 'goes')\n";
+$usage .= "  --satnum  SATELLITE_NUMBER (e.g. 10 for goes10)\n";
+$usage .= "  --sensornum SENSOR_NUMBER (e.g. 1=vis, 2=ir2, 3=ir3, 4=ir4)\n";
+$usage .= "  --lon lonmin ( --lon lonmax )\n";
+$usage .= "  --lat latmin ( --lat latmax )\n";
+$usage .= "  --crdecimate Col --crdecimate Row\n";
+$usage .= "  --excludecol idl-array-submatrix-desg (as string)\n";
+$usage .= "  --tellme: Calculates, reports variable values and exits\n\n";
+$usage .= "  where: \n";
 
-  $usage .= "    REGION_DESIGNATION is the designation for the \n";
+$usage .= "    REGION_DESIGNATION is the designation for the \n";
 
-  $usage .= "      region as it appears in the _overlay_defs_ file\n";
-  $usage .= "      See file $VAP_LIB/overlay_defs for the complete list of \n";
-  $usage .= "      predefined regions. If absent, the program falls over to using the \n";
-  $usage .= "      information given (or defaulted to) in the combination of the \n";
-  $usage .= "      satname/satnum/sensornum/lon/lat options. If there are no arguments,\n";
-  $usage .= "      this message is displayed\n";
+$usage .= "      region as it appears in the _overlay_defs_ file\n";
+$usage .= "      See file $VAP_LIB/overlay_defs for the complete list of \n";
+$usage .= "      predefined regions. If absent, the program falls over to using the \n";
+$usage .= "      information given (or defaulted to) in the combination of the \n";
+$usage .= "      satname/satnum/sensornum/lon/lat options. If there are no arguments,\n";
+$usage .= "      this message is displayed\n";
 
-  $usage .= "    TIME_DESIGNATION: the GMT time of the area file to be gridded and \n";
-  $usage .= "      overlaid. The software will find the one closest to this time \n";
-  $usage .= "      so long as it isnt more than 2 hours distant. (format: yyyymmddThh:mm)\n";
-  $usage .= "      The default used depends on the satellite and the region\n";
-  $usage .= "      If absent, the software will determine time of the file it needs to find\n";
-  $usage .= "      based on the variables AscTime/DescTime, which are defined in the\n";
-  $usage .= "      data structure accessed via the 'REGION_DESIGNATION' or are defaulted\n";
-  $usage .= "      on the basis of the satname/satnum/sensornum variables\n";
-  $usage .= "      If there is no 'T' in the designation, the string is assumed to be \n";
-  $usage .= "      of the form hh:mm \n";
-  $usage .= "      (see --tellme option for a way of finding out what those defaults are\n";
+$usage .= "    TIME_DESIGNATION: the GMT time of the area file to be gridded and \n";
+$usage .= "      overlaid. The software will find the one closest to this time \n";
+$usage .= "      so long as it isnt more than 2 hours distant. (format: yyyymmddThh:mm)\n";
+$usage .= "      The default used depends on the satellite and the region\n";
+$usage .= "      If absent, the software will determine time of the file it needs to find\n";
+$usage .= "      based on the variables AscTime/DescTime, which are defined in the\n";
+$usage .= "      data structure accessed via the 'REGION_DESIGNATION' or are defaulted\n";
+$usage .= "      on the basis of the satname/satnum/sensornum variables\n";
+$usage .= "      If there is no 'T' in the designation, the string is assumed to be \n";
+$usage .= "      of the form hh:mm \n";
+$usage .= "      (see --tellme option for a way of finding out what those defaults are\n";
 
-  $usage .= "    PATH_TO_WIND_FILES: pretty self explanatory.\n";
-  $usage .= "      Default given by environmental variable 'VAP_WINDS'\n";
+$usage .= "    PATH_TO_WIND_FILES: pretty self explanatory.\n";
+$usage .= "      Default given by environmental variable 'VAP_WINDS'\n";
 
-  $usage .= "    SATNAME: Name of satellite, Currently only 'goes' works\n";
-  $usage .= "      Maybe someday we'll be able to use gms (def='GOES')\n";
+$usage .= "    SATNAME: Name of satellite, Currently only 'goes' works\n";
+$usage .= "      Maybe someday we'll be able to use gms (def='GOES')\n";
 
-  $usage .= "    SATNUM: Satellite Number (Currently only 10 and 8 work, since \n";
-  $usage .= "      we can only do 'GOES' satellites (def=10)\n";
+$usage .= "    SATNUM: Satellite Number (Currently only 10 and 8 work, since \n";
+$usage .= "      we can only do 'GOES' satellites (def=10)\n";
 
-  $usage .= "    SENSORNUM: 1=vis, 2=ir2, 3=ir3, 4=ir4 (def=4)\n";
+$usage .= "    SENSORNUM: 1=vis, 2=ir2, 3=ir3, 4=ir4 (def=4)\n";
 
-  $usage .= "    LONMIN/LONMAX: The first instance of this option specifies the minimum\n";
-  $usage .= "      longitude (the lower right corner of the picture)\n";
-  $usage .= "      The second instance specifies the maximum longitude\n";
-  $usage .= "      Defaults are dependent on the satellite\n";
+$usage .= "    LONMIN/LONMAX: The first instance of this option specifies the minimum\n";
+$usage .= "      longitude (the lower right corner of the picture)\n";
+$usage .= "      The second instance specifies the maximum longitude\n";
+$usage .= "      Defaults are dependent on the satellite\n";
 
-  $usage .= "    LATMIN/LATMAX: See lonmin/lonmax\n";
+$usage .= "    LATMIN/LATMAX: See lonmin/lonmax\n";
 
-  $usage .= "    CRDECIMATE: The first instance designates the decimation in the 'column'\n";
-  $usage .= "      direction, the second the decimation in the 'row' direction\n";
-  $usage .= "      Default=[2,3]\n";
+$usage .= "    CRDECIMATE: The first instance designates the decimation in the 'column'\n";
+$usage .= "      direction, the second the decimation in the 'row' direction\n";
+$usage .= "      Default=[2,3]\n";
 
-  $usage .= "    TELLME: Calculates, reports the values for all the variables and exits\n\n";
-  $usage .= "      Use this option to find out what the defaults are in any given situation\n";
+$usage .= "    TELLME: Calculates, reports the values for all the variables and exits\n\n";
+$usage .= "      Use this option to find out what the defaults are in any given situation\n";
 
-  $usage .= "    If one wishes to grid and overlay an arbitrary region not predefined\n";
-  $usage .= "    in the overlay_defs file, one may use the combination of \n";
-  $usage .= "    satname/satnum/sensornum/on/lat to do so. Each will take defaults if\n";
-  $usage .= "    not present, e.g. satname defaults to 'goes', satnum to '10', \n";
-  $usage .= "    sensornum to '4' and lon/lat limits take default appropriate to \n";
-  $usage .= "    whatever satname is. \n\n";
+$usage .= "    If one wishes to grid and overlay an arbitrary region not predefined\n";
+$usage .= "    in the overlay_defs file, one may use the combination of \n";
+$usage .= "    satname/satnum/sensornum/on/lat to do so. Each will take defaults if\n";
+$usage .= "    not present, e.g. satname defaults to 'goes', satnum to '10', \n";
+$usage .= "    sensornum to '4' and lon/lat limits take default appropriate to \n";
+$usage .= "    whatever satname is. \n\n";
 
 
 
-  die $usage if !@ARGV;
-  $result=&GetOptions( 'region=s',\$region,
-		      'time=s',  \$area_file_time,
-		      'windpath|path|wpath=s', \$winds_path,
-		      'satname=s',\$satname,
-		      'satnum=i',\$satnum,
-		      'sensornum=i',\$sensornum,
-		      'lon=f@',\@lonlim,
-		      'lat=f@',\@latlim,
-		      'help', \$help,
-		      'tellme', \$tellme );
+die $usage if !@ARGV;
+$result=&GetOptions( 'region=s',\$region,
+		    'time=s',  \$area_file_time,
+		    'windpath|path|wpath=s', \$winds_path,
+		    'satname=s',\$satname,
+		    'satnum=i',\$satnum,
+		    'sensornum=i',\$sensornum,
+		    'lon=f@',\@lonlim,
+		    'lat=f@',\@latlim,
+		    'help', \$help,
+		    'tellme', \$tellme );
 
-  die "Error parsing options\n" if !result;
-  die $usage if $help;
+die "Error parsing options\n" if !result;
+die $usage if $help;
 
-    # Set the IDL starup file to get '24 bit true' color
-  $ENV{'IDL_STARTUP'}="/disk4/vapuser/idl-startup-true24";
+# Set the IDL starup file to get '24 bit true' color
+$ENV{'IDL_STARTUP'}="/disk4/vapuser/idl-startup-true24";
 
-  if ($region) {
-    # Get the defaults for overlays.
-    die "Region $region doesn't exist in OVERLAY DEFAULTS Table!\n" if 
-	!defined($vap_perl::overlay_defs{ $region }{ Region } );
-    $satname     = $vap_perl::overlay_defs{ $region } { CloudData }{ Satellite   };   
-    $lonlim      = $vap_perl::overlay_defs{ $region } { CloudData }{ LonLim      };     
-    $latlim      = $vap_perl::overlay_defs{ $region } { CloudData }{ LatLim      };     
-    $satnum      = $vap_perl::overlay_defs{ $region } { CloudData }{ SatNum      };     
-    $sensornum   = $vap_perl::overlay_defs{ $region } { CloudData }{ SensorNum   };
-    $asctime     = $vap_perl::overlay_defs{ $region } { CloudData }{ AscTime     };
-    $desctime    = $vap_perl::overlay_defs{ $region } { CloudData }{ DescTime    };
-    $nvectors    = $vap_perl::overlay_defs{ $region } { WVCData   }{ NVectors    }; 
-    $crdecimate  = $vap_perl::overlay_defs{ $region } { WVCData   }{ CRDecimate  };
-    $excludecols = $vap_perl::overlay_defs{ $region } { WVCData   }{ ExcludeCols };
-
-    @lonlim=@$lonlim;
-    @latlim=@$latlim;
-
-    if (!$time) {
-      $asctime  = vap_perl::prepend_yyyymmdd($asctime);
-      $desctime = vap_perl::prepend_yyyymmdd($desctime);
-      ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T-3600);
-      $time=sprintf("%04d%02d%02dT%02d:%02d",
-	       $year+1900,$mon+1,$mday,$hour,$min);
-      @testtimes=( $time, $asctime,$desctime);
-      @testtimes = sort @testtimes;
-      foreach $rec (@testtimes) {
-	last if $rec =~ /$time/;
-	$lastrec=$rec;
-      }
-
-      if (!$lastrec)  { 
-	  # current time (less 1 hour) is earlier than either 
-	  # asctime or desctime. Take testtimes[2] 
-	  # (they're sorted, after all ) and subtract 1 day from it.
-	$testsecs = vap_perl::vaptime2systime($testtimes[2]);
-	$time = vap_perl::systime2vaptime($testsecs-86400);
-      } else {
-	$time=$lastrec;
-      }
-    }
-  } else {
-
-    $satname = "GOES" if !$satname;
-    $satnum = 10 if !$satnum;
-    $sensornum = 4 if !$satnum;
-    
-    if (!$asctime) {
-      SWITCH: {
-        $asctime="07:00" , last SWITCH if $satnum == 10;
-        $asctime="03:00" , last SWITCH if $satnum == 8;
-      }
-    }
-
-    if (!$desctime) {
-      SWITCH: {
-	$desctime="20:00" , last SWITCH if $satnum == 10;
-	$desctime="16:00" , last SWITCH if $satnum == 8;
-      }
-    }
-
-    if (!@lonlim){
-      SWITCH: {
-	@lonlim=(-175,-115), last SWITCH if $satnum==10;
-	@lonlim=(-90,-48), last SWITCH if $satnum==8;
-      }
-    } elsif ($#lonlim==0) {
-      SWITCH: {
-	$lonlim[1]=-115, last SWITCH if $satnum==10;
-	$lonlim[1]=-48, last SWITCH if $satnum==8;
-      }
-    }
-
-    if (!@latlim){
-      SWITCH: {
-	@latlim=(25,65), last SWITCH if $satnum==10;
-	@latlim=(25,52), last SWITCH if $satnum==8;
-      }
-    } elsif ($#latlim ==0) {
-      SWITCH: {
-	$latlim[1] = 65, last SWITCH if $satnum==10;
-	$latlim[1] = 52, last SWITCH if $satnum==8;
-      }
-    }
-
-    @crdecimate=(2,3) unless @crdecimate;
-    $excludecols="34:42" unless @excludecols;
-    
-    # Construct the time to be used in finding the correct 
-    # goes/gms/whatever file.
+if ($region) {
+  # Get the defaults for overlays.
+  die "Region $region doesn't exist in OVERLAY DEFAULTS Table!\n" if 
+      !defined($vap_perl::overlay_defs{ $region }{ Region } );
+  $satname     = $vap_perl::overlay_defs{ $region } { CloudData }{ Satellite   };   
+  $lonlim      = $vap_perl::overlay_defs{ $region } { CloudData }{ LonLim      };     
+  $latlim      = $vap_perl::overlay_defs{ $region } { CloudData }{ LatLim      };     
+  $satnum      = $vap_perl::overlay_defs{ $region } { CloudData }{ SatNum      };     
+  $sensornum   = $vap_perl::overlay_defs{ $region } { CloudData }{ SensorNum   };
+  $asctime     = $vap_perl::overlay_defs{ $region } { CloudData }{ AscTime     };
+  $desctime    = $vap_perl::overlay_defs{ $region } { CloudData }{ DescTime    };
+  $nvectors    = $vap_perl::overlay_defs{ $region } { WVCData   }{ NVectors    }; 
+  $crdecimate  = $vap_perl::overlay_defs{ $region } { WVCData   }{ CRDecimate  };
+  $excludecols = $vap_perl::overlay_defs{ $region } { WVCData   }{ ExcludeCols };
+  
+  @lonlim=@$lonlim;
+  @latlim=@$latlim;
+  
+  if (!$area_file_time) {
     $asctime  = vap_perl::prepend_yyyymmdd($asctime);
     $desctime = vap_perl::prepend_yyyymmdd($desctime);
-    ($sec,$min,$hour,$mday,$mon,$year)=vap_perl::systime2vaptime($^T-3600);
+    ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T-4*3600);
     $time=sprintf("%04d%02d%02dT%02d:%02d",
-		  $year+1900,$mon,$mday,$hour,$min);
+		  $year+1900,$mon+1,$mday,$hour,$min);
     @testtimes=( $time, $asctime,$desctime);
     @testtimes = sort @testtimes;
     foreach $rec (@testtimes) {
@@ -241,180 +173,323 @@ use File::Copy ;
       # asctime or desctime. Take testtimes[2] 
       # (they're sorted, after all ) and subtract 1 day from it.
       $testsecs = vap_perl::vaptime2systime($testtimes[2]);
-      $time = vap_perl::systime2vaptime($testsecs);
+      $time = vap_perl::systime2vaptime($testsecs-86400);
     } else {
       $time=$lastrec;
     }
-    
-    
+  } else {
+    $time=$area_file_time;
   }
-    
-  $satname =~ tr/a-z/A-Z/;
-  $fullregionname=join("",split( /_/, $region)) || "NOREGION";
-  $regionname=join( "", (split( /_/, $region))[3,4] ) || "NR";
-    
-  print "\nArguments and variables are...\n";
-  print "\nsatname     = $satname\n";        
-  print "satnum      = $satnum\n" ;
-  print "sensornum   = $sensornum\n";      
-  print "lon         = @lonlim\n";         
-  print "lat         = @latlim\n" ;        
-  print "asctime     = $asctime\n";       
-  print "desctime    = $desctime\n";      
-  print "time        = $time\n" if $time; 
-  print "crdecimate  = @$crdecimate\n";  
-  print "excludecols = $excludecols\n\n";
-  print "Taking type = $type\n" if $type;  
-  print "Output gif file will have region name $regionname\n";
-  print "Output HTTP file will have region name $fullregionname\n";
-
-  exit if ($tellme);
-
-    # Sanity check the arguments: 
-  @lonlim=vap_perl::fixlonrange( @lonlim );
-  die "$satname not in allowed list\n" unless $satname =~ /GOES/;
-  die "$satnum not in allowed list (8,10)\n" unless $satnum =~ /(8|10)/;
-  die "$sensornum not in allowed range (1-4)\n" unless $sensornum =~ /(1|2|3|4)/;
-  die "Out of range Long Lims\n  (@lonlim)\n"
-     if (abs($lonlim[0]) > 360 || abs($lonlim[1]) > 360);
-  die "Out of range Lat Lims\n  (@latlim)\n" 
-     if (abs($latlim[0]) > 90 || abs($latlim[1]) > 90);
-
-
-
-    #========================================
-    #
-    # Start the real processing
-    #
-    # ========================================
-
-
-    # create lock file (for IDL session)
-
-  $user=$ENV{'USER'};
-  $lock_file="/tmp/".$user.".cloud_overlay.lock";
-  open (LOCK,">$lock_file") || die "Couldn't open $lock_file \n";
-  print LOCK "$$\n";
-  close (LOCK);
-
-    # Supposedly we can now get and grid the AREA file 
-  $minlon=$lonlim[0];
-  $maxlon=$lonlim[1];
-  $minlat=$latlim[0];
-  $maxlat=$latlim[1];
+} else {
   
+  $satname = "GOES" if !$satname;
+  $satnum = 10 if !$satnum;
+  $sensornum = 4 if !$satnum;
+  
+  if (!$asctime) {
+    SWITCH: {
+      $asctime="07:00" , last SWITCH if $satnum == 10;
+      $asctime="03:00" , last SWITCH if $satnum == 8;
+    }
+  }
+  
+  if (!$desctime) {
+    SWITCH: {
+      $desctime="20:00" , last SWITCH if $satnum == 10;
+      $desctime="16:00" , last SWITCH if $satnum == 8;
+    }
+  }
+  
+  if (!@lonlim){
+    SWITCH: {
+      @lonlim=(-175,-115), last SWITCH if $satnum==10;
+      @lonlim=(-90,-48), last SWITCH if $satnum==8;
+    }
+  } elsif ($#lonlim==0) {
+    SWITCH: {
+      $lonlim[1]=-115, last SWITCH if $satnum==10;
+      $lonlim[1]=-48, last SWITCH if $satnum==8;
+    }
+  }
+  
+  if (!@latlim){
+    SWITCH: {
+      @latlim=(25,65), last SWITCH if $satnum==10;
+      @latlim=(25,52), last SWITCH if $satnum==8;
+    }
+  } elsif ($#latlim ==0) {
+    SWITCH: {
+      $latlim[1] = 65, last SWITCH if $satnum==10;
+      $latlim[1] = 52, last SWITCH if $satnum==8;
+    }
+  }
+  
+  @crdecimate=(2,3) unless @crdecimate;
+  $excludecols="34:42" unless @excludecols;
+  
+  # Construct the time to be used in finding the correct 
+  # goes/gms/whatever file.
+  $asctime  = vap_perl::prepend_yyyymmdd($asctime);
+  $desctime = vap_perl::prepend_yyyymmdd($desctime);
+  ($sec,$min,$hour,$mday,$mon,$year)=vap_perl::systime2vaptime($^T-3600);
+  $time=sprintf("%04d%02d%02dT%02d:%02d",
+		$year+1900,$mon,$mday,$hour,$min);
+  @testtimes=( $time, $asctime,$desctime);
+  @testtimes = sort @testtimes;
+  foreach $rec (@testtimes) {
+    last if $rec =~ /$time/;
+    $lastrec=$rec;
+  }
+  
+  if (!$lastrec)  { 
+    # current time (less 1 hour) is earlier than either 
+    # asctime or desctime. Take testtimes[2] 
+    # (they're sorted, after all ) and subtract 1 day from it.
+    $testsecs = vap_perl::vaptime2systime($testtimes[2]);
+    $time = vap_perl::systime2vaptime($testsecs);
+  } else {
+    $time=$lastrec;
+  }
+  
+  
+}
+
+$satname =~ tr/a-z/A-Z/;
+$fullregionname=join("",split( /_/, $region)) || "NOREGION";
+$regionname=join( "", (split( /_/, $region))[3,4] ) || "NR";
+
+print "\nArguments and variables are...\n";
+print "\nsatname     = $satname\n";        
+print "satnum      = $satnum\n" ;
+print "sensornum   = $sensornum\n";      
+print "lon         = @lonlim\n";         
+print "lat         = @latlim\n" ;        
+print "asctime     = $asctime\n";       
+print "desctime    = $desctime\n";      
+print "time        = $time\n" if $time; 
+print "crdecimate  = @$crdecimate\n";  
+print "excludecols = $excludecols\n\n";
+print "Taking type = $type\n" if $type;  
+print "Output overlay file will have region name $regionname\n";
+print "Output HTTP file will have region name $fullregionname\n";
+
+exit if ($tellme);
+
+# Sanity check the arguments: 
+@lonlim=vap_perl::fixlonrange( @lonlim );
+die "$satname not in allowed list\n" unless $satname =~ /(GOES|GMS)/;
+die "$satnum not in allowed list (8,10)\n" unless $satnum =~ /(5|8|10)/;
+die "$sensornum not in allowed range (1-4)\n" 
+    unless $sensornum =~ /(1|2|3|4)/;
+die "Out of range Long Lims\n  (@lonlim)\n"
+    if (abs($lonlim[0]) > 360 || abs($lonlim[1]) > 360);
+die "Out of range Lat Lims\n  (@latlim)\n" 
+    if (abs($latlim[0]) > 90 || abs($latlim[1]) > 90);
+
+
+
+  #========================================
+  #
+  # Start the real processing
+  #
+  # ========================================
+
+
+  # create lock file (for IDL session)
+
+$user=$ENV{'USER'};
+$lock_file="/tmp/".$user.".cloud_overlay.lock";
+open (LOCK,">$lock_file") || die "Couldn't open $lock_file \n";
+print LOCK "$$\n";
+close (LOCK);
+
+$minlon=$lonlim[0];
+$maxlon=$lonlim[1];
+$minlat=$latlim[0];
+$maxlat=$latlim[1];
+
+if ($satname =~ /GMS/) {
+  $mapLimits ="[ $minlon, $minlat, $maxlon, $maxlat ]";
+ Gms5::GetAllFileLists() || 
+     die "Can't Get all Gms5 archives listings!\n";
+  @gms5sensornames=('ir1','ir2','ir3','vis');
+  @isec=Gms5::GetIntersection($gms5sensornames[$sensornum-1]);
+  die "Can't get GMS5 intersection\n" if !$isec[0];
+  $mindif=1.e10;
+  $testsecs=vap_perl::vaptime2systime($time);
+  foreach $datetime (@isec) {
+    $syst=Gms5::Gms5DateTime2SysTime($datetime);
+    $dif = abs($syst-$testsecs) ;
+    if ( $dif <= $mindif ) {
+      $gridded_file=$datetime ;
+      $mindif = $dif;
+    }
+  }
+  die "No Files closer than 2 hours!\n" if $mindif > 7200;
+
+  Gms5::GetAll($gridded_file) || 
+      die "Can't GetAll for datetime $gridded_file\n";  
+} else {
+  # Supposedly we can now get and grid the AREA file 
   $gridded_file = vap_perl::gag( $satnum, $sensornum, $time, 
 				$minlon, $minlat, $maxlon, $maxlat );
   die "Unsuccessful call to vap_perl::gag, gridded_file=NULL\n" 
-    if !$gridded_file;
+      if !$gridded_file;
   
-#     # And the wind data (will the 4 hours previous to input $time)
+}
 
-#   @windfiles=vap_perl:GetWindFiles( $time, 4 );
 
-  # The IDL routines like time as yyyy/mm/dd/hh/mm. So, construct this time string.
-  $idl_time_string=vap_perl::vaptime2idltime($time);
-  print "CDing to $vap_perl::VAP_OVERLAY\n";
-  chdir $vap_perl::VAP_OVERLAY || 
+# The IDL routines like time as yyyy/mm/dd/hh/mm. 
+# So, construct this time string.
+$idl_time_string=vap_perl::vaptime2idltime($time);
+print "CDing to $vap_perl::VAP_OVERLAY\n";
+chdir $vap_perl::VAP_OVERLAY || 
     die "Can't chdir to overlay dir $vap_perl::VAP_OVERLAY\n";
 
-  $idl_tmp_file="idl_called_by_perl.pro";
-  print "Writing IDL tmp file $idl_tmp_file\n";
-  open(IDLFILE,">$idl_tmp_file") || 
+$idl_tmp_file="idl_called_by_perl.pro";
+print "Writing IDL tmp file $idl_tmp_file\n";
+open(IDLFILE,">$idl_tmp_file") || 
     die "Couldn't open $idl_tmp_file\n";
+
+
+$exe_str = "cloud_overlay,\'$gridded_file\',\'$idl_time_string\'";
+$exe_str .= ",wpath = \'$vap_perl::VAP_WINDS\'";
+$exe_str .= ",pid=$$";
+$exe_str .= ",CRDecimate=[".join(",",@$crdecimate)."]";
+$exe_str .= ",ExcludeCols=\'$excludecols\'";
+
+
+
+$exe_str .= ",mapLimits=$mapLimits,gmsType=\'$gms5sensornames[$sensornum-1]\'" if ($satname =~ /GMS/);
   
+  
+  print IDLFILE "$exe_str\n" || 
+      die "Can't write to idl tmp file $idl_tmp_file\n";
+  print IDLFILE "exit\n" || 
+      die "Can't write to idl tmp file $idl_tmp_file\n";
+close IDLFILE;
 
-  $exe_str = "cloud_overlay,\'$gridded_file\',\'$idl_time_string\'";
-  $exe_str .= ",wpath = \'$vap_perl::VAP_WINDS\'";
-  $exe_str .= ",pid=$$";
-  $exe_str .= ",CRDecimate=[".join(",",@$crdecimate)."]";
-  $exe_str .= ",ExcludeCols=\'$excludecols\'";
+print "wrote following to idl_tmp_file\n  $exe_str\n";
 
-  print IDLFILE "$exe_str\n" || die "Can't write to idl tmp file $idl_tmp_file\n";
-  print IDLFILE "exit\n" || die "Can't write to idl tmp file $idl_tmp_file\n";
-  close IDLFILE;
+$exe_str=$vap_perl::IDLEXE." ".$idl_tmp_file;
+$r=system( $exe_str )/256;
+if ($r != 0) {
+  die " Error in IDL\n";
+}
 
-  print "wrote following to idl_tmp_file\n  $exe_str\n";
+open ( LOCK, "<$lock_file") || 
+  die "Couldn't open $lock_file after IDL \n";
+@idlout = <LOCK>;
+close (LOCK);
 
-  $exe_str=$vap_perl::IDLEXE." ".$idl_tmp_file;
-  $r=system( $exe_str )/256;
-  if ($r != 0) {
-    die " Error in IDL\n";
+
+  # see if there are any lines in the idl output file 
+  # with the work ERROR in them. Exit if there are.
+foreach $r (@idlout) {
+  if ($r =~ /ERROR/) {
+    print "Error in IDL processing \n";
+    print @idlout;
+    exit;
   }
+}
 
-  open ( LOCK, "<$lock_file") || die "Couldn't open $lock_file after IDL \n";
-  @idlout = <LOCK>;
-  close (LOCK);
+unlink $idl_tmp_file || die "Couldn't unlink $idl_tmp_file\n";
+unlink $lock_file  || print "Couldn't delete $lock_file \n";
 
- 
-    # see if there are any lines in the idl output file with the work ERROR in them.
-    # exit if there are.
-  foreach $r (@idlout) {
-    if ($r =~ /ERROR/) {
-      print "Error in IDL processing \n";
-      print @idlout;
-      exit;
-    }
-  }
+  # goes_overlay gives the output gif file a name based on the input
+  # grid file name get that name and rename the file to the standard
+  # 'pac_overlay_$type.gif'
 
-  unlink $idl_tmp_file || die "Couldn't unlink $idl_tmp_file\n";
-  unlink $lock_file  || print "Couldn't delete $lock_file \n";
+open (PICTURENAME,"</tmp/auto_cloud_overlay_output_file") || 
+    die "Can't open /tmp/auto_cloud_overlay_output_file\n";
+@picturefile=<PICTURENAME>;
+close(PICTURENAME);
+#  unlink "/tmp/auto_cloud_overlay_output_file" || 
+#      print "Couldn't delete /tmp/auto_goes_overlay_output_file\n";
 
-    # goes_overlay gives the output gif file a name based on the input grid file name
-    # get that name and rename the file to the standard 'pac_overlay_$type.gif'
+  # Read the picture name
+$picture = $picturefile[0];
+chop($picture);
+@tmp = split("/",$picture);
+$picture = $tmp[$#tmp];
+@tmp = split( /\./, $picture );
+$fileroot = $tmp[0];
 
-  open (GIFNAME,"</tmp/auto_cloud_overlay_gif_file") || 
-      die "Can't open /tmp/auto_cloud_overlay_gif_file\n";
-  @giffile=<GIFNAME>;
-  close(GIFNAME);
-  unlink "/tmp/auto_cloud_overlay_gif_file" || 
-      print "Couldn't delete /tmp/auto_pac_goes_overlay_gif_file\n";
+  # Read the thumbnail name
+$thumbnail = $picturefile[1];
+chop($thumbnail);
+@tmp = split("/",$thumbnail);
+$thumbnail = $tmp[$#tmp];
+@tmp = split( /\./, $thumbnail );
+$thumbnailroot = $tmp[0];
 
-  $gif = $giffile[0];
-  chop($gif);
-  @tmp = split("/",$gif);
-  $gif = $tmp[$#tmp];
-  @tmp = split( /\./, $gif );
-  $fileroot = $tmp[0];
-
-
-  $file=$vap_perl::VAP_OVERLAY_ARCHIVE."/".$fileroot."-".$regionname.".gif";
-  print "Renaming $gif to $file\n";
-#  rename( $gif,$file ) ||
-#      die "Couldn't rename $gif to $file, error = $!\n";
-  copy($gif,$file) ||
-    die "Couldn't rename $gif to $file, error = $!\n";
-  unlink $gif;
-  chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
-
-    # create name of file in images archive to be linked to it.
+   #
+   #---------------------- the file ------------------------
+   #
+$file=$vap_perl::VAP_OVERLAY_ARCHIVE."/".$fileroot."-".$regionname.".jpeg";
+print "Renaming $picture to $file\n";
+copy($picture,$file) ||
+  die "Couldn't rename $picture to $file, error = $!\n";
+unlink $picture;
+chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
 
 
-  $wwwfile=$vap_perl::VAP_WWW_TOP."/images/".$fullregionname.".gif";
+  # create name of file in images archive to be linked to it.
 
-    #delete it if it exists
-  if (-e $wwwfile) {
-    unlink ($wwwfile ) || print "Couldn't unlink $wwwfile\n";
-  }
+$wwwfile=$vap_perl::VAP_WWW_TOP."/images/".$fullregionname.".jpeg";
 
-    # create the symbolic link to the gif file.
-  print "Linking $wwwfile to $file\n";
-  symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
+  #delete it if it exists
+if (-e $wwwfile) {
+  unlink ($wwwfile ) || print "Couldn't unlink $wwwfile\n";
+}
 
-    # go to where the index.html is
-  chdir $vap_perl::VAP_WWW_TOP || die "Couldn't go to $VAP_WWW_TOPDIR\n";
-  print "11\n";
 
-    # update the dates in that file
-  print "Updating index.html\n";
-  vap_perl::date_index();
 
-    # make sure it's readible.
-  chmod 0755, "index.html" ||  die "Couldn't chmod index.html to a+r\n";
-  $tottime=time-$^T;
+  # create the symbolic link to the gif file.
+print "Linking $wwwfile to $file\n";
+symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
 
-  print "Total Time: $tottime\n";
+
+   #
+   #---------------------- And its thumbnail ------------------------
+   #
+
+
+  # copy thumbnail to image overlay archive.
+$file=
+  $vap_perl::VAP_OVERLAY_ARCHIVE."/".$thumbnailroot."-".$regionname.".TN.jpeg";
+print "Renaming $thumbnail to $file\n";
+copy($thumbnail,$file) ||
+  die "Couldn't rename $thumbnail to $file, error = $!\n";
+unlink $thumbnail;
+chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
+
+
+
+  # Create the symbolic name for the thumbnail
+$wwwfile=$vap_perl::VAP_WWW_TOP."/images/".$fullregionname.".TN.jpeg";
+  #delete it if it exists
+if (-e $wwwfile) {
+  unlink ($wwwfile ) || print "Couldn't unlink $wwwfile\n";
+}
+
+  # create the symbolic link to the gif file.
+print "Linking $wwwfile to $file\n";
+symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
+
+  # go to where the index.html is
+chdir $vap_perl::VAP_WWW_TOP || die "Couldn't go to $VAP_WWW_TOPDIR\n";
+print "11\n";
+
+  # update the dates in that file
+print "Updating index.html\n";
+vap_perl::date_index();
+
+  # make sure it's readible.
+chmod 0755, "index.html" ||  die "Couldn't chmod index.html to a+r\n";
+$tottime=time-$^T;
+
+print "Total Time: $tottime\n";
 
 exit;
-
 
