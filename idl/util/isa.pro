@@ -66,6 +66,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.6  1999/04/21 17:09:44  vapuser
+; changed 'LONG' to 'LONGWORD'
+;
 ; Revision 1.5  1999/03/16 18:42:44  vapuser
 ; Added a 'status' keyword. Changed to only return 0 or 1, error reports in
 ; status keyword, 1=no error, 0=error.
@@ -103,13 +106,14 @@ FUNCTION isa, variable, $
               type_complex= type_complex, $
               nonempty=nonempty, $
               name=name, $
-              status=status
+              status=status, $
+              objname=objname
 
 
 
  
 status = 1
-usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /long, /float, /double, /complex, /dcomplex, /string, /structure, /object, /pointer, /type_integer, /float_type, /type_complex [,nonempty, name])'
+usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /long, /float, /double, /complex, /dcomplex, /string, /structure, /object, /pointer, /type_integer, /float_type, /type_complex [,/nonempty, name=structure_name,objname=objname])'
 
   IF n_params() LT 1 THEN BEGIN 
     usage,usage_msg
@@ -158,7 +162,13 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
          test = strupcase(tag_names(variable,/structure_name )) EQ $
            strupcase(name) 
      end
-     keyword_set(object) : test = vartype( variable ) EQ 'OBJECT'
+     keyword_set(object) : BEGIN 
+         test = vartype( variable ) EQ 'OBJECT'
+       IF test THEN BEGIN 
+         IF n_elements(objname) NE 0 AND $
+          obj_isa(variable,objname) EQ 0 THEN test = 0
+       ENDIF 
+     END 
      keyword_set(pointer) : test = vartype( variable ) EQ 'POINTER'
      keyword_set(TYPE_INTEGER) : $
         test = vartype(variable) EQ 'BYTE'    OR $
