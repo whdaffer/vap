@@ -3,7 +3,7 @@
 ; $Id$
 ; NAME:  AUTO_MOVIE
 ;
-; Time-stamp: <98/10/22 09:47:07 vapuser>
+; Time-stamp: <98/11/23 16:21:43 vapuser>
 ;
 ;		
 ; 
@@ -130,6 +130,10 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.5  1998/10/22 21:04:49  vapuser
+; Added some messages, some catch code around first
+; auto_movie_cronjob test.
+;
 ; Revision 1.4  1998/10/17 00:18:34  vapuser
 ; Final 'intermediate stage'. Should be ready to use.
 ;
@@ -518,20 +522,31 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     IF dateit THEN omov_file =  omov_file + '_' + anim_date_str
     omov_file =  omov_file + '.mov'
     ; construct string to send to spawn and execute it.
-    exe_str =  'dmconvert -f qt -p video,' + $
-     'comp=qt_cvid,squal=0.9,tqual=0.9,rate=15 ' + $
-     ' -n gwind.0##,start=1,end=60,step=1 gwind.0## ' + omov_file
+    ;exe_str =  'dmconvert -f qt,loop=loop -p video,' + $
+    ;'comp=qt_cvid,squal=0.9,tqual=0.9,rate=15 ' + $
+    ; ' -n gwind.0##,start=1,end=60,step=1 gwind.0## ' + omov_file
+    exe_str =  '/usr/people/vapuser/scr/DMCONVERT ' + omov_file
     Message,'Calling dmconvert with command line: ',/cont
     print,'    ' + exe_str
     spawn,exe_str,ret
-    IF ret(0) NE '' THEN BEGIN
-      str =  'ERROR: in dmconvert '
-      IF auto_movie_cronjob THEN begin
-        printf, llun, str
-        free_lun,llun
+    nn = n_elements(ret)
+    i = -1
+    done = 0
+    REPEAT BEGIN 
+      i = i+1
+      s1 = strpos(ret[i],'dmconvert') 
+      s2 = strpos(ret[i],'bad') 
+      
+      IF s1 NE -1 OR s2 NE -1 THEN BEGIN
+        str =  'ERROR: in dmconvert, Error message:  ' + ret
+        done = 1
+        IF auto_movie_cronjob THEN begin
+          printf, llun, str
+          free_lun,llun
+        ENDIF 
+        message,str, /cont
       ENDIF 
-      message,str, /cont
-    ENDIF 
+    ENDREP UNTIL done OR (i EQ nn-1)
 ;  ENDELSE 
    CD,cur_dir
  
