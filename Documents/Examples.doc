@@ -1,0 +1,625 @@
+#
+# Examples.doc
+#
+# $Revision$
+# $Date$
+# $Log$
+#
+
+The following are IDL/shell session logs demonstrating how to produce 
+certain Value Added Products.
+
+  Notes on file locations and such.
+
+    All IDL routines are contained in the subdirectories of
+  ~vapuser/idl. Most which are clearly for Qscat are in
+  ~vapuser/idl/qscat.
+
+    All Perl scripts are in ~vapuser/perl. However, note that many
+  depend on the vap_perl.pm module. The source code for this module is
+  in ~vapuser/perl, but the perl interpreter reads the file
+  /usr/share/lib/perl5/site_perl/vap_perl.pm. If you make any changes to
+  ~vapuser/perl/vap_perl.pm, you must copy it to
+  /usr/share/lib/perl5/site_perl as root, make it world readible, before
+  these these changes will become available to your code.
+
+
+    Shell script are in ~vapuser/bin and ~vapuser/scr. The newer ones
+  are in the latter location.
+
+
+  All programs (I think ;->) whether shell/perl script or IDL routine,
+  refer to locations by environmental variable. These environmental
+  variables are defined in the shell initialization file
+  /disk4/vapuser/.vaprc which should be sourced as part of one's shell
+  initialization. I've made a broad assumption that most everyone will
+  be using either /bin/csh or /bin/tcsh. There is a sh/bash style
+  initialization file, /disk4/vapuser/vaprc.sh that can be sourced for
+  those that want to us sh/bash.
+
+  I will give absolute paths below, but the reader is forwarned that
+  the desideratum is what the /disk4/vapuser/.vaprc file says, not
+  what this documentation says.
+
+
+  File naming/location conventions:
+  
+      Qscat Wind files: 
+	 $VAP_WINDS/QSyyyymmdd.Shhmm.Ehhmm
+           (VAP_WINDS testing default: /disk4/vap/winds/qscat/Rnoaa)
+	   the Shhmm is earliest time in the file.
+	   the Ehhmm is the latest. 
+	   NB. The yyyymmdd is the start time. IF the file goes pass
+           23:59:59.999, the ending hhmm will be less than the starting
+           hhmm.
+
+      AREA file:
+        Goes 8: $VAP_GOES_TOPDIR/goes8/...
+        Goes 10: $VAP_GOES_TOPDIR/goes10/...
+           (VAP_GOES_TOPDIR default: /disk4/vap/goes)
+
+      Gridded AREA files:
+	$VAP_GOES_TOPDIR/gridded_files/goesX (x=8,10)
+	GOESXXY-yyyymmddhh-%aaaa,bbb,cccc,ddd%.dat
+        (see section on GOES files for explanation of this filename.)
+
+      Interpolated wind field files (succor output): 
+         $VAP_ANIM/QIF-yyyymmddhhmm.hdf
+           (VAP_ANIM default: /disk4/vap/animate)
+
+      Frames for movie:
+        Depends on 'region' (nepac,nwpac,npac,nwatl,indian)
+	$VAP_ANIM/'region'/daily
+
+   Web output:
+
+     The only web page we use is $VAP_WWW_TOP/index.html. Currently,
+     VAP_WWW_TOP points to /disk2/vap/www/htdocs/qs_htdocs but when
+     we're operational we will rename qs_htdocs to htdocs and redefine
+     VAP_WWW_TOP to point to it.(namely to /disk2/vap/www/htdocs)
+     NB. /disk2 is native to haifung and crossmounted on catspaw. If
+     this link breaks down, all the scripts that copy stuff to this
+     disk will fail.
+
+     Overlays:
+
+	Each overlay file created in the automated processing has a
+        name like:
+
+        GOES_xx_zzz_yyyymmddThh:mm-%aaaa,bbb,cccc,ddd%-qqqq.jpeg 
+
+	Where:
+          xx = 10 or 08
+	  zzz = IR1, IR2, IR3, IR4 or VIS
+	  yyyymmddThh:mm is the yearmonthdayThour:min
+	  aaaa is long of lower left corner (west long)
+	  bbb  is lat of lower left corner 
+	  cccc is long of upper right corner (west long)
+	  dddd is lat of upper right corner
+	  qqqq is a region designator (currently NEPAC1 and NWATL1)
+
+        The thumbnail has the same name, but with .TN. between the
+        'qqqq' and the 'jpeg'
+
+	The files are created in $VAP_OVERLAY (/disk2/vap/overlay) and
+        then copied to $VAP_WWW_TOP/images/overlay_archive.
+	There is a symbolic link in the $VAP_WWW_TOP/images directory
+	pointing to the most current of any particular overlay
+	type. For the N.E. Pacific overlay, that symbolic link is
+	GOES104NEPAC1.jpeg.
+
+     Animations:
+
+	Each movie file created by the automated processing has a
+        name like:
+
+	daily_qqqq_yyyymmddhhmm.mov 
+
+        Where: 
+           qqqq is a region designation. Currently the regions are
+           'nepac', 'nwpac', 'npac', 'nwatl' and 'indian'.
+
+        The animations are created in $VAP_ANIM/qqqq/daily and copied to
+        $VAP_WWW_TOP/images/mov_archive. There is a symbolic link in
+        the $VAP_WWW_TOP/images archive for each 'region' pointing to
+        the most current animation for that region with a name having
+        the format 'daily_qqqq.mov.' That is 
+
+	$VAP_WWW_TOP/images/daily_nepac.mov ->
+           $VAP_WWW_TOP/images/mov_archive/daily_nepac_yyyymmddhhmm.mov
+
+        where the latter file is the latest animation for that region.
+         
+
+Conventions:
+
+  IDL Commands:   Will have an 'IDL>' in preceeding.
+  Shell Commands: Will have a '%' preceeding.
+
+  All IDL procedures/functions written by me will have a ';(whd)' at the 
+  end of example command line.
+
+
+
+1. Animations
+
+  1.1. Creating the individual frames.
+
+
+    1.1.1 Get the file containing the  interpolated field you want to use.
+
+      IDL> interp_file=mpickfile(path='/disk4/vap/animate',$
+                                 filter='QIF*.hdf') ;(whd)
+
+          This will open up a dialog allowing you to pick one or more
+          QIF*.hdf files. The directory shown above is the default
+          location for these file and is pointed to by the
+          environmental variable VAP_INTERP
+
+
+     1.1.2 Set default to whatever directory you want to store the 
+         individual frames.
+
+           The default location for operations is dependent on the
+           region you're doing. /disk4/vap/animate/region/daily where
+          'region' = nepac, nwpac, npac, nwatl, and indian. See,
+          ~vapuser/Qscat/Library/auto_movie.defs for definitions of
+          the regions.
+
+
+          (NB, there is an easier way to create these frames if
+           making one of the regions. See 'auto_movie.pro'
+ 
+           
+
+          IDL> cd,'whatever'
+
+     1.1.3 Run animate_wind_field.
+
+               The IDL program has many keywords. The ones I give are
+               for illustration purposes only. YMMV! To learn more
+               about the * keywords for this procedure, do an IDL>
+               doc_library,'animate_wind_field' and read the
+               documentation which comes up (psst, its the same as the
+               header of the file animate_wind_field.pro. )
+
+               
+
+          IDL> animate_wind_field, interp_file, $
+                  lonpar=[180,270], $
+                  latpar=[20,60], $
+                  vlonpar=[170,280,1.5], $
+                  vlatpar=[10,70,1.5], $
+                  animpar=[800,600,60] ;(whd)
+
+
+              These are the most important. I'll explain them.
+
+	      Lonpar - the east/west longitude limits of picture 
+		       (Use West Longitude!)
+	      Latpar - the south/north latitude limits of picture
+
+	      Vlonpar - the longitude extrema/increment for the 
+		        vector field. It follows the same sense as
+		        'lonpar'. vlonpar[2] is the increment in
+		        degrees, here it's 1.5. Where possible, the
+		        vector field should overlap the visible
+		        picture with a border of 10 degrees. So
+		        lonpar=[180,270] while vlonpar=[170,280,*]
+	      Vlatpar - the latitude extrema/increment for the 
+		        vector field. Exactly analogous to VLONPAR.
+	      Animpar - [xsize,ysize,number of frames]. Sizes are in
+   	                'pixels'
+              
+
+               When the procedure is done there will be animpar[2]
+               files in the default directory with names [x]wind.yyy
+               where x = g (gif), p (pict) or ps (postscript) and yyy
+               run from 000 to nframes-1
+               
+
+
+  1.2 Show these frames on the computer. 
+
+     NB. Presently only works with gif files.
+
+     1.2.1    Get the list of files
+
+       IDL> files=findfile('/path/to/files/gwind.*')
+
+       Alternately, cd to the directory, then do the previous step,
+       but omit the 'path/to/files' part of the search string.
+      
+
+     1.2.2  Create the animation on the Xwindow monitor.
+
+       IDL> frames2xmovie, frames,/gif ;(whd)
+
+   
+        This will open up a Gui, show the frames being loaded, then
+        run the animation. There are widgets on the gui allowing you to
+        control the speed, and such. 
+        
+
+
+
+  1.3 Creating a Quicktime movie.
+
+     The SGI facility for converting all sorts of digital media is
+     dmconvert. It has considerable documentation on its man page. 
+
+     The command line we use is: 
+  
+     % dmconvert -f qt -p video,comp=qt_cvid,squal=0.9,tqual=0.9,rate=15 -n gwind.0##,start=1,end=60,step=1 gwind.0## output-file-name
+
+
+        (if you're running bash or 'sh' you can escape newlines, to
+        make the command line look a little nicer)
+
+       I have also written a script that takes as its one parameter
+       the name of the output file. The script assumes you're in the
+       directory containing the gwind.xxx files. NB. This only works
+       for .gif files. It is located in ~vapuser/scr and its command
+       line is:
+
+      
+
+     % DMCONVERT output-movie-file-name.
+
+
+
+   1.4  Creating a movie of one of the predefined regions:
+
+	Use the IDL routine 'auto_movie.pro'
+
+	IDL> auto_movie,date_time, time_inc, roi=region
+
+	  Where:
+	
+	    date_time: a string in the 'vap_time' format, namely
+	                'yyyy/mm/dd/hh'
+	    time_inc:  is the number of hours to subtract for date_time. 
+	               default=26.
+            roi : the 'region of interest', one of
+                 'nepac','nwpac','npac','indian','nwatl'
+
+	  The routine uses data time as the end time and
+	  date_time-time_inc and retrieves all the wind files that
+	  have any data in that time. It then makes the individual
+	  frames and creates a quicktime movie from them. It does all
+	  these things in the 'configured' directory. That is, the
+	  interpolated field gets written the $VAP_ANIM and the
+	  frames/movie to $VAP_ANIM/'roi'/daily. 
+
+	  The routine 'cd's to $VAP_ANIM/'roi'/daily but then returns
+	  you to your starting place. If you want to view your work...
+	
+	  % cd $VAP_ANIM/'roi'/daily.
+
+          (i.e. if you did a nepac movie, 
+	  %cd /disk4/vap/animate/nepac/daily)
+
+   1.5  Creating the interpolated field. 
+
+         Assemble the files you want to use in building the
+         interpolated field. It's wise to have at least 12 hours of
+         data, though 24 is better.
+	 
+	 files=mpickfile( path='$VAP_WINDS', filter='QS*S*E*')
+
+	   Chose the files you want.
+
+	Call the IDL function makeinterpfile.pro.
+
+  	  IDL> field=makeinterpfile( wfiles=files, outfile=outfile)
+	
+	  NB. This function returns the field, but the HDF file is
+          created and written out as well. You may specify this file
+	  with the 'outfile' keyword,e.g. outfile='my-interp-file.hdf'.
+	  If the keyword is present with an undefined variable
+	  (e.g. 'outfile=of' where 'of' is underfined upon input to the
+	  function) the routine will output a file using the default
+	  naming rules (see above) return the name of the file it
+	  created
+
+	  You may then use this name, or the one you specify, as input
+	  to 'animate_wind_field.pro'
+
+	You may also use the function 'getinterpfiles.pro' which will
+	return the filename, rather than the field itself.
+
+ 2. Overlays
+
+    
+  2.1 GOES 8 and 10.
+
+      Overview of the method.  
+
+      The goes 8/10 files are retrieved from the noaa web site
+      maintained by Paul Chang. They are converted to gridded
+      files. These gridded files, along with the Qscat wind files, are
+      inputs to the IDL procedure 'goes_overlay.pro' which combines
+      them to make a picture.
+
+      The process will be a little different with the GMS-5 data,
+      probaby omitting the 'gridded files' step.
+
+
+      2.1.1 Get the Goes file(s)
+  
+        You may either FTP by hand and get them. See me for
+        host/password info.
+
+	  The directory structure at the NOAA site is.
+
+	  goes/goes{8,10}/vis   - and -
+	  goes/goes{8,10}/ir{1,2,3,4}
+
+	  We're using ir4 for both satellites. NB. The visible data is
+	  very large (~100MB)
+
+        
+	Or- You may transfer them using perl scripts.
+
+        % getgoesfile AREAabcd
+        
+	   -or-
+
+        % getgoesfile abcd
+
+
+	NB. This program determines path information for both the
+        remote and local machines from the 'ab' part of the 'abcd'
+        field given in argument 1 in the following way.
+
+        a=8  Satellite = Goes 10
+        b=1      Sensor = Visible
+        b=2,3,4  Sensor = ir{2,3,4}
+
+        a=9  Satellite = Goes 8
+        b=1      Sensor = Visible
+        b=2,3,4  Sensor = ir{2,3,4}
+
+	The directory structure on 'catspaw' is a mirror of the
+        directory structure on the Noaa site. It descends from the
+        directory /disk4/vap/goes. This directory is pointed to by the
+        environmental variable VAP_GOES_TOPDIR, defined in
+        /disk4/vapuser/.vaprc.
+
+
+      2.1.2 Grid the goes file.
+
+	For this, one uses the binary executable ~vapuser/bin/grid_goes.
+	This routine assumes the AREA file to be gridded is in the
+	configued area, i.e. those directories descending from
+	$VAP_GOES_TOPDIR. The output is deposited in the current working
+	directory (i.e. 'CWD') unless the -o flag is used, in which case
+	the accompanying argument is taken to be the fully qualified
+	output file name.  There is provision for gridding a file in
+	another location, see the -f/-d flags. However, be forewarned,
+	these options have not been heavily tested and are, to a great
+	extent, unsupported, since they are never used in operational
+	processing.
+
+	  % grid_goes -h 
+
+	will print a help message.
+
+       The simplest way: 
+
+	  Say you wanted to grid the AREA file AREA8247
+
+	  CD to the directory you want the file in 
+
+	 % cd some-dir
+
+      Call grid_goes.
+
+	 % grid_goes -n 8247
+
+      This will deposit a file in the current working directory having a
+       name something like
+
+      GOES104-yyyymmddhh-%aaaa,bbb,cccc,ddd%.dat
+
+      Where:
+
+	  yyyymmddhh is the time of the Area file
+	  aaaa is the longitude of the lower left corner of the grid.
+	  bbb  is the latitude of the lower left corner of the grid.
+	  cccc is the longitude of the upper right corner of the grid.
+	  ddd  is the latitude of the upper right corner of the grid.
+
+	  NB. The longitude can be in a mixture of east and west longitude.
+
+
+    2.1.3 Create the Overlay using gridded files and the Qscat Wind data.
+
+      Get into IDL.
+
+      Get the wind files you want, by any particular method you
+      desire. On method would be to use 'mpickfile.pro'
+    
+	IDL> wind_files = mpickfile(path='/disk4/vap/winds/qscat/Rnoaa', $
+	                   filter='QS*S*E*') ;(whd)
+        
+      Get the name for the gridded file.
+	IDL> gridded_file=mpickfile($
+	       path='$VAP_GOES_GRIDDED_TOPDIR/goesxx/yyy',$
+	       filter='GOES*.dat',/one_only)
+
+
+      Create the overlay. This routine has many keyword, but the most
+      important ones, and the ones I use mostly are:
+
+        IDL> goes_overlay, gridded_file, wfiles=wind_files
+
+	
+	  This will create a .jpeg file with a default name of 
+
+	GOES_AA_BBB_yyyymmddThh:mm-%cccc,ddd,eeee,fff%.jpeg
+
+	  Where:
+	AA= 10 or 8
+	BBB = VIS,IR1,IR2,IR3,IR4
+
+	And the rest you know.
+
+
+
+    2.2 GMS-5 data:
+	TBD
+
+
+3. Automated operation:
+
+  Overview:
+    
+    All automated operations are run via perl scripts (in a few cases,
+    shell scripts) via cron commands. The ~vapuser/crontab.vapuser has
+    the latest set of these commands (though, to be sure, one should
+    check using 'crontab -l', which is definitive)
+
+    There are two broad categories of automated operations: those
+    operations which maintain the goes archive and the
+    operations which create the products/update the web
+    page.
+
+    Goes Archive Maitenance.
+
+      The script which maintains the Goes Archive is
+      ~vapuser/bin/ral. This script is run at 40 minutes past each
+      hourl in a cronjob from the vapuser account. It run three
+      subsidiary scripts (see the 'ral' script for these) which:
+      retrieves listings of all the AREA files in each of the
+      directories in the Noaa archive: retrievs a file maintained in
+      each directory of the Noaa archive called 'noaa_area_info' which
+      has a precis of each AREA file, and it creates the same file for
+      the AREA files contained in our mirror of the noaa site. NB, we
+      only fetch the files we need to use in making the overlays, so
+      we have only a few AREA files on our site at any one time.
+
+      Additionally, there are two commands in the vapuser crontab that
+      deletes the AREA files and 'gzip's the gridded files that are
+      more than 3 days old. There are no scripts for this, these are
+      just individual commands in the ~vapuser/crontab.vapuser file.
+
+    Product creation:
+
+      The two most important perl scripts are
+      '~vapuser/perl/cloud_overlay' and '~vapuser/perl/auto_movie.pl.'
+      I'm sure you can determine what each does.
+
+      All perl scripts depend heavily on the perl module
+      '~vapuser/perl/vap_perl.pm' The editible version of this file
+      resides in ~vapuser/perl, but the interpreter reads
+      /usr/share/lib/perl5/site_perl. So, if you want changes to be
+      picked up, you must copy your changed file to this directory as
+      'root' and make it world readible.
+
+      The basic method of both of these files is:
+
+      cd to the configured directory.   
+      Do the shell/idl processing.
+      Copy the result to the web directories.
+      update the web page.
+
+      Here are the specifics.
+
+      3.1 cloud_overlay (~vapuser/perl/cloud_overlay)
+
+	Cloud_overlay is a perl script. 
+
+        % cloud_overlay --help 
+
+        will emit a *long* help message. The simplest, and by far the
+        most rigorously tested, way to call it is:
+
+
+	  % cloud_overlay --region 'region-name' 
+
+	    Where 'region-name' is one of:
+
+	      GOES_10_4_NEPAC_1  or 
+	      GOES_8_4_NWATL_1 
+
+
+	  The information associated with each 'region' is stored in the
+	  file ~vapuser/Qscat/Library/overlay_defs which is a perl
+	  module that is read in (actually, it's 'required') by the
+	  'vap_perl.pm' perl module. You may view a subset of this
+	  information by executing the shell
+	  command:
+
+	  % cloud_overlay_regions
+
+	 The current output from this program is:
+
+	    Region name,     Lon:  Min    Max,  Lat: Min   Max, Time: Asc     Desc
+	    GMS_5_1_FAREAST_1,    90   ,  160  ,     -20 , 32  ,     18:00 ,  12:00
+	    GOES_8_1_NWATL_1 ,    -90  ,  -48  ,     25  , 52  ,     08:00 ,  20:00
+	    GMS_5_1_JAPAN_1  ,    120  ,  165  ,     20  , 47  ,     18:00 ,  08:00
+	    GOES_10_1_NEPAC_1,    -175 ,  -115 ,     25  , 65  ,     14:00 ,  02:00
+	    GMS_5_1_WPAC_1   ,    100  ,  175  ,     22  , 45  ,     18:00 ,  08:00
+	    GOES_8_4_NWATL_1 ,    -90  ,  -48  ,     25  , 52  ,     08:00 ,  20:00
+	    GOES_10_4_NEPAC_1,    -175 ,  -115 ,     25  , 65  ,     14:00 ,  02:00
+
+	The only regions we use are GOES_10_4_NEPAC_1 and
+	GOES_8_4_NWATL_1. The rest are for future functionality.
+
+        Under the assumption that you've called it in the manner
+        proscribed, the behaviour of the script is:
+
+
+          Retrieve the information about the region from the
+          overlay_defs module.  
+
+	  Find the time not exceeding the current time. This will be the
+	  time used in making the overlay. These times are chosen to be
+	  closest to the time Qscat will overfly the given region. (NB,
+	  these probably need to be tuned. To do so, one would edit
+	  ~vapuser/Qscat/Library/overlay_defs, being careful to retain
+	  its perl-inian flavor)
+
+	  Retrieve the AREA file, if it doesn't exist on the system.
+
+	  cd to $VAP_GOES_GRIDDED_TOPDIR (/disk4/vap/goes/gridded_files)
+	  Grid the AREA file, if the grid file doesn't exist on the system.
+
+	  cd to $VAP_OVERLAY (/disk4/vap/overlay)
+
+	  Call the IDL program 'cloud_overlay.pro' with the gridded file
+	  and it's time as the arguments. Cloud_overlay.pro will find
+	  the requisite wind files, create the overlay file.
+
+	  (At this point, control returns to the perl script 'cloud_overlay.')
+
+	  copy the overlaid file to the WWW directories
+	  ($VAP_WWW_TOP/images/overlay_archive) Symlink the overlaid
+	  file to the generic symlink in the $VAP_WWW_TOP/images
+	  directory.  Update index.html to reflect these changes.
+
+          Exit.
+	
+
+      3.2 auto_movie.pl
+
+	This perl script takes zero or one argument, the
+	'region'. Information which the program requires is retrieved
+	from the file ~vapuser/Qscat/Library/auto_movie_defs.dat using
+	the 'region' as the key. Allowed values for 'region' are
+	'nepac','nwpac','npac','indian' and 'nwatl'. Case is
+	immaterial.  
+
+        The routine defaults to 'nepac'.
+
+	The steps used in processing are:
+   
+          1.
+
+
+
+
+
+
+
