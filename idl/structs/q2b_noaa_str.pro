@@ -66,6 +66,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/11/10 00:47:22  vapuser
+; Initial revision
+;
 ; Revision 1.1  1998/11/05 18:40:23  vapuser
 ; Initial revision
 ;
@@ -117,7 +120,17 @@ IF n_elements( q2b_noaa_defined ) eq 0 THEN BEGIN
         attenuation : intarr(4,ncells),   $
         sig0_qual   : intarr(4,ncells),   $
         sig0_mode   : intarr(4,ncells),   $
-        surface     : intarr(4,ncells)    } 
+        surface     : intarr(4,ncells),   $
+        MP_rain_index : intarr(ncells)   ,$
+        NOF_rain_index: bytarr(ncells)   ,$
+        TB_mean_H     : intarr(ncells)   ,$
+        TB_mean_V     : intarr(ncells)   ,$
+        TB_stdev_H    : intarr(ncells)   ,$
+        TB_stdev_V    : intarr(ncells)   ,$
+        Num_TB_H      : bytarr(ncells)   ,$
+        Num_TB_V      : bytarr(ncells)   ,$
+        TB_rain_rate  : intarr(ncells)   ,$
+        TB_rains_attenuation: intarr(ncells)   } 
 
   q2b_noaa_defined = 1
 
@@ -125,7 +138,8 @@ ENDIF
 IF n_elements( nstruct ) eq 0 THEN nstruct = 1
 
 IF nstruct le 0 THEN nstruct = 1
-q2b_noaa_size = 11960l
+;q2b_noaa_size = 11960l
+q2b_noaa_size = 13252l
 
 RETURN, replicate( q2b_noaa , nstruct )
 end
