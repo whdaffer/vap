@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/10/17 00:20:03  vapuser
+; Added many arguments to GET method
+;
 ; Revision 1.3  1998/10/12 22:12:42  vapuser
 ; Worked on Read/Init
 ;
@@ -254,8 +257,8 @@ PRO   qmodel::Get, $
    IF Arg_Present(latpar)    THEN latpar = (*self.data).hdr.latpar
    IF Arg_Present(ShortName) THEN ShortName = (*self.data).hdr.ShortName
    IF Arg_Present(LongName)  THEN LongName = (*self.data).hdr.LongName
-   IF Arg_Present(StartTime) THEN StartTime = (*self.data).hdr.StartTime
-   IF Arg_Present(EndTime)   THEN EndTime = (*self.data).hdr.EndTime
+   IF Arg_Present(StartTime) THEN StartTime = string((*self.data).hdr.StartTime)
+   IF Arg_Present(EndTime)   THEN EndTime = string((*self.data).hdr.EndTime)
    IF Arg_Present(CreationTime) THEN CreationTime = (*self.data).hdr.CreationTime
 END
 
@@ -275,6 +278,11 @@ FUNCTION qmodel::GetPLotData, u,v,lon,lat,ambiguity, $
     lon = *(*self.data).lon
     lat = *(*self.data).lat
     IF n_elements(limit) EQ 4 THEN BEGIN 
+      westlong =  limit[0] LT 0 OR limit[2] LT 0
+      IF westlong THEN BEGIN 
+        x = where( lon GE 180,nx )
+        IF nx NE 0 THEN lon[x] =  lon[x] -360.
+      ENDIF 
       x = where( lon Ge limit[0] AND lon LE limit[2] AND $
                  lat Ge limit[1] AND lat LE limit[3], nx )
       IF nx NE 0 THEN BEGIN 
