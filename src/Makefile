@@ -8,6 +8,9 @@
 # Change Log:
 #
 # $Log$
+# Revision 1.5  2003/01/30 19:04:14  vapdev
+# Modified how grid_goes is built
+#
 # Revision 1.4  2003/01/28 19:05:55  vapdev
 # Added schop
 #
@@ -25,14 +28,14 @@
 #.SUFFIXES : .o .c .f
 
 
-OBJ = grid_goes.o navig_goes.o pair_goes.o doy2date.o qchop.o schop.o
-SRC = grid_goes.c doy2date.c navig_goes.f pair_goes.f qchop.c qchop.c
+OBJ = grid_goes.o navig_goes.o pair_goes.o doy2date.o qchop.o schop.o ainf.c
+SRC = grid_goes.c doy2date.c navig_goes.f pair_goes.f qchop.c qchop.c ainf.o
 
 GRIDOBJ = grid_goes.o navig_goes.o pair_goes.o doy2date.o 
 GRIDSRC = grid_goes.c doy2date.c navig_goes.f pair_goes.f 
 
 CFLAGS = -g -o32 $(DEBUG)
-CC     = cc $(CFLAGS)
+CC     = cc 
 LD     = cc -o32 -o 
 F77    = f77 -g -o32 -c
 
@@ -44,19 +47,20 @@ LIBS   =  -lm  -lc
 FLIBS = -lftn 
 
 .c.o: 
-	${CC} ${CFLAGS} $<
+	${CC} ${CFLAGS} -c $<
 
 .f.o: 
 	${F77} $<
 
-default: grid_goes qchop schop
-	make grid_goes
-	make qchop
-	make schop
+default: grid_goes qchop schop ainf
 
 
 clean:
 	-/sbin/rm *.o
+
+distclean:
+	make clean
+	-/sbin/rm grid_goes qchop schop ainf
 
 
 grid_goes: ${GRIDOBJ} 
@@ -76,16 +80,19 @@ pair_goes.o: pair_goes.f
 	${F77} pair_goes.f # may use -d_lines  to get aditional output
 
 qchop: qchop.o
-	${CC} -g -o qchop qchop.c ${LIBS}
+	${CC} ${CFLAGS} -o qchop qchop.c ${LIBS}
 
 schop: schop.o
-	${CC} -g -o schop schop.c ${LIBS}
+	${CC} ${CFLAGS}-o schop schop.c ${LIBS}
 
+ainf: ainf.o
+	${CC} ${CFLAGS} -o ainf ainf.c ${LIBS}
 
-install: grid_goes qchop schop
+install: grid_goes qchop schop ainf
 	-/bin/cp -f grid_goes ${INSTALLDIR}
 	-/bin/cp -f qchop ${INSTALLDIR}
 	-/bin/cp -f schop ${INSTALLDIR}
+	-/bin/cp -f ainf ${INSTALLDIR}
 
 
 
