@@ -4,7 +4,7 @@
 ; PURPOSE:  Overlay Wind data on GMS 5 data
 ;
 ;
-; CALLING SEQUENCE:  gms5_overlay, goesfile, gmstype
+; CALLING SEQUENCE:  gms5_overlay, datetime, gmstype
 ;                    windfiles   = windfiles, $ 
 ;                    xsize       = xsize, $     
 ;                    ysize       = ysize, $     
@@ -40,7 +40,7 @@
 ; INPUTS:  
 ;
 ;   DateTime: String of form YYMMDDHHMM (e.g. 9812042322 ) detailing
-;             the basename of the files need to do the overlay.
+;             the basename of the files needed to do the overlay.
 ;
 ;     gmsType     : scalar string, one of 'ir1','ir2','ir3', 'vis' (def='ir1')
 ;
@@ -76,8 +76,8 @@
 ;     length      : length of vectors (in IDL 'character' units)
 ;     thick       : Thickness of vectors (in IDL 'character' units)
 ;     title       : title for plot. This string is prepended to one 
-;                   built by the routine, containing the data of the
-;                   Goes file used.
+;                   built by the routine, containing the date of the
+;                   GMS5 file used.
 ;     Subtitle    : A subtitle. No subtitle will appear, if this
 ;                   string is absent.
 ;     outfile     : (I/O) if set to a non-empty string on input, the
@@ -207,6 +207,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.5  1999/04/08 22:02:43  vapuser
+; Replaced Colorbar with ColBar
+;
 ; Revision 1.4  1999/04/08 20:19:12  vapuser
 ; Changed color24 to rgb2true
 ;
