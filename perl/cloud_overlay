@@ -18,17 +18,22 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.2  1998/10/02 20:10:15  vapuser
+# added '$' in Id
+#
 # Revision 1.1  1998/10/02 20:09:40  vapuser
 # Initial revision
 #
 #
+# $Id$;
 #
 
 
-require vap_perl;
+use vap_perl;
+
 use Getopt::Long;
 
-$rcsid="$Id$";
+
 
   $usage =  "\nUsage:\n";
   $usage .= " cloud_overlay --region REGION_DESIGNATION\n";
@@ -55,7 +60,7 @@ $rcsid="$Id$";
 
   $usage .= "    TIME_DESIGNATION: the GMT time of the area file to be gridded and \n";
   $usage .= "      overlaid. The software will find the one closest to this time \n";
-  $usage .= "      so long as it isn't more than 2 hours distant. (format: yyyymmddThh:mm)\n";
+  $usage .= "      so long as it isnt more than 2 hours distant. (format: yyyymmddThh:mm)\n";
   $usage .= "      The default used depends on the satellite and the region\n";
   $usage .= "      If absent, the software will determine time of the file it needs to find\n";
   $usage .= "      based on the variables AscTime/DescTime, which are defined in the\n";
@@ -274,6 +279,7 @@ $rcsid="$Id$";
   $user=$ENV{'USER'};
   $lock_file="/tmp/".$user.".cloud_overlay.lock";
   open (LOCK,">$lock_file") || die "Couldn't open $lock_file \n";
+  print LOCK "$$\n";
   close (LOCK);
 
     # Supposedly we can now get and grid the AREA file 
@@ -303,6 +309,7 @@ $rcsid="$Id$";
 
   $exe_str = "cloud_overlay,\'$gridded_file\',\'$idl_time_string\'";
   $exe_str .= ",wpath = \'$vap_perl::VAP_WINDS\'";
+  $exe_str .= ",pid=$$";
 
   print IDLFILE "$exe_str\n";
   print IDLFILE "exit\n";
