@@ -59,6 +59,9 @@
 ; MODIFICATION LOG:
 ;
 ; $Log$
+; Revision 1.1  1999/04/02 17:59:54  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -84,9 +87,12 @@ FUNCTION Gms5GetUncompressedFile, possibles
 
   file = ''
 
-  test = rstrpos( possibles, '.Z')
-  x = where( test EQ -1, nx )
+  nf = n_elements(possibles)
+  test = lonarr(nf)
+  FOR f=0l,nf-1 DO $
+    test[f] = rstrpos( possibles[f], '.Z') 
 
+  x = where( test EQ -1, nx )
   IF nx NE 0 THEN BEGIN 
     file =  possibles[x[0]]
   ENDIF ELSE BEGIN 
