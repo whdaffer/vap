@@ -183,6 +183,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.14  2000/01/11 20:44:11  vapuser
+; Added rainf,ermax,crdecimate,decimate and other metadata to the qmodel
+; object. Added code in this module to use and transmit this metadata.
+;
 ; Revision 1.13  1999/11/05 17:38:36  vapuser
 ; Corrected some errors in format strings.
 ;
@@ -345,7 +349,13 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                              filter=filter, count=cnt, nscat=nscat)
     ENDIF 
 
-    IF strlen( Wfiles[0] ) EQ 0 AND N_Elements(Wfiles) EQ 0 THEN BEGIN 
+    IF cnt EQ 0 THEN BEGIN 
+      Message,'No files for time '+ date_time +' and time_inc ' + $
+        string(time_inc,form='(f7.2)'),/cont
+      return,0
+    ENDIF 
+      
+    IF strlen( Wfiles[0] ) EQ 0 OR N_Elements(Wfiles) EQ 0 THEN BEGIN 
       Message,'Error in GetWindFiles',/cont
       return,0
     ENDIF 

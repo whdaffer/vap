@@ -111,6 +111,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.7  2000/02/14 21:17:27  vapuser
+; Changed 'findfile' to 'spawn' with a 'find'
+;
 ; Revision 1.6  1999/10/05 17:17:55  vapuser
 ; Changed default Wind file time range from 26 to 14. Take abs of
 ; differences. This way, the routine can look forward in time, too.
@@ -168,6 +171,7 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
   cd, current=savedir
   Interp_Files = ''
   lf =string(10b)
+  count = 0
   catch, error
   IF error NE 0 THEN BEGIN 
     Message,!error_State.msg,/cont
@@ -239,14 +243,16 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
                             ExcludeCols=ExcludeCols, $
                             nscat = nscat, $
                             Outfile = OutFile )
-    IF n_Elements(field) NE 0 THEN BEGIN 
+    ndim = size(field,/n_dim)
+    IF ndim EQ 2 OR $
+       isa(outfile,/string,/nonempty) THEN BEGIN 
         ; 01234567890123456789
         ; XIF-yyyymmddhhmi.hdf
       Interp_files = Outfile
       filetimes = ifnames2dt(Interp_files)
       count = 1
     ENDIF ELSE BEGIN 
-      Message,'Failure in MakeInterpField',/cont
+      Message,"ERROR: Can't make interp field!",/cont
       interp_files = ''
     ENDELSE 
     cd,savedir
