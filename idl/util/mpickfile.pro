@@ -160,6 +160,9 @@
 ;                          recently selected file is already in the
 ;                          'chosen' list.
 ; $Log$
+; Revision 1.1  1998/10/23 22:25:20  vapuser
+; Initial revision
+;
 ; Revision 1.1  1998/10/02 18:32:25  vapuser
 ; Initial revision
 ;
@@ -502,7 +505,7 @@ checkfile:
       FREE_LUN, unit
     ENDFOR 
   ENDIF
-  thefiles = temp
+  thefiles = temp[ uniq(temp,sort(temp)) ]
   WIDGET_CONTROL, event.top, /DESTROY
   RETURN
 
