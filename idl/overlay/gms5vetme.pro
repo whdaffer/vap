@@ -51,6 +51,9 @@
 ; MODIFICATION LOG:
 ;
 ; $Log$
+; Revision 1.1  1999/04/02 17:47:01  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -84,15 +87,15 @@ FUNCTION gms5vetme, type, agrid=agrid, grid=grid, ir1=ir1, ir2=ir2, ir3=ir3, vis
   IF NOT (ir1 OR ir2 OR ir3 OR vis) THEN ir1 = 1
 
 
-
-  c = findfile(gms5_data_topdir + '/cal',count=ncal) 
-  IF ncal EQ 0 THEN $
-    Message,'Calibration Subdirectory is missing!',/cont
+  ncal = 1
+;  c = findfile(gms5_data_topdir + '/cal',count=ncal) 
+;  IF ncal EQ 0 THEN $
+;    Message,'Calibration Subdirectory is missing!',/cont
     
-
-  d = findfile(gms5_data_topdir + '/doc',count=ndoc)
-  IF ncal EQ 0 THEN $
-    Message,'Calibration Subdirectory is missing!',/cont
+  ndoc = 1
+;  d = findfile(gms5_data_topdir + '/doc',count=ndoc)
+;  IF ncal EQ 0 THEN $
+;    Message,'Calibration Subdirectory is missing!',/cont
 
   IF grid THEN BEGIN 
     g = findfile(gms5_data_topdir + '/grid',count=ngrid)
