@@ -56,11 +56,13 @@
 ;                      min_speed = min_speed, $
 ;                      max_speed = max_speed, $
 ;                      thick     = thick, $
-;                      rainflag    = rainflag, $
+;                      rainflag  = rainflag, $
 ;                      rf_action = rf_action, $
 ;                      rf_color  = rf_color, $
 ;                      oplot     = oplot, $
-;                      help      = help
+;                      keepaspect = keepaspect, $
+;                      gridlines  = gridlines, $
+;                      help        = help
 ;                      
 ;
 ;
@@ -181,6 +183,10 @@
 ;                      interpretation. It is those routines that make
 ;                      use of the structures.
 ;
+;       keepaspect: Flag: keep the aspect ratio of the lat/lon limits,
+;                   if possible!
+;       gridlines: Flag: put lat/lon graticule on plot.
+;
 ;       help:  emit a help message.
 ;
 ; OUTPUTS: 
@@ -200,6 +206,12 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.16  2000/08/15 16:57:28  vapuser
+; Added help and oplot keywords. The `oplot' keyword allows users to
+; overplot symbols and annotation on the output image. This keyword is
+; not used by this routine, but is passed uninterpreted to
+; goes|gms5_overlay. The `help' keyword emits a message and exits.
+;
 ; Revision 1.15  2000/05/17 20:44:50  vapuser
 ; Write file with output filename to OVERLAY_PATH (typically
 ; $VAP_OVERLAY).  Give it a name unique to this run using the pid
@@ -297,6 +309,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                       rf_action = rf_action, $
                       rf_color  = rf_color, $
                       oplot     = oplot, $
+                      keepaspect=keepaspect, $
+                      gridlines=gridlines, $
                       help      = help
                       
 
@@ -314,23 +328,18 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     return
   ENDIF 
 
-  IF n_params() LT   2 THEN BEGIN 
+  IF n_params() LT  2  OR keyword_set(help) THEN BEGIN 
     message,' Both paramters (CLOUD_FILE & DATE_TIME) are required ',/cont
-    Usage, "CLOUD_OVERLAY, cloud_file, date_time[,time_inc,wpath=wpath,overlay_path=overlay_path,decimate=decimate,CRDecimate=CRDecimate,ExcludeCols=ExcludeCols,Length=Length,/jpeg|/gif|/ps,gmsType=gmsType,mapLimits=mapLimits,min_speed=min_speed,max_speed=max_speed,thick=thick,rainflag=rainflag,rf_action=0|1,rf_color=rf_color,oplot=oplot,/help]"
+    Usage, "CLOUD_OVERLAY, cloud_file, date_time[,time_inc,wpath=wpath,overlay_path=overlay_path,decimate=decimate,CRDecimate=CRDecimate,ExcludeCols=ExcludeCols,Length=Length,/jpeg|/gif|/ps,gmsType=gmsType,mapLimits=mapLimits,min_speed=min_speed,max_speed=max_speed,thick=thick,rainflag=rainflag,rf_action=0|1,rf_color=rf_color,oplot=oplot,keepaspect=keepaspect, gridlines=gridlines, /help]"
     return
   ENDIF 
-
-  IF keyword_set(help) THEN BEGIN 
-    message,' Both paramters (CLOUD_FILE & DATE_TIME) are required ',/cont
-    Usage, "CLOUD_OVERLAY, cloud_file, date_time[,time_inc,wpath=wpath,overlay_path=overlay_path,decimate=decimate,CRDecimate=CRDecimate,ExcludeCols=ExcludeCols,Length=Length,/jpeg|/gif|/ps,gmsType=gmsType,mapLimits=mapLimits,min_speed=min_speed,max_speed=max_speed,thick=thick,rainflag=rainflag,rf_action=0|1,rf_color=rf_color,oplot=oplot,/help]"
-    return
-  ENDIF 
-
 
   cloud_file = strcompress(cloud_file,/remove_all)
 
 
   auto_cloud_overlay = n_elements(lockfile)  NE 0 ; flag for cronjob runs.
+  keepaspect = keyword_set(keepaspect)
+  gridlines = keyword_set(gridlines)
 
   
   read_cfgfile = 0
@@ -367,6 +376,9 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   chkcfg,'GIF',gif,cfg,/bool
   chkcfg,'JPEG',jpeg,cfg,/bool
 
+  chkcfg,'KEEPASPECT',keepaspect,cfg,/bool
+  chkcfg,'GRIDLINES',gridlines,cfg,/bool
+
   ;ps =  keyword_set( ps );
   ;gif = keyword_set(gif)
   ;jpeg = (gif OR ps ) EQ 0;
@@ -396,6 +408,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   chkcfg,'RF_ACTION',rf_action,cfg
   chkcfg,'RF_COLOR',rf_color,cfg
 
+  
   IF N_elements( time_inc ) EQ 0 THEN time_inc = 6
   IF n_elements( wpath ) EQ 0 THEN wpath =  '$VAP_WINDS'
   IF n_elements( overlay_path ) EQ 0 THEN overlay_path =  '$VAP_OVERLAY'
@@ -493,6 +506,17 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   IF auto_cloud_overlay THEN $
     printf,llun,"INFO: " + str
 
+
+  str =  ' KeepAspect = ' + strtrim(keepaspect,2)
+  Message,str,/info
+  IF auto_cloud_overlay THEN $
+    printf,llun,"INFO: " + str
+
+  str =  ' Gridlines = ' + strtrim(gridlines,2)
+  Message,str,/info
+  IF auto_cloud_overlay THEN $
+    printf,llun,"INFO: " + str
+
   wf = GetWindFiles( date_time, delta=time_inc, path= wpath, filter='Q*', /twoway)
   nn = where(strlen(wf) NE 0, nf)
   IF nf NE 0 THEN wf = wf[nn]
@@ -545,7 +569,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
               ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg, $
                 thick=thick, rainflag=rainflag, $
                  rf_action=rf_action, rf_color=rf_color, $
-                  mapLimits=mapLimits, status=status, oplot=oplot
+                  mapLimits=mapLimits, status=status, oplot=oplot, $
+                    keepaspect=keepaspect, gridlines=gridlines
 ;        ENDELSE 
       END
        'GMS' : BEGIN 
@@ -556,7 +581,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
               ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif, $
                 maplimits=MapLimits, thick=thick, rainflag=rainflag, $
                   rf_action=rf_action, rf_color=rf_color, $
-                    status = status, oplot=oplot
+                    status = status, oplot=oplot, $
+                      keepaspect=keepaspect, gridlines=gridlines
       END
     ENDCASE 
 
