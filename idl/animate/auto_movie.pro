@@ -3,7 +3,7 @@
 ; $Id$
 ; NAME:  AUTO_MOVIE
 ;
-; Time-stamp: <98/10/05 17:19:54 vapuser>
+; Time-stamp: <98/10/08 10:58:50 vapuser>
 ;
 ;		
 ; 
@@ -129,6 +129,9 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.2  1998/10/06 00:20:23  vapuser
+; Intermediate stage, not done yet.
+;
 ; Revision 1.1  1998/10/02 23:01:17  vapuser
 ; Initial revision
 ;
@@ -186,19 +189,20 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie (def=current t
                                             ; exclude. Ex. ExcludeCol='0,40:42,75
                                             ; means exclude columns 0,
                                             ; 40,41,42 and 75.
-                Nscat       = Nscat         ; (I) flag. If set, expect NSCAT data
-                Pid         = Pid, $        ; (I) scalar. PID to expect in lock file.
+                Nscat       = Nscat, $      ; (I) flag. If set, expect NSCAT data
+                Pid         = Pid  , $      ; (I) scalar. PID to expect in lock file.
                 interp_file= interp_file    ; (I) string. Fully Qualified name 
                                             ; of interpolated wind file file
 
 
 
+  Forward_Function GetInterpFiles
   rcsid = "$Id$"
 
   user = getenv('USER')
 
   IF n_Elements(pid) NE 0 THEN $
-  auto_movie_cronjob = ( CheckForLock( pid, 'auto_mocie.lock', 
+  auto_movie_cronjob = ( CheckForLock( pid, 'auto_mocie.lock', $
                                      user, dir='/tmp') EQ 1)
   catch, error_status
   IF error_status NE 0 THEN BEGIN
@@ -217,7 +221,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie (def=current t
   ENDIF 
   IF write_pict THEN nomovie = 1
 
-  cd,current=cur_dir
+  CD,current=cur_dir
 
   dateit =  keyword_set( dateit )
 
@@ -262,7 +266,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie (def=current t
   min_nvect   = roistr.min_nvect
 
   ; Get the current GMT doy and hour
-  TodayAsString = TodayAsString(sep='/')
+  TodayAsString = TodayAsString(seperator='/')
   
   IF n_elements( date_time ) EQ 0 THEN BEGIN 
     ; Get the current GMT doy and hour
@@ -292,134 +296,187 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie (def=current t
    
   filter = 'Q*'
   IF nscat THEN filter = 'N*'
-  wf =  GetWindFiles( date_time, time_inc=time_inc, path+wpath, $
-                      filter=filter, nscat=nscat, count=nf)
-  IF nf EQ 0 THEN BEGIN 
-    str =  'ERROR: No windfiles in dir ' + wpath + ' input time range '
-    message, str,/cont
-    IF auto_movie_cronjob THEN BEGIN 
-      printf,llun,str
-      free_lun, llun
-    ENDIF 
-    return
+    ; Check to see whether there is an interpolated field within 12
+    ; hours of the input time. If there is, read it, else , get the
+    ; files and make one.
+  Interp_files = GetInterpFiles( date_time, time_inc = Time_inc, $
+                                 path = anim_path, nscat = nscat, $
+                                 filetimes = filetimes, count = nif )
+  IF nif NE 0 THEN BEGIN 
+      ; Find which is closest to the input time. 
+    julft = filetimes.julday + $
+              filetimes.hour/24. + $
+                filetimes.min/(24.*60)
+
+    idldt_date_time = vaptime2idldt( date_time )
+    j1 = idldt_date_time.julday + $
+          idldt_date_time.hour/24. + $
+           idldt_date_time.min/(60.*24)
+
+    m = (min( abs(julft-j1), ii ))*24.
+
+    IF m LE 12 THEN BEGIN 
+      nif = 1
+      interp_file = interp_files[ii]
+    ENDIF ELSE nif=0
   ENDIF 
 
-
-  message,'Using time_inc = ' + string( time_inc, form='(i2)'),/cont
-  message,'Wind Path = ' + wpath,/cont
-  message,'Interp_path = ' + interp_path,/cont
-  message,'anim_path = '+anim_path,/cont
-  message,'date_time = ' + date_string,/cont
-  print,' animpar = ',animpar
-  tt =  transpose(wf)
-  message,'Using the following files in the interpolation',/cont
-  print,tt
-
-  message,' Found ' + string(nf,form='(i3)') + ' files ',/cont
-  lonpar =  roistr.alonpar
-  latpar =  roistr.alatpar
-  lonpar(2) =  1.
-  latpar(2) =  1.
-
-  data =  Read_Wind_Files( wf, $
-                           Decimate=Decimate, $
-                           CRDecimate=CRDecimate, $
-                           ExcludeCols=ExcludeCols, Nscat=Nscat )
-
-  
-  x =  where( llon GT lonpar(0)-10 AND llon LE lonpar(1)+10 AND $
-              llat GT latpar(0)-10 AND llat LE latpar(1)+10, nx )
-  IF nx GT  min_nvect THEN BEGIN 
-
-;  IF total_time GE 14 THEN BEGIN 
-   ; 
-   ui = fltarr(360,121) &  vi=ui
-   t1 = systime(1)
-   lonpar =  [0,360,1.] &  latpar=[-60., 60, 1]
-   rainf = [12., 10., 6,   4 ] 
-   ermax = [50., 20., 10., 5.]
-   SUCCOR, llon,llat,uu,vv,ui,vi,lonpar,latpar,ermax,rainf
-   rainf = [10.,6.,3.,2]
-   ermax = [10.,6.,3.,2]
-   SUCCOR, llon,llat,uu,vv,ui,vi,lonpar,latpar,ermax,rainf
-   print,'Time to do 2 succors: ',systime(1)-t1, ' seconds '
-   tmp =  doy2date( fix(test_year), fix(actual_doy) )
-   anim_date_str =  strmid(strtrim(test_year,2),2,2) + tmp(0) + tmp(1) + test_hour 
-   interp_filename =  anim_date_str  + '_interp.bin'
-   ofile =  interp_path + '/' + interp_filename
-   openw,wlun, ofile, /get_lun, error=err
-   IF err NE 0 THEN BEGIN 
-     message, !err_string,/cont
-     IF auto_movie_cronjob THEN BEGIN 
-       str =  "ERROR: " + !err_string
-       printf, llun, str
-       free_lun, llun
-     ENDIF 
-     return
-   ENDIF 
-
-
-
-   writeu,wlun,ui,vi
-   free_lun,wlun
-
-   IF keyword_set( nomovie ) THEN BEGIN 
-     message,' INFO: keyword_set( nomovie ) = 1, returning ',/info
-     return
-   ENDIF 
-   cd,anim_path
-                                ;
-                                ; Create the individual gif files for the animation.
-                                ;
-   ddims  =  [[0,360.,1],[-60,60,1]]
-   lonpar =  roistr.alonpar
-   latpar =  roistr.alatpar
-   tmp =  (lonpar(0:1) + [-10,10])
-   tmp =  fixlonrange(tmp)
-   vlonpar =  [tmp, lonpar(2) ]
-   vlatpar =  latpar
-   vlatpar(0:1) =  -60 >  (vlatpar(0:1) + [-10,10]) <  60
-
-   mps2knots = 1.9444 ; takes meters/sec to knots
-   ANIMATE_WIND_FIELD,ofile,$
-    ddims=ddims,$
-    lonpar=lonpar, $
-    latpar=latpar, $
-    vlon = vlonpar, $
-    vlat = vlatpar,$
-    animpar=animpar,$
-    min_speed=1,  $             ; meters/sec, will be converted to knots 
-    max_speed=40/mps2knots, $   ; in animate_wind_field (max_speed=40 knots)
-    title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
-    write_gif=write_gif, write_pict=write_pict
-
-   omov_file =  'daily_' + strlowcase( roi ) 
-   IF dateit THEN omov_file =  omov_file + '_' + anim_date_str
-   omov_file =  omov_file + '.mov'
-   ; construct string to send to spawn and execute it.
-   exe_str =  'dmconvert -f qt -p video,comp=qt_cvid,squal=0.9,tqual=0.9,rate=15 ' + $
-    ' -n gwind.0##,start=1,end=60,step=1 gwind.0## ' + omov_file
-   spawn,exe_str,ret
-   IF ret(0) NE '' THEN BEGIN
-     str =  'ERROR: in dmconvert '
-     message,str, /cont
-     IF auto_movie_cronjob THEN begin
-       printf, llun, str
-       free_lun,llun
-     ENDIF 
-   ENDIF 
- ENDIF ELSE BEGIN
-    str =  "ERROR: Not enough vectors in area: have " + strtrim( nx, 2 ) + $
-     " need: " + strtrim( min_nvect,2 )
-
-    message,str,/cont
-    IF auto_movie_cronjob THEN begin
-      printf, llun, str
-      free_lun,llun
+  IF nif EQ 0 THEN BEGIN 
+      ; Can't find the interpolated field for this time range, so make
+      ; one.
+    wf =  GetWindFiles( date_time, time_inc=time_inc, path=wpath, $
+                      filter=filter, nscat=nscat, count=nf)
+    IF nf EQ 0 THEN BEGIN 
+      str =  'ERROR: No windfiles in dir ' + wpath + ' in time range '
+      Message, str,/cont
+      IF auto_movie_cronjob THEN BEGIN 
+        printf,llun,str
+        free_lun, llun
+      ENDIF 
+      return
     ENDIF 
- ENDELSE 
 
-  cd,cur_dir
+
+    message,'Using time_inc = ' + string( time_inc, form='(i2)'),/cont
+    message,'Wind Path = ' + wpath,/cont
+    message,'Interp_path = ' + interp_path,/cont
+    message,'anim_path = '+anim_path,/cont
+    message,'date_time = ' + date_string,/cont
+    print,' animpar = ',animpar
+    Message,'Using the following files in the interpolation',/cont
+    print,transpose(wf)
+
+    message,' Found ' + string(nf,form='(i3)') + ' files ',/cont
+    lonpar =  roistr.alonpar
+    latpar =  roistr.alatpar
+    lonpar(2) =  1.
+    latpar(2) =  1.
+
+
+    data =  Read_Wind_Files( wf, $
+                             Decimate=Decimate, $
+                             CRDecimate=CRDecimate, $
+                             ExcludeCols=ExcludeCols, Nscat=Nscat )
+
+
+    x =  where( llon GT lonpar(0)-10 AND llon LE lonpar(1)+10 AND $
+                 llat GT latpar(0)-10 AND llat LE latpar(1)+10, nx )
+    IF nx GT  min_nvect THEN BEGIN 
+
+
+      t1 = systime(1)
+      lonpar =  [0,360,1.] &  latpar=[-60., 60, 1]
+      rainf = [12., 10., 6,   4 ] 
+      ermax = [50., 20., 10., 5.]
+      status = RunSuccor( uu,vv,llon,llat,ui,vi,lonpar,latpar,$
+                          rainf=rainf, ermax=ermax )
+      IF NOT status THEN BEGIN 
+        str = 'ERROR: Bad return from 1st succor'
+        Message,str,/cont
+        IF auto_movie_cronjob THEN BEGIN 
+          printf, llun, str
+          free_lun, llun
+        ENDIF 
+        return
+      ENDIF 
+
+      rainf = [10.,6.,3.,2]
+      ermax = [10.,6.,3.,2]
+      tmp = str_sep( CreationTime,'/')
+      time_string = ''
+      FOR i=0,3 DO time_string = time_string + tmp[i]
+      Ofile = interp_path + "/" + 'QIF-' + time_string + '.hdf'
+      status = RunSuccor( uu,vv,llon,llat,ui,vi,lonpar,latpar,$
+                          rainf=rainf, ermax=ermax, /reuse, Ofile=Ofile )
+      print,'Time to do 2 succors: ',systime(1)-t1, ' seconds '
+      IF NOT status THEN BEGIN 
+        str = 'ERROR: Bad return from 2nd succor'
+        Message,str,/cont
+        IF auto_movie_cronjob THEN BEGIN 
+          printf, llun, str
+          free_lun, llun
+        ENDIF 
+        return
+      ENDIF 
+
+      IF keyword_set( nomovie ) THEN BEGIN 
+        message,' INFO: keyword_set( nomovie ) = 1, returning ',/info
+        return
+      ENDIF 
+      CD,anim_path
+                                  ;
+                                  ; Create the individual gif files for the animation.
+                                  ;
+      ddims  =  [[0,360.,1],[-60,60,1]]
+      lonpar =  roistr.alonpar
+      latpar =  roistr.alatpar
+      tmp =  (lonpar(0:1) + [-10,10])
+      tmp =  fixlonrange(tmp)
+      vlonpar =  [tmp, lonpar(2) ]
+      vlatpar =  latpar
+      vlatpar(0:1) =  -60 >  (vlatpar(0:1) + [-10,10]) <  60
+
+      mps2knots = 1.9444 ; takes meters/sec to knots
+      ANIMATE_WIND_FIELD,$
+       ui=ui, vi=vi, $
+       ddims=ddims,$
+       lonpar=lonpar, $
+       latpar=latpar, $
+       vlon = vlonpar, $
+       vlat = vlatpar,$
+       animpar=animpar,$
+       min_speed=1,  $             ; meters/sec, will be converted to knots 
+       max_speed=40/mps2knots, $   ; in animate_wind_field (max_speed=40 knots)
+       title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
+       write_gif=write_gif, write_pict=write_pict
+
+    ENDIF ELSE BEGIN
+      str =  "ERROR: Not enough vectors in area: have " + strtrim( nx, 2 ) + $
+       " need: " + strtrim( min_nvect,2 )
+
+      message,str,/cont
+      IF auto_movie_cronjob THEN begin
+        printf, llun, str
+        free_lun,llun
+      ENDIF 
+    ENDELSE 
+  ENDIF ELSE BEGIN 
+      ; There is already an interpolated file to use.
+
+    CD,anim_path
+    mps2knots = 1.9444 ; takes meters/sec to knots
+    ANIMATE_WIND_FIELD,Interp_File, $
+     ddims=ddims,$
+     lonpar=lonpar, $
+     latpar=latpar, $
+     vlon = vlonpar, $
+     vlat = vlatpar,$
+     animpar=animpar,$
+     min_speed=1,  $             ; meters/sec, will be converted to knots 
+     max_speed=40/mps2knots, $   ; in animate_wind_field (max_speed=40 knots)
+     title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
+     write_gif=write_gif, write_pict=write_pict
+
+
+
+    omov_file =  'daily_' + strlowcase( roi ) 
+    IF dateit THEN omov_file =  omov_file + '_' + anim_date_str
+    omov_file =  omov_file + '.mov'
+    ; construct string to send to spawn and execute it.
+    exe_str =  'dmconvert -f qt -p video,' + $
+     ' comp=qt_cvid,squal=0.9,tqual=0.9,rate=15 ' + $
+     ' -n gwind.0##,start=1,end=60,step=1 gwind.0## ' + omov_file
+    spawn,exe_str,ret
+    IF ret(0) NE '' THEN BEGIN
+      str =  'ERROR: in dmconvert '
+      message,str, /cont
+      IF auto_movie_cronjob THEN begin
+        printf, llun, str
+        free_lun,llun
+      ENDIF 
+    ENDIF 
+  ENDELSE 
+  CD,cur_dir
  
 END
 
