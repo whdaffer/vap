@@ -34,6 +34,9 @@
 ; MODIFICATION LOG:
 ;
 ; $Log$
+; Revision 1.3  1999/10/05 17:28:22  vapuser
+; Cosmetic work
+;
 ; Revision 1.2  1999/06/24 18:45:57  vapuser
 ; Put in a wayward 'EQ 0'
 ;
@@ -65,11 +68,20 @@ FUNCTION Gms5ReadIRFile, filename
   ENDIF 
 
 
-  IF n_elements(gms5initialized) EQ 0 THEN gms5Init
-  IF n_elements(gms5imagetemplate) EQ 0 THEN  $
-    restore,gms5_hdftemplates_saveset_file
+  catch, error
+  IF error NE 0 THEN BEGIN 
+    Message,!error_state.msg,/cont
+    return,0
+  ENDIF 
 
-  irdata = Hdf_Read(filename, template=gms5imagetemplate )
+  IF n_elements(gms5initialized) EQ 0 THEN gms5Init
+;  IF n_elements(gms5imagetemplate) EQ 0 THEN  $
+;    restore,gms5_hdftemplates_saveset_file
+
+;  irdata = Hdf_Read(filename, template=gms5imagetemplate )
+
+  hdf_dfr8_getimage,filename,image,palette 
+  irdata =  { filename: filename, image: image, palette: palette, date: systime() }
 
   return,irdata
 END
