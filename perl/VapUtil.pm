@@ -33,6 +33,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.2  2001/02/14 22:58:36  vapuser
+# Fixed small bug in doy2mday_mon
+#
 # Revision 1.1  2001/02/09 19:07:56  vapuser
 # Initial revision
 #
@@ -64,17 +67,21 @@ sub leapyear{
 
 sub doy2mday_mon{
   $doy=shift;
+  die "DOY out of range: $doy\n" if $doy > 366;
   $year=shift;
   # cummulative number of days in the year for the end of each month
   @doys = (31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365);
-  $doy2=$doy;
-  $doy2=$doy-leapyear($year) if ($doy > 59);
-  $i=1;
-  $mday=$doy2;
-  for ($i=0;$i<=$#doys;$i++){
-    last if $doys[$i] >= $doy2;
+  my $i;
+  if (leapyear($year)){
+    for ($i=1;$i<=$#doys;$i++){
+      $doys[$i]++;
+    }
   }
-  $mday = $doy2 - $doys[$i-1] if $i>0;
+  $mday=$doy;
+  for ($i=0;$i<=$#doys;$i++){
+    last if $doys[$i] >= $doy;
+  }
+  $mday = $doy - $doys[$i-1] if $i>0;
   $mon = $i+1;
 
   ($mday,$mon);
