@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.12  1998/11/10 00:46:57  vapuser
+  ; Change to assuming rnoaa data.
+  ;
   ; Revision 1.11  1998/10/29 22:36:00  vapuser
   ; added Verbose keyword/member.
   ;
@@ -1028,7 +1031,14 @@ FUNCTION Q2b::Read, filename
 
     END 
     'RNOAA': BEGIN 
-      data = Q2bRNoaaRead(filename,verbose=self.verbose)
+      data = Q2bRNoaaRead(filename,verbose=self.verbose, header=header)
+      retstruct = ParseRnoaaHeader(header)
+      self.StartTime =  '0000/00/00/00/00'
+      self.EndTime =  '0000/00/00/00/00'
+      IF VarType(retstruct) EQ 'STRUCTURE' THEN BEGIN 
+        self.StartTime =  retstruct.StartTime
+        self.EndTime =  retstruct.EndTime
+      ENDIF 
       status =  (VarType(data) EQ 'STRUCTURE')
     END 
     ELSE: BEGIN 
@@ -1051,12 +1061,17 @@ FUNCTION Q2b::Read, filename
         ENDIF 
       ENDIF ELSE BEGIN 
           ; Assume it's RSDs RNOAA data.
-        data = q2bRNoaaRead(filename)
+        data = q2bRNoaaRead(filename, verbose=self.verbose, header=header)
         IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
           status = 1
           self.type = 'RNOAA'
-          self.StartTime = '0000/00/00/00/00'
-          self.EndTime = '0000/00/00/00/00'
+          retstruct = ParseRnoaaHeader(header)
+          self.StartTime =  '0000/00/00/00/00'
+          self.EndTime =  '0000/00/00/00/00'
+          IF VarType(retstruct) EQ 'STRUCTURE' THEN BEGIN 
+            self.StartTime =  retstruct.StartTime
+            self.EndTime =  retstruct.EndTime
+          ENDIF 
         ENDIF 
       ENDELSE 
     END
