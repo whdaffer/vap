@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1999/03/17 20:58:15  vapuser
+; fixed error in computation of qmodel.lon/.lat
+;
 ; Revision 1.1  1998/10/12 22:21:13  vapuser
 ; Initial revision
 ;
@@ -148,17 +151,27 @@ FUNCTION qmodelhdfread, filename
               tmp = byte(data)
               qmodel.hdr.Shortname[0:nn-1] = tmp[0:nn-1]
             END 
+            'EXCLUDE_COLS': BEGIN 
+              n = n_elements(qmodel.hdr.Exclude_Cols)
+              nn = strlen(data) <  n
+              tmp = byte(data)
+              qmodel.hdr.exclude_cols[0:nn-1] = tmp[0:nn-1]
+            END 
             ELSE: $
               Message,'Unrecognized Attribute ' + name,/cont
           ENDCASE
 
         ENDIF ELSE BEGIN 
           CASE name OF 
-            'NLON': qmodel.hdr.nlon = data
-            'NLAT': qmodel.hdr.nlat = data
-            'REGION': qmodel.hdr.region = data
-            'LONPAR': qmodel.hdr.lonpar = data
-            'LATPAR': qmodel.hdr.latpar = data
+            'NLON'       : qmodel.hdr.nlon = data
+            'NLAT'       : qmodel.hdr.nlat = data
+            'REGION'     : qmodel.hdr.region = data
+            'LONPAR'     : qmodel.hdr.lonpar = data
+            'LATPAR'     : qmodel.hdr.latpar = data
+            'RAINF'      : qmodel.hdr.rainf =  ptr_new(data)
+            'ERMAX'      : qmodel.hdr.ermax = ptr_new(data)
+            'CRDECIMATE' : qmodel.hdr.crdecimate = data
+            'DECIMATE'   : qmodel.hdr.decimate = data
             ELSE:
           ENDCASE
         ENDELSE 

@@ -23,52 +23,40 @@
 ;                         EndTime   = EndTime,$
 ;                         LonPar    = LonPar,$    
 ;                         LatPar    = LatPar, $   
-;                         Region    = region )
+;                         Region    = region, $
+;                         rainf     = rainf, $
+;                         ermax     = ermax, $
+;                         crdecimate = crdecimate, $
+;                         decimate   = decimate, $
+;                         exclude_cols = exclude_cols)
 ;
 ;
 ; 
 ; INPUTS:  
 ;
-;
-;
 ; OPTIONAL INPUTS:  
-;
-;
 ;	
 ; KEYWORD PARAMETERS:  
 ;
-;
-;
 ; OUTPUTS:  
-;
-;
 ;
 ; OPTIONAL OUTPUTS:  
 ;
-;
-;
 ; COMMON BLOCKS:  
-;
-;
 ;
 ; SIDE EFFECTS:  
 ;
-;
-;
 ; RESTRICTIONS:  
-;
-;
 ;
 ; PROCEDURE:  
 ;
-;
-;
 ; EXAMPLE:  
-;
-;
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1999/04/09 15:37:53  vapuser
+; Added some argument checking
+;
 ; Revision 1.4  1998/10/13 18:24:41  vapuser
 ; Correct misspelling in ShortName
 ;
@@ -88,15 +76,20 @@
 ;-
 
 FUNCTION qmodelhdfwrite, filename, u,v,$
-                         ShortName = ShortName,$
-                         LongName  = LongName, $
-                         Version   = Version, $
-                         CreationTime= CreationTime,$
-                         StartTime = StartTime, $
-                         EndTime   = EndTime,$
-                         LonPar    = LonPar,$    
-                         LatPar    = LatPar, $   
-                         Region    = region
+                         ShortName    = ShortName,   $
+                         LongName     = LongName,    $
+                         Version      = Version,     $
+                         CreationTime = CreationTime,$
+                         StartTime    = StartTime,   $ 
+                         EndTime      = EndTime,     $    
+                         LonPar       = LonPar,      $     
+                         LatPar       = LatPar,      $    
+                         Region       = region,      $    
+                         rainf        = rainf,       $     
+                         ermax        = ermax,       $     
+                         crdecimate   = crdecimate,  $
+                         decimate     = decimate,    $
+                         exclude_cols = exclude_cols
                          
    status = 0
    rcsid = "$Id$"
@@ -149,35 +142,60 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
 
          IF fileid GT 0 THEN BEGIN 
 
+           IF N_Elements(ShortName) EQ 0 THEN $
+             ShortName = 'QSCATVAPMODEL' $
+           ELSE IF strlen(ShortName) EQ 0 THEN $
+             ShortName = 'QSCATVAPMODEL' $
+           ELSE IF vartype(ShortName) EQ 'BYTE' THEN $
+             ShortName = string(ShortName)
+
            IF N_Elements(LongName) EQ 0 THEN $
              LongName = '<no longname>' $
            ELSE IF strlen(LongName) EQ 0 THEN $
-             LongName = '<no longname>' 
+             LongName = '<no longname>' $
+           ELSE IF vartype(LongName) EQ 'BYTE' THEN $
+             LongName = string(LongName)
 
            IF N_Elements(Version) EQ 0 THEN $
             Version = '<no version>' $ 
            ELSE IF strlen(Version) EQ 0 THEN $
-            Version = '<no version>' 
+            Version = '<no version>' $
+           ELSE IF vartype(Version) EQ 'BYTE' THEN $
+             Version = string(Version)
 
            IF N_Elements(StartTime) EQ 0 THEN $
              StartTime = '0000/00/00/00/00' $
            ELSE IF strlen(StartTime) EQ 0 THEN  $
-             StartTime = '0000/00/00/00/00' 
+             StartTime = '0000/00/00/00/00' $
+           ELSE IF vartype(StartTime) EQ 'BYTE' THEN $
+             StartTime = string(StartTime)
 
            IF N_Elements(EndTime) EQ 0 THEN  $
              EndTime = '0000/00/00/00/00' $
            ELSE IF strlen(EndTime) EQ 0 THEN $
-             EndTime = '0000/00/00/00/00' 
+             EndTime = '0000/00/00/00/00' $
+           ELSE IF vartype(EndTime) EQ 'BYTE' THEN $
+             EndTime = string(EndTime)
 
            IF N_Elements(CreationTime) EQ 0 THEN $
              CreationTime = '0000/00/00/00/00' $
            ELSE IF strlen( CreationTime ) EQ 0 THEN $
-             CreationTime = '0000/00/00/00/00' 
+             CreationTime = '0000/00/00/00/00' $
+           ELSE IF vartype(creationtime) EQ 'BYTE' THEN $
+             CreationTime = string(creationtime)
 
-           IF N_Elements(ShortName) EQ 0 THEN $
-             ShortName = 'QSCATVAPMODEL' $
-           ELSE IF strlen(ShortName) EQ 0 THEN $
-             ShortName = 'QSCATVAPMODEL' 
+
+           IF n_elements(rainf) EQ 0 THEN rainf = 0.
+           IF n_elements(ermax) EQ 0 THEN ermax =  replicate(0.,n_elements(rainf))
+           IF n_elements(crdecimate) EQ 0 THEN crdecimate = [-1,-1]
+           IF n_elements(decimate) EQ 0 THEN decimate =  -1
+           IF n_elements(exclude_cols) EQ 0 THEN $
+             exclude_cols =  "<Don't know>" $
+           ELSE IF strlen(exclude_cols) EQ 0 THEN $
+             exclude_cols =  "<Don't know>" $
+           ELSE IF vartype(exclude_cols) EQ 'BYTE' THEN $
+             exclude_cols =  strtrim(string(exclude_cols),2)
+             ; Set Global Attributes.
 
            Hdf_sd_AttrSet,fileId,'LONGNAME',strtrim(LongName[0],2)
            Hdf_sd_AttrSet,fileId,'VERSION',strtrim(Version[0],2)
@@ -185,13 +203,22 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
            Hdf_sd_AttrSet,fileId,'ENDTIME',strtrim(EndTime[0],2)
            Hdf_sd_AttrSet,fileId,'CREATIONTIME',strtrim(CreationTime[0],2)
            Hdf_sd_AttrSet,fileId,'SHORTNAME',ShortName
-           Hdf_sd_AttrSet,fileId,'NLON',nlon,/short
-           Hdf_sd_AttrSet,fileId,'NLAT',nlat,/short
+           Hdf_sd_AttrSet,fileId,'NLON',nlon,/long
+           Hdf_sd_AttrSet,fileId,'NLAT',nlat,/long
            Hdf_sd_AttrSet,fileId,'REGION',region,/float
            Hdf_sd_AttrSet,fileId,'LONPAR',lonpar,/float
            Hdf_sd_AttrSet,fileId,'LATPAR',latpar,/float
+           Hdf_sd_AttrSet,fileId,'RAINF',rainf,/float
+           Hdf_sd_AttrSet,fileId,'ERMAX',ermax,/float
+           Hdf_sd_AttrSet,fileId,'CRDECIMATE',crdecimate,/long
+           Hdf_sd_AttrSet,fileId,'DECIMATE',decimate,/long
+           Hdf_sd_AttrSet,fileId,'EXCLUDE_COLS',exclude_cols
+
+             ; Create the SDS 
            USdsId =  Hdf_sd_create( fileid, "U",[nlon,nlat],/float)
            VSdsId =  Hdf_sd_create( fileid, "V",[nlon,nlat],/float)
+
+             ; Add data to the SDS
            Hdf_Sd_AddData,USdsId, U
            Hdf_Sd_AddData,VSdsId,V
 ;           caldata.Num_type = idltype2hdftype('FLOAT')
