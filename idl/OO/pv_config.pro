@@ -57,6 +57,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/26 22:11:20  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -107,7 +110,8 @@ PRO pv_Config_DrawLimLines, info, self, MinSpeed, MaxSpeed
 ;    Wset, (*info).PixId
 ;    Plot, Xhisto, *Histo, Psym=10, $
 ;        Title= 'Histogram of Data in Current Plotting Region'
-    Pv_Config_CopyToPixmap, (*info).Pixid, (*info).wid, (*info).xsize,(*info).ysize
+    Pv_Config_CopyToPixmap, (*info).Pixid, (*info).wid, $
+     (*info).xsize,(*info).ysize
 
     Wset, (*info).Wid
     tmp=Convert_Coord([0,0],!y.CRange,/data,/to_normal) 
@@ -133,6 +137,8 @@ END
 ;-----------------------------------------------------
 
 PRO Pv_Config_DrawEvents, event
+
+    ; Handles draw events on the histogram window
 
   ButtonTypes = ['LEFT', 'MIDDLE', 'RIGHT' ]
   EventTypes =  [ 'DOWN','UP','MOTION','SCROLL']
@@ -231,6 +237,8 @@ END
 ;-----------------------------------------------------
 
 PRO Pv_Config_MotionEvents, event
+
+    ; Handles motion events on the histogram window.
 
   Widget_Control, event.top, Get_UValue=info
 
@@ -828,61 +836,6 @@ PRO PV_CONFIG_Events, Event
       ENDIF 
 
        self-> Set,Annotation = Annotation
-       
-;        ; Check to see if the user has requested an old map dimension
-;        ; from the list of previous dimensions.
-;      IF (*info).PrevDimsIndex NE -1 THEN BEGIN 
-;          ; The list in the widget is arranged in reverse order of the
-;          ; pv object, so take this into account.
-;        print,'going to old dims '
-;        self-> Get, DimsList=DimsList
-;        nDims = DimsList-> GetCount()
-;        index = nDims-(*info).PrevDimsIndex
-;        Dims = DimsList->GotoNode( Index )
-;        IF Ptr_Valid(Dims) THEN BEGIN 
-;          self-> Set, DimsList = DimsList
-;          (*(*dims).data)->Get,Lon = Lon,Lat=Lat
-;          Widget_Control,(*info).LonMinId,Set_Value=Lon[0]
-;          Widget_Control,(*info).LonMaxId,Set_Value=Lon[1]
-;          Widget_Control,(*info).LatMinId,Set_Value=Lat[0]
-;          Widget_Control,(*info).LatMaxId,Set_Value=Lat[1]
-;          (*info).redraw = 1
-;        ENDIF 
-;      ENDIF 
-
-
-
-        ; See if the user requested deletion of some (or all) of the
-        ; entries in the 'datafilelist' Linked List. But Make sure
-        ; there are files to be deleted!
-
-;      self-> Get, DataList = DataList
-;      nFiles = DataList-> GetCount()
-;      IF nFiles GT 0 THEN BEGIN 
-
-;        CASE 1 OF 
-;          (*info).ClearDataListFlag EQ 1: BEGIN 
-;            Obj_Destroy, DataList
-;            DataList = Obj_New( 'LinkedList')
-;            self-> Set,DataList = DataList
-;            (*info).redraw = 1
-;          END 
-;          Ptr_Valid( (*info).DataListIndex ) :BEGIN 
-;            indexList =  *(*info).DataListIndex
-;            nn = n_elements( indexList)
-;            FOR i=0,nn DO BEGIN 
-;              s = DataList-> GotoNode( indexList[i] )
-;              IF Ptr_Valid(s) THEN $
-;               DataList-> DeleteCurrent
-;            ENDFOR 
-;            self-> Set, DataList = DataList
-;            (*info).redraw = 1
-;          END 
-;          ELSE:
-;        ENDCASE 
-
-;      ENDIF 
-
 
     END ; End the 'else' of the outermost 'case' 
 
@@ -895,7 +848,10 @@ PRO PV_CONFIG_Events, Event
     Widget_Control, event.top, /Destroy
   ENDIF 
 
-  IF redraw THEN  self->Draw ; if necessary, Redraw.
+  IF redraw THEN  BEGIN 
+    self->ResetPlotObjects, /all
+    self->Draw                  ; if necessary, Redraw.
+  ENDIF 
   IF Ptr_Valid(info) THEN (*info).redraw = 0
   Widget_Control, tlb, Set_Uvalue=self
   Widget_Control, event.top, Set_Uvalue=info, bad_id=bad
