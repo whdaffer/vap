@@ -58,6 +58,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/22 21:49:08  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -104,8 +107,15 @@ FUNCTION fixlonrange, lonrange, west=west
     FixedLonRange(0) = FixedLonRange(0) - 360. 
   ENDIF 
 
-  junk = where(FixedLonRange LE 0, njunk )
-  west =  njunk NE 0 
+  IF keyword_set( west ) THEN BEGIN 
+    n = where( FixedLonRange GT 180, nn )
+    IF nn NE 0 THEN $
+      FixedLonRange[n] =  FixedLonRange[n] -360.
+  ENDIF ELSE IF Arg_Present( west ) THEN BEGIN 
+    junk = where(FixedLonRange LE 0, njunk )
+    west =  njunk NE 0 
+  ENDIF 
+
   Return, FixedLonRange
 
 END
