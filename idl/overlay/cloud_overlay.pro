@@ -122,6 +122,11 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.8  1999/10/05 17:14:02  vapuser
+; Changed a 'ne' to 'lt' in nparams() test. Changed default time_inc to
+; 6 from 3. Made the call to GetWindFiles look forward and backward in
+; time (this to support the hurricane regions). General maintenance.
+;
 ; Revision 1.7  1999/04/06 18:36:37  vapuser
 ; Added in GMS 5 code
 ;
@@ -171,12 +176,16 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                       length = length, $ ; Length of vectors
                       ps =  ps,$       ; make a postscript file.
                       gif=gif,$        ; Make gif file
+                      jpeg=jpeg, $     ; make jpeg file.
                       pid=pid,$        ; Used with cron jobs
                       gmsType = gmsType, $     ; GmsType, IF set, treat the 
                                        ; 'cloud_file' name as the 
                                        ; datetime used in gms5readall 
                                        ; (for instance)
-                      mapLimits = mapLimits ; for use with GMS5 overlays
+                      mapLimits = mapLimits,$ ; for use with GMS5 overlays
+                      min_speed=min_speed, $
+                      max_speed=max_speed, $
+                      thick=thick
                       
 
 
@@ -202,6 +211,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     ENDELSE 
   ENDIF 
 
+
   catch, error_status
   IF error_status NE 0 THEN BEGIN
     IF auto_cloud_overlay THEN $
@@ -210,15 +220,35 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     return
   ENDIF 
 
-  IF !version.release LT 5.1 THEN BEGIN 
-    Message,'This software requires idl 5.1',/cont
-    return
-  ENDIF 
-
   IF n_params() LT   2 THEN BEGIN 
     message,' Both paramters (CLOUD_FILE & DATE_TIME) are required ',/cont
     return
   ENDIF 
+
+  
+  read_cfgfile = 0
+  cfgname = cfgname()
+  cfgpath = '~/.idlcfg/' 
+  ff = findfile(cfgpath + cfgname,count=nf)
+  IF nf NE 0 THEN BEGIN 
+    read_cfgfile = 1
+  ENDIF ELSE BEGIN 
+    IF getenv('VAP_LIB') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIB')
+      ff = findfile(cfgpath + cfgname,count=nf)      
+      read_cfgfile = (nf NE 0)
+    ENDIF
+  ENDELSE   
+
+  IF read_cfgfile THEN BEGIN 
+    print,' Reading CFG file ' + cfgname
+    read_cfgfile,cfgname, cfg,path=cfgpath
+    IF n_elements(cfg) NE 0 THEN BEGIN 
+      print,'CFG found! Details follow:'
+      help,cfg,/st
+    ENDIF 
+  ENDIF 
+
   gms =  0
   IF N_Elements(gmsType) NE 0  THEN BEGIN
     gms = 1
@@ -226,10 +256,15 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   ENDIF 
     
 
-  IF n_elements(length) EQ 0 THEN length = 2
-  ps =  keyword_set( ps );
-  gif = keyword_set(gif)
-  jpeg = (gif OR ps ) EQ 0;
+  chkcfg,'PS',ps,cfg,/bool
+  chkcfg,'GIF',gif,cfg,/bool
+  chkcfg,'JPEG',jpeg,cfg,/bool
+
+  ;ps =  keyword_set( ps );
+  ;gif = keyword_set(gif)
+  ;jpeg = (gif OR ps ) EQ 0;
+
+  jpeg =  jpeg OR ( (gif AND ps) EQ 0)
 
   CASE 1 OF 
     ps: OutputType = 'Postscript'
@@ -239,9 +274,25 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   ENDCASE
   Message,'File will be output as ' + OutputType,/info
 
+  chkcfg,'TIME_INC',time_inc,cfg
+  chkcfg,'WPATH',wpath,cfg
+  chkcfg,'OVERLAY_PATH',overlay_path,cfg
+  chkcfg,'CRDECIMATE',crdecimate,cfg
+  chkcfg,'DECIMATE',decimate,cfg
+
+  chkcfg,'MIN_SPEED',min_speed,cfg
+  chkcfg,'MAX_SPEED',max_speed,cfg
+  chkcfg,'LENGTH',length,cfg
+  chkcfg,'thick',thick,cfg
+
   IF N_elements( time_inc ) EQ 0 THEN time_inc = 6
   IF n_elements( wpath ) EQ 0 THEN wpath =  '$VAP_WINDS'
   IF n_elements( overlay_path ) EQ 0 THEN overlay_path =  '$VAP_OVERLAY'
+
+  IF n_elements( min_speed ) EQ 0 THEN min_speed = 2
+  IF n_elements( max_speed ) EQ 0 THEN max_speed = 25
+  IF n_elements(length) EQ 0 THEN length = 2
+  IF n_elements( thick     ) EQ 0 THEN thick = 1
 
   IF n_elements(CRDecimate) NE 2 THEN BEGIN 
     IF n_elements(decimate) EQ 0 THEN CRDecimate = [1,1]
@@ -319,6 +370,27 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   IF auto_cloud_overlay THEN $
     printf,llun,"INFO: " + str
 
+  str = ' Using length of      ' + strtrim(length,2)
+  Message,str,/info
+  IF auto_cloud_overlay THEN $
+    printf,llun,"INFO: " + str
+
+
+  str = ' Using thick of      ' + strtrim(thick,2)
+  Message,str,/info
+  IF auto_cloud_overlay THEN $
+    printf,llun,"INFO: " + str
+
+  str = ' Using min_speed of      ' + strtrim(min_speed,2)
+  Message,str,/info
+  IF auto_cloud_overlay THEN $
+    printf,llun,"INFO: " + str
+
+  str = ' Using max_speed of      ' + strtrim(max_speed,2)
+  Message,str,/info
+  IF auto_cloud_overlay THEN $
+    printf,llun,"INFO: " + str
+
 
   wf = GetWindFiles( date_time, delta=time_inc, path= wpath, filter='Q*', /twoway)
   nn = where(strlen(wf) NE 0, nf)
@@ -357,32 +429,26 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
       'GOES': BEGIN 
         IF visual EQ 'PSEUDOCOLOR' THEN BEGIN 
           GOES_OVERLAY, cloud_file, wfiles=wf, $
-           minspeed=2, maxspeed=20, xsize=960,ysiz=720,$
+           minspeed=min_speed, maxspeed=max_speed, xsize=960,ysiz=720,$
             len=length,getoutfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
-              ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif,/z
+              ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif,/z, $
+               thick=thick
         ENDIF ELSE BEGIN 
           GOES_OVERLAY24,cloud_file,windFiles=wf,$
-           minspeed=2, maxspeed=20, xsize=960,ysiz=720, $
+           minspeed=min_speed, maxspeed=max_speed, xsize=960,ysiz=720, $
             len=length,outfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
-              ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg
+              ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg, thick=thick
         ENDELSE 
       END
        'GMS' : BEGIN 
          gms5_overlay, gms5datetime, gmsType, windfiles=wf,$
-          minspeed=2, maxspeed=20, $
+          minspeed=min_speed, maxspeed=max_speed, $
             len=length,outfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif, $
-                maplimits=MapLimits
-;         str = 'ERROR: GMS not implemented yet'
-;        Message,str,/cont
-;        IF auto_cloud_overlay THEN BEGIN 
-;          printf,llun,str
-;          free_lun,llun
-;          return
-;       ENDIF 
+                maplimits=MapLimits, thick=thick
       END
     ENDCASE 
 
