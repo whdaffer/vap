@@ -30,9 +30,10 @@
 ;                      time_inc,      $ ; select wind files this number 
 ;                                       ; of hours +/- time given 
 ;                                       ; in date_time. def=6
-;                      wpath = wpath, $ ; path to wind files (def=$VAP_WINDS)
-;                      overlay_path = overlay_path,$ ; path to output overlay file
-;                                       ; def = $VAP_ROOT/overlay
+;                      wpath = wpath, $ ; path to wind files (def=$VAP_DATA_TOP)
+;                      overlay_path = overlay_path,$ ; path to output 
+;                                                    ; overlay file
+;                                                    ; def = $VAP_OPS_OVERLAY
 ;                      decimate=decimate,$ ; (I), scalar, decimate=n
 ;                                          ; means take every n-th vector
 ;                      CRDecimate=CRDecimate,$ ; (I), 2-vector,
@@ -87,9 +88,9 @@
 ; KEYWORD PARAMETERS: 
 ;
 ;        wpath       - Path to wind files
-;                      Default=$VAP_WINDS
+;                      Default=$VAP_DATA_TOP
 ;        overlay_path- path to output overlay files,
-;                     Default=$VAP_ROOT/overlay/
+;                      Default=$VAP_OPS_OVERLAY
 ;        Decimate    - (I) scalar, decimate=n means take
 ;                      every n-th vector. Default=1, take every
 ;                      vector. Decimate is ignored if CRDecimate is
@@ -206,6 +207,9 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.19  2001/12/08 00:02:36  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.18  2001/02/21 01:02:54  vapuser
 ; Took out 'path=' in call to read_cfgfile
 ;
@@ -220,7 +224,7 @@
 ;
 ; Revision 1.15  2000/05/17 20:44:50  vapuser
 ; Write file with output filename to OVERLAY_PATH (typically
-; $VAP_OVERLAY).  Give it a name unique to this run using the pid
+; $VAP_OPS_OVERLAY).  Give it a name unique to this run using the pid
 ; communicated through the lock file
 ;
 ; Revision 1.14  2000/05/17 16:52:12  vapuser
@@ -285,9 +289,9 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                       time_inc,      $ ; select wind files this number 
                                        ; of hours +/- time given 
                                        ; in date_time. def=6
-                      wpath = wpath, $ ; path to wind files (def=$VAP_WINDS)
+                      wpath = wpath, $ ; path to wind files (def=$VAP_DATA_TOP)
                       overlay_path = overlay_path,$ ; path to output overlay file
-                                       ; def = $VAP_OVERLAY
+                                       ; def = $VAP_OPS_OVERLAY
                       decimate=decimate,$ ; (I), scalar, decimate=n
                                           ; means take every n-th vector
                       CRDecimate=CRDecimate,$ ; (I), 2-vector,
@@ -524,7 +528,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   IF auto_cloud_overlay THEN $
     printf,llun,"INFO: " + str
 
-  wf = GetWindFiles( date_time, delta=time_inc, path= wpath, filter='Q*', /twoway)
+  wf = GetWindFiles( date_time, delta=time_inc, $
+                     path= wpath, filter='Q*', /twoway)
   nn = where(strlen(wf) NE 0, nf)
   IF nf NE 0 THEN wf = wf[nn]
 

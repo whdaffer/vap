@@ -216,6 +216,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.15  2001/12/10 23:31:26  vapdev
+; replace obsolete RSI routines
+;
 ; Revision 1.14  2000/03/01 19:34:10  vapuser
 ; Added a status flag to communicate
 ; to outside world.
@@ -361,8 +364,8 @@ PRO goes_overlay24, goesfile, $
   IF nf NE 0 THEN BEGIN 
     read_cfgfile = 1
   ENDIF ELSE BEGIN 
-    IF getenv('VAP_LIB') NE '' THEN BEGIN 
-      cfgpath = deenvvar('$VAP_LIB')
+    IF getenv('VAP_LIBRARY') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIBRARY')
       ff = findfile(cfgpath + cfgname,count=nf)      
       read_cfgfile = (nf NE 0)
     ENDIF
@@ -565,8 +568,7 @@ PRO goes_overlay24, goesfile, $
     IF getenv('OVERLAY_CT') NE '' THEN BEGIN 
       ptr = ReadColorTable('$OVERLAY_CT')
     ENDIF ELSE BEGIN 
-      ptr = ReadColorTable($
-         '/usr/people/vapuser/Qscat/Resources/Color_Tables/goes_overlay24.ct')
+      ptr = ReadColorTable("$VAP_COLORTABLES/goes_overlay24.ct")
     ENDELSE 
     IF NOT Ptr_Valid(ptr) THEN BEGIN 
       Message,'Error Reading ColorTable!',/cont

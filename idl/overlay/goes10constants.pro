@@ -18,7 +18,7 @@ FUNCTION Goes10Constants, channel, detector
     return,''
   ENDIF 
 
-  constantsFile = '/usr/people/vapuser/Qscat/Library/goes10_constants.dat'
+  constantsFile = '$VAP_LIBRARY/goes10_constants.dat'
   openr, lun, constantsFile,/get_Lun, error=err
   constants = ''
 

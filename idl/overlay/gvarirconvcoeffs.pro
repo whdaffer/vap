@@ -11,7 +11,7 @@ FUNCTION GvarIRConvCoeffs, channel
     return,''
   ENDIF 
 
-  ConvConFile = "/usr/people/vapuser/Qscat/Library/gvar_conversion_constants.dat"
+  ConvConFile = "$VAP_LIBRARY/gvar_conversion_constants.dat"
   openr,lun, ConvConFile,/get,error=err
   IF err NE 0 THEN BEGIN 
     Message,!Error_State.msg,/cont

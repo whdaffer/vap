@@ -189,6 +189,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  2001/12/08 00:02:36  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.1  2001/02/21 01:04:26  vapuser
 ; Initial revision
 ;
@@ -208,10 +211,10 @@ PRO tropical_storms_overlay, cloud_file,     $ ; full name of grid file
                       time_inc,      $ ; select wind files this number 
                                        ; of hours +/- time given 
                                        ; in date_time. def=6
-                      wpath = wpath, $ ; path to wind files (def=$VAP_WINDS)
+                      wpath = wpath, $ ; path to wind files (def=$VAP_DATA_TOP)
                       windfiles=windfiles, $; List of wind files to be overlaid.
                       overlay_path = overlay_path,$ ; path to output overlay file
-                                       ; def = $VAP_OVERLAY
+                                       ; def = $VAP_OPS_TS_OVERLAY
                       decimate=decimate,$ ; (I), scalar, decimate=n
                                           ; means take every n-th vector
                       CRDecimate=CRDecimate,$ ; (I), 2-vector,
@@ -439,8 +442,8 @@ PRO tropical_storms_overlay, cloud_file,     $ ; full name of grid file
     printf,llun,"INFO: " + str
   ENDIF 
 
-  str =  ' IDL Release Env = ' + strtrim(getenv('IDL_RELEASE_ENV'),2)
-  Message,str,/info
+;;  str =  ' IDL Release Env = ' + strtrim(getenv('IDL_RELEASE_ENV'),2)
+;;  Message,str,/info
   IF cronjob THEN $
     printf,llun,"INFO: " + str
 
