@@ -111,6 +111,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.6  1999/10/05 17:17:55  vapuser
+; Changed default Wind file time range from 26 to 14. Take abs of
+; differences. This way, the routine can look forward in time, too.
+;
 ; Revision 1.5  1999/04/09 15:37:11  vapuser
 ; *** empty log message ***
 ;
@@ -193,7 +197,10 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
     interp_filter = 'NIF-*.hdf'
     windfile_filter = 'N*'    
   ENDIF 
-  interp_files = findfile(Interp_Path+interp_filter,count=cnt)
+  ;interp_files = findfile(Interp_Path+interp_filter,count=cnt)
+  spawn,'find ' + Interp_Path + ' -name "' + interp_filter + '" -print ', interp_files
+  good = where(strlen(interp_files) GT 0,cnt)
+  interp_files = interp_files[good]
   make_interp_file =  0 
 
   IF cnt NE 0 THEN BEGIN 
@@ -210,7 +217,7 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
     x = where( test LE interp_time_inc, nx )
     IF nx NE 0 THEN BEGIN 
       diffs =  testtime.julian-filetimes[x].julian
-      s = sort(diffs)
+      s = sort(abs(diffs))
       filetimes = filetimes[x[s]]
       interp_files = interp_files[x[s]]
       count = nx
