@@ -36,6 +36,7 @@
 ;     type_float : Checks to see if the variable is a float or a double
 ;     type_complex : Checks to see if the variable is a complex or
 ;                    double complex
+;     number   : True if not string, structure, object or pointer
 ;     nonempty : if the check is for a string, this performs the
 ;                additional test of non-emptiness. NB, it will return
 ;                0 if *any* of the strings are empty
@@ -66,6 +67,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.8  1999/07/01 18:37:18  vapuser
+; Fixed small bug in 'object' section
+;
 ; Revision 1.7  1999/05/28 17:12:07  vapuser
 ; Put in test of classname for 'object' case
 ;
@@ -107,6 +111,7 @@ FUNCTION isa, variable, $
               type_integer=type_integer, $
               type_float=type_float, $
               type_complex= type_complex, $
+              number=number,$
               nonempty=nonempty, $
               name=name, $
               status=status, $
@@ -116,7 +121,7 @@ FUNCTION isa, variable, $
 
  
 status = 1
-usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /long, /float, /double, /complex, /dcomplex, /string, /structure, /object, /pointer, /type_integer, /float_type, /type_complex [,/nonempty, name=structure_name,objname=objname])'
+usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /long, /float, /double, /complex, /dcomplex, /string, /structure, /object, /pointer, /type_integer, /float_type, /type_complex, /number [,/nonempty, name=structure_name,objname=objname])'
 
   IF n_params() LT 1 THEN BEGIN 
     usage,usage_msg
@@ -184,6 +189,11 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
      keyword_set(TYPE_COMPLEX) : $
        test =  vartype(variable) EQ 'COMPLEX_FLOAT' OR $
                vartype(variable) EQ 'COMPLEX_DOUBLE'
+     keyword_set(NUMBER) : $
+      test= (vartype(variable) EQ 'STRING' OR $
+             vartype(variable) EQ 'STRUCTURE' OR $
+             vartype(variable) EQ 'OBJECT' OR $
+             vartype(variable) EQ 'POINTER') EQ 0
      ELSE: BEGIN 
        Usage,usage_msg
        status = 0
