@@ -308,6 +308,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.21  2001/02/02 19:26:11  vapuser
+; Put in `gridlines' and 'keepaspect.' Did a little work (ptitle) on the
+; oplot mechanism.
+;
 ; Revision 1.20  2000/08/15 16:43:15  vapuser
 ; Added the 'oplot' keyword to overplot symbols. Also added a 'help'
 ; keyword.
@@ -654,8 +658,9 @@ PRO gms5_overlay, datetime, gmsType, $
   ENDELSE   
 
   IF read_cfgfile THEN BEGIN 
+    cfgname = cfgpath+"/"+cfgname
     print,' Reading CFG file ' + cfgname
-    read_cfgfile,cfgname, cfg,path=cfgpath
+    read_cfgfile,cfgname, cfg
     IF n_elements(cfg) NE 0 THEN BEGIN 
       print,'CFG found! Details follow:'
       help,cfg,/st

@@ -119,6 +119,11 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.13  2001/02/02 19:01:06  vapuser
+; Fixed a mps/knots conversion, put some output of
+; timing info to the log, changed the log directory to $VAP_ROOT/logs
+; and the tmpfile directory to $VAP_ROOT/tmpfiles.
+;
 ; Revision 1.12  2000/02/23 21:57:37  vapuser
 ; Moved around some error reporting code, changed where the
 ; lock file gets check/opened. Included the ROI in the names
@@ -282,8 +287,9 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   ENDELSE   
 
   IF read_cfgfile THEN BEGIN 
+    cfgname = cfgpath + '/' + cfgname
     print,' Reading CFG file ' + cfgname
-    read_cfgfile,cfgname, cfg,path=cfgpath
+    read_cfgfile,cfgname, cfg
     IF n_elements(cfg) NE 0 THEN BEGIN 
       print,'CFG found! Details follow:'
       help,cfg,/st

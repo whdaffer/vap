@@ -321,6 +321,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.11  2001/02/02 18:47:57  vapuser
+; Changed most array references to use '[]' This accounts from most of
+; the changes. Also fixed a bug with east/west longitudes.
+;
 ; Revision 1.9  2000/02/28 19:19:22  vapuser
 ; Fixed a problem with the Title.
 ;
@@ -533,8 +537,9 @@ ENDIF ELSE BEGIN
 ENDELSE   
 
 IF read_cfgfile THEN BEGIN 
+  cfgfile = cfgpath + '/' + cfgname
   print,' Reading CFG file ' + cfgname
-  read_cfgfile,cfgname, cfg,path=cfgpath
+  read_cfgfile,cfgname, cfg
   IF n_elements(cfg) NE 0 THEN BEGIN 
     print,'CFG found! Details follow:'
     help,cfg,/st

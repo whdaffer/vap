@@ -290,6 +290,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.17  2001/02/02 19:06:07  vapuser
+; Added keepaspect, gridlines and oplot keywords and
+; associated code (alot of it for `oplot')
+;
 ; Revision 1.16  2000/08/15 16:47:41  vapuser
 ; Added a help keyword. Added the oplot keyword, so that we can now
 ; overplot symbols on the images.
@@ -396,8 +400,9 @@ PRO goes_overlay, goesfile, $
   ENDELSE   
 
   IF read_cfgfile THEN BEGIN 
+    cfgname = cfgpath + '/' + cfgname
     print,' Reading CFG file ' + cfgname
-    read_cfgfile,cfgname, cfg,path=cfgpath
+    read_cfgfile,cfgname, cfg
     IF n_elements(cfg) NE 0 THEN BEGIN 
       print,'CFG found! Details follow:'
       help,cfg,/st

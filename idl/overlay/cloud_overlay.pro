@@ -206,6 +206,9 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.17  2001/02/02 19:02:00  vapuser
+; Added keepaspect and gridlines keywords
+;
 ; Revision 1.16  2000/08/15 16:57:28  vapuser
 ; Added help and oplot keywords. The `oplot' keyword allows users to
 ; overplot symbols and annotation on the output image. This keyword is
@@ -357,8 +360,9 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   ENDELSE   
 
   IF read_cfgfile THEN BEGIN 
+    cfgname = cfgpath + "/" + cfgname
     print,' Reading CFG file ' + cfgname
-    read_cfgfile,cfgname, cfg,path=cfgpath
+    read_cfgfile,cfgname, cfg
     IF n_elements(cfg) NE 0 THEN BEGIN 
       print,'CFG found! Details follow:'
       help,cfg,/st
