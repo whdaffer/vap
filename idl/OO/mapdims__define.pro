@@ -62,6 +62,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/01 17:52:56  vapuser
+; Modified 'version' method so that it will report
+; the versions of member classes. Put in some error handling
+; so that it'll ignore calls to undefined 'version' methods.
+;
 ; Revision 1.1  1998/10/01 16:33:38  vapuser
 ; Initial revision
 ;
@@ -218,8 +223,10 @@ FUNCTION MapDims::Version
 
    rcsid = "$Id$"
      ; Find version number for member objects.
-   Tags = Tag_Names(self)
+   s=execute( 'tags=tag_names({' + 'MAPDIMS' + '})' ) 
    n_tags = n_elements(Tags)
+   i = 0
+
    WHILE i LE n_tags-1 DO BEGIN 
 
      catch, error
@@ -233,11 +240,13 @@ FUNCTION MapDims::Version
      ENDIF 
      
      IF VarType( self.(i) ) EQ 'OBJECT' THEN BEGIN 
-       V =  Call_Method( "VERSION", self.(i) )
-       nv = N_Elements(V)
-       IF exist(member_versions) THEN $
-          member_versions =  [ member_versions, v ] ELSE $
-          member_versions =  v
+       IF Obj_Valid( self.(i) ) THEN BEGIN 
+         V =  Call_Method( "VERSION", self.(i) )
+         nv = N_Elements(V)
+         IF exist(member_versions) THEN $
+            member_versions =  [ member_versions, v ] ELSE $
+            member_versions =  v
+       ENDIF 
      ENDIF 
      i =  i+1
    ENDWHILE 
@@ -254,7 +263,10 @@ FUNCTION MapDims::Version
                     "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
            error = 0
            i = i+1
-         ENDIF ELSE return,''
+         ENDIF ELSE BEGIN 
+           Message,!error_state.msg,/cont
+           return,''
+         ENDELSE 
        ENDIF 
 
        V  = call_method("VERSION",super[i])
@@ -276,7 +288,7 @@ FUNCTION MapDims::Version
       versions =  [versions, member_versions ] 
 
    Catch,/cancel
-  return,versions
+  return,versions(uniq(versions,sort(versions)))
 END
 
 ;====================================
