@@ -107,6 +107,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  1999/10/05 17:18:52  vapuser
+; Changed delta(hours) to delta_hours.
+;
 ; Revision 1.5  1999/09/22 18:02:30  vapuser
 ; Added 'twoway' keyword to tell it to add and subtract a delta.
 ;
@@ -187,11 +190,16 @@ FUNCTION getwindfiles, end_time, $
 
  IF twoway THEN end_time_dt=dt_add(end_time_dt,hour=delta_hours, min=delta_mins)
 
-  IF n_elements(path) EQ 0 THEN path =  GetEnv('VAP_WINDS')
-  IF strlen(path) EQ 0 THEN BEGIN 
-    message,"Can't get_env(VAP_WINDS), defaulting to '/disk3/winds'",/cont
-    path = '/disk3/winds'
+  IF n_elements(path) EQ 0 THEN BEGIN 
+    path =  GetEnv('VAP_WINDS')
+    IF strlen(path) EQ 0 THEN BEGIN 
+      message,"Can't get_env(VAP_WINDS), defaulting to '/disk5/winds/qscat/Rnoaa'",/cont
+      path = '/disk5/winds/qscat/Rnoaa'
+    ENDIF 
   ENDIF 
+
+  path = deenvvar(path)
+  IF rstrpos(path,'/') NE strlen(path)-1 THEN path = path + '/'
    
   IF n_elements(filter) EQ 0 THEN BEGIN 
     IF nscat THEN filter = 'N*' ELSE filter =  'Q*'
@@ -202,8 +210,10 @@ FUNCTION getwindfiles, end_time, $
     ;
     ;-----------------------------------------
 
-  filespec = path + '/' + filter
-  windfiles = findfile(filespec, count=cnt)
+  ;filespec = path + '/' + filter
+  ;windfiles = findfile(filespec, count=cnt)
+  windfiles = vfindfile(filter,path,count=cnt)
+  windfiles = deenvvar(path) + windfiles
   retarray = ''
 
   IF cnt NE 0 THEN BEGIN 
