@@ -31,6 +31,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.11  2002/08/21 18:29:29  vapdev
+# *** empty log message ***
+#
 # Revision 1.10  2002/08/13 20:14:23  vapdev
 # Added subroutine 'deenvvar'
 #
@@ -402,18 +405,14 @@ sub makeRandomTag{
 }
 
 sub auto_movie_defs {
-  # parses the file $VAP_ROOT/auto_movie_defs.dat returns array
-  # containing the ROI designations
-  # (i.e. 'nepac','nwpac','npac','nwatl' and whatever other regions of
-  # interest we may decide to do.
+  # parses the auto_movie_defs.dat file, returns hash of 'DESIG',
+  # WEBNAME key=value pairs.
   
 
   # open the file 
   my $file=shift || $auto_movie_defs_file;
   open (DEFS,"<$file") || 
     croak "Can't open $file\n";
-  my @defs =<DEFS>;
-  close DEFS;
 
   # loop over records in the file taking the 'value' of the 'desig'
   # field in each record. Each record is a string suitable for
@@ -421,16 +420,20 @@ sub auto_movie_defs {
   # like { F1:X1, F2:X2, F3:X3 ... }.  So we split on the ',' then
   # find 'desig' and split on the ":"
 
-  my @desigs = ();
-  foreach my $r ( @defs) {
-    next if $r =~ /^;.*$/; # next if IDL comment line
-    next if $r =~ /^\s*$/; # next if empty line
-    my @tmp = split(/,/, $r);
-    my $tmp = $tmp[0];
-    @tmp = split(/:/, $tmp);
-    push @desigs, $tmp[1];
+  my $hash={};
+  while (<DEFS>){
+    next if /^;.*$/; # next if IDL comment line
+    next if /^\s*$/; # next if empty line
+    my @tmp = split /,/;
+    my @tmp2 = split(/:/, $tmp[0]);
+    my $desig=$tmp2[1];
+    @tmp2 = split(/:/, $tmp[1]);
+    $desig =~ s/'|"//g;
+    $tmp2[1] =~ s/'|"//g;
+    $hash->{$desig} = $tmp2[1];
   }
-  @desigs;
+  close DEFS;
+  $hash;
 }
 
 

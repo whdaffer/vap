@@ -12,6 +12,10 @@
 #   (i.e. what has become known as 'vaptime')
 # 
 # $Log$
+# Revision 1.10  2002/08/08 23:31:07  vapdev
+# Installed 'use strict' and made necessary
+# changes, but this will probably be rewritten soon.
+#
 # Revision 1.9  2001/08/06 18:34:18  vapuser
 # Added "use lib '/usr/people/vapuser/perl';"
 #
@@ -76,7 +80,7 @@ my $date_time_string=sprintf("%04d%02d%02d%02d%02d",
 			  $year,$mon,$mday,$hour,$min);
 my $NowAsVapTime=sprintf("%04d/%02d/%02d/%02d/%02d",
 		      $year,$mon,$mday,$hour,$min);
-my @ROIS = auto_movie_defs();
+my $roi_hash = auto_movie_defs();
 #
 #
 
@@ -86,12 +90,13 @@ $roi =~ tr/a-z/A-Z/; # upcase everything
 $froi = $roi;
 $froi =~ tr/A-Z/a-z/; # filenames are lowercase.
 
+my @ROIS = keys %{$roi_hash};
 do {
   VapMailErrorMsg(
 		  "ILLEGAL ROI: $roi, legal values are @ROIS\n",
 		  "ILLEGAL ROI");
   die "ILLEGAL ROI: $roi, legal values are @ROIS\n";
-} unless (@test_roi = grep( $_ =~ /$roi/, @ROIS));
+} unless grep( /$roi/, @ROIS);
 
 
 my $date_time=shift || $NowAsVaptime;
