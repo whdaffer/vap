@@ -1,0 +1,38 @@
+#!/bin/perl5
+#
+# sortai - sorts entries of area_info file by time.
+#
+
+
+open( AREA_INFO , "<area_info");
+@lines=<AREA_INFO>;
+#print "(1) @lines\n";
+close ( AREA_INFO );
+$hdr=shift( @lines );
+#print "(2) @lines\n";
+for ($i=0;$i<=$#lines;$i++) {
+  @tmp = split( " ", $lines[$i] );
+#  print "(split) tmp = @tmp\n";
+  $time[$i] = $tmp[18];
+#  print "time[$i] = $time[$i]\n";
+  $tmp1 = $tmp[6];
+  $h = substr( $tmp1, 0, 2 );
+  $m = substr( $tmp1 , 2, 2);
+#  print "h = $h, m=$m\n";
+  $time[$i] += $h/24. + $m/(24.*60.);
+#  print "time[$i] = $time[$i]\n"  ;
+  $times{ $lines[$i] } =  $time[$i] ;
+
+}
+@outlines = sort bytime @lines;
+#print $hdr;
+#print @outlines;
+rename ("area_info", "area_info.unsorted" );
+open (AREA_INFO, ">area_info");
+print AREA_INFO $hdr;
+print AREA_INFO @outlines;
+close AREA_INFO;
+exit;
+
+sub bytime { $times{$a} <=> $times{$b} }
+

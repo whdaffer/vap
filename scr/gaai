@@ -1,0 +1,35 @@
+#!/bin/csh
+#
+#
+# $Id$
+#
+# $Log$
+#
+# This routine will visit each of the GOES directories and run mkai
+# which, in turn, runs ainf (Area file INFormation) on all files in
+# that directory, outputting the date/time and resolution information
+# to the file 'area_info' after first moving the old version of this
+# file to area_info.old
+#
+#
+#
+set pwd=$PWD
+if ($1 == "" ) then 
+  set top=$VAP_GOES_TOPDIR
+else 
+  set top=$1
+endif 
+
+cd $top
+echo $PWD
+foreach i (goes{8,10}/{vis,ir2,ir3,ir4} )
+  if ( -e $i ) then 
+    echo ----------- going to $i ---------------
+    cd $i
+    echo ----------- running mkai in $i ---------------
+    mkai 
+    cd $top
+  endif 
+end
+cd $pwd
+exit

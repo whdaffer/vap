@@ -1,0 +1,14 @@
+#!/bin/csh
+#
+# $Id$
+#
+# $Log$
+#
+if ( -e area_info ) then
+  mv -f area_info area_info.old
+endif
+
+echo "##" `date` > area_info
+/usr/people/vapuser/bin/ainf AREA* >> area_info
+/usr/people/vapuser/perl/sortai # perl script to sort area_info file by time
+exit

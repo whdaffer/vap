@@ -1,0 +1,8 @@
+#!/bin/csh
+# Renew Archive Listings
+#
+#
+#/usr/people/vapuser/bin/gagd   # get all goes directories
+/usr/people/vapuser/bin/ganaif # get all noaa area_info files
+/usr/people/vapuser/bin/gaai   # get all (our) area_info files
+exit

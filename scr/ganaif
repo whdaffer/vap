@@ -1,0 +1,20 @@
+#!/bin/csh
+# c-shell script ganaif (Get All Noaa Area_Info Files)
+#
+# $Id$
+#
+# $Log$
+#
+# gets the area_info file now maintained on the NOAA archive site and 
+# transfers it to the corresponding location in our archive changing the 
+# name to 'noaa_area_info'
+#
+#
+#
+foreach i ( 8 10 )
+  foreach j ( ir2 ir3 ir4 vis )
+     echo working on goes$i, sensor $j
+     getaifile $i $j
+  end
+end
+exit

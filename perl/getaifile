@@ -1,0 +1,80 @@
+#!/usr/bin/perl5 
+# Gets the area_info file that Paul Chang now maintains on the NOAA archive for us.
+#
+# Usage:
+#
+#  getaifile sat sensor [alternate-local-dir]
+#
+# Example:
+#
+#  getaifile 10 4 /usr/people/vapuser 
+#
+# This will get the file goes9/ir4/area_info and transfer it to the file
+# /usr/people/vapuser/noaa_area_info
+#
+#  getaifile 10 4
+#
+#  Will get the same file but put it in /disk2/vap/goes/goes10/ir4
+#
+#
+#
+# $Id$
+#
+# Modifications:
+#
+# $Log$
+#
+#
+# 
+require Net::FTP;
+push @INC, "/usr/people/vapuser/perl/";
+require vap_perl;
+
+#$host="orbit25i.nesdis.noaa.gov";
+#$user="mspencer";
+#$pw="goes&nscat";
+
+($host,$user,$pw) = vap_perl'getgoesarchive();
+die "Can't get goes Archive info\n" unless defined $pw;
+
+%sat_num= ( '8','10' , # AREA8* are goes 9 files !
+	    '9','8' , # AREA9* are goes 8 files !
+	   );
+%sensor_dir = ('1','vis',
+	'2','ir2',
+	'3','ir3',
+	'4','ir4',
+	'5','ir5'
+	);
+
+$sat=shift;
+$sensor=shift;
+
+$remote_path = "goes".$sat."/".$sensor."/";
+$remote_file = $remote_path."area_info";
+$local_file = "noaa_area_info";
+
+# print "remote_path = $remote_path\n";
+# print "remote_file = $remote_file\n";
+$local_path = shift;
+if (!$local_path) {
+  if ( $remote_path =~ m#^g# ) {
+    $tmp = "/".$remote_path ;
+  } else {
+    $tmp = $remote_path;
+  }
+  print "tmp = $tmp\n";
+  $local_path=$vap_perl::ARCHIVETOP.$tmp;
+}
+# print "local_path = $local_path\n";
+$local_file=$local_path.$local_file;
+# print "local_file = $local_file\n";
+#exit;
+
+$ftp = Net::FTP->new( $host ) || die "Can't open new \n";
+$ftp->login ($user, $pw ) || die "Can't login\n";
+$ftp->binary || die "Can't go to binary\n";
+print "Getting $remote_file and sending it to $local_file\n";
+$ftp->get($remote_file,$local_file) ||  die "Can't get file\n";
+$ftp->quit || die "Can't close\n";
+exit;

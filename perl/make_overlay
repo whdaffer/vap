@@ -1,0 +1,75 @@
+#!/usr/bin/perl -w
+#
+# $Id$
+#
+# Modifications:
+#
+# $Log$
+
+use lib $ENV{VAP_SFTWR_PERL};
+use strict;
+no strict 'refs';
+use Overlay;
+use Getopt::Long;
+
+# These have to be package variables in order to make the symbolic
+# references work
+
+use vars qw ($asctime  $desctime $nvectors  $crdecimate $delta  $rainflag 
+	     $rf_action  $rf_color  $excludecols  @lonlim  @latlim 
+	     @crdecimate  @excludecols  $result  $region  
+	     $time  $lastrec  $fullregionname  $regionname  $msg  $windspath 
+	     $windfilter  $satname  $satnum  $sensornum  $length  $help 
+	     $tellme  $lonlim  $latlim  $testsecs  $type  $overlay_dir 
+	     $tmpdir $imagedelta $winddelta);
+
+my $starttime =  $^T;
+
+$|=0; #flush buffers after every print statement. This will keep the
+      #mixing of stdout/stderr from Perl and IDL to a minimum.
+
+my @argnames = qw/region time windpath windfilter satname 
+		  satnum sensornum lonlim latlim crdecimate excludecols 
+		  rainflag rf_action rf_color length help tellme/;
+
+$result=&GetOptions( 'region=s',\$region,
+		     'time=s',  \$time,
+		     'windpath|path|wpath=s', \$windspath,
+		     'windfilter|filter|wfilter|wfilt=s', \$windfilter,
+		     'satname=s',\$satname,
+		     'satnum=i',\$satnum,
+		     'sensornum=i',\$sensornum,
+		     'lonlim=f@',\@lonlim,
+		     'latlim=f@',\@latlim,
+		     'crdecimate=i@',\@crdecimate,
+		     'excludecols=s',\$excludecols,
+		     'rainflag=i',\$rainflag,
+		     'rf_action=i',\$rf_action,
+		     'rf_color=i',\$rf_color,
+		     'length=i',\$length,
+		     'imagedelta=f',\$imagedelta,
+		     'winddelta=f',\$winddelta,
+		     'help', \$help,
+		     'tellme', \$tellme );
+
+if (!$result){
+  vap_perl::VapMailErrorMsg(
+       "cloud_overlay: Error parsing options\n" ,
+	  "PARSEOPTIONSERROR" ); 
+    die "Error parsing options\n"; 
+} 
+
+
+my @args = ();
+foreach $main::aa (@argnames){
+  if (${$main::aa}) {
+    push @args, (uc "$main::aa", ${$main::aa});
+  }
+}
+my $overlayobj = Overlay->new(@args);
+die "Can't create overlay object\n" unless $overlayobj;
+die "Error in setupProcess!\n" unless $overlayobj->setupProcessing;
+die "Error running IDL\n" unless $overlayobj->runIDL;
+die "Error delivering results\n" unless $overlayobj->deliver;
+
+exit;
