@@ -119,6 +119,10 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.10  1999/10/11 17:27:16  vapuser
+; Added code to support user/system 'config file.' Expect min/max speed
+; in knots if knots=1. Fixed some bugs.
+;
 ; Revision 1.9  1999/10/06 17:19:46  vapuser
 ; Changed calls to animate_wind_field to reflect changes in that
 ; program.
@@ -625,6 +629,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     spawn,exe_str,ret
     nn = n_elements(ret)
     i = -1
+    good = 1
     done = 0
     REPEAT BEGIN 
       i = i+1
@@ -632,6 +637,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
       s2 = strpos(ret[i],'bad') 
       
       IF s1 NE -1 OR s2 NE -1 THEN BEGIN
+        good = 0
         str =  'ERROR: in dmconvert, Error message:  ' + ret
         done = 1
         IF auto_movie_cronjob THEN begin
@@ -641,6 +647,16 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
         message,str, /cont
       ENDIF 
     ENDREP UNTIL done OR (i EQ nn-1)
+    IF good AND auto_movie_cronjob THEN BEGIN 
+      openw,lun,'/tmp/auto_movie_mov_filename',/get,error=err
+      IF err THEN BEGIN 
+        printf,llun,'ERROR: ' + !error_state.msg
+        free_lun, llun
+      ENDIF 
+      printf, lun, omov_file
+      free_lun, lun
+    ENDIF 
+    free_lun, llun
 ;  ENDELSE 
    CD,cur_dir
  
