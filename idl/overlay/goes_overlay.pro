@@ -3,6 +3,9 @@
 ; put on pretty colors and overlay winds, if there are any.
 ; $Id$
 ; $Log$
+; Revision 1.3  1998/10/30 22:12:02  vapuser
+; Worked on image processing, not done yet.
+;
 ; Revision 1.2  1998/10/17 00:14:39  vapuser
 ; worked on CRDecimate and ExcludeCols keywords.
 ; Killed a few bugs.
@@ -46,8 +49,8 @@ PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
                   length    = length ,$    ; length of vector (def=2)
                   uu        = uu   ,$      ; (I) u value of vectors
                   vv        = vv   ,$      ; (I) v value
-                  llon      = llon ,$      ; (I) long
-                  llat      = llat ,$      ; (I) lat
+                  llon      = llon ,$      ; (I) long of u/v
+                  llat      = llat ,$      ; (I) lat of u/v
                   save      = save ,$      ; (IF) save to save set
                   Z         = Z    ,$      ; (IF) work in Z buffer
                   nogrid    = nogrid ,$    ; (IF) Don't put down grid
@@ -225,10 +228,10 @@ IF n_Elements(ExcludeCols) NE 0 THEN BEGIN
   ENDELSE 
 ENDIF 
 
-IF N_Elements(CRDecimate) NE 2 THEN BEGIN 
+IF exist(CRDecimate) AND N_Elements(CRDecimate) NE 2 THEN BEGIN 
   Message,'CRDecimate must be a 2-vector, ignored',/cont
   CRD = [1,1]
-ENDIF ELSE CRD = CRDecimate
+ENDIF ELSE IF NOT exist(CRDecimate) THEN CRD = [2,2] ELSE CRD = CRDecimate
 
 
 IF N_Elements(Decimate) EQ 0 THEN Decimate = 1
@@ -393,36 +396,57 @@ ENDIF
 save       =  keyword_set( save )
 Z          =  keyword_set( Z )
 grid       =  NOT keyword_set( nogrid )
-IF NOT keyword_set( minpix ) THEN BEGIN
-  IF NOT IR THEN minpix =  150
-ENDIF ELSE BEGIN 
-  IF minpix EQ  -1 AND NOT ir THEN minpix =  150
-ENDELSE 
+
+;IF NOT keyword_set( minpix ) THEN BEGIN
+;  IF NOT IR THEN minpix =  150
+;ENDIF ELSE BEGIN 
+;  IF minpix EQ  -1 AND NOT ir THEN minpix =  150
+;ENDELSE 
 
 BACKGROUND  = 0b
 WATER_START = 1b
+WATER_MAX   = 12b
 LAND_START  = 13b
 CLOUD_START = 33b
 WIND_START  = 73b
 WHITE       = 98b
-N_WIND_COLORS =  WHITE-WIND_START
+N_WIND_COLORS =  WHITE-WIND_START+1
 
+IF getenv('VAP_RESOURCES') NE '' THEN BEGIN 
+  colorTableFile = getenv('VAP_RESOURCES')+ $
+    '/Color_Tables/goes_overlay.ct'
+ENDIF ELSE $
+  colorTableFile = $
+     '/usr/people/vapuser/Qscat/Resources/Color_Tables/goes_overlay.ct'
 
-openr,rlun,'$VAP_ROOT/goes-vis-overlay-ct.txt',/get,error=err
-IF err NE 0 THEN BEGIN 
-  message,!err_string,/cont
+PtrToColorTable = ReadColorTable(colorTableFile)
+IF NOT Ptr_Valid(PtrToColorTable) THEN BEGIN 
+  Message,"ERROR: Can't open " + colorTablefile,/cont
   return
-ENDIF 
-spawn,' wc -l $VAP_ROOT/goes-vis-overlay-ct.txt', nlines
-nlines =  nlines(0)
-tmp =  bytarr(3,nlines)
-top_color_index =  nlines-1
-readf,rlun, tmp
-free_lun,rlun
-tmp =  transpose( tmp )
-red   =  tmp( *,0)
-green =  tmp(*,1)
-blue  =  tmp(*,2) &  tmp=0
+ENDIF ELSE BEGIN 
+  CT = *PtrToColorTable
+  Red = reform(CT[0,*])
+  Green = reform(CT[1,*])
+  Blue = reform(CT[2,*])
+  Ptr_Free,PtrToColorTable
+  CT = 0
+ENDELSE 
+
+;openr,rlun,'$VAP_/goes_overlay.ct',/get,error=err
+;IF err NE 0 THEN BEGIN 
+;  message,!err_string,/cont
+;  return
+;ENDIF 
+;spawn,' wc -l $VAP_ROOT/goes-vis-overlay-ct.txt', nlines
+;nlines =  nlines(0)
+;tmp =  bytarr(3,nlines)
+;top_color_index =  nlines-1
+;readf,rlun, tmp
+;free_lun,rlun
+;tmp =  transpose( tmp )
+;red   =  tmp( *,0)
+;green =  tmp(*,1)
+;blue  =  tmp(*,2) &  tmp=0
 
 
 
@@ -473,7 +497,7 @@ ENDIF ELSE BEGIN
   ; read the goes file
   READ_PCGOES, goesfile, limits, data, image, year, jday, $
               time, nlon,nlat, lonsize, latsize, info_string, $
-              area_file = area_file
+              area_file = area_file, hdr=hdr
   IF year EQ 0 THEN BEGIN
     ; older version of the grid file don't
     ; have the year info in them. so set current year.
@@ -562,9 +586,9 @@ IF strlen(tit) GT 0 THEN $
  title_str =  title_str + ' ' + tit
 
 ; define and load color bar for winds
-cbar =  bytarr( 10, 10, n_wind_colors ) 
-FOR i=0,n_wind_colors-1 DO cbar(*,*,i) =  byte(i) + wind_start
-cbar =  transpose( reform( cbar, 10, 10*n_wind_colors ) )
+;cbar =  bytarr( 10, 10, n_wind_colors ) 
+;FOR i=0,n_wind_colors-1 DO cbar(*,*,i) =  byte(i) + wind_start
+;cbar =  transpose( reform( cbar, 10, 10*n_wind_colors ) )
 
 
 
@@ -576,34 +600,54 @@ latinc =  (tlimits(3)-tlimits(1))/nlat
 loninc =  (tlimits(2)-tlimits(0))/nlon 
 
 
-IF ir THEN BEGIN 
+IF ir THEN  data =  temporary(1024-data) ; reverse for IR
 
-  data =  1024-data ; reverse for IR
-  xx =  where( data LT 1024 )
+moments = moment(data)
+a = moments[0]
+s = sqrt(moments[1])
+oneSigma = a-s
 
-  IF NOT keyword_set( minpix ) THEN BEGIN 
-    s = stdev( data(xx), a )
-    minpix =  a-s
-    message,' IR Image !, minpix set to ' + strtrim( minpix, 2 ),/cont
-  ENDIF 
-  IF keyword_set( minpix ) THEN BEGIN
-    IF minpix EQ -1 THEN BEGIN 
-      s =  stdev( data(xx),a )
-      minpix =  a-s
-      message,' IR Image !, minpix set to ' + strtrim( minpix, 2 ),/cont
-    ENDIF 
+  ; This may not work for visual images!
+IF n_Elements( minpix ) EQ 0 THEN minpix = -1
+CASE minpix OF 
+  -1: BEGIN 
+    minpix =  oneSigma
+    message,' Minpix set to ' + strtrim( minpix, 2 ),/cont
+  END
+  -2: BEGIN 
+    ret = Cloud_Overlay_Config( data=data, limits=limits)
+    minpix = ret.cutoff
+    Message,' Minpix set to ' + strtrim( minpix, 2 ),/cont
+  END
+  ELSE:
+ENDCASE
+
+smallpix =  where( data LE minpix, nsmallpix )
+IF nsmallpix EQ 0 THEN BEGIN 
+  Message,'No pixels smaller than ' + strtrim(minpix,2),/cont
+  print,' Setting minpix to ' + oneSigma
+  minpix = OneSigma
+  smallpix =  where( data LE minpix, nsmallpix )
+  IF nsmallpix EQ 0 THEN BEGIN 
+    Message,' Still no pixels smaller than minpix (=' + strtrim( minpix,2) + ')',/cont
+    print,'    Returning'
+    return
   ENDIF 
 ENDIF 
-smallpix =  where( data LE minpix, nsmallpix )
-dlon =  (findgen( nlon )*loninc + minlon ) # (fltarr(nlat)+1 )
-dlat =  (fltarr(nlon)+1) # (findgen( nlat )*latinc + minlat ) 
+
+dlon =  (findgen( nlon )*loninc + minlon ) # replicate(1.,nlat)
+dlat =  replicate(1.,nlon) # (findgen( nlat )*latinc + minlat ) 
+
 
 ; Scale data array to 40 indices starting at 33
-bimage =  bytscl( data, MIN=minpix, top=40 ) + CLOUD_START
-unpack_where, bimage, smallpix, col, row
+;bimage =  bytscl( data, MIN=minpix, top=40 ) + CLOUD_START
 
-lons =  dlon( smallpix )
-lats =  dlat( smallpix )
+bimage = hist_equal( data, min=minpix, max=1024, $
+                     top=WIND_START-CLOUD_START-1)+CLOUD_START
+UNPACK_WHERE, bimage, smallpix, col, row
+
+lons =  dlon[ smallpix ]
+lats =  dlat[ smallpix ]
 mask =  lonarr( nsmallpix )
 t7 =  systime(1)
 xx =  where( lons LT 0, nxx )
@@ -653,7 +697,7 @@ t3 =  systime(1)
 print,' sea section took ', (t3-t2)/60., ' minutes '
 
 MAP_SET, latcent, loncent,  $
- limit=tlimits[ [1,0,3,2] ],/noborder ;, title=title_str
+ limit=tlimits[ [1,0,3,2] ],/noborder, ymargin=[4.,4.]
 
 
 t1 =  systime(1)
@@ -702,18 +746,23 @@ IF ps THEN BEGIN
   device, filename = ofile
 ENDIF ELSE IF gif THEN  ofile =  ofileroot + '.gif'
 
-s =  size( bimage ) &  ny= s(2)
-; blank the top 40 rows, to make way for the annotations
+
+tv,bimage,xs,ys
+;s =  size( bimage ) &  ny= s(2)
 IF ps THEN BEGIN 
- bimage(*,ny-40:ny-1) =  top_color_index ; ps looks best in white
+; bimage(*,ny-40:ny-1) =  top_color_index ; ps looks best in white
  TV, bimage, xs,ys, XSIZ=xsiz, YSIZ=ysiz 
 ENDIF ELSE BEGIN 
- bimage(*,ny-40:ny-1) =  0 ; gif/x looks best in black
+; bimage(*,ny-40:ny-1) =  0 ; gif/x looks best in black
  TV, bimage, xs,ys
 ENDELSE 
-xy =  convert_coord( [ xs + xsiz/2, (ny-40)/scalef ] , /dev, /to_data )
-y =  xy[1]
 
+;xy =  convert_coord( [ xs + xsiz/2, (ny-40)/scalef ] , /dev, /to_data )
+;y =  xy[1]
+
+sz = size(bimage,/dimensions)
+xyz = Convert_Coord( 0, ys+sz[1]/scalef, /device,/to_data )
+y = xyz[1]
   ;
   ; over plot the wind vectors, if there are any.
 
@@ -740,56 +789,56 @@ IF plotvect THEN BEGIN
     ENDIF 
   ENDIF 
 ENDIF 
+;IF NOT ps THEN BEGIN
+;  xsiz =  !d.x_size
+;  ysiz =  !d.y_size
+;ENDIF
 
-IF NOT ps THEN BEGIN
-  xsiz =  !d.x_size
-  ysiz =  !d.y_size
-ENDIF
+;IF ps THEN $
+;  cbloc = convert_coord( [(xsiz-(10*27)/scalef)/2,$
+;                          ysiz-32/scalef], /device,/to_normal ) ELSE $
+;  cbloc = convert_coord( [(xsiz-(10*27)/scalef)/2,$
+;                          ysiz-40/scalef], /device,/to_normal )
+;; color bar x location 
+;cbx =  cbloc(0)
+;; color bar y location
+;cby =  cbloc(1)
 
-IF ps THEN $
-  cbloc = convert_coord( [(xsiz-(10*27)/scalef)/2,$
-                          ysiz-32/scalef], /device,/to_normal ) ELSE $
-  cbloc = convert_coord( [(xsiz-(10*27)/scalef)/2,$
-                          ysiz-40/scalef], /device,/to_normal )
-; color bar x location 
-cbx =  cbloc(0)
-; color bar y location
-cby =  cbloc(1)
+;; color bar title
+;  IF ps THEN $
+;   cbtitloc = convert_coord( [xsiz/2,ysiz-22/scalef], $
+;                             /device,/to_normal ) ELSE $
+;   cbtitloc = convert_coord( [xsiz/2,ysiz-27/scalef], $
+;                             /device,/to_normal ) 
 
-; color bar title
-  IF ps THEN $
-   cbtitloc = convert_coord( [xsiz/2,ysiz-22/scalef], $
-                             /device,/to_normal ) ELSE $
-   cbtitloc = convert_coord( [xsiz/2,ysiz-27/scalef], $
-                             /device,/to_normal ) 
+;cbtitx =  cbtitloc(0) &  cbtity= cbtitloc(1)
+;; end of color bar
+;cbend =  convert_coord( [(xsiz-(10*27)/scalef)/2 + (10*27 + 2)/scalef, $
+;                         ysiz-35/scalef], /dev, /to_norm )
+;cbendx =  cbend(0)
+;; title location
+;titloc =  convert_coord( [xsiz/2,ysiz - !d.y_ch_size-2],  $
+;                         /device, /to_normal )   
+;titx =  titloc(0) &  tity =  titloc(1)
+;IF ps THEN text_color = 0 ELSE text_color = 255
 
-cbtitx =  cbtitloc(0) &  cbtity= cbtitloc(1)
-; end of color bar
-cbend =  convert_coord( [(xsiz-(10*27)/scalef)/2 + (10*27 + 2)/scalef, $
-                         ysiz-35/scalef], /dev, /to_norm )
-cbendx =  cbend(0)
-; title location
-titloc =  convert_coord( [xsiz/2,ysiz - !d.y_ch_size-2],  $
-                         /device, /to_normal )   
-titx =  titloc(0) &  tity =  titloc(1)
-IF ps THEN text_color = 0 ELSE text_color = 255
+;; Annotate the image
+;; First blank out the top 40 rows of the image
+;;blank =  bytarr( n_elements( bimage(*,0) ), 40 )
+;;tv, blank, xs, ysiz-40/scalef, xsiz=xsiz, ysiz=40/scalef
 
-; Annotate the image
-; First blank out the top 40 rows of the image
-;blank =  bytarr( n_elements( bimage(*,0) ), 40 )
-;tv, blank, xs, ysiz-40/scalef, xsiz=xsiz, ysiz=40/scalef
+;; Put down title string
+;xyouts, titx, tity, title_str, align=0.5, /normal, charsize=1.05, color=text_color
+;IF (windcolor EQ -1) THEN BEGIN 
+;  ; Put down color bar
+;  tv, cbar, cbx*xsiz, ysiz-35/scalef,xsiz=270/scalef,ysiz=10/scalef
+;  ; Annotate the color bar
 
-; Put down title string
-xyouts, titx, tity, title_str, align=0.5, /normal, charsize=1.05, color=text_color
-IF (windcolor EQ -1) THEN BEGIN 
-  ; Put down color bar
-  tv, cbar, cbx*xsiz, ysiz-35/scalef,xsiz=270/scalef,ysiz=10/scalef
-  ; Annotate the color bar
+;  xyouts, cbtitx, cbtity, cbtitle,     align = 0.5, /normal, color=text_color
+;  xyouts, cbx,    cby,    cblables(0), align = 1.0, /normal, color=text_color
+;  xyouts, cbendx, cby,    cblables(1), align = 0.0, /normal, color=text_color
+;ENDIF 
 
-  xyouts, cbtitx, cbtity, cbtitle,     align = 0.5, /normal, color=text_color
-  xyouts, cbx,    cby,    cblables(0), align = 1.0, /normal, color=text_color
-  xyouts, cbendx, cby,    cblables(1), align = 0.0, /normal, color=text_color
-ENDIF 
 IF grid THEN BEGIN 
   latrange =  limits(3)-limits(1)
   lonrange =  limits(2)-limits(0)
@@ -800,6 +849,29 @@ IF grid THEN BEGIN
    lonlab = minlat-.3,latlab = minlon, $
    charsize=.8, latalign=1, color = 255
 ENDIF 
+
+
+  ; Calculate where to put the Colorbar.
+  ; 
+sz = size(bimage,/dimensions)
+xyz = Convert_Coord( 0, ys+sz[1]/scalef,/device,/to_normal)
+y = xyz[1]
+y = [3*y+2, 2*y+3]/5
+
+ColorBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+            position=[0.25,y[0], 0.75, y[1]], $
+              Title='Wind Speed (knots)',Min=minspeed, $
+               max=maxspeed,divisions=4, format='(f5.0)', $
+                pscolor=ps
+
+
+  ; Now put the title at the bottom
+IF ps THEN text_color = 0 ELSE text_color = 255  
+xyz = Convert_Coord(0,ys,/device,/to_normal)
+y = xyz[1]
+xyouts, 0.5, y/2., title_str, align=0.5, $
+    /normal, charsize=1.05, color=text_color
+
 
 IF gif THEN BEGIN 
   im =  tvrd()
