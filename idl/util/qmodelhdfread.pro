@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  2001/12/10 23:31:25  vapdev
+; replace obsolete RSI routines
+;
 ; Revision 1.4  2001/02/02 19:16:29  vapuser
 ; Added `interptime', `wfiles' and `version' fields
 ;
