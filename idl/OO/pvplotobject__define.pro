@@ -63,6 +63,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1999/10/05 16:40:39  vapuser
+; Added member data 'starttime','endtime' and 'creationtime' and some
+; code to support them.
+;
 ; Revision 1.4  1999/02/27 00:45:14  vapuser
 ; Change 'QMODEL' to 'QMODELDATA' in some tests
 ;
@@ -89,6 +93,7 @@ FUNCTION PvPlotObject::Init, data, $
                      Filename=Filename
   status = 1
   self.PlotFlag = 1
+  self.UserPlotFlag = 1
   self.AlreadyPlotted = 0
   self.SelectedOnly = 0
   self.InRegion = -1 ; Don't know
@@ -152,13 +157,23 @@ END
 
 
 ;============================================
-; SetData Routine
+; SetPlotFlag Routine
 ;============================================
 
 PRO PvPlotObject::SetPlotFlag, PlotFlag
    IF N_Elements(PlotFlag) THEN BEGIN 
      Self.PlotFlag = PlotFlag
    ENDIF ELSE self.PlotFlag = 0
+END
+
+;============================================
+; SetUserUserPlotFlag Routine
+;============================================
+
+PRO PvPlotObject::SetUserPlotFlag, UserPlotFlag
+   IF N_Elements(UserPlotFlag) THEN BEGIN 
+     Self.UserPlotFlag = UserPlotFlag
+   ENDIF ELSE self.UserPlotFlag = 0
 END
 
 
@@ -181,6 +196,7 @@ PRO PvPlotObject::Set, $
                 AlreadyPlotted = AlreadyPlotted,$
                 InRegion       = InRegion, $
                 PlotFlag       = PlotFlag,$
+                UserPlotFlag       = UserPlotFlag,$
                 Filename       = Filename
 
 
@@ -192,6 +208,9 @@ PRO PvPlotObject::Set, $
 
   IF N_Elements(Plotflag) NE 0 THEN $
      self.Plotflag = Plotflag
+
+  IF N_Elements(UserPlotFlag) NE 0 THEN $
+     self.UserPlotFlag = UserPlotFlag
 
   IF N_Elements(Filename) NE 0 THEN $
      self.Filename = Filename
@@ -246,6 +265,7 @@ END
 PRO PvPlotObject::Get, $
                 Data            = Data, $
                 PlotFlag        = PlotFlag, $
+                UserPlotFlag        = UserPlotFlag, $
                 AlreadyPlotted  = AlreadyPlotted, $
                 SelectedOnly    = SelectedOnly, $
                 InRegion        = InRegion, $
@@ -256,6 +276,10 @@ PRO PvPlotObject::Get, $
       SelectedOnly = self.SelectedOnly
    IF Arg_Present( PlotFlag ) THEN $
       PlotFlag = self.PlotFlag
+
+   IF Arg_Present( UserPlotFlag ) THEN $
+      UserPlotFlag = self.UserPlotFlag
+
    IF Arg_Present( AlreadyPlotted ) THEN $
       AlreadyPlotted = self.AlreadyPlotted
    IF Arg_Present( InRegion ) THEN $
@@ -370,6 +394,7 @@ PRO PvPlotObject__define
           creationTime   : Obj_New(),$
           AlreadyPlotted : 0L, $
           PlotFlag       : 0L,$
+          UserPlotFlag   : 0l, $
           SelectedOnly   : 0l ,$
           InRegion       : 0l,$
           data           : Obj_New() }
