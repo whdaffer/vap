@@ -42,11 +42,14 @@
 ;     name     : if check is of 'structure' will perform the
 ;                additional test to see if the structure has the
 ;                correct name. Will only work for named structures!
+;     status   : returns 1 if there was no error, else returns 0.
+;                Errors include: incorrect argumentation, an undefined
+;                variable,  or anything caught by 'catch'
 ;
 ; OUTPUTS:  1, i.e. true, if the variable is of the type specified by
 ;          the input keyword
-;           0, i.e. false, if it isn't.
-;           -1 if something went wrong.
+;           0, i.e. false, if it isn't, or something went wrong.
+;           
 ;
 ; OPTIONAL OUTPUTS:  
 ;
@@ -63,6 +66,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.4  1999/03/16 18:16:46  vapuser
+; changed misspelling (.mst instead of .msg)
+;
 ; Revision 1.3  1999/03/04 18:51:53  vapuser
 ; Added name= keyword for structure tests.
 ;
@@ -77,40 +83,51 @@
 ;-
 
 FUNCTION isa, variable, $
-                  byte=byte, $
-                  short=short, $
-                  long=long, $
-                  float=float, $
-                  double=double, $
-                  complex=complex, $
-                  dcomplex=dcomplex, $
-                  string=string, $
-                  structure=structure, $
-                  object=object, $
-                  pointer=pointer, $
-                  type_integer=type_integer, $
-                  type_float=type_float, $
-                  type_complex= type_complex, $
-                  nonempty=nonempty, $
-                  name=name
+              byte=byte, $
+              short=short, $
+              long=long, $
+              float=float, $
+              double=double, $
+              complex=complex, $
+              dcomplex=dcomplex, $
+              string=string, $
+              structure=structure, $
+              object=object, $
+              pointer=pointer, $
+              type_integer=type_integer, $
+              type_float=type_float, $
+              type_complex= type_complex, $
+              nonempty=nonempty, $
+              name=name, $
+              status=status
 
 
 
  
+status = 1
 usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /long, /float, /double, /complex, /dcomplex, /string, /structure, /object, /pointer, /type_integer, /float_type, /type_complex [,nonempty, name])'
+
   IF n_params() LT 1 THEN BEGIN 
     usage,usage_msg
-    return,-1
+    status = 0
+    return,0
+  ENDIF 
+
+  IF n_elements(variable) EQ 0 THEN BEGIN 
+    Message,'Variable is undefined!',/cont
+    status = 0
+    return,0
   ENDIF 
 
   catch, error
   IF error NE 0 THEN BEGIN 
     catch,/cancel
     Message,!error_state.msg,/cont
-    return,-1
+    status = 0
+    return,0
   ENDIF 
 
-  test = -1
+  test = 0
 
   CASE 1 OF 
      keyword_set(byte) : test =  vartype( variable ) EQ 'BYTE'
@@ -134,18 +151,25 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
      keyword_set(structure) : BEGIN 
        test = vartype( variable ) EQ 'STRUCTURE'
        IF test AND exist(name) THEN $
-         test = strupcase(tag_names(variable,/structure_name )) EQ strupcase(name) 
+         test = strupcase(tag_names(variable,/structure_name )) EQ $
+           strupcase(name) 
      end
      keyword_set(object) : test = vartype( variable ) EQ 'OBJECT'
      keyword_set(pointer) : test = vartype( variable ) EQ 'POINTER'
-     keyword_set(TYPE_INTEGER) : test = vartype(variable) EQ 'BYTE' OR $
-                            vartype(variable) EQ 'INTEGER'  OR  $
-                            vartype(variable) EQ 'LONG'
-     keyword_set(TYPE_FLOAT) : test = vartype(variable) EQ 'FLOAT' OR $
-                     vartype(variable) EQ 'DOUBLE'
-     keyword_set(TYPE_COMPLEX) : test =  vartype(variable) EQ 'COMPLEX_FLOAT' OR $
-                                         vartype(variable) EQ 'COMPLEX_DOUBLE'
-     ELSE: Usage,usage_msg
+     keyword_set(TYPE_INTEGER) : $
+        test = vartype(variable) EQ 'BYTE'    OR $
+               vartype(variable) EQ 'INTEGER' OR  $
+               vartype(variable) EQ 'LONG'
+     keyword_set(TYPE_FLOAT) : $
+         test = vartype(variable) EQ 'FLOAT' OR $
+                vartype(variable) EQ 'DOUBLE'
+     keyword_set(TYPE_COMPLEX) : $
+       test =  vartype(variable) EQ 'COMPLEX_FLOAT' OR $
+               vartype(variable) EQ 'COMPLEX_DOUBLE'
+     ELSE: BEGIN 
+       Usage,usage_msg
+       status = 0
+     END 
        
   ENDCASE 
 
