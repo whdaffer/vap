@@ -20,6 +20,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.16  2002/08/08 00:17:55  vapdev
+# Added 'use strict' and general updating/cleanup
+#
 # Revision 1.15  2002/05/07 20:50:49  vapdev
 # put in '-w' and 'use strict'. Fixed resulting warnings.
 #
@@ -74,16 +77,18 @@
 use strict;
 use Getopt::Long;
 use File::Copy ;
+
 use lib $ENV{VAP_SFTWR_PERL};
+use Gms5;
 use VapUtil;
 use Winds;
 use OGoes;
-use Gms5;
 
 my $VAP_LIB = $ENV{VAP_LIBRARY} or 
   die "ENV variable VAP_LIBRARY undefined!\nHave you sources .vaprc?\n";
 my $VAP_WWW_TOP = $ENV{VAP_WWW_TOP} or 
   die "ENV variable VAP_WWW_TOP undefined!\nHave you sourced .vaprc?\n";
+
 my $usage =  "\nUsage:\n";
 $usage .= " cloud_overlay --region REGION_DESIGNATION\n";
 $usage .= "  --time TIME_DESIGNATION (yyyy/mm/dd/hh/mm in GMT)\n";
@@ -111,7 +116,7 @@ $usage .= "      This switch is *REQUIRED*\n";
 $usage .= "    REGION_DESIGNATION is the designation for the \n";
 
 $usage .= "      region as it appears in the _overlay_defs_ file\n";
-$usage .= "      See file $VapUtil::VAP_LIBRARY/overlay_defs for the complete list of \n";
+$usage .= "      See file $VAP_LIBRARY/overlay_defs for the complete list of \n";
 $usage .= "      predefined regions. If absent, the program falls over to using the \n";
 $usage .= "      information given (or defaulted to) in the combination of the \n";
 $usage .= "      satname/satnum/sensornum/lon/lat options.\n";
@@ -220,7 +225,7 @@ if ($region) {
   do { 
     $msg="cloud_overlay: Region $region doesn't exist in OVERLAY DEFAULTS Table!\n";
     $msg.="Execute 'cloud_overlay_regions' to find valid regions\n";
-  VapUtil::VapMailErrorMsg( $msg,
+  VapMailErrorMsg( $msg,
 		"UNKNOWN REGION") && 
 		  die "Region $region doesn't exist in OVERLAY DEFAULTS Table!\n"} 
   if !defined($VapUtil::overlay_defs{ $region }{ Region } );
