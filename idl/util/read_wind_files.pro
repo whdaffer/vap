@@ -1,5 +1,6 @@
 ;+
 ; NAME:  read_wind_files
+; $Id$
 ; PURPOSE:  Read Qscat/Nscat files, return data
 ;
 ;
@@ -50,7 +51,8 @@
 ; Help        - (F) Emit message and exit.
 ; Nscat       - (F) Expect Nscat data, ignore decimate, CRDecimate and
 ;                 ExcludeCols. (default=0, meaning, expect Qscat data)
-;
+; StartTime   - (O) Earliest Time in Data files
+; EndTime     - (O) Latest Time in Data files
 ;
 ;
 ; OUTPUTS:  Success: a [nrecs,4] array with [*,0] = U, [*,1] = v, [*,2] = lon
@@ -96,6 +98,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/09/30 17:39:49  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -106,6 +111,8 @@ FUNCTION read_wind_files, files, $
                           Decimate    = Decimate, $
                           CRDecimate  = CRDecimate, $
                           ExcludeCols = ExcludeCols, $
+                          StartTime   = StartTime,$
+                          EndTime     = EndTime,$
                           Help        = Help, $
                           Nscat       = Nscat
 
@@ -180,20 +187,35 @@ FUNCTION read_wind_files, files, $
        mmint = [mmint, mint]
        mmaxt =  [mmaxt,maxt]
      ENDFOR 
-     
+     StartTime =  min(mint)
+     EndTime =  min(mint)
    ENDIF ELSE BEGIN 
      IF n_Elements(decimate) EQ 0 THEN decimate = 1
      IF N_Elements(CRDecimate) NE 2 THEN CRDecimate =  [1,1]
      IF VarType(ExcludeCols) EQ 'UNDEFINED' OR $
         VarType(ExcludeCols) NE 'STRING' THEN ExcludeCols = ''
+     StartTime = '0000/00/00/00'
+     Endtime = StartTime
      FOR f=0,nf-1 DO BEGIN 
        print,'reading ' + files(f)
        q = obj_new('q2b',file=files(f), $
                    decimate=decimate, $
                    crdecimate=crdecimate, $
-                   excludecols=excludecols )
+                   excludecols=excludecols)
+                  Mint=Mint, Maxt=Maxt)
        IF obj_valid(q) THEN BEGIN 
          s = q-> GetPlotData(u,v,lon,lat)
+         s = q-> Get, StartTime = ST, Endtime=ET
+         IF strlen(st) NE 0 THEN BEGIN 
+           tmp = str_sep(st,'/')
+           IF fix(tmp[0]) NE 0 THEN $
+            StartTime = Min( StartTime, st )
+         ENDIF 
+         IF strlen(et) NE 0 THEN BEGIN 
+           tmp = str_sep(et,'/')
+           IF fix(tmp[0]) NE 0 THEN $
+            EndTime = Min( EndTime, et )
+         ENDIF 
          IF nofill THEN BEGIN 
            good = where( finite(u) AND finite(v), ngood )
            IF ngood NE 0 THEN BEGIN 
