@@ -68,6 +68,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/22 23:32:49  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -150,9 +153,16 @@ PRO cw_pvfinfo_popup, top
   tags = tag_names(top_info.infostruct)
   ntags = n_elements(tags)
   info_array = strarr(ntags)
-  FOR i=0,ntags-1 DO $
-    info_array[i] =  tags[i] + ' : ' + $
-      strtrim( top_info.infostruct.(i),2  )
+  FOR i=0,ntags-1 DO BEGIN 
+      info_array[i] =  tags[i] + ' : '      
+    IF n_elements(top_info.infostruct.(i)) GT 1 THEN BEGIN 
+      info_array[i] =  info_array[i] + $
+        strjoin(strtrim(top_info.infostruct.(i),2),' ')
+    ENDIF ELSE BEGIN 
+      info_array[i] =  info_array[i] + $
+        strtrim( top_info.infostruct.(i),2  )
+    ENDELSE 
+  ENDFOR 
   tableid =  Widget_List( popupid, value=info_array,ysize=ntags)
   dismissId = Widget_Button( popupid, value='DISMISS')
   info = { top: popupid, $
