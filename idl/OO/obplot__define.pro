@@ -32,6 +32,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 23:11:38  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1999, William Daffer
 ;No Warranties
@@ -41,6 +44,7 @@ FUNCTION ObPlot::INIT, Yarray, Xarray = Xarray, $
                  AnnotArray=AnnotArray, $
                  LineStyle=linestyle, PSym=psym, $
                  Symsize= symsize, $
+                 thick=thick, charsize=charsize, charthick=charthick, $
                  Color=color, Position=position, plots=plots, $
                  doAnnots=doAnnots
 
@@ -56,6 +60,9 @@ FUNCTION ObPlot::INIT, Yarray, Xarray = Xarray, $
   IF N_Elements(SymSize) EQ 0 THEN symsize = 1.0
   IF N_Elements(color) EQ 0 THEN color = !D.N_Colors-1
   IF N_Elements(position) EQ 0 THEN position = [0.15, 0.15, 0.95, 0.95]
+  IF n_elements(thick) EQ 0 THEN thick = 1
+  IF n_elements(charthick) EQ 0 THEN charthick = 1
+  IF n_elements(charsize) EQ 0 THEN charsize = 1.0
   IF n_elements(AnnotArray) NE 0 THEN self.AnnotArray =  ptr_new(AnnotArray)
   IF N_Elements(Yarray) NE 0 THEN self.Yarray = Ptr_New(Yarray)
   IF n_elements(Xarray) NE 0 THEN BEGIN 
@@ -70,7 +77,10 @@ FUNCTION ObPlot::INIT, Yarray, Xarray = Xarray, $
   self.symsize = symsize
   self.position = position
   self.color = color
-
+  self.thick = thick
+  self.charthick = charthick
+  self.charsize = charsize
+  
   self.xrange = [!values.f_nan,!values.f_nan]
   self.yrange = self.xrange
   self.plots = keyword_set(plots)
@@ -105,6 +115,9 @@ PRO ObPlot::Set, $
             Color     = color, $
             Position  = position, $
             LineStyle = linestyle, $
+            thick     = thick,$
+            charthick = charthick, $
+            charsize  = charsize, $
             Xrange    = Xrange,$
             Yrange    = Yrange,$
             Xarray    = Xarray,$
@@ -120,6 +133,9 @@ PRO ObPlot::Set, $
   IF N_Elements(color)     NE 0 THEN self.color = color
   IF N_Elements(position)  NE 0 THEN self.position = position
   IF N_Elements(xrange)    NE 0 THEN self.xrange = xrange
+  IF n_elements(thick)     NE 0 THEN self.thick = thick
+  IF n_elements(charthick) NE 0 THEN self.charthick = charthick
+  IF n_elements(charsize)  NE 0 THEN self.charsize = charsize 
   IF N_Elements(xarray)    NE 0 THEN BEGIN 
     IF ptr_valid( self.xarray ) THEN $
        *self.xarray = xarray ELSE  $
@@ -154,8 +170,11 @@ PRO ObPlot::Get, $
             Color     = color, $
             Position  = position, $
             LineStyle = linestyle, $
-            plots=plots, $
-            doAnnots=doAnnots
+            thick     = thick, $
+            charthick = charthick, $
+            charsize  = charsize, $
+            plots     = plots, $
+            doAnnots  = doAnnots
 
   psym = self.psym
   symsize = self.symsize
@@ -164,6 +183,9 @@ PRO ObPlot::Get, $
   linestyle = self.linestyle
   plots = self.plots
   doAnnots = self.doAnnots
+  thick = self.thick
+  charthick = self.charthick
+  charsize = self.charsize
 END
 ;-----------------------------------------------------------------------
 
@@ -263,6 +285,7 @@ PRO ObPlot::Draw, NoErase=noerase, $
        Color=self.color, $
        PSym=self.psym, $
        symsize=self.symsize, $
+       thick = self.thick, $
        _Extra=extra
     ENDIF ELSE BEGIN 
       Plot, (*self.Xarray)[x], (*self.Yarray)[y], $
@@ -271,6 +294,9 @@ PRO ObPlot::Draw, NoErase=noerase, $
        PSym=self.psym, $
        symsize=self.symsize, $
        Position=self.position, $
+       charsize=self.charsize, $
+       thick = self.thick, $
+       charthick=self.charthick, $
        NoErase=Keyword_Set(noerase), $
        _Extra=extra
     ENDELSE
@@ -285,7 +311,8 @@ PRO ObPlot::Draw, NoErase=noerase, $
         FOR i=0,n_elements(annots)-1 DO BEGIN 
           IF strlen(Annots[i]) NE 0 THEN BEGIN 
             xyouts, (*self.Xarray)[i], (*self.Yarray)[i], $
-              Annots[i],color=self.color
+              Annots[i],color=self.color, $
+                charsize=self.charsize, charthick=self.charthick
           ENDIF 
         ENDFOR 
       ENDIF 
@@ -305,8 +332,11 @@ PRO ObPlot__Define
              AnnotArray: Ptr_New(),$  ; Possible Annotations.
              doAnnots   : 0, $
              lineStyle : 0, $         ; The data line style.
+             thick     : 0, $          ; The 'thickness' of the line.
              psym      : 0, $         ; The data plot symbol.
-             SymSize   : 0.0, $
+             SymSize   : 0.0, $       ;
+             charsize  : 0.0, $
+             charthick : 0, $
              color     : 0L, $        ; The color of the data.
              position  : FltArr(4),$  ; The position in the plot window.
              Xrange    : fltarr(2) ,$ ; xrange
