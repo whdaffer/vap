@@ -29,6 +29,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/07 21:13:52  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -42,9 +45,9 @@ FUNCTION diag, array
 diag = -1
 on_error,2 ; return to caller
 s =  size(array)
-IF s(1) EQ  s(2) THEN BEGIN 
-  n =  s(1)
-  diag = array( indgen(n) + n*indgen(n) )
+IF s[1] EQ  s[2] THEN BEGIN 
+  n =  s[1]
+  diag = array[ lindgen(n) + n*lindgen(n) ]
 ENDIF ELSE message,' Array must be square ',/cont
 
 RETURN, diag

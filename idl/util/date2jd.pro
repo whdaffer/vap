@@ -34,6 +34,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/07 16:20:21  vapuser
+; Initial revision
+;
 ;
 ;
 ;Copyright (c) 1994, William Daffer
@@ -42,18 +45,27 @@
 ; No Warranty. You're on your own!
 ;
 FUNCTION Date2jd, y, m, d
-
-y = long(y)
-m = long(m)
-d = long(m)
-IF (m gt 2 ) THEN BEGIN
-  m = m - 3;
+gregorian = 15+31l*(10+12l*1582)
+iyyy = (jy= long(y))
+mm = long(m)
+id = long(m)
+IF (mm gt 2 ) THEN BEGIN
+  jm = mm +1 ;
 ENDIF ELSE BEGIN
-  m = m + 9;
-  y = y - 1;
+  jm = mm + 13;
+  jy = jy - 1;
 ENDELSE
 
-c = y/100;
-ya = y - 100*c;
-RETURN,(146097L*C)/4 + (1461*YA)/4 + (153*M+2)/5 + D + 1721119;
+;c = y/100;
+;ya = y - 100*c;
+;(146097L*C)/4 + (1461*YA)/4 + (153*M+2)/5 + D + 1721119;
+
+jd =  long (floor(365.25*jy)+floor(30.6001*jm)+id+1720995)
+
+IF (id+31l*(mm+12l*iyyy) GE gregorian) THEN BEGIN 
+  ja = long(0.01*jy)
+  jd = jd + 2 - ja+long(0.25*ja)
+ENDIF 
+
+RETURN, jd
 END
