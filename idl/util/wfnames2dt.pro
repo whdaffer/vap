@@ -63,6 +63,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/22 21:31:39  vapuser
+; Put in call to wfdt_str.pro
+;
 ; Revision 1.2  1998/10/17 00:26:22  vapuser
 ; Changed
 ;   retstruct[ff].start_time = var_to_dt( year,month,day,start_hour,start_min)
@@ -124,10 +127,15 @@ FUNCTION wfnames2dt, windfiles, nscat=nscat
       day        = fix( strmid( basetime, 6, 2 ) )
       IF nscat THEN year =  year + 1900
       retstruct[ff].name = windfiles[f]
-      t = var_to_dt( year,month,day,start_hour,start_min)
-      retstruct[ff].start_time = t
-      t =var_to_dt( year,month,day,end_hour,end_min)
-      retstruct[ff].end_time = t
+      t0 = var_to_dt( year,month,day,start_hour,start_min)
+      t1 =var_to_dt( year,month,day,end_hour,end_min)
+
+        ; Mind files that span a day boundary.
+      IF start_hour GT 20 AND end_hour LT 4 AND $
+         t1.julian LT t0.julian THEN t1 =dt_add( t1, day=1 )
+      retstruct[ff].start_time = t0
+      retstruct[ff].end_time = t1
+
       ff = ff+1
     END
   ENDFOR 
