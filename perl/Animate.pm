@@ -30,7 +30,17 @@
 
 
 =back
+
 =cut
+
+#
+# $Id$
+#
+# Modifications:
+#
+# $Log$
+#
+#
 package Animate;
 use strict;
 use Carp;
