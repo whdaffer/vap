@@ -31,6 +31,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.8  1999/10/11 17:30:15  vapuser
+; Added '_whichtoplot' stub.
+;
 ; Revision 1.7  1999/08/30 15:44:35  vapuser
 ; Added Colorbar. Quit now destroys PV.
 ; Did some General cleanup and bug fixes
@@ -587,7 +590,7 @@ FUNCTION Pv_Config_MakeDataFileList, pv_object, starttimelist, endtimelist
         *CurrentDataPtr->Get,Data = Q2b
         s = q2b-> Get(filename=filename, $
                       StartTime=starttime, $
-                      endtime=endtime )
+                      endtime=endtime)
 ;        print,'Time to get filename: ', systime(1)-t2
         filelist[ii] = filename
         starttimelist[ii] = starttime
@@ -614,6 +617,47 @@ FUNCTION Pv_Config_MakeDataFileList, pv_object, starttimelist, endtimelist
     endtimelist = filelist
   ENDELSE 
 ;   print,'Time to create Data File list ',systime(1)-t1
+  return, filelist
+END
+;----------------------------------------------------------------------
+; pv_config_makedatafilelist2
+;----------------------------------------------------------------------
+FUNCTION Pv_Config_MakeDataFileList2, pv_object, infostr, plotflags
+
+  t1 = systime(1)
+  
+  IF Obj_IsA( pv_object, 'PV') THEN BEGIN 
+
+    pv_object->Get, DataList=DataList
+    nFiles = DataList-> GetCount()
+    ii = 0
+    IF nFiles GT 0 THEN BEGIN 
+      filelist = strarr(nFiles)
+      plotflags = intarr(nFiles)
+      CurrentDataPtr =  DataList-> GetHead()
+      WHILE ptr_valid( CurrentDataPtr ) DO BEGIN 
+        t2 = systime(1)
+        *CurrentDataPtr->Get,Data = Q2b,userplotflag=plotflag
+        s = q2b-> Get(filename=filename, infostruct=infostruct )
+        IF ii EQ 0 THEN $
+          infostr =  obj_new('linkedlist',infostruct) ELSE $
+          junk=infostr-> append(infostruct)
+        filelist[ii] = filename
+        plotflags[ii] =  plotflag
+        CurrentDataPtr = DataList-> GetNext()
+        ii = ii+1
+      ENDWHILE 
+        ; Reset 'Current' Pointer to 'head'
+      junk =  DataList-> GetHead()
+    ENDIF ELSE BEGIN 
+      filelist = ptr_new()
+    ENDELSE 
+
+  ENDIF ELSE BEGIN 
+    Message,$
+     "Usage: datafilelist=Pv_Config_MakeDataFileList2(pv_object [,infostr,plotflags])",/cont
+    filelist = ptr_new()
+  ENDELSE 
   return, filelist
 END
 
@@ -855,37 +899,40 @@ PRO PV_CONFIG_Events, Event
     'WHICHTOPLOT': BEGIN 
       pv_config_whichtoplot, (*info).tlb
     END 
-    'DELETEDATAENTRY': BEGIN
-      selected = Widget_Info( (*info).DataListId , /LIST_SELECT )
-      IF selected[0] NE -1 THEN BEGIN 
-        self-> Get, Datalist=DataList
-        nFiles = DataList-> GetCount()
-        IF nFiles NE 0 THEN BEGIN 
-          nSelected = N_Elements(selected)
-          FOR s=0, nSelected-1 DO BEGIN 
-            DataPtr = DataList-> GoToNode( selected[s]+1 ) ; Nodes are '1' indexed
-            IF Ptr_Valid( DataPtr ) THEN DataList-> DeleteCurrent
-          ENDFOR 
-          filelist = Pv_Config_MakeDataFileList( self, starttimes, endtimes )
-          Widget_Control, (*info).DataListId, Set_Value=filelist
-          (*info).Redraw = 1
-        ENDIF 
-      ENDIF 
-        
+;    'DELETEDATAENTRY': BEGIN
+;      selected = Widget_Info( (*info).DataListId , /LIST_SELECT )
+;      IF selected[0] NE -1 THEN BEGIN 
+;        self-> Get, Datalist=DataList
+;        nFiles = DataList-> GetCount()
+;        IF nFiles NE 0 THEN BEGIN 
+;          nSelected = N_Elements(selected)
+;          FOR s=0, nSelected-1 DO BEGIN 
+;            DataPtr = DataList-> GoToNode( selected[s]+1 ) ; Nodes are '1' indexed
+;            IF Ptr_Valid( DataPtr ) THEN DataList-> DeleteCurrent
+;          ENDFOR 
+;          filelist = Pv_Config_MakeDataFileList( self, starttimes, endtimes )
+;          Widget_Control, (*info).DataListId, Set_Value=filelist
+;          (*info).Redraw = 1
+;        ENDIF 
+;      ENDIF 
+;    END
 
-    END
     'CLEARLIST': BEGIN
-     ok = Dialog_Message("Clear Current Data?",/Question )
-     ok = strupcase(ok)
-     IF ok EQ 'YES' THEN BEGIN 
-       self-> Get, DataList= DataList
-       Obj_Destroy, DataList
-       DataList = Obj_New('linkedlist' )
-       self-> Set, DataList = DataList
-       Widget_Control, (*info).DataListId, $
-         Set_Value='<No Data Files>'
-       ;filelist = pv_config_MakeDataList(self,startlist,endlist)
-       (*info).Redraw = 1
+     self-> Get, DataList= DataList
+     nn = DataList-> GetCount()
+     IF nn NE 0 THEN BEGIN 
+
+       ok = Dialog_Message(["Clear Current Data?",$
+                            "(Data will be deleted when ", $
+                            "the GUI is dismissed)"],/Question )
+       ok = strupcase(ok)
+       IF ok EQ 'YES' THEN BEGIN 
+  ;       Widget_Control, (*info).DataListId, $
+  ;         Set_Value='<No Data Files>'
+          Widget_Control, (*info).FinfoArrId, Get_Value=v
+          v[1,*] = 1
+          Widget_Control, (*info).FinfoArrId, Set_Value=v
+       ENDIF 
      ENDIF 
     END
     'MINSPEED': BEGIN
@@ -920,10 +967,59 @@ PRO PV_CONFIG_Events, Event
       Widget_Control, (*info).AmbigId,         Get_Value = NewAmbiguities
       Widget_Control, (*info).DecimateCwButId, Get_Value = DecimateCwButVal
       Widget_Control, (*info).ExcludeColsId,   Get_Value = NewExcludeCols
+      Widget_Control, (*info).FinfoArrId,      Get_Value=FinfoArrVal
 
+      
+
+        ; Handle requests to delete data and/or change plotting
+        ; status.
+      self->Get, DataList=DataList      
+      Current = DataList-> GetHead()
+      ii = 0
+      WHILE ptr_Valid(Current) DO BEGIN 
+        (*current)-> Get,UserPlotFlag = UserPlotFlag
+        IF UserPlotFlag NE FinfoArrVal[0,ii] THEN BEGIN 
+          (*Current)-> Set,UserPlotFlag = FinfoArrVal[0,ii]
+          (*info).redraw =  1
+        ENDIF 
+        Current = DataList-> GetNext()
+        ii = ii+1
+      ENDWHILE 
+
+
+      Current = DataList-> GetHead()
+      deleteit = reform(FinfoArrVal[1,*])
+      xx = where(deleteit EQ 1,nxx )
+      DeleteSomeFiles = nxx NE 0 
+      nData = DataList-> GetCount()
+      IF DeleteSomeFiles AND nData NE 0 THEN BEGIN 
+        IF descript EQ 'APPLY' THEN BEGIN
+          Message = ["      Sorry!!!       ",$
+                     "As a result of my limitations as a programmer,",$
+                     "you are required to push 'Dismiss' to access this", $
+                     "functionality. &("]
+          ok = Dialog_Message(message)
+          return
+        ENDIF ELSE BEGIN 
+          IF nData EQ nxx THEN BEGIN 
+            Obj_Destroy, DataList
+            self-> Set, DataList = Obj_New('linkedlist' )
+            (*info).redraw = 1
+          ENDIF ELSE BEGIN 
+            nn = n_elements(deleteit)
+            ii = -1
+            REPEAT BEGIN 
+              ii = ii+1
+              IF deleteit[ii] THEN BEGIN 
+                junk = DataList-> RemoveCurrent()
+                (*info).redraw = 1
+              ENDIF ELSE junk = DataList-> GetNext()
+            ENDREP UNTIL ii GE nn-1 OR NOT ptr_valid(junk)
+            junk = dataList-> GetHead()
+          ENDELSE 
+        ENDELSE 
+      ENDIF 
         ; Annotation Stuff
-
-
       colorNames = [ SelectedColor, FirstColor,SecondColor,ThirdColor,$
                      FourthColor,Model1Color]
       self-> Get, AmbigColors = AmbigColors, $
@@ -1439,7 +1535,11 @@ PRO pv_config, GROUP=Group
       VALUE='Prune Data List')
 
     ;Make List of Data Files for Widget_List .
-  filelist = pv_Config_MakeDataFileList( self, starttimes, endtimes )
+  ;filelist = pv_Config_MakeDataFileList( self, starttimes, endtimes)
+  filelist = pv_Config_MakeDataFileList2( self, infostr, plotflags )
+  
+  finfoarrid = cw_pvfinfo_array( PruneDataId, filelist, infostr, plotflags)
+  
 
 ; idl 5.1
 ;  DataListId = WIDGET_LIST( PruneDataId,VALUE=FileList, $
@@ -1447,17 +1547,17 @@ PRO pv_config, GROUP=Group
 ;      YSIZE=3,/Multiple)
 
 ;  idl 5.0.x
-  DataListId = WIDGET_LIST( PruneDataId,VALUE=FileList, $
-      UVALUE='DATALIST', $
-      YSIZE=3)
+;  DataListId = WIDGET_LIST( PruneDataId,VALUE=FileList, $
+;      UVALUE='DATALIST', $
+;      YSIZE=3)
 
 ;  WhichToPlotId =  Widget_button( PruneDatatId, $
 ;                                  Value='Plot Which?',$
 ;                                  Uvalue=WHICHTOPLOT')
 
-  DeleteDataEntryId = Widget_Button( PruneDataId, $
-                                     Value='Delete This Entry',$
-                                     Uvalue='DELETEDATAENTRY')
+;  DeleteDataEntryId = Widget_Button( PruneDataId, $
+;                                     Value='Delete This Entry',$
+;                                     Uvalue='DELETEDATAENTRY')
 
   ClearListId = Widget_Button( PruneDataId, Value='Clear List',$
                                 Uvalue='CLEARLIST')
@@ -1701,7 +1801,6 @@ PRO pv_config, GROUP=Group
                     MaxSpeedId        : MaxSpeedId,$                       
                     LengthId          : LengthID,$                         
                     ThickId           : ThickId,$                          
-                    DataListId        : DataListId,$ 
                     CurrentSpeedMinId : CurrentSpeedMinId ,$
                     CurrentSpeedMaxId : CurrentSpeedMaxId ,$
                     DrawId            : DrawId,$
@@ -1725,7 +1824,9 @@ PRO pv_config, GROUP=Group
 
                     DataListIndex     : Ptr_New() ,$ ; array of indices.   
 ;                    WhichToPlotId     : WhichToPlotId, $
-                    DeleteDataEntryId : DeleteDataEntryId, $               
+                    finfoarrid        : finfoarrid, $
+;                    DataListId        : DataListId,$  ; delete this!
+;                    DeleteDataEntryId : DeleteDataEntryId, $ ; And this
                     ClearListId       : ClearListId,$                      
                     AmbigId           : AmbigId ,$                         
                     SelectedColorId   : SelectedColorId,$    
