@@ -232,6 +232,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.16  2000/05/15 22:58:54  vapuser
+; Changed from multi-valued 'use_rf' to the new single-valued rainflag.
+;
 ; Revision 1.15  2000/03/14 16:12:13  vapuser
 ; Made same changes to this routine as in goes_overlay.pro
 ; so that'll now run in Z buffer.
@@ -332,9 +335,10 @@ PRO gms5_overlay, datetime, gmsType, $
 
 
 
+  savedevice = !d.name
   status = 1
 
-  genv,/save
+; genv,/save
 ;  tvlct,orig_red,orig_green,orig_blue,/get
 ;  loadct,0,/silent
 
@@ -348,11 +352,6 @@ PRO gms5_overlay, datetime, gmsType, $
 
   config =  keyword_set(config)
 
-  IF NOT isa(datetime,/string,/nonempty) THEN BEGIN 
-    Message,"Input parameter DATETIME must be a nonempty STRING!",/cont
-    status = 0
-    return
-  ENDIF 
 
   ;[31,  33, 129]
   ;Default_WaterRGB = [28, 15,  80]
@@ -365,12 +364,17 @@ PRO gms5_overlay, datetime, gmsType, $
    Default_LandHue,l,s,/rgb_hls
 
 
-  datetime_str = Gms5ParseDatetime(Datetime)
-  IF NOT isa(datetime_str,/structure,name='GMS5DATETIME') THEN BEGIN 
-    Message,'Bad Datetime! Datetime format= YYMMDDHHMM',/cont
-    status = 0
-    return
-  ENDIF 
+  clouddata = 1
+  IF isa(datetime,/string,/nonempty) THEN BEGIN 
+    Message,"Input parameter DATETIME must be a nonempty STRING!",/cont
+
+    datetime_str = Gms5ParseDatetime(Datetime)
+    IF NOT isa(datetime_str,/structure,name='GMS5DATETIME') THEN BEGIN 
+      Message,'Bad Datetime!',/info
+      clouddata = 0
+    ENDIF 
+  ENDIF ELSE clouddata = 0
+
   IF n_elements(gmsType) EQ 0 THEN gmsType =  'ir1'
 
   IF n_elements(maplimits) LT 4 THEN $
@@ -480,8 +484,11 @@ PRO gms5_overlay, datetime, gmsType, $
        '[' + strjoin( strtrim( Default_LandRGB,2)," ") + ']',/cont
       LandRGB = Default_LandRGB
     ENDIF 
-    Color_Convert, LandRGB[0], LandRGB[1], LandRGB[2], LandHue,l,s,/rgb_hls
-  ENDIF 
+    Color_Convert, LandRGB[0], LandRGB[1], LandRGB[2], LandHue,LandLight,LandSat,/rgb_hls
+  ENDIF ELSE BEGIN 
+    LandLight = 0.5
+    LandSat = 1.
+  ENDELSE 
 
   IF n_elements(WaterHue) EQ 0 THEN BEGIN 
     IF n_Elements(WaterRGB) NE 3 THEN BEGIN 
@@ -491,8 +498,11 @@ PRO gms5_overlay, datetime, gmsType, $
        '[' + strjoin( strtrim( Default_WaterRGB,2)," ") + ']',/cont
       WaterRGB = Default_WaterRGB
     ENDIF 
-    Color_Convert, WaterRGB[0], WaterRGB[1], WaterRGB[2], WaterHue,l,s,/rgb_hls
-  ENDIF 
+    Color_Convert, WaterRGB[0], WaterRGB[1], WaterRGB[2], WaterHue,WaterLight,WaterSat,/rgb_hls
+  ENDIF ELSE BEGIN 
+    WaterLight = 0.5
+    WaterSat = 1.
+  ENDELSE 
   
   LandHue =  0> LandHue < 360.
   WaterHue =  0> WaterHue < 360.
@@ -580,65 +590,43 @@ PRO gms5_overlay, datetime, gmsType, $
       return
     END
   ENDCASE 
+  IF clouddata THEN BEGIN 
+    allData = Gms5ReadAll(datetime,gmsType,lonpar=lonpar)
+    IF NOT isa(alldata,/structure) THEN BEGIN 
+      Message,"Failure Reading GMS5 data",/info
+      clouddata = 0
+    ENDIF ELSE BEGIN 
+      image = allData.imagedata.image
+      ;calTemps = allData.CalData.ir[0].Temps
+      xloc = allData.griddata.xloc
+      yloc = allData.griddata.yloc
+      minlon = allData.griddata.minlon
 
-  allData = Gms5ReadAll(datetime,gmsType,lonpar=lonpar)
-  IF NOT isa(alldata,/structure) THEN BEGIN 
-    Message,"Failure Reading GMS5 data",/cont
-    status = 0
-    return
-  ENDIF 
-  image = allData.imagedata.image
-  ;calTemps = allData.CalData.ir[0].Temps
-  xloc = allData.griddata.xloc
-  yloc = allData.griddata.yloc
-  minlon = allData.griddata.minlon
-  
-  newGrid = gms5idx(lonpar,latpar)
-  loni=newGrid.loni
-  lati=newGrid.lati
-  newx=interpolate(temporary(xloc),loni,lati,/grid)
-  newy=interpolate(temporary(yloc),$
-                   temporary(loni),$
-                   temporary(lati),/grid)
+      newGrid = gms5idx(lonpar,latpar)
+      loni=newGrid.loni
+      lati=newGrid.lati
+      newx=interpolate(temporary(xloc),loni,lati,/grid)
+      newy=interpolate(temporary(yloc),$
+                       temporary(loni),$
+                       temporary(lati),/grid)
 
-;  tempim= temporary( caltemps($
-;                              temporary($
-;                                        image($
-;                                              temporary(newx),$
-;                                              temporary(newy)))) )
+        ; If ever we want to use the caltemps
+        ; file, this is the way we'd do it.
+        ;  tempim= temporary(caltemps(temporary(image($
+        ;                     temporary(newx),temporary(newy)))) )
 
-  cloudmask = temporary(image($
-                          temporary(newx),$
-                          temporary(newy) ))
+      cloudmask = temporary(image($
+                              temporary(newx),$
+                              temporary(newy) ))
 
-
-;  Map_Set, 0, mean(lonpar[0:1]), /noborder, $
-;     limit=[ latpar[0], lonpar[0], latpar[1], lonpar[1] ],$
-;      Ymargin=[4.,4];
-
-    ; These two number come from the file
-    ; spectrum06.256.950.350.325.CLUT which gmsgoes.pro and subsidiary
-    ; .pro files use.
-
-;  Tmin = -95.0000 + 273.15     
-;  Tmax = -32.5000 + 273.15
-
-;  cloudmask = bytscl(temporary(tempim),min=tmin,max=tmax)
-
-;  mapim=map_image(tempim,xs,ys,$
-;                  lonmin=lonpar[0],$
-;                  latmin=latpar[0],$
-;                  lonmax=lonpar[1],$
-;                  latmax=latpar[1],$
-;                  /bilinear,/compress)
-
-
-  time_string = $
-    datetime_str.year + $
-      datetime_str.month + $
-       datetime_str.day + "T" + $
-        datetime_str.hour+':'+ $
-          datetime_str.min
+      time_string = $
+        datetime_str.year + $
+          datetime_str.month + $
+           datetime_str.day + "T" + $
+            datetime_str.hour+':'+ $
+              datetime_str.min
+    ENDELSE 
+  ENDIF ELSE time_string =  "No_Cloud_Data"
 
 
   IF n_Elements(outfile) EQ 0 THEN BEGIN 
@@ -668,7 +656,7 @@ PRO gms5_overlay, datetime, gmsType, $
 
   outfile = OutputFilename
 
-  sz = Size(cloudmask,/dim)
+  ;sz = Size(cloudmask,/dim)
 
   lon0 = lonpar[0]
   lon1 = lonpar[1]
@@ -691,19 +679,18 @@ PRO gms5_overlay, datetime, gmsType, $
 
   IF verbose THEN print,'Time for Landmask : ',tt1-tt0, ' Seconds '
 
-  nlon = sz[0]
-  nlat = sz[1]
+  ;nlon = sz[0]
+  ;nlat = sz[1]
 
-
- cloudmask = scale( temporary(cloudmask),minv=0,maxv=255)*99
 
  Hue = fltarr(nlon,nlat)+WaterHue
  Hue[land] = LandHue
+ 
    
- IF config THEN $
+ IF config AND clouddata THEN $
     CLOUD_OVERLAY_CONFIG, $
      landwater=hue, $
-       cloudmask=cloudmask, $
+      cloudmask=cloudmask, $
         brightmin=brightmin, $
          brightmax=brightmax, $
           satmin=satmin, $
@@ -726,17 +713,22 @@ PRO gms5_overlay, datetime, gmsType, $
 
     ; Use 'cloudmask' to create new Brightness/Saturation values
 
-  b2=bi[cloudmask]
-  s2=si[temporary(cloudmask)]
-  cloudmask = 0
+  IF clouddata THEN BEGIN 
+    cloudmask = scale( temporary(cloudmask),minv=0,maxv=255)*99
+    b2=bi[cloudmask]
+    s2=si[temporary(cloudmask)]
+  ENDIF ELSE BEGIN 
+    b2 = hue*0.+WaterLight
+    b2[land] = LandLight
+    s2 = hue*0. + WaterSat
+    s2[land] = LandSat
+  ENDELSE 
 
     ; Substitute these new Brightness/Saturation values in for those in
     ; mapIm and convert back to RGB 
 
   Color_Convert, Hue,b2,s2, imr, img, imb, /hls_rgb
-  Hue = 0
-  b2 = 0
-  s2 = 0
+  Hue = (b2=(s2=0))
   Im = [ [[temporary(imr)]], [[temporary(img)]], [[temporary(imb)]] ]
 
   FOR i=0,2 DO BEGIN 
@@ -1025,6 +1017,7 @@ PRO gms5_overlay, datetime, gmsType, $
 
   ENDCASE
   Outfile = OutputFileName
+  set_plot,savedevice
 ;  genv,/restore
    
 END
