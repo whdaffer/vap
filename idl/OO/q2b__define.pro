@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.7  1998/10/22 21:35:33  vapuser
+  ; Added GETALL method
+  ;
   ; Revision 1.6  1998/10/12 22:35:30  vapuser
   ; Added some calls to IsQ2B and other things I can't remember
   ;
@@ -201,8 +204,8 @@ FUNCTION Q2B::Init, $
   self.type = 'UNKOWN'
   IF N_Elements(filename) NE 0 THEN BEGIN 
     IF N_Elements(type) NE 0 THEN self.type = StrupCase(type)
-    self.filename = filename
-    status = self->Read(filename)
+    self.filename = DeEnvVar(filename)
+    status = self->Read(self.filename)
   ENDIF ELSE BEGIN 
     IF N_Elements( data_struct ) NE 0 THEN BEGIN 
       name = Tag_Names( data_struct, /structure_name ) 
@@ -980,7 +983,7 @@ FUNCTION Q2b::Read, filename
 
   CASE self.type OF 
     'SVH' : BEGIN 
-      data =  q2bsvhread( filename )
+      data =  q2bsvhread(filename )
       IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
         status = 1
         self.type = 'SVH'
@@ -1003,8 +1006,8 @@ FUNCTION Q2b::Read, filename
 
     ELSE: BEGIN 
 
-      IF Hdf_IsHdf(filename) THEN BEGIN 
-        IF IsQ2b( filename ) THEN BEGIN 
+      IF Hdf_IsHdf(DeEnvVar(filename)) THEN BEGIN 
+        IF IsQ2b( DeEnvVar(filename) ) THEN BEGIN 
           data = q2bhdfread(filename,eqx=eqx,$
                             StartTime=StartTime,$
                             EndTime=EndTime)
@@ -1517,16 +1520,16 @@ END
 PRO Q2B::GetAll, U = U, V=V, Lon=Lon, Lat=Lat, Sel=Sel, $
        Qual=Qual, idx=idx, nambig=nambig, rtime=rtime, row=row
 
-   lon = (*self.data).lon
-   lat = (*self.data).lat
-   u = (*self.data).u
-   v = (*self.data).v
-   sel = (*self.data).sel
-   qual = (*self.data).qual
-   row = (*self.data).row
-   rtime = (*self.data).rowtime
-   nambig = (*self.data).nambig
-   idx = (*self.data).idx
+   IF arg_present(lon)    THEN lon = (*self.data).lon
+   IF arg_Present(lat)    THEN lat = (*self.data).lat
+   IF arg_Present(u)      THEN u = (*self.data).u
+   IF arg_Present(v)      THEN v = (*self.data).v
+   IF arg_Present(sel)    THEN sel = (*self.data).sel
+   IF arg_Present(qual)   THEN qual = (*self.data).qual
+   IF arg_Present(row)    THEN row = (*self.data).row
+   IF arg_Present(rtime)  THEN rtime = (*self.data).rowtime
+   IF arg_Present(nambig) THEN nambig = (*self.data).nambig
+   IF arg_Present(idx)    THEN idx = (*self.data).idx
    
 END
 
