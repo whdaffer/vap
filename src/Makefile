@@ -8,6 +8,9 @@
 # Change Log:
 #
 # $Log$
+# Revision 1.3  2002/08/09 23:47:17  vapdev
+# changed '(' to '{'
+#
 # Revision 1.2  2002/07/10 15:41:45  vapdev
 #
 # Simplified the Makefile
@@ -36,8 +39,11 @@ LIBS   =  -lftn -lm  -lc
 .f.o: 
 	${F77} $<
 
-default: grid_goes
+default: grid_goes qchop schop
 	make grid_goes
+	make qchop
+	make schop
+
 
 clean:
 	-/sbin/rm *.o
@@ -59,8 +65,17 @@ navig_goes.o: navig_goes.f
 pair_goes.o: pair_goes.f
 	${F77} pair_goes.f # may use -d_lines  to get aditional output
 
-install:
+qchop: qchop.o qchop
+	${CC} -g -o32 -o qchop qchop.c
+
+schop: schop.o schop
+	${CC} -g -o32 -o schop schop.c
+
+
+install: grid_goes qchop schop
 	-/bin/cp -f grid_goes ${INSTALLDIR}
+	-/bin/cp -f qchop ${INSTALLDIR}
+	-/bin/cp -f schop ${INSTALLDIR}
 
 
 
