@@ -39,6 +39,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/02 18:04:09  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -62,7 +65,7 @@ FUNCTION Gms5ReadItem, datetime, thingy
   catch, error
   IF error NE 0 THEN BEGIN 
     message,!error_state.msg,/cont
-    return, retThing
+    return, ''
   ENDIF 
 
   IF n_elements(Gms5Initialized) EQ 0 THEN Gms5Init
@@ -77,10 +80,10 @@ FUNCTION Gms5ReadItem, datetime, thingy
             retThing = Gms5ReadCalfile( file )
           ENDIF ELSE BEGIN 
             Message,"Can't find uncompress{ed|able} CAL file for " + $
-             datetime,/cont
+             datetime
           ENDELSE 
       ENDIF ELSE $ 
-        Message,'No Cal files found for ' +datetime,/cont
+        Message,'No Cal files found for ' +datetime
     END
     'DOC':BEGIN 
       path =  gms5_data_topdir + '/doc/'
@@ -91,10 +94,10 @@ FUNCTION Gms5ReadItem, datetime, thingy
             retThing = Gms5ReadDocfile(file)
           ENDIF ELSE BEGIN 
             Message,"Can't find uncompress{ed|able} DOC file for " + $
-             datetime,/cont
+             datetime
           ENDELSE 
       ENDIF ELSE $
-        Message,'No `Doc files found for ' +datetime,/cont
+        Message,'No `Doc files found for ' +datetime
     END
     'GRID':BEGIN 
       path = gms5_data_topdir + '/grid/'
@@ -103,21 +106,26 @@ FUNCTION Gms5ReadItem, datetime, thingy
           file = Gms5GetUncompressedFile(possibles)
           IF strlen(file[0]) NE 0 THEN BEGIN 
             grid = Gms5ReadGridfile(file)
-            tmp = reform(grid.grid,2,241,241)
-            retThing = gms5Grid_str()
-            retThing.xloc = reform(tmp[1,*,*])
-            retThing.yloc = reform(tmp[0,*,*]) 
-            tmp=0
-            retThing.filename =  grid.filename
-            retThing.date =  grid.date
-            grid = 0
-            retThing.minlon = 80.
+            IF min(grid.grid,max=mx) EQ 0 AND mx EQ 0 THEN BEGIN 
+              Message,"Grid is everywhere zero! -- failing!"
+            ENDIF ELSE BEGIN 
+              dim = size(grid.grid,/dim)
+              tmp = reform(grid.grid,2,dim[0]/2,241)
+              retThing = gms5Grid_str()
+              retThing.xloc = ptr_new(reform(tmp[1,*,*]),/no_copy)
+              retThing.yloc = ptr_new(reform(tmp[0,*,*]),/no_copy)
+              tmp=0
+              retThing.filename =  grid.filename
+              retThing.date =  grid.date
+              grid = 0
+              retThing.minlon = 80.
+            ENDELSE 
           ENDIF ELSE BEGIN 
             Message,"Can't find uncompress{ed|able} GRID file for " + $
-             datetime,/cont
+             datetime
           ENDELSE 
       ENDIF ELSE $
-        Message,'No Grid files found for ' +datetime,/cont
+        Message,'No Grid files found for ' +datetime
     END
     'GRIDA':BEGIN 
       path = gms5_data_topdir + '/grida/'
@@ -126,10 +134,11 @@ FUNCTION Gms5ReadItem, datetime, thingy
           file = Gms5GetUncompressedFile(possibles)
           IF strlen(file[0]) NE 0 THEN BEGIN 
             grid = Gms5ReadGridfile(file)
-            tmp = reform(grid.grid,2,241,241)
+            dim = size(grid.grid,/dim)
+            tmp = reform(grid.grid,2,dim[0]/2,241)
             retThing = gms5Grid_str()
-            retThing.xloc = reform(tmp[1,*,*])
-            retThing.yloc = reform(tmp[0,*,*]) 
+            retThing.xloc = ptr_new(reform(tmp[1,*,*]),/no_copy)
+            retThing.yloc = ptr_new(reform(tmp[0,*,*]),/no_copy)
             tmp=0
             retThing.filename =  grid.filename
             retThing.date =  grid.date
@@ -137,10 +146,10 @@ FUNCTION Gms5ReadItem, datetime, thingy
             retThing.minlon = 70.
          ENDIF ELSE BEGIN 
            Message,"Can't find uncompress{ed|able} GRIDA file for " + $
-            datetime,/cont
+            datetime
         ENDELSE 
       ENDIF ELSE $
-        Message,'No GridA files found for ' +datetime,/cont
+        Message,'No GridA files found for ' +datetime
     END
     'IR1':BEGIN 
       path = gms5_data_topdir + '/ir1/'
@@ -158,9 +167,9 @@ FUNCTION Gms5ReadItem, datetime, thingy
 
         ENDIF ELSE BEGIN 
           Message,"Can't find uncompress{ed|able} IR1 file for " + $
-           datetime,/cont
+           datetime
         ENDELSE 
-      ENDIF ELSE Message,'No IR1 files for ' + datetime,/cont
+      ENDIF ELSE Message,'No IR1 files for ' + datetime
     END
     'IR2':BEGIN 
       path = gms5_data_topdir + '/ir2/'
@@ -178,9 +187,9 @@ FUNCTION Gms5ReadItem, datetime, thingy
 
         ENDIF ELSE BEGIN 
           Message,"Can't find uncompress{ed|able} IR2 file for " + $
-           datetime,/cont
+           datetime
         ENDELSE 
-      ENDIF ELSE Message,'No IR2 files for ' + datetime,/cont
+      ENDIF ELSE Message,'No IR2 files for ' + datetime
     END
     'IR3':BEGIN 
       path = gms5_data_topdir + '/ir3/'
@@ -198,9 +207,9 @@ FUNCTION Gms5ReadItem, datetime, thingy
 
           ENDIF ELSE BEGIN 
             Message,"Can't find uncompress{ed|able} IR3 file for " + $
-             datetime,/cont
+             datetime
           ENDELSE 
-      ENDIF ELSE Message,'No IR3 files for ' + datetime,/cont
+      ENDIF ELSE Message,'No IR3 files for ' + datetime
     END
     'VIS':BEGIN 
       path = gms5_data_topdir + '/vis/'
@@ -218,12 +227,12 @@ FUNCTION Gms5ReadItem, datetime, thingy
 
         ENDIF ELSE BEGIN 
           Message,"Can't find uncompress{ed|able} file for " + $
-           datetime,/cont
+           datetime
         ENDELSE 
-      ENDIF ELSE Message,'No Ir3 files found for ' +datetime,/cont
+      ENDIF ELSE Message,'No Ir3 files found for ' +datetime
     END
     ELSE: BEGIN 
-      MESSAGE,'Unknown thingy! ' + thingy,/cont
+      MESSAGE,'Unknown thingy! ' + thingy
       print," Thingys must be one of :  " + $
          "'cal','doc','grid','grida', 'ir1','ir2','ir3' or 'vis'"
     END 
