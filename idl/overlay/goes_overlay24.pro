@@ -39,7 +39,9 @@
 ;                    scalefac    = scalefac,$
 ;                    jpeg        = jpeg,$
 ;                    quality     = quality, $
-;                    config      = config
+;                    config      = config, $
+;                    scalevec    = scalevec, $
+;                    gridlines   = gridlines
 ;
 ;
 ;
@@ -110,9 +112,10 @@
 ;                   set to 0. Input as a float between 0 and
 ;                   1. (Default=0.55)
 ;     LandRGB     : The 3-vector containing the RGB values for the
-;                   Land color
+;                   Land color (default = [25, 110,   0]
+
 ;     WaterRGB    : The 3-vector containing the RGB values for the
-;                   Water color
+;                   Water color. Default=[28, 15,  80]
 ;
 ;     LandHue     : the Hue value for land (from a Hue/Brightness/Saturation
 ;                   triple )
@@ -134,6 +137,10 @@
 ;                   and allow you to chose the {bright,Sat}{min,max}
 ;                   values.
 ;
+;     ScaleVec   : Flag, if set, the vectors will be scaled by their
+;                   speed. (Mind the similarity with 'scalefac')
+;
+;     GridLines    : Put down map grid lines after TVing the image.
 ;
 ;
 ;
@@ -186,6 +193,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.9  1999/06/23 22:00:34  vapuser
+; Move the map_set until after config.
+;
 ; Revision 1.8  1999/06/23 18:11:54  vapuser
 ; Added Config keyword
 ;
@@ -249,14 +259,19 @@ PRO goes_overlay24, goesfile, $
                     jpeg        = jpeg,$
                     quality     = quality, $
                     thumbnail   = thumbnail, $
-                    config      = config 
+                    config      = config , $
+                    scalevec    = scalevec, $
+                    gridlines   = gridlines
 
 ; COMMON goes_overlay_cmn, landel
 
 
   config =  keyword_set(config)
+  GridLines = keyword_set(GridLines)
 
-  Default_WaterRGB = [31,  33, 129]
+;  Default_WaterRGB = [31, 33, 129]
+;  Default_WaterRGB = [28, 15,  80]
+  Default_WaterRGB = [11,  11, 122] 
   Default_LandRGB =  [25, 110,   0]
 
   Color_Convert, Default_WaterRGB[0],Default_WaterRGB[1],Default_WaterRGB[2],$
@@ -291,7 +306,7 @@ PRO goes_overlay24, goesfile, $
     ENDIF 
   ENDFOR 
   IF n_elements(goesfile) EQ 0 THEN BEGIN 
-    Message,'Usage: goes_overlay24, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue ] ',/cont
+    Message,'Usage: goes_overlay24, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec ] ',/cont
     tvlct,orig_red,orig_green,orig_blue
     genv,/restore
     return
@@ -324,7 +339,7 @@ PRO goes_overlay24, goesfile, $
   ENDIF ELSE BEGIN 
     IF gif THEN BEGIN 
       Message,'Keyword SCALEFAC is ignored when creating GIFs/JPEGs',/cont
-      scalfac = 1
+      scalefac = 1
     ENDIF 
   ENDELSE 
 
@@ -332,10 +347,10 @@ PRO goes_overlay24, goesfile, $
   IF n_Elements(maxspeed) EQ 0 THEN maxspeed = 25
   IF n_elements(length)   EQ 0 THEN length = 2.5
   IF n_elements(thick)    EQ 0 THEN thick = 1
-  IF n_elements(BrightMin) EQ 0 THEN BrightMin = 0.
-  IF n_elements(BrightMax) EQ 0 THEN BrightMax = 0.8
+  IF n_elements(BrightMin) EQ 0 THEN BrightMin = 0.3
+  IF n_elements(BrightMax) EQ 0 THEN BrightMax = 1.
   IF n_elements(SatMin) EQ 0 THEN SatMin = 0.0
-  IF n_elements(SatMax) EQ 0 THEN SatMax = 0.55
+  IF n_elements(SatMax) EQ 0 THEN SatMax = 1.
 
   BrightMin = 0> float(BrightMin) < 1.
   BrightMax = BrightMin+.01> BrightMax < 1.
@@ -381,13 +396,13 @@ PRO goes_overlay24, goesfile, $
   
   IF n_Elements(xsize) EQ 0 THEN BEGIN 
     IF ps THEN xsize = 8.4 ELSE xsize = 640 
-    xoffset = 1.2
   ENDIF 
+  xoffset = 1.2
 
   IF n_Elements(ysize) EQ 0 THEN BEGIN 
     IF ps THEN ysize = 6.5 ELSE ysize = 480 
-    yoffset = 9.5
   ENDIF 
+  yoffset = 9.5
 
 
   IF status THEN BEGIN 
@@ -417,8 +432,12 @@ PRO goes_overlay24, goesfile, $
     IF ir THEN GoesData = 1024-temporary(GoesData)
     IF N_elements(minpix) EQ 0 THEN minpix = 0
 
-    ptr = ReadColorTable($
-       '/usr/people/vapuser/Qscat/Resources/Color_Tables/goes_overlay24.ct')
+    IF getenv('OVERLAY_CT') NE '' THEN BEGIN 
+      ptr = ReadColorTable('$OVERLAY_CT')
+    ENDIF ELSE BEGIN 
+      ptr = ReadColorTable($
+         '/usr/people/vapuser/Qscat/Resources/Color_Tables/goes_overlay24.ct')
+    ENDELSE 
     IF NOT Ptr_Valid(ptr) THEN BEGIN 
       Message,'Error Reading ColorTable!',/cont
       tvlct,orig_red,orig_green,orig_blue
@@ -429,10 +448,12 @@ PRO goes_overlay24, goesfile, $
     ptr_free,ptr
 
     WIND_START = 1
-    N_WIND_COLORS = 25
-    N_COLORS = 27
+    N_COLORS = n_elements(ct[0,*])
+    N_WIND_COLORS = n_colors-2
 
-    IF n_elements(Windfiles) NE 0 THEN BEGIN 
+    nn = where(strlen(windfiles) NE 0 , nf)
+    IF nf NE 0 THEN BEGIN 
+      WindFiles = WindFiles[nn]
       t0 = systime(1)
       windData = Read_Wind_Files(windFiles,$
                                  CRDecimate=CRDecimate,$
@@ -527,7 +548,7 @@ PRO goes_overlay24, goesfile, $
     lati = replicate(1.,nlon)#(findgen(nlat)*latinc+latmin)
 
     t0 = systime(1)
-    land = where( runLandMask(loni,lati) )
+    land = where( runLandMask(loni,lati), nland )
     t1 = systime(1) 
     IF verbose THEN print,'Time for Landmask : ',t1-t0, ' Seconds '
     t0 = t1
@@ -670,9 +691,9 @@ PRO goes_overlay24, goesfile, $
 ;    mapIm = 0; free some memory
 
 
-   cloudmask = scale( temporary(GoesData) )*99
+   cloudmask = scale( GoesData,minv=0,maxv=1023)*99
    Hue = fltarr(nlon,nlat)+WaterHue
-   Hue[land] = LandHue
+   IF nland NE 0 THEN Hue[land] = LandHue
 
    IF config THEN $
      CLOUD_OVERLAY_CONFIG, $
@@ -736,6 +757,10 @@ PRO goes_overlay24, goesfile, $
       Tv,mapIm,xs,ys,xsize=xsize,ysize=ysize,true=3 ELSE $
       Tv,mapIm,xs,ys,true=3
       
+    IF gridlines THEN $
+      Map_Set,0,loncent,$
+       limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],$
+        Ymargin=[4.,4], /grid,/label,/noerase
 
       ; Plot the vectors (if there are any.)
     nn = n_Elements(u)
@@ -745,10 +770,11 @@ PRO goes_overlay24, goesfile, $
         tvlct,transpose(ct)
         PlotVect,u,v,lon,lat,len=length,$
           thick=thick,start_index=WIND_START,ncolors=N_WIND_COLORS, $
-            minspeed=minspeed, maxspeed=maxspeed
+            minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec
         tvlct,orig_red,orig_green,orig_blue
       ENDIF ELSE $
-        PlotVect, u,v,lon,lat, color=col24, len=length, thick=thick
+        PlotVect, u,v,lon,lat, color=col24, len=length, thick=thick, $
+          scale=scaleVec
       t1 = systime(1)
       IF verbose THEN print,' Plotvect took: ', t1-t0,' Seconds '
       t0 = t1
@@ -763,13 +789,13 @@ PRO goes_overlay24, goesfile, $
     IF ps THEN BEGIN 
       ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
              position=[0.25,y[0], 0.75, y[1]], $
-               Title='Wind Speed (knots)',Min=minspeed, $
+               Title='Wind Speed (m/s)',Min=minspeed, $
                  max=maxspeed,divisions=4, format='(f5.0)', $
                   pscolor=ps, /true, table=ct, charsize=0.75
     ENDIF ELSE BEGIN 
       ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
              position=[0.25,y[0], 0.75, y[1]], $
-               Title='Wind Speed (knots)',Min=minspeed, $
+               Title='Wind Speed (m/s)',Min=minspeed, $
                  max=maxspeed,divisions=4, format='(f5.0)', $
                   pscolor=ps, /true, table=ct, charsize=0.75, $
                     color='ffffff'x 
