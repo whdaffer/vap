@@ -66,6 +66,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/28 23:34:58  vapuser
+; Initial revision
+;
 ;
 ;
 ;Jet Propulsion Laboratory
@@ -103,7 +106,7 @@ ENDIF
 IF n_elements( nstruct ) eq 0 THEN nstruct = 1
 
 IF nstruct le 0 THEN nstruct = 1
-rq2b_size =
+rq2b_size = totsize(rq2b)
 
 RETURN, replicate( rq2b , nstruct )
 end
