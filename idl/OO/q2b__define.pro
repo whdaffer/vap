@@ -86,6 +86,10 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.8  1998/10/23 22:21:53  vapuser
+  ; Added 'arg_present' to ::GetAll,
+  ; Incorporate DeEnvVar to protect RSIs HDF_... code from itself.
+  ;
   ; Revision 1.7  1998/10/22 21:35:33  vapuser
   ; Added GETALL method
   ;
@@ -138,10 +142,11 @@
   ; The routine then checks for the 'data_struct' keyword. If the
   ; data_struct keyword is present, it tries to take the data from it,
   ; subject to the restriction that the datum pointed to by the
-  ; keyword is a structure of type 'Q2BDATA.' (see the file
-  ; q2b_str.pro for a definition) If this keyword is not present, it
-  ; will check for the first positional parameter. If it is present,
-  ; then ALL 14 must be present.
+  ; keyword is a structure of type 'Q2BDATA,' 'QMODEL' or 'RQ2BDATA.'
+  ; (see files q2b_str.pro, qmodel_str.pro and 4q2b_str for
+  ; definitions) If this keyword is not present, it will check for the
+  ; first positional parameter. If it is present, then ALL 14 must be
+  ; present.
   ; 
   ; 
   ; Each of the postional  parameters must be the correct dimension,
@@ -176,7 +181,7 @@ FUNCTION Q2B::Init, $
             eqx_time, $ ; scalar string
             eqx_lon,  $ ; scalar string
             type= type ,$
-            data_struct = data_struct, $ ; structure of type Q2BDATA
+            data_struct = data_struct, $ ; structure of type Q2BDATA,  or RQ2BDATA
             eqx=eqx,$                    ; structure of type EQX
             filename=filename ,$
             decimate=decimate ,$
@@ -209,20 +214,22 @@ FUNCTION Q2B::Init, $
   ENDIF ELSE BEGIN 
     IF N_Elements( data_struct ) NE 0 THEN BEGIN 
       name = Tag_Names( data_struct, /structure_name ) 
-      IF name EQ 'Q2BDATA' OR name EQ 'QMODEL' THEN BEGIN 
-        IF name EQ 'Q2BDATA' THEN BEGIN 
-          self.nrecs =  N_Elements(data_struct)
-          self.ncells = N_Elements(data_struct(0).su)
-          self.model = 0
-        ENDIF ELSE BEGIN 
+      IF name EQ 'Q2BDATA' OR $
+         name EQ 'QMODEL' OR $
+         name EQ 'RQ2BDATA' THEN BEGIN
+        IF name EQ 'QMODEL' THEN BEGIN 
           Self.nrecs = -1
           self.ncells = -1
           self.model = 1
+        ENDIF ELSE BEGIN 
+          self.nrecs =  N_Elements(data_struct)
+          self.ncells = N_Elements(data_struct(0).su)
+          self.model = 0
         ENDELSE 
         self.data =  ptr_new( data_struct )
         status = 1
       ENDIF ELSE BEGIN
-        STR = 'Input Data Structure must be of type Q2BDATA or QMODEL'
+        STR = 'Input Data Structure must be of type Q2BDATA, QMODEL, or RQ2BDATA'
         Message,str,/cont
       ENDELSE 
       IF N_Elements( eqx ) NE 0 THEN self.eqx = eqx
@@ -825,7 +832,7 @@ END
   ; nrecs:  Number of records in the dataptr (required)
   ; ncells: Number of Crosstrack columns (default=76)
   ; If the data_struct keyword is present, it must be of type
-  ; 'Q2BDATA'.
+  ; 'Q2BDATA', 'QMODEL' or 'RQ2BDATA'.
   ;
   ; Returns 0 for failure, 1 on success.
   ;
@@ -840,20 +847,22 @@ FUNCTION q2b::ConfigDataPtr, $
    IF ptr_valid( self.data ) THEN ptr_free, self.data
    IF N_Elements(data_struct) NE 0 THEN BEGIN 
      name =  Tag_Names( date_struct, /Structure_name)
-     IF name EQ 'Q2BDATA' OR name EQ 'QMODEL' THEN BEGIN 
-       IF name EQ 'Q2BDATA' THEN BEGIN 
-         self.nrecs =  N_Elements( data_struct )
-         self.ncells =  N_Elements( data_struct[0].su )
-         self.model = 0
-       ENDIF ELSE BEGIN 
+     IF name EQ 'Q2BDATA' OR $
+        name EQ 'QMODEL' OR $
+        name EQ 'RQ2BDATA' THEN BEGIN 
+       IF name EQ 'QMODEL' THEN BEGIN 
          Self.nrecs = -1
          self.ncells = -1
          self.model = 1
+       ENDIF ELSE BEGIN 
+         self.nrecs =  N_Elements( data_struct )
+         self.ncells =  N_Elements( data_struct[0].su )
+         self.model = 0
        ENDELSE 
        self.data =  Ptr_New( data_struct )
        
      ENDIF ELSE BEGIN 
-        STR = 'Input Data Structure must be of type Q2BDATA or QMODEL'
+        STR = 'Input Data Structure must be of type Q2BDATA, QMODEL or RQ2BDATA'
         Message,str,/cont
      ENDELSE 
      ; self->GetExtent
@@ -1074,7 +1083,7 @@ END
   ; limits[0:1] equaling the lower left lon/lat and limit[2:3] the
   ; upper right, i.e. limit=[lon0,lat0,lon1,lat1] 
   ;
-
+  ; 
   ; All the elements that are excluded using
   ; decimate/CRDecimate/ExcludeCols are returned as NANs. PlotVect
   ; knows about NaNs.
@@ -1091,6 +1100,9 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
             Silent=Silent
 
    status = 1   
+   nodata = -2
+   GenericFailure = 0
+
    Silent = Keyword_Set( Silent )
 
    Catch,error
@@ -1100,14 +1112,41 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
 ;     Message,!Error_State.msg,/cont
      ok = Dialog_Message(!Err_string)
      Message,!Err_string,/cont
-     return,0
+     return,GenericFailure
    ENDIF 
 
+
+   ncells = self.ncells
+   nrecs = self.nrecs
+   west = 0
+   IF n_elements(limit) EQ 4 THEN $
+     lonrange = FixLonRange( [limit[0],limit[2]],west=west )
+
+   IF N_elements(decimate) NE 0 THEN self.decimate=1> decimate < 99
+   IF N_Elements(crdecimate) EQ 2 THEN $
+    self.CRDecimate=fix( $
+                        [ 0> CRDecimate[0] < self.ncells, $
+                          0> CRDecimate[1] < self.nrecs ] )
+
+   crdecimate = self.crdecimate
+   decimate = self.decimate
+   junk = where( self.crdecimate, njunk )
+   IF njunk NE 0 THEN BEGIN 
+     decimate = self.crdecimate
+     IF decimate[0] LE 1 AND decimate[1] LE 1 THEN decimate = 1
+   ENDIF 
+
+   IF n_elements(excludeCols) NE 0 AND $
+      VarType(excludeCols) EQ 'STRING' THEN BEGIN 
+     IF strlen( excludeCols) NE 0 THEN self-> SetExcludeCols,excludeCols
+   ENDIF 
+   PtrToExcludeCols = self.ExcludeCols
+
    IF ptr_valid( self.data ) THEN BEGIN 
+
+     name = Tag_Names( (*self.data), /Structure_Name )
+
      IF self.model THEN BEGIN 
-
-       name = Tag_Names( (*self.data), /Structure_Name )
-
        IF name eq 'QMODEL' THEN BEGIN 
 
          U = *((*self.data).u)
@@ -1119,74 +1158,73 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
          lon = ( findgen( nlon )*lonpar[2] + lonpar[0] )#replicate(1, nlat )
          lat =  replicate(1,nlon)#( findgen(nlat)*LatPar[2]-LatPar[0] )
 
+
          IF N_Elements( Limit ) EQ 4 THEN BEGIN 
            xx = where( lon GE limit[0] AND lon LE limit[2] AND $
-                       lon GE limit[1] AND lon LE limit[3], nxx )
+                       lat GE limit[1] AND lat LE limit[3], nxx )
            IF nxx NE 0 THEN BEGIN 
              u = u[xx]
              v = v[xx]
              lon = lon[xx]
              lat = lat[xx]
              status = 1
-           ENDIF ELSE status = 0
+           ENDIF ELSE status = NoData
          ENDIF ELSE $
            Message,'Limit must be 4-vector: Ignored',/cont
        ENDIF ELSE BEGIN 
          Message,'Unknown Structure Type ' + name,/cont
-         status = 0
+         status = GenericFailure
        ENDELSE 
      ENDIF ELSE BEGIN 
 
-         ; Not model date.
+         ; Not model data. Could still be RQ2B data. 
+       IF name EQ 'RQ2BDATA' THEN BEGIN 
+         u =  (*self.data).su
+         v =  (*self.data).sv
+         lon = (*self.data).lon
+         lat = (*self.data).lat
+       ENDIF ELSE BEGIN 
+         ; Regular old Q2BDATA.
 
-       ncells = self.ncells
-       nrecs = self.nrecs
-       west = 0
-       IF n_elements(limit) EQ 4 THEN $
-         lonrange = FixLonRange( [limit[0],limit[2]],west=west )
 
-       IF N_elements(decimate) NE 0 THEN self.decimate=1> decimate < 99
-       IF N_Elements(crdecimate) EQ 2 THEN $
-        self.CRDecimate=fix( $
-                            [ 0> CRDecimate[0] < self.ncells, $
-                              0> CRDecimate[1] < self.nrecs ] )
+  ;      IF Ptr_Valid( self.extent ) THEN BEGIN 
+  ;        extent = *self.extent
+  ;        lonextent = extent[*,*,0]
+  ;        latextent = extent[*,*,1]
+  ;        IF west THEN BEGIN 
+  ;          xx = where( lonextent GT 180, nxx )
+  ;          IF nxx NE 0 THEN lonextent(xx) =  lonextent(xx) - 360. 
+  ;        ENDIF 
+  ;        good = where( lonextent GE lonrange[0] AND lonextent LE lonrange[1] AND $
+  ;                      latextent GT limit[1] AND latextent LE limit[3], ngood )
+  ;        IF ngood eq 0 THEN BEGIN 
+  ;             ; Only care if no data.
+  ;          return, 0
+  ;        ENDIF 
+  ;       ENDIF 
 
-       crdecimate = self.crdecimate
-       decimate = self.decimate
-       junk = where( self.crdecimate, njunk )
-       IF njunk NE 0 THEN BEGIN 
-         decimate = self.crdecimate
-         IF decimate[0] LE 1 AND decimate[1] LE 1 THEN decimate = 1
-       ENDIF 
+         ; If we got here, there's data to be extracted!
+         lon =  (*self.data).lon
+         lat =  (*self.data).lat
 
-       IF n_elements(excludeCols) NE 0 AND $
-          VarType(excludeCols) EQ 'STRING' THEN BEGIN 
-         IF strlen( excludeCols) NE 0 THEN self-> SetExcludeCols,excludeCols
-       ENDIF 
-       PtrToExcludeCols = self.ExcludeCols
+         IF N_Elements(ambig) eq 0 THEN ambig = 0
+         IF ambig EQ 0 THEN BEGIN 
+             ; The 'selected' ambiguity has been specifically requested.
+           u   = (*self.data).su 
+           v   = (*self.data).sv 
+         ENDIF ELSE BEGIN 
+           IF ambig LT 5 THEN BEGIN 
+             u   = reform((*self.data).u[ambig-1,*])
+             v   = reform((*self.data).v[ambig-1,*])
+           ENDIF ELSE BEGIN 
+             ; Ambiguity = 5 means use model field.
+             u = (*self.data).mu
+             v = (*self.data).mv
+           ENDELSE 
+         ENDELSE 
 
-     
-;      IF Ptr_Valid( self.extent ) THEN BEGIN 
-;        extent = *self.extent
-;        lonextent = extent[*,*,0]
-;        latextent = extent[*,*,1]
-;        IF west THEN BEGIN 
-;          xx = where( lonextent GT 180, nxx )
-;          IF nxx NE 0 THEN lonextent(xx) =  lonextent(xx) - 360. 
-;        ENDIF 
-;        good = where( lonextent GE lonrange[0] AND lonextent LE lonrange[1] AND $
-;                      latextent GT limit[1] AND latextent LE limit[3], ngood )
-;        IF ngood eq 0 THEN BEGIN 
-;             ; Only care if no data.
-;          return, 0
-;        ENDIF 
-;       ENDIF 
+       ENDELSE ; Come from if name eq 'RQ2BDATA'
 
-       ; If we got here, there's data to be extracted!
-       lon =  (*self.data).lon
-       lat =  (*self.data).lat
-
-       IF N_Elements(ambig) eq 0 THEN ambig = 0
        IF n_elements( limit ) NE 0 THEN BEGIN 
          IF n_elements( limit ) EQ 4 THEN BEGIN 
            IF west THEN BEGIN 
@@ -1201,27 +1239,13 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
 
            IF n_selection EQ 0 THEN BEGIN 
              IF NOT Silent THEN Message,' No data in selected area!',/cont
-             return,0
+             return,NoData
            ENDIF 
          ENDIF ELSE BEGIN 
            Message,'Limit keyword must have 4 elements '
-           return,0
+           return,GenericFailure
          ENDELSE 
        ENDIF 
-       IF ambig EQ 0 THEN BEGIN 
-           ; The 'selected' ambiguity has been specifically requested.
-         u   = (*self.data).su 
-         v   = (*self.data).sv 
-       ENDIF ELSE BEGIN 
-         IF ambig LT 5 THEN BEGIN 
-           u   = reform((*self.data).u[ambig-1,*])
-           v   = reform((*self.data).v[ambig-1,*])
-         ENDIF ELSE BEGIN 
-           ; Ambiguity = 5 means use model field.
-           u = (*self.data).mu
-           v = (*self.data).mv
-         ENDELSE 
-       ENDELSE 
 
        IF n_elements( limit ) NE 0 THEN BEGIN 
          Unpack_Where, lon, selection, c, r
@@ -1282,12 +1306,14 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
            junk=0
          ENDIF
        ENDELSE 
-     ENDELSE 
+
+     ENDELSE   ; Come from if self.model
    ENDIF ELSE BEGIN 
      Message,$
       'Invalid Ptr to Data: Use Q2B::ConfigDataPtr to  correct',/cont
-     status = 0
+     status = GenericFailure
    ENDELSE 
+
    return,status
 END
 
@@ -1518,18 +1544,20 @@ END
   ;
   ; ==========================================
 PRO Q2B::GetAll, U = U, V=V, Lon=Lon, Lat=Lat, Sel=Sel, $
-       Qual=Qual, idx=idx, nambig=nambig, rtime=rtime, row=row
+       Qual=Qual, idx=idx, nambig=nambig, rtime=rtime, row=row, SU=SU, SV=SV 
 
    IF arg_present(lon)    THEN lon = (*self.data).lon
    IF arg_Present(lat)    THEN lat = (*self.data).lat
-   IF arg_Present(u)      THEN u = (*self.data).u
-   IF arg_Present(v)      THEN v = (*self.data).v
+   IF arg_Present(u)      THEN u   = (*self.data).u
+   IF arg_Present(v)      THEN v   = (*self.data).v
+   IF arg_Present(su)     THEN su  = (*self.data).su
+   IF arg_Present(sv)     THEN sv  = (*self.data).sv
    IF arg_Present(sel)    THEN sel = (*self.data).sel
+   IF arg_Present(idx)    THEN idx  = (*self.data).idx
    IF arg_Present(qual)   THEN qual = (*self.data).qual
-   IF arg_Present(row)    THEN row = (*self.data).row
-   IF arg_Present(rtime)  THEN rtime = (*self.data).rowtime
+   IF arg_Present(row)    THEN row  = (*self.data).row
+   IF arg_Present(rtime)  THEN rtime  = (*self.data).rowtime
    IF arg_Present(nambig) THEN nambig = (*self.data).nambig
-   IF arg_Present(idx)    THEN idx = (*self.data).idx
    
 END
 
@@ -1546,6 +1574,7 @@ PRO q2b__define
            StartTime: '',$        ; Start time of data (yyyy/mm/dd/hh/mm)
            EndTime  : '',$        ; End time of data (yyyy/mm/dd/hh/mm)
            type     : '',$        ; 'SVH', 'HDF' or '???'
+           
            model    : 0l,$        ; Indicates model data (which means 
                                   ; ncells and nrecs are meaningless)
            ncells   : 0l,$        ; number of crosstrack cells 
@@ -1582,7 +1611,7 @@ PRO q2b__define
            eqx      : eqx,$       ; 'EQX' structure 
                                   ; (e.g. {EQX,date:'',time:'',lon:0.})
            data     : ptr_new(),$ ; Pointer to structure of type
-                                  ; 'Q2BDATA' or 'QMODEL'
+                                  ; 'Q2BDATA' or 'QMODEL' or 'RQ2BDATA'
            extent   : ptr_new() } ; pointer to array of size [n,3,2] 
                                   ; which gives a proxy to the
                                   ; location of the actual data. This
