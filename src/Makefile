@@ -8,6 +8,9 @@
 # Change Log:
 #
 # $Log$
+# Revision 1.7  2003/01/30 19:15:17  vapdev
+# Finally\!
+#
 # Revision 1.6  2003/01/30 19:11:05  vapdev
 # Ooopsss. Need ainf too!
 #
@@ -92,6 +95,9 @@ ainf: ainf.o
 	${CC} ${CFLAGS} -o ainf ainf.c ${LIBS}
 
 install: grid_goes qchop schop ainf
+	if [ ! -d ${INSTALLDIR} ]; then \
+		mkdir ${INSTALLDIR}; \
+	fi
 	-/bin/cp -f grid_goes ${INSTALLDIR}
 	-/bin/cp -f qchop ${INSTALLDIR}
 	-/bin/cp -f schop ${INSTALLDIR}
