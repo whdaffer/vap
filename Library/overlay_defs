@@ -1,17 +1,140 @@
 # $Id$
 # To get this hash defined use 'do' or 'require'
+#
+# Modification History
+# $Log$
+#
+#
+# Current Regions are:
+#
+# 		GOES_10_4_NEPAC_1
+# 		    LonLim = [-175,-115],   # Min/Max Longitude
+# 		    LatLim = [25,65],       # Min/Max Latitude 
+# 		GOES_10_1_NEPAC_1
+# 		    LonLim = [-175,-115],   # Min/Max Longitude
+# 		    LatLim = [25,65],       # Min/Max Latitude 
+# 		GOES_8_4_NWATL_1 
+# 		    LonLim = [-90,-48],     # Min/Max Longitude
+# 		    LatLim = [25,52],       # Min/Max Latitude 
+# 		GOES_8_1_NWATL_1 
+# 		    LonLim = [-90,-48],     # Min/Max Longitude
+# 		    LatLim = [25,52],       # Min/Max Latitude 
+#
+#
+# 
+# Template-----------------------------------
+#
+#                # Goes 10 Ir4, NE Pacific
+# 		GOES_x_y_DESCRIP_z => {  <---- This is the 'region descignation' Note 1.
+# 		  Region     => "GOES_x_y_DESCRIP_z", 
+# 		  CloudData => {
+# 		    Satellite  => "ABCD",        # Satellite Name (GOES, GMS)
+# 		    LonLim     => [minlon,maxlon],# Min/Max Long (lower left, upper right)
+# 		    LatLim     => [minlat,maxlat],# Min/Max Lat (lower left, upper right)
+# 		    SatNum     => x,            # e.g. goes '10', should match x in reg.desc.
+# 		    SensorNum  => y,             # e.g. 4 for ir4, should matcy y in reg.desc.
+# 		    AscTime    => "hh:mm",       # Note 2
+# 		    DescTime   => "HH:MM" },     # Note 2
+# 		  WVCData => {                   
+# 		    NVectors => xx,         # Need this many vector to continue
+# 		    CRDecimate => [x,y],    # Take every x-th row, every y-th col
+# 		    ExcludeCols => "IDL exclude string"} # Talk to me about this one.
+# 		}
+#
+#
+#
+#
+#
+# Note 1: The region 'designation' is the string (all caps) you put behind the 
+#         '--region' option. It is the way the software gets at the info in 
+#         this data structure. If you mistype, the software will fail.
+#
+# Note 2: The asctime/desctime are the default times for this
+# overlay. In the abscence of any other time info, i.e. the option
+# --time is not included on input, the software will retrieve the
+# goes/gms file which is closest to whichever of these two times
+# preceeds the current time. For example, if this software is called thusly,
+#
+# auto_goes_overlay --region GOES10_4_NEPAC_1 
+#
+#  at anytime between 07:01 and 19:59 hours, the software will use the time 
+#  contained in AscTime, otherwise it will use DescTime.
+#
+#
+
+
+
 %overlay_defs= (
-		NEPAC_Goes_1 => {
-		  Region     => "NEPAC_Goes_1",
+               # Goes 10 Ir4, NE Pacific
+		GOES_10_4_NEPAC_1 => {  #<-------------------------------|
+		  Region     => "GOES_10_4_NEPAC_1", # must match this --|
 		  CloudData => {
-		    Satellite  => "Goes",
-		    LonLim     => [-175,-115],
-		    LatLim     => [25,65],
-		    SatNum     => 10,
-		    SensorNum  => 4 },
-		  WVCData => {
-		    NVectors => 2000,
-		    CRDecimate => [2,3],
-		    ExcludeCols => "34:42"}
-		} );
+		    Satellite  => "GOES",        # Satellite Name
+		    LonLim     => [-175,-115],   # Min/Max Longitude
+		    LatLim     => [25,65],       # Min/Max Latitude 
+		    SatNum     => 10,            # Goes 10
+		    SensorNum  => 4,             # Ir4
+		    AscTime    => "07:00",       # Ascending Time is 07:00 GMT
+		    DescTime   => "20:00" },     # Descending time is 20:00 GMT
+		  WVCData => {                   
+		    NVectors => 2000,            # Need this many vector to continue
+		    CRDecimate => [2,3],         # Take every other row, every third col
+		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		},
+
+               # GOES 10 Visible, NE Pacific
+		GOES_10_1_NEPAC_1 => {
+		  Region     => "GOES_10_1_NEPAC_1",
+		  CloudData => {
+		    Satellite  => "GOES",        # Satellite Name
+		    LonLim     => [-175,-115],   # Min/Max Longitude
+		    LatLim     => [25,65],       # Min/Max Latitude 
+		    SatNum     => 10,            # Goes 10
+		    SensorNum  => 1,             # Visible
+		    AscTime    => "07:00",       # Ascending Time is 07:00 GMT
+		    DescTime   => "20:00" },     # Descending time is 20:00 GMT
+		  WVCData => {                   
+		    NVectors => 2000,            # Need this many vector to continue
+		    CRDecimate => [2,3],         # Take every other row, every third col
+		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		},
+
+               # Goes 8, ir4, NW Atlantic
+		GOES_8_4_NWATL_1 => {
+		  Region     => "GOES_8_4_NWATL_1",
+		  CloudData => {
+		    Satellite  => "GOES",        # Satellite Name
+		    LonLim     => [-90,-48],     # Min/Max Longitude
+		    LatLim     => [25,52],       # Min/Max Latitude 
+		    SatNum     => 8,             # Goes 8
+		    SensorNum  => 4,             # Ir4
+		    AscTime    => "03:00",       # Ascending Time is 03:00 GMT
+		    DescTime   => "16:00" },     # Descending time is 16:00 GMT
+		  WVCData => {                   
+		    NVectors => 2000,            # Need this many vector to continue
+		    CRDecimate => [2,3],         # Take every other row, every third col
+		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		},
+
+               # Goes 8, Visible, NW Atlantic
+		GOES_8_1_NWATL_1 => {
+		  Region     => "GOES_8_1_NWATL_1",
+		  CloudData => {
+		    Satellite  => "GOES",        # Satellite Name
+		    LonLim     => [-90,-48],     # Min/Max Longitude
+		    LatLim     => [25,52],       # Min/Max Latitude 
+		    SatNum     => 8,             # Goes 8
+		    SensorNum  => 1,             # Visible
+		    AscTime    => "03:00",       # Ascending Time is 03:00 GMT
+		    DescTime   => "16:00" },     # Descending time is 16:00 GMT
+		  WVCData => {                   
+		    NVectors => 2000,            # Need this many vector to continue
+		    CRDecimate => [2,3],         # Take every other row, every third col
+		    ExcludeCols => "34:42"}      # Exclude middle 8 columns.
+		}
+
+
+
+ );
+
 
