@@ -52,6 +52,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/06 18:39:54  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1999, William Daffer
 ;-
@@ -91,9 +94,9 @@ PRO makedep, sourcefile, dependencies
     
   tdep = strtrim(strcompress(tdep[x]),2)
 
-
-  IF strpos(sourcefile,'.') NE -1 THEN $
-    tt = str_sep(sourcefile,'.') ELSE tt = sourcefile
+  basename = basename(sourcefile)
+  IF strpos(basename,'.') NE -1 THEN $
+    tt = str_sep(basename,'.') ELSE tt = basename
     outfile = tt[0] + '.dep'
   openw, lun, outfile,/get,error=err
   IF err NE 0 THEN BEGIN 
