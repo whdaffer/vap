@@ -90,6 +90,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.14  1999/06/30 23:07:43  vapuser
+; Changed Xdisplay to XdisplayFile
+;
 ; Revision 1.13  1999/06/29 20:59:28  vapuser
 ; Changed the default input filter
 ;
@@ -802,11 +805,11 @@ FUNCTION pv::Init, $
   ENDELSE 
   IF N_Elements(InputPath)   EQ 0 THEN BEGIN 
     path = getenv('VAP_WINDS') 
-    IF path NE '' THEN InputPath = path ELSE InputPath ='/disk3/qscat_winds' 
+    IF path NE '' THEN InputPath = path ELSE InputPath ='./' 
   ENDIF ELSE BEGIN 
     IF VarType(InputPath) NE 'STRING' THEN BEGIN 
       Message,'InputPath must be of type STRING',/cont
-      InputPath = '/disk3/qscat_winds' 
+      InputPath = './' 
     ENDIF 
   ENDELSE 
   IF N_Elements(InputFilter) EQ 0 THEN InputFilter = 'QS*S*E* *.hdf' ELSE BEGIN 
@@ -815,10 +818,10 @@ FUNCTION pv::Init, $
       InputFilter = 'QS*S*E* *.hdf' 
     ENDIF 
   ENDELSE 
-  IF N_Elements(OutputPath)  EQ 0 THEN OutputPath = '/disk5/qscat' ELSE BEGIN 
+  IF N_Elements(OutputPath)  EQ 0 THEN OutputPath = './' ELSE BEGIN 
     IF VarType(OutputPath) NE 'STRING' THEN BEGIN 
       Message,'OutputPath must be of type STRING',/cont
-      OutputPath = '/disk5/qscat/' 
+      OutputPath = './' 
     ENDIF 
     IF rstrpos( OutputPath,'/') LT strlen(OutputPath)-1 THEN $
       OutputPath = OutputPath + '/'
