@@ -63,6 +63,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  1999/10/21 23:03:45  vapuser
+; Added userplotflag to support cw_pvfinfo (user turns plotting off,
+; instead of data being outside plotting window)
+;
 ; Revision 1.5  1999/10/05 16:40:39  vapuser
 ; Added member data 'starttime','endtime' and 'creationtime' and some
 ; code to support them.
@@ -106,8 +110,10 @@ FUNCTION PvPlotObject::Init, data, $
 
   IF obj_valid( data ) THEN BEGIN 
     s = data-> Get(data=tdata, starttime=starttime, endtime=endtime)
-    self.starttime->set,vaptime = starttime
-    self.endtime->set,vaptime = endtime
+    IF starttime NE '0000/00/00/00/00' THEN $
+      self.starttime->set,vaptime = starttime
+    IF endtime NE '0000/00/00/00/00' THEN $
+      self.endtime->set,vaptime = endtime
     IF s THEN BEGIN 
       name = Tag_Names(*tdata,/Structure_Name)
       test =  where( $
