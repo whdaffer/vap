@@ -1,7 +1,7 @@
 ;+
 ; NAME:  StatsFromHist.pro
 ; $Id$
-; PURPOSE:  Calculate Mean and Standard Deviation from 1d histogram
+; PURPOSE:  Calculate Mean and Variance from 1d histogram
 ;
 ; AUTHOR:  William Daffer
 ;
@@ -17,7 +17,7 @@
 ;	
 ; KEYWORD PARAMETERS:  None
 ;
-; OUTPUTS:   [ mean, standard_deviation] if successful
+; OUTPUTS:   [ mean, variance] if successful
 ;            [0,-1] if not.
 ;
 ; OPTIONAL OUTPUTS:  none
@@ -35,6 +35,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/03/29 17:07:03  vapuser
+; Initial revision
+;
 ;
 ;
 ;Copyright (c) 1999, William Daffer
@@ -46,7 +49,7 @@ FUNCTION statsfromhist, hist, x
   ; 'hist'. If the ordinates aren't provided in the parameter 'x', the
   ; array is assumed to run from 0 to n_elements(hist)-1.
 
-  ; Returns [mean,standard_deviation] or [0,-1] if error.
+  ; Returns [mean,variance] or [0,-1] if error.
 
   retarray = [0,-1]
 
