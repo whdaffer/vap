@@ -57,6 +57,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/22 21:20:31  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -226,8 +229,10 @@ PRO RecrateHDFData, newfile, oldfile, startDt, EndDt
         caldata.Num_Type = IdlType2HdfType('LONG')
         HDF_SD_SETINFO, Id, caldata=caldata      
         HDF_SD_ENDACCESS, Id
-
+        
+        caldata.num_type = idltype2hdftype('STRING')
         ID = HDF_SD_CREATE(FILEID,'wvc_row_time',dims,/string);
+        HDF_SD_SETINFO, Id, caldata=caldata      
         HDF_SD_ADDDATA,id, row_time
         HDF_SD_ENDACCESS, Id
 
