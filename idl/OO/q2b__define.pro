@@ -86,6 +86,10 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.18  1999/11/12 19:55:46  vapuser
+  ; Added code to support new DIRTH selected vectors in the
+  ; new L2B data product. (per Bryan's request)
+  ;
   ; Revision 1.17  1999/10/21 23:05:01  vapuser
   ; Added 'infostruct' to GET, to support cw_pvfinfo code
   ; in pv and pv_config.
@@ -1654,6 +1658,17 @@ END
 FUNCTION Q2B::Nrecs
    tt = size( (*self.data).lon,/dim)
    return,tt[1]
+END
+
+
+
+  ; ==========================================
+  ; SelfDestruct
+  ;   Like it says
+  ; ==========================================
+
+Pro Q2B::SelfDestruct
+   obj_destroy, self
 END
 
   ; ==========================================
