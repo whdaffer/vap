@@ -40,10 +40,13 @@
 # Modification History:
 #
 # $Log$
+# Revision 1.1  2001/02/09 19:09:25  vapuser
+# Initial revision
+#
 #
 #
 package VapWWW;
-use lib "/usr/people/vapuser/perl";
+use lib getenv('VAP_SFTWR_TOP')."/vap/perl";
 use Exporter ();
 use Cwd 'chdir', 'getcwd';
 use Time::Local;

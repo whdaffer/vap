@@ -9,10 +9,13 @@
 # Modification Log:
 # 
 # $Log$
+# Revision 1.1  2001/02/09 19:13:52  vapuser
+# Initial revision
+#
 #
 # 
 package Vapdefs;
-use lib "/usr/people/vapuser/perl";
+use lib $ENV{'VAP_SFTWR_TOP'}."/vap/perl";
 use Exporter ();
 @ISA = qw(Exporter);
 @EXPORT=qw( $VAP_LIB $VAP_ROOT $VAP_WINDS $VAP_ANIM 

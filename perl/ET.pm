@@ -14,9 +14,12 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.1  2001/02/09 18:45:28  vapuser
+# Initial revision
 #
 #
-use lib "/usr/people/vapuser/perl";
+#
+use lib $ENV{'VAP_SFTWR_TOP'}."/vap/perl";
 package ET;
 use VapUtil;
 use Vapdefs;
