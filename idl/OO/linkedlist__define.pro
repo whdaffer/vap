@@ -56,6 +56,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.7  1999/01/22 23:50:37  vapuser
+; Change 'Obj_valid' to "vartype() eq 'OBJECT'" because of
+; some weird bug in OBJ_VALID.
+;
 ; Revision 1.6  1999/01/22 22:20:14  vapuser
 ; Changed *( to (* in 'RemoveCurrent'
 ;
@@ -119,14 +123,16 @@ END
 ;----------------------------------------
 
 FUNCTION LinkedList::getCurrent
-  return,self.current
+   IF ptr_valid(self.current) THEN $
+     return,( (*self.current).data) $
+   ELSE return, ptr_new()
 END
 
 ;----------------------------------------
 ; GetHead
 ;----------------------------------------
 FUNCTION LinkedList::gethead
-  IF ptr_valid( self.head) THEN BEGIN 
+  IF ptr_valid(self.head) THEN BEGIN 
     self.current = self.head
     return, self->GetCurrent()
   ENDIF ELSE return, Ptr_New()
@@ -268,22 +274,32 @@ FUNCTION LinkedList::RemoveCurrent
   current = self.current
   IF ptr_valid(self.current) THEN BEGIN 
     IF ptr_valid( (*self.current).prev ) THEN BEGIN 
-      prev = (*self.current).prev 
-      (*prev).next =  (*self.current).next
+      ;prev = (*self.current).prev
+      ;(*prev).next =  (*self.current).next
+      (*(*self.current).prev).next = (*self.current).next
     ENDIF 
     IF ptr_valid( (*self.current).next ) THEN BEGIN 
-      next = (*self.current).next
-      (*next).prev =  (*self.current).prev
+      ; next = (*self.current).next
+      ; (*next).prev =  (*self.current).prev
+      (*(*self.current).next).prev = (*self.current).prev
     ENDIF
-    head = self->GetHead()
-    IF current EQ head THEN $
-      head =  (*head).next
-    tail = self->GetTail()
-    IF current EQ tail THEN $
-      tail =  (*tail).prev
-  ENDIF 
-  self.count = self.count-1
-  return,current
+    
+    IF self.current EQ self.head and $
+       self.head NE self.tail THEN BEGIN 
+      self.head =  (*self.head).next
+      self.current = self.head
+    ENDIF 
+    IF self.current EQ self.tail AND $
+       self.tail NE self.head THEN BEGIN 
+      self.tail =  (*self.tail).prev
+      self.current = self.tail
+    ENDIF 
+    self.count = self.count-1
+    IF ptr_valid( (*current).data ) THEN  $
+     return, (*current).data ELSE $
+     return, ptr_new()
+  ENDIF ELSE return,ptr_new()
+  
 END
 
 ;----------------------------------------
@@ -625,5 +641,4 @@ PRO LinkedList__define
               tail    : Ptr_New() ,$
               current : Ptr_New() }
 END
-
 
