@@ -27,6 +27,7 @@
 ;  min_nvect   : 4000                   , $ ; Minimum number of
 ;                                           ; vectors needed 
 ;                                           ; to proceed
+;  animpar     : [320,240,60]           , $ ; Movie will be 320 by 240, 60 frames
 ;  decimate    : 0l                     , $ ; take every n-th vector 0=1=> take 
 ;                                           ; every vector.
 ;  CRDecimate  : [2,2]                  , $ ; 2 vector, if CRDecimate=[p,q] take 
@@ -49,6 +50,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1999/08/20 22:50:00  vapuser
+; Added 2 new regions, ATLHURR, and PACHURR: hurricane allies
+; for Atlantic and Pacific storms, respectively.
+;
 ; Revision 1.2  1998/10/17 00:21:02  vapuser
 ; Added decimate, CRdecimate and ExcludeCols to structure.
 ;
@@ -64,13 +69,13 @@
 ; Name,alonpar,alatpar,wpath,interp_path,anim_path,min_nvect,decimate, crdecimate,excludecols
 
 
-{ desig: 'NEPAC', alonpar: [195.,245,1.5], alatpar: [30., 60,1.5], wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/", anim_path: "$VAP_ANIM/nepac/daily", min_nvect: 4000,decimate: 0l, CRDecimate: [2,2], ExcludeCols: ''  }
-{ desig: 'NWPAC', alonpar: [110.,180,1.5], alatpar: [0.,  60,1.5], wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/", anim_path: "$VAP_ANIM/nwpac/daily", min_nvect:10000,decimate: 0l, CRDecimate: [2,2], ExcludeCols: ''  }
-{ desig: 'NWATL', alonpar: [270.,315,1.5], alatpar: [20,  45,1.5], wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/", anim_path: "$VAP_ANIM/nwatl/daily", min_nvect: 4400 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
-{ desig: 'NPAC' , alonpar: [100.,270,1.5], alatpar: [-20.,60,1.5], wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/",  anim_path: "$VAP_ANIM/npac/daily",  min_nvect: 30000  ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
-{ desig: 'INDIAN' , alonpar: [15.,135,1.5], alatpar: [-60.,30,1.5], wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/",  anim_path: "$VAP_ANIM/indian/daily",  min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
-{ desig: 'ATLHURR', alonpar: [260.,350,2], alatpar: [10,50,2.],wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/",  anim_path: "$VAP_ANIM/atlhurr/daily",  min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
-{ desig: 'PACHURR', alonpar: [110,250,2], alatpar: [0,40,2.],wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/",  anim_path: "$VAP_ANIM/pachurr/daily",  min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
+{ desig: 'NEPAC', alonpar: [195.,245,1.5], alatpar: [30., 60,1.5], wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/", anim_path: "$VAP_ANIM/nepac/daily",anim_par: [320,240,60], min_nvect: 4000,decimate: 0l, CRDecimate: [2,2], ExcludeCols: ''  }
+{ desig: 'NWPAC', alonpar: [110.,180,1.5], alatpar: [0.,  60,1.5], wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/", anim_path: "$VAP_ANIM/nwpac/daily", anim_par: [320,240,60], min_nvect:10000,decimate: 0l, CRDecimate: [2,2], ExcludeCols: ''  }
+{ desig: 'NWATL', alonpar: [270.,315,1.5], alatpar: [20,  45,1.5], wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/", anim_path: "$VAP_ANIM/nwatl/daily", anim_par: [320,240,60], min_nvect: 4400 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
+{ desig: 'NPAC' , alonpar: [100.,270,1.5], alatpar: [-20.,60,1.5], wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/",  anim_path: "$VAP_ANIM/npac/daily",  anim_par: [320,240,60], min_nvect: 30000  ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
+{ desig: 'INDIAN' , alonpar: [15.,135,1.5], alatpar: [-60.,30,1.5], wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/",  anim_path: "$VAP_ANIM/indian/daily",  anim_par: [320,240,60], min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
+{ desig: 'ATLHURR', alonpar: [260.,350,1.5], alatpar: [10,50,1.5],wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/",  anim_path: "$VAP_ANIM/atlhurr/daily",  anim_par: [480,240,60], min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
+{ desig: 'PACHURR', alonpar: [100,270,1.5], alatpar: [10,40,1.5],wpath: "$VAP_WINDS", interp_path: "$VAP_ANIM/",  anim_path: "$VAP_ANIM/pachurr/daily",  anim_par: [480,240,60], min_nvect: 15000 ,decimate: 0l, CRDecimate: [2,2], ExcludeCols: '' }
 
 
 
