@@ -1,20 +1,25 @@
 # $Id$
 #
 # $Log$
+# Revision 1.1  2002/08/08 00:20:09  vapdev
+# Initial Revision
 #
 #
-package WWW::LeftNavTable;
+#
+package LeftNavTable;
 use strict;
 use vars qw/$WESTPACIFIC $EASTPACIFIC $WESTATLANTIC %overlay_defs 
 	    $DEFUNCT_SATELLITES $DEFUNCT_VIEWS/;
 use lib $ENV{VAP_LIBRARY};
 use Carp;
 use HTML::Table;
+@LeftNavTable::ISA= qw/HTML::Table/;
 
 sub new {
 
   my $class = shift;
-  $DEFUNCT_VIEWS = "GOES.?(8|10)_?1";
+  my $self=$class->SUPER::new(@_);
+  $DEFUNCT_VIEWS = "GOES.?(8|10)_?1_\\w+_\\d";
 
   # Get the defaults for the overlays from the overlay_defs file.
 
@@ -28,7 +33,7 @@ sub new {
   # from the tropical_storm_defs file.
 
   croak "Can't find tropical_storm_defs!\n" 
-    unless (-e $ENV{VAP_LIBRARY}."/tropical_storm_defs";
+    unless (-e $ENV{VAP_LIBRARY}."/tropical_storm_defs");
   require "tropical_storm_defs" or croak "Can't require tropical_storm_defs:$!\n";
 
 
@@ -38,9 +43,9 @@ sub new {
   # ====== West Atlantic, typically Goes 8 =================
 
   my @regions = grep /GOES.?(8|EAST)/, @overlay_keys;
-  @regions = !grep /$DEFUNCT_VIEWS/,@overlay_keys;
+  @regions = grep !/$DEFUNCT_VIEWS/,@regions;
 
-  my $WESTATLANTIC = {SATELLITE => qw/GOES_8 GOES_EAST/,
+  my $WESTATLANTIC = {SATELLITE => ['GOES_8', 'GOES_EAST'],
 		      REGIONS => \@regions};
   my $htmltable = HTML::Table->new(
 	      -rows=>scalar(@{$WESTATLANTIC->{REGIONS}})+1,
@@ -52,10 +57,10 @@ sub new {
   $WESTATLANTIC->{HTMLTABLE} = $htmltable;
 
   @regions = grep /GOES.?(10|WEST)/,@overlay_keys;
-  @regions = !grep /$DEFUNCT_VIEWS/,@overlay_keys;
+  @regions = grep !/$DEFUNCT_VIEWS/,@regions;
 
   # ====== East Pacific, typically Goes 10 =================
-  my $EASTPACIFIC = {SATELLITE =>  qw/GOES_10 GOES_WEST/,
+  my $EASTPACIFIC = {SATELLITE =>  ['GOES_10','GOES_WEST'],
 		      REGIONS => \@regions};
 
   $htmltable = HTML::Table->new(
@@ -71,9 +76,9 @@ sub new {
 
   # ====== West Pacific, typically GMS 5 =================
   @regions = grep /GMS_?\d?/,@overlay_keys;
-  @regions = !grep /$DEFUNCT_VIEWS/,@overlay_keys;
+  @regions = grep !/$DEFUNCT_VIEWS/,@regions;
 
-  my $WESTPACIFIC = {SATELLITE => qw/GMS_5 GMS/,
+  my $WESTPACIFIC = {SATELLITE => ['GMS_5','GMS'],
 		     REGIONS => \@regions};
 
   $htmltable = HTML::Table->new(
@@ -89,9 +94,9 @@ sub new {
 
   # ========= Tropical Storms ===========================
 
-  @regions = !grep /$DEFUNCT_VIEWS/,@overlay_keys;
-  my $TROPICALSTORMS = {SATELLITE => qw/GOES_10 GOES_8 GOES_EAST 
-				       GOES_WEST GMS_5 GMS/,
+  @regions = grep !/$DEFUNCT_VIEWS/,@overlay_keys;
+  my $TROPICALSTORMS = {SATELLITE => ['GOES_10', 'GOES_8', 'GOES_EAST',
+				       'GOES_WEST', 'GMS_5', 'GMS'],
 		       REGIONS => \@regions};
 
 
@@ -101,18 +106,18 @@ sub new {
   $EASTPACIFIC->{HTMLTABLE}->setCell(1,1,"East Pacific",-colspan=>2);
   $WESTPACIFIC->{HTMLTABLE}->setCell(1,1,"West Pacific",-colspan=>2);
 
-  
-  my $maintable = HTML::Table->new(-rows=>6,
-			   -cols=>1,
-			   -align=>"left",
-			   -width=>"40\%",
-			   -border=>1);
 
-  my $self = {WESTATLANTIC => $WESTATLANTIC,
-	      EASTPACIFIC => $EASTPACIFIC, 
-	      WESTPACIFIC => $WESTPACIFIC,
-	      MAINTABLE => $maintable,
-	     @_};
+#   my $maintable = HTML::Table->new(-rows=>6,
+# 			   -cols=>1,
+# 			   -align=>"left",
+# 			   -width=>"40\%",
+# 			   -border=>1);
+
+  $self = {WESTATLANTIC => $WESTATLANTIC,
+	   EASTPACIFIC => $EASTPACIFIC, 
+	   WESTPACIFIC => $WESTPACIFIC};
+#	   MAINTABLE => $maintable,
+#	     @_};
   return bless $self, ref($class) || $class;
 }
 
