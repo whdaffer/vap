@@ -3,6 +3,12 @@
 #
 #
 # $Log$
+# Revision 1.7  2002/05/08 16:01:43  vapdev
+# Removed variables that will now be defined in environment.
+# Changed email addresses
+# Changed ENV variables to reflect new scenario
+# Added succorf.f to Makefile. Modified array sizes in succorf.f
+#
 # Revision 1.6  2001/12/08 00:02:36  vapdev
 # Getting rid of obsolete RSI routines and fixing ENV vars
 #
@@ -30,12 +36,12 @@ CC = cc
 F77 = f77
 LD = ld 
 #CFLAGS = -KPIC -mips2 
-CFLAGS = -KPIC 
+CFLAGS = -KPIC  -mips3
 #F77_FLAGS = -KPIC -mips2 
-F77_FLAGS = -KPIC 
+F77_FLAGS = -KPIC -mips3
 F77LIBs = -lftn
 #LDFLAGS = -shared -mips2
-LDFLAGS = -shared 
+LDFLAGS = -shared  -mips3
 CLIBS = 
 RSIINC=/usr/local/rsi/idl_5.1/external
 
