@@ -68,6 +68,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.10  2000/03/17 00:41:43  vapuser
+; Added IDLDT to the tests. Return 0 if input variable
+; is undefined
+;
 ; Revision 1.9  1999/07/04 16:55:28  daffer
 ; Added 'number' type.  True if
 ; not string,structure,object or pointer.
@@ -121,7 +125,8 @@ FUNCTION isa, variable, $
               nonempty=nonempty, $
               name=name, $
               status=status, $
-              objname=objname
+              objname=objname,$
+              help=help
 
 
 
@@ -129,14 +134,13 @@ FUNCTION isa, variable, $
 status = 1
 usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /long, /float, /double, /complex, /dcomplex, /string, /structure, /object, /pointer, /type_integer, /float_type, /type_complex, /number [,/nonempty, name=structure_name,objname=objname])'
 
-  IF n_params() LT 1 THEN BEGIN 
+  IF keyword_set(help) THEN BEGIN 
     usage,usage_msg
     status = 0
     return,0
   ENDIF 
 
   IF n_elements(variable) EQ 0 THEN BEGIN 
-    Message,'Variable is undefined!',/cont
     status = 0
     return,0
   ENDIF 
