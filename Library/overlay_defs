@@ -1,0 +1,11 @@
+# $Id$
+# To get this hash defined use 'do' or 'require'
+%overlay_defs= (
+		NEPAC_Goes_1 => {
+		  Region     => "NEPAC_Goes_1",
+		  Satellite  => "Goes",
+		  LonLim     => [-175,-115],
+  		  LatLim     => [25,65],
+		  SatNum     => 10,
+		  SensorNum  => 4 } );
+
