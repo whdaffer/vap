@@ -90,6 +90,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.23  2000/02/28 18:09:22  vapuser
+; A little more work on the rain flagging code.
+;
 ; Revision 1.22  2000/02/23 21:58:26  vapuser
 ; Added rain flag code.
 ;
@@ -211,13 +214,7 @@ FUNCTION pv::Init, $
 
                 ; All 'rf_' or '_rf' are Rain Flag quantities.
                 ;
-                ; use_rf determines which flag (if any) to use. it may
-                ; be specified as a string or a number. The string is
-                ; the name of the flag without the 'rain_index' part
-                ; from q2b_rnoaa_str with the empty string standing
-                ; for no rain flagging or the numbers 0,1,2 with 0=no
-                ; flagging, 1=use the 'MP' flag and 2= use the 'NOF'
-                ; flag.
+                ; rainflag: boolean 0=don't use flag, 1=use flag
                 ;
                 ; rf_action determines whether to skip plotting the
                 ; data (rf_action=0) or plot it with whatever quantity
@@ -228,7 +225,7 @@ FUNCTION pv::Init, $
                 ; is plotted, provided rf_action=1.
                 ;
 
-           use_rf        = use_rf, $
+           rainflag        = rainflag, $
            rf_action     = rf_action, $
            rf_color      = rf_color
    
@@ -423,23 +420,15 @@ FUNCTION pv::Init, $
   self.Decimate_flag = (njj NE 0)
 
 
-  chkcfg,'USE_RF',use_rf,cfg
+  chkcfg,'RAINFLAG',rainflag,cfg
   chkcfg,'RF_ACTION',rf_action,cfg
   chkcfg,'RF_COLOR',rf_color,cfg
 
-  IF n_elements(use_rf) EQ 0 THEN use_rf =  0
+  IF n_elements(rainflag) EQ 0 THEN rainflag =  0
   IF n_elements(rf_action) EQ 0 THEN  rf_action=0
   IF n_elements(rf_color) EQ 0 THEN rf_color = 'ffffff'xl < (!d.n_colors-1)
 
-  IF isa(use_rf,/string,/nonempty) THEN BEGIN 
-    use_rf = strupcase(use_rf)
-    CASE use_rf OF 
-      'MP': self.rain_flag = 1;
-      'NOF': self.rain_flag = 2;
-      ELSE: self.rain_flag = 0
-    ENDCASE 
-  ENDIF ELSE self.rain_flag = 0> use_rf < 2
-
+  self.rain_flag = rainflag
   self.rain_flag_action = rf_action
   self.rain_flag_color = rf_color
 
@@ -598,8 +587,13 @@ PRO pv_events, event
     'PLOTOPTIONS'    : self->PlotOptions      
     'CONFIGHARDCOPY' : self->HardCopy
     'CLOUDOVERLAY'   : self->Overlay
-    'OVERPLOTLOC'    : self->OverPLot
+;    'OVERPLOTLOC'    : self->OverPLot
     'PROPAGATEORBITS': self->Propagate
+    'OPTABLE'        : Self-> overplot,event.id
+    'OPSYMBOL'       : Self-> overplot,event.id
+    'OPLINE'         : Self-> overplot,event.id
+    'OPCOLOR'        : Self-> overplot,event.id
+    'OPANNOT'        : Self-> overplot,event.id
     'RESETSENS'      : self-> Set, Sensitivity = 1
     'REDRAW'         : self->draw,/force
     'QUIT2'          : self->Quit, event.top  
@@ -1016,8 +1010,16 @@ END
 ;====================================================
 ; Overplot Data
 ;====================================================
-PRO pv::Overplot
-  pv_oplot, GROUP=self.tlb
+PRO pv::Overplot, id
+  CASE id OF 
+    self.optableid : map = [1,0,0,0,0]
+    self.opsymid   : map = [0,1,0,0,0]
+    self.oplineid  : map = [0,0,1,0,0]
+    self.opannotid : map = [0,0,0,1,0]
+    self.opcolorid : map = [0,0,0,0,1]
+    ELSE: map = [1,0,0,0,0]
+  ENDCASE 
+  pv_oplot, GROUP=self.tlb, map=map
 END
 
 
@@ -1158,8 +1160,25 @@ FUNCTION Pv::CreateWidget
 ;                                    Uvalue='CLOUDOVERLAY')
 
     junk = Widget_Button( MenuId, Value='OverPlot',/Menu,Uvalue='OVERPLOT')
-    self.OverPlotId = Widget_Button( junk,Value='Plot Locations', $
-                                    Uvalue='OVERPLOTLOC')
+;    self.OverPlotId = Widget_Button( junk,Value='Plot Locations', $
+;                                    Uvalue='OVERPLOTLOC')
+    self.optableid = widget_button(junk,Value='Locations',$
+                                        Uvalue='OPTABLE')
+
+    self.opsymid = widget_button(junk,Value='Symbol Config',$
+                                        Uvalue='OPSYMBOL')
+
+    self.oplineid = widget_button(junk,Value='Line Config',$
+                                        Uvalue='OPLINE')
+
+    self.opannotid = widget_button(junk,Value='Text Config',$
+                                        Uvalue='OPANNOT')
+
+
+    self.opcolorid = widget_button(junk,Value='Color Config',$
+                                        Uvalue='OPCOLOR')
+
+
 
     junk = Widget_Button( MenuId, Value='Propagate',/Menu,Uvalue='PROPAGATE')
     self.PropagateId = Widget_Button( junk,Value='Propagate Orbits', $
@@ -1172,6 +1191,7 @@ FUNCTION Pv::CreateWidget
     self.SetSensId = Widget_Button( self.MiscId, Value='Reset Sensitivity',$
                                     Uvalue='RESETSENS')
     self.RedrawId = Widget_Button( self.MiscId, Value='Redraw', $
+
                                    Uvalue='REDRAW' )
 
     self.Quit2Id = Widget_Button( self.MiscId, Value='Quit', $
@@ -1338,7 +1358,7 @@ PRO Pv::Draw, $
           s = q2b-> Set( Decimate    = self.Decimate_by, $
                          CRDecimate  = self.CRDecimate_by, $
                          ExcludeCols = self.ExcludeCols, $
-                         use_rf      = self.rain_flag, $
+                         rainflag      = self.rain_flag, $
                          rf_action   = self.rain_flag_action)
           IF SelectedOnly THEN BEGIN 
             t1 = systime(1)
@@ -1347,6 +1367,7 @@ PRO Pv::Draw, $
             t2 = systime(1)
             print,'  Time to extract ', t2-t1
             IF Status THEN BEGIN 
+              IF n_elements(rfi) EQ 0 THEN rfi = -1l
               self-> UpdateSpeedHisto,u,v,nTotPlots
               self->WriteToStatusBar,'Drawing...'
               IF self.visual NE 'PSEUDOCOLOR' AND PostscriptDevice THEN BEGIN 
@@ -1422,6 +1443,7 @@ PRO Pv::Draw, $
               t2 = systime(1)
               print,'  Time to extract ', t2-t1
               IF status THEN BEGIN 
+                IF n_elements(rfi) EQ 0 THEN rfi = -1l
                 self-> UpdateSpeedHisto,u,v,nTotPlots
                 self->WriteToStatusBar,'Drawing...'
                   ; Plot the vectors
@@ -1593,7 +1615,7 @@ FUNCTION Pv::Read,files
         s =  q-> Set(Decimate = self.decimate_by,$
                      CRDecimate = self.CRdecimate_by, $
                      ExcludeCols= self.ExcludeCols, $
-                     use_rf=self.rain_flag, $
+                     rainflag=self.rain_flag, $
                      rf_action=self.rain_flag_action, $
                      rf_color=self.rain_flag_color )
 
@@ -1631,6 +1653,8 @@ PRO Pv::Cleanup
   If Obj_Valid(self.SpeedHisto)      THEN obj_Destroy, self.SpeedHisto
   IF Obj_valid(self.PsInfo )         THEN Obj_Destroy, self.PsInfo
   IF Obj_valid(self.Annotation )     THEN Obj_Destroy, self.Annotation
+  IF Obj_valid(self.ColorBar )       THEN Obj_Destroy, self.ColorBar
+  IF Obj_valid(self.Oplot )          THEN Obj_Destroy, self.Oplot
   Ptr_Free, self.PtrToCT
 
   IF Widget_Info( self.tlb, /valid ) THEN $
@@ -1689,13 +1713,7 @@ PRO Pv::Set, xsize       = xsize, $
 
                 ; All 'rf_' or '_rf' are Rain Flag quantities.
                 ;
-                ; use_rf determines which flag (if any) to use. it may
-                ; be specified as a string or a number. The string is
-                ; the name of the flag without the 'rain_index' part
-                ; from q2b_rnoaa_str with the empty string standing
-                ; for no rain flagging or the numbers 0,1,2 with 0=no
-                ; flagging, 1=use the 'MP' flag and 2= use the 'NOF'
-                ; flag.
+                ; rainflag: boolean, 0=don't use flag, 1=do use flag
                 ;
                 ; rf_action determines whether to skip plotting the
                 ; data (rf_action=0) or plot it with whatever quantity
@@ -1706,7 +1724,7 @@ PRO Pv::Set, xsize       = xsize, $
                 ; is plotted, provided rf_action=1.
                 ;
 
-             use_rf=use_rf, $
+             rainflag=rainflag, $
              rf_action=rf_action, $
              rf_color=rf_color 
 
@@ -1717,16 +1735,7 @@ PRO Pv::Set, xsize       = xsize, $
   redraw = Keyword_Set(RedrawFlag)
   resize = 0
 
-  IF n_elements(use_rf) NE 0 THEN BEGIN 
-    IF isa(use_rf,/string,/nonempty) THEN BEGIN 
-      use_rf = strupcase(use_rf)
-      CASE use_rf OF 
-        'MP': self.rain_flag = 1;
-        'NOF': self.rain_flag = 2;
-        ELSE: self.rain_flag = 0
-      ENDCASE 
-    ENDIF ELSE self.rain_flag =  use_rf
-  ENDIF 
+  IF n_elements(rainflag) NE 0 THEN self.rain_flag = rainflag
   IF n_elements(rf_action) NE 0 THEN self.rain_flag_action = 0> rf_action < 1
   IF n_elements(rf_color) NE 0 THEN self.rain_flag_color = 0> rf_color < (!d.n_colors-1)
 
@@ -2080,10 +2089,9 @@ PRO Pv::Get, xsize             = xsize, $
              doAnnotations     = doAnnotations, $
              doColorBar        = doColorBar, $
              oplot             = oplot, $
-             use_rf    = use_rf, $
+             rainflag    = rainflag, $
              rf_action = rf_action, $
-             rf_color  = rf_color, $
-             rain_flag =rain_flag
+             rf_color  = rf_color
 
    IF Arg_Present(xsize)             THEN xsize             = self.xsize 
    IF Arg_Present(ysize)             THEN ysize             = self.ysize 
@@ -2129,11 +2137,7 @@ PRO Pv::Get, xsize             = xsize, $
    IF Arg_Present(oplot)             THEN oplot       = self.oplot
    IF Arg_Present(rf_action)         THEN rf_action   = self.rain_flag_action
    IF Arg_Present(rf_color)          THEN rf_color    = self.rain_flag_color
-   IF Arg_Present(use_rf)            THEN BEGIN 
-     tmp = ['No Flagging','Use MP flag', 'Use NOF flag']
-     use_rf = tmp[self.rain_flag]
-   ENDIF 
-   IF Arg_present(rain_flag) THEN rain_flag = self.rain_flag
+   IF Arg_Present(rainflag)          THEN rainflag    =  self.rain_flag
 
 
 
@@ -2574,6 +2578,11 @@ PRO Pv__define
             HardcopyId   : 0L ,$
             OverlayId    : 0l ,$
             OverplotId   : 0l, $
+            optableid    : 0l, $
+            opsymid      : 0l, $
+            oplineid     : 0l, $             
+            opcolorid    : 0l, $             
+            opannotid    : 0l, $             
             PropagateId  : 0L, $
             MiscId       : 0l ,$
             SetSensId    : 0l ,$
@@ -2613,7 +2622,7 @@ PRO Pv__define
             Decimate_flag: 0  ,$ ; 1=decimate by col/ro, 0 otherwise.
             ExcludeCols  : '' ,$ ; e.g. '2,3,32:35,74,75'
             rain_flag    : 0, $ ; do rain flagging and which sort.
-                                ;0=no flagging, 1=MP flagging, 2=NOF flagging
+                                ;0=no flagging, 1=flagging
             rain_flag_action : 0, $ ;0=don't plot, 1=plot using rf_color
             rain_flag_color  : 0L, $ ; either color index(8bit) 
                                      ; or color itself(24bit)
