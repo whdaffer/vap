@@ -7,6 +7,9 @@
 # bestiary of environmental variables be defined.
 #
 # $Log$
+# Revision 1.1  2003/01/30 18:04:52  vapdev
+# Moved create_run_environment to scr
+#
 # Revision 1.2  2003/01/29 00:10:02  vapdev
 # Continuing work
 #
@@ -23,6 +26,7 @@
 #
 
 # --- Work directories
+echo making working directories
 mkdir -p $VAP_OPS_ANIM
 mkdir -p $VAP_OPS_OVERLAY
 mkdir -p $VAP_OPS_TS_OVERLAY
@@ -30,21 +34,28 @@ mkdir -p $VAP_OPS_TMPFILES
 mkdir -p $VAP_OPS_LOGFILES
 
 # --- Goes and GMS stuff
+echo GMS/GOES working directories
 mkdir -p $VAP_GOES_TOP
 mkdir -p $VAP_GOES_GRIDDED_TOP
 mkdir -p $VAP_GMS_TOP
 
 # --- WWW directories
+echo WWW top
 if [ ! -d $VAP_WWW_TOP ]; then
     mkdir -p $VAP_WWW_TOP
 fi
+
+echo overlay archive
 if [ ! -d $VAP_OVERLAY_ARCHIVE ]; THEN 
     mkdir -p $VAP_OVERLAY_ARCHIVE
-]
+fi
+
+echo TS archives
 if [ ! -d $VAP_TS_ARCHIVE ]; then 
     mkdir -p $VAP_TS_ARCHIVE
 fi
 
+echo anim archive
 if [ ! -d $VAP_ANIM_ARCHIVE ]; then 
     mkdir -p $VAP_ANIM_ARCHIVE
 fi
