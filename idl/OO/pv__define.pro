@@ -26,7 +26,8 @@
 ;	
 ; KEYWORD PARAMETERS:  Read the Init Method
 ;           files      : list of files to read
-;           data       : the Data itself, must be object of type Q2b or Qmodel
+;           data       : the Data itself, must be object of type 
+;                         Q2BDATA, QMODEL or RQ2BDATA
 ;           xsize      : xsize of window
 ;           ysize      : ysize of window
 ;           color      : don't use this one
@@ -89,6 +90,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.7  1998/10/23 22:18:46  vapuser
+; Incoporated DeEnvVar to handle HDF_... inability to parse
+; environmental variables. Handled a problem with SpeedHisto object
+;
 ; Revision 1.6  1998/10/21 17:40:57  vapuser
 ; Added a 'print' statement while reading files.
 ;
@@ -191,8 +196,8 @@ PRO pv_draw_events,event
         ; Get the XYLabel Id
       self->Get, XYLabId=XYLabId
       IF xy[0] LT 0 THEN xy[0] =  xy[0] + 360.
-      val = 'X: ' + string( xy(0), form='(f7.3)') + $
-       ' Y: ' + string( xy(1), form='(f7.3)') 
+      val = 'X: ' + string( xy[0], form='(f7.3)') + $
+       ' Y: ' + string( xy[1], form='(f7.3)') 
       Widget_Control,XYLabId, Set_Value=val
       
     END
@@ -281,6 +286,13 @@ PRO Pv_Motion_Events, event
         abs(yy(0)-yy(1)) GT 0.001) THEN BEGIN 
 
 
+      limits1 = [xx[0],yy[0],xx[1],yy[1]]
+      Dims = *(self->GetCurrentDimensions())
+      Dims-> Get,Lon = oldLonrange, Lat=OldLatRange
+      limits2 = [ OldLonRange[0], OldLatRange[0],$
+                  OldLonRange[1], OldLatRange[1]]
+      IF NOT CompletelyWithin( limits1, limits2 ) $
+        THEN self-> ResetPlotObjects,/All
       NewDims = Obj_New('MapDims',xx,yy,/fix )
       self-> Set,Dimensions = NewDims
       str =  'new dimensions: lon ' + $
@@ -288,14 +300,11 @@ PRO Pv_Motion_Events, event
        string( yy, form='(2(f7.3,:,","))')
       Message,str,/cont
         ; Draw the new area.
+      IF NOT CompletelyWithin( limits1, limits2 ) THEN $
+        self->ResetPlotObjects,/All ELSE $
+        self->ResetPlotObjects,/AlreadyPlotted
+      
       self->Draw
-;      IF widget_info( self.config_widget_id,/valid) THEN BEGIN 
-;        self-> ChangeSensitivity,/off
-;          Widget_Control, self.Config_widget_id, $
-;           send_event = { Id: self.Config_widget_id, Top:self.tlb, $
-;                          Handler:self.config_widget_id, action:'REDO_DIMS_LIST' }
-;        self-> ChangeSensitivity,/on
-;      ENDIF 
     ENDIF ELSE BEGIN
       str =  'Selected area too small, only 0.001 by 0.001 degrees '
       Message,str,/cont
@@ -351,15 +360,13 @@ END
 PRO Pv::WidgetRead
   files = Mpickfile( path=self.InputPath, filter=self.InputFilter, $
                      Get_Path=NewPath, Get_Filter=NewFilter)
+  cnt = n_elements( files )
+  IF cnt EQ 1 AND strlen(files(0)) EQ 0 THEN cnt = 0
   files = DeEnvVar(files)
   self.InputPath = DeEnvVar(NewPath)
   self.InputFilter = NewFilter
-  
-  cnt = n_elements( files )
-  IF cnt EQ 1 AND strlen(files(0)) EQ 0 THEN cnt = 0
   IF cnt NE 0 THEN BEGIN 
     s = self->Read(files)
-    self->Draw
   ENDIF 
 END
 
@@ -385,6 +392,7 @@ PRO Pv::WidgetWrite
   ENDIF 
   saveSensitivity = self.Sensitivity
   self-> ChangeSensitivity,/Off
+  Message,'Preparing to Write data ... ',/info
   ;Widget_Control, self.StatusId, Set_Value='Writing...'
   self->WriteToStatusBar, 'Writing ... '
 
@@ -404,7 +412,8 @@ PRO Pv::WidgetWrite
       IF Ptr_Valid( CurrentPlotDataPtr ) THEN BEGIN 
         WHILE Ptr_Valid(CurrentPLotDataPtr) DO BEGIN 
 
-          q2b = *(CurrentPlotDataPtr)
+          po =  *(CurrentPlotDataPtr)
+          po-> get, Data = q2b, SelectedOnly=SelectedOnly
           s = q2b-> Get(Filename=filename)
           junk = rstrpos(filename,'/')+1
           basename = strmid( filename, junk, strlen(filename)-junk)
@@ -417,19 +426,28 @@ PRO Pv::WidgetWrite
           PlotAmbiguities =  where( self.ambiguities NE 0, nPlots)
             ; self.ambiguities[0]=1 => plot 'selected' ambiguities.
             ; self.ambiguities[1]=1 => plot 1st ambiguity ... etc.
-          FOR p=0,nPlots-1 DO BEGIN 
-              ; GetPlotData likes limit as [lon0, lat0, lon1,lat1 ]
-            t1 = systime(1)
-            status = q2b->GetPLotData(u,v,lon,lat, PlotAmbiguities[p], $
-                                      limit = limit, /Silent  )
-;            print,'Time to Extract: ' , systime(1)-t1
-
+          IF SelectedOnly THEN BEGIN 
+            status = q2b-> getplotdata(u,v,lon,lat,limit=limit,/Silent)
             IF status THEN BEGIN 
-              s = size(U)
-              WriteU, Lun, s[1],s[2], PlotAmbiguities[p]
+              dims = size(U,/Dimension)
+              WriteU, Lun, dims[1],dims[2], 0L
               WriteU, Lun, u,v,lon,lat
             ENDIF 
-          ENDFOR 
+          ENDIF ELSE BEGIN 
+            FOR p=0,nPlots-1 DO BEGIN 
+                ; GetPlotData likes limit as [lon0, lat0, lon1,lat1 ]
+              t1 = systime(1)
+              status = q2b->GetPLotData(u,v,lon,lat, PlotAmbiguities[p], $
+                                        limit = limit, /Silent  )
+  ;            print,'Time to Extract: ' , systime(1)-t1
+
+              IF status THEN BEGIN 
+                s = size(U)
+                WriteU, Lun, s[1],s[2], PlotAmbiguities[p]
+                WriteU, Lun, u,v,lon,lat
+              ENDIF 
+            ENDFOR 
+          ENDELSE 
           CurrentDataNode =  self.DataList->GetNext()
           CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
         ENDWHILE 
@@ -903,16 +921,18 @@ FUNCTION pv::Init, $
     IF Obj_Valid( data ) THEN BEGIN 
       status = self.DataList-> Append(data)
     ENDIF ELSE BEGIN 
-      structure_name = STRUPCASE(Tag_Names( data, /structure_name) )
-      CASE structure_name OF 
+      Structure_Name = STRUPCASE(Tag_Names( data, /structure_name) )
+      CASE Structure_Name OF 
         'Q2BDATA'    : q = Obj_New('Q2B'   , data=data)
+        'RQ2BDATA'   : q = Obj_New('Q2B'   , data=data)
         'QMODELDATA' : q = Obj_New('QMODEL', data=data)
         ELSE     : BEGIN 
           Message,"Can't identify data type ",/cont        
           return,0
         END
       ENDCASE 
-      status = self.DataList-> Append(q)
+       p =  Obj_new('PvPlotObject',q)
+      status = self.DataList-> Append(p)
     ENDELSE 
   ENDIF 
 
@@ -1021,7 +1041,10 @@ END
 ;====================================================
 
 
-PRO Pv::Draw
+PRO Pv::Draw, NoErase = NoErase
+   
+  Erase = keyword_set( NoErase) NE 1
+
   Catch, Error
   IF Error NE 0 THEN BEGIN 
     Catch,/Cancel
@@ -1033,6 +1056,10 @@ PRO Pv::Draw
 
 ;  print,'Pv::Draw'
   status = 1
+  nTotPlots = 0
+  noData = -2 ; A particular failure mode from q2b->getplotdata
+  DontKnow = -1 ; Setting for PvPlotObject.InRegion
+
   self.Annotation-> Get,MainTitle = Mtitle, Xtitle=Xtitle, $
                       Ytitle=Ytitle, SubTitle=SubTitle
 
@@ -1044,6 +1071,7 @@ PRO Pv::Draw
 
   IF NOT Widget_Info( self.Tlb,/Valid ) THEN status =  self-> CreateWidget()
   IF !d.name NE 'PS' THEN Wset, self.wid
+
   IF status THEN BEGIN 
     Widget_Control,/HourGlass
     SaveSensitivity = self.Sensitivity
@@ -1062,6 +1090,7 @@ PRO Pv::Draw
        strlen( Xtitle )    NE 0 OR $
        strlen( YTitle )    NE 0 THEN BEGIN 
 
+      IF Erase THEN $
       Map_Set, 0,center[0], /Grid,/Label,/Continent,$
        limit=[ lat[0], lon[0], lat[1], lon[1] ],Title=mtitle, $
           xmargin=6, ymargin=5
@@ -1075,9 +1104,9 @@ PRO Pv::Draw
            charsize=1.2, Orient=90
 
     ENDIF ELSE BEGIN 
-
-      Map_Set, 0,center[0], /Grid,/Label,/Continent,$
-       limit=[ lat[0], lon[0], lat[1], lon[1] ],Title=mtitle
+      IF Erase THEN $
+        Map_Set, 0,center[0], /Grid,/Label,/Continent,$
+        limit=[ lat[0], lon[0], lat[1], lon[1] ],Title=mtitle
     ENDELSE 	
 
 
@@ -1087,88 +1116,87 @@ PRO Pv::Draw
     IF Ptr_Valid( CurrentPlotDataPtr ) THEN BEGIN 
       WHILE Ptr_Valid(CurrentPLotDataPtr) DO BEGIN 
 
-        q2b = *(CurrentPlotDataPtr)
-        s = q2b-> Get( Filename=filename)
-;        Widget_Control, self.StatusId, $
-;          Set_Value="Drawing (Extracting from " + filename + ")"
-        junk = rstrpos(filename,'/')+1
-        basename = strmid( filename, junk, strlen(filename)-junk)
-        self->WriteToStatusBar, "Drawing (Extracting from " + basename + ")"
-        s = q2b-> Set( Decimate    = self.Decimate_by, $
-                       CRDecimate  = self.CRDecimate_by, $
-                       ExcludeCols = self.ExcludeCols)
+        po = *(CurrentPlotDataPtr)
+        po-> Get,Data=Q2b, $
+                 SelectedOnly=SelectedOnly, $
+                 PlotFlag=PlotFlag, $
+                 AlreadyPlotted=AlreadyPlotted, $
+                 InRegion=InRegion
         PlotAmbiguities =  where( self.ambiguities NE 0, nPlots)
           ; self.ambiguities[0]=1 => plot 'selected' ambiguities.
           ; self.ambiguities[1]=1 => plot 1st ambiguity ... etc.
-        nTotPlots = 0
-        FOR p=0,nPlots-1 DO BEGIN 
-            ; GetPlotData likes limit as [lon0, lat0, lon1,lat1 ]
-          t1 = systime(1)
-          status = q2b->GetPLotData(u,v,lon,lat, PlotAmbiguities[p], $
-                                    limit = limit, /Silent  )
-;          print,'Time to Extract: ' , systime(1)-t1
-          IF status THEN BEGIN 
-            t1 = systime(1)
-            good1 = where( finite(u) AND finite(v), ngood1 )
-            IF ngood1 NE 0 THEN BEGIN 
-              speed = sqrt( u[good1]^2 + v[good1]^2 ) 
-              good =  where( speed ,ngood)
-              self-> Get, SpeedHisto = SpeedHisto
-              IF ngood NE 0 THEN BEGIN 
-                speed = speed(good)
-                IF nTotPlots EQ 0 THEN BEGIN 
-                    ; First plot
-                  SpeedHisto-> Set, Data = speed
-                  self.MinMaxSpeed = MinMax(Speed) 
-                ENDIF ELSE BEGIN 
-                    ; self.MinMaxSpeed=[0,0] means there hasn't been
-                    ; any good data up to this point, so disregard it.
-                  test = where(self.MinMaxSpeed-[0.,0],ntest)
-                  IF ntest NE 0 THEN BEGIN 
-                    self.MinMaxSpeed = [ Min( [ Self.MinMaxSpeed[0], $
-                                                Min(speed,max=mx) ] ), $
-                                         Max( [ Self.MinMaxSpeed[1], mx ] ) ]
-                  ENDIF ELSE BEGIN 
-                    self.MinMaxSpeed = [  MinMax(speed) ]
-                  ENDELSE 
-                  SpeedHisto-> Set, Data = speed, /Append
-                ENDELSE 
-              ENDIF ELSE BEGIN 
-                 ; No good data in this plot. Don't do
-                 ; anything if this isn't the first plot.
-                IF nTotPlots EQ 0 THEN BEGIN 
-                    ; First plot
-                  SpeedHisto-> ClearAll
-                  self.MinMaxSpeed = [0.,0.]
-                ENDIF 
-              ENDELSE 
-              self-> Set,SpeedHisto = SpeedHisto
-  ;            print,'Time to extract SpeedHisto info: ', systime(1)-t1
-  ;            Widget_Control, self.StatusId, $
-  ;              Set_Value="Drawing "
+
+        IF PlotFlag AND NOT (AlreadyPlotted) AND $
+           InRegion NE 0 THEN BEGIN 
+
+          s = q2b-> Get( Filename=filename)
+          junk = rstrpos(filename,'/')+1
+          basename = strmid( filename, junk, strlen(filename)-junk)
+          str = "Drawing (Extracting from " + basename + ")"
+          self->WriteToStatusBar, str
+          Message,str,/info
+          s = q2b-> Set( Decimate    = self.Decimate_by, $
+                         CRDecimate  = self.CRDecimate_by, $
+                         ExcludeCols = self.ExcludeCols)
+          IF SelectedOnly THEN BEGIN 
+
+            status = q2b-> GetPlotData(u,v,lon,lat,limit=limit,/Silent)
+
+            IF Status THEN BEGIN 
+              self-> UpdateSpeedHisto,u,v,nTotPlots
+              self->WriteToStatusBar,'Drawing...'
+              PlotVect,u,v,lon,lat,$
+                Length = self.Length, $
+                  thick=self.Thickness, $
+                    Color=self.AmbigColors[PlotAmbiguities[p]],$
+                      MinSpeed=self.MinSpeed, $
+                       MaxSpeed=self.MaxSpeed, $
+                         Start_index=self.Wind0,$
+                          NColors=self.NWind
+              po->InRegion,1
+              nTotPlots =  nTotPlot+1
+            ENDIF ELSE IF status EQ NoData THEN BEGIN 
+              po->InRegion,0
+              GOTO, Set_AlreadyPlotted
             ENDIF 
-            self->WriteToStatusBar,'Drawing...'
-            
-              ; Plot the vectors
-            t1 = systime(1)
-            PlotVect,u,v,lon,lat,$
-              Length = self.Length, $
-                thick=self.Thickness, $
-                  Color=self.AmbigColors[PlotAmbiguities[p]],$
-                    MinSpeed=self.MinSpeed, $
-                     MaxSpeed=self.MaxSpeed, $
-                       Start_index=self.Wind0,$
-                        NColors=self.NWind
-;            print,'Time to Plot: ', systime(1)-t1
-              ; Copy new plot to pix map
-            self->CopyToPixMap
-              ; Reset to plotting window
-          ENDIF 
-          nTotPlots =  nTotPlots + 1
-        ENDFOR 
+          ENDIF ELSE BEGIN 
+            FOR p=0,nPlots-1 DO BEGIN 
+                ; GetPlotData likes limit as [lon0, lat0, lon1,lat1 ]
+              t1 = systime(1)
+              status = q2b->GetPLotData(u,v,lon,lat, PlotAmbiguities[p], $
+                                        limit = limit, /Silent  )
+              IF status THEN BEGIN 
+                self-> UpdateSpeedHisto,u,v,nTotPlots
+                self->WriteToStatusBar,'Drawing...'
+
+                  ; Plot the vectors
+                t1 = systime(1)
+                PlotVect,u,v,lon,lat,$
+                  Length = self.Length, $
+                    thick=self.Thickness, $
+                      Color=self.AmbigColors[PlotAmbiguities[p]],$
+                        MinSpeed=self.MinSpeed, $
+                         MaxSpeed=self.MaxSpeed, $
+                           Start_index=self.Wind0,$
+                            NColors=self.NWind
+                po->InRegion,1
+                nTotPlots =  nTotPlots + 1
+              ENDIF ELSE IF status EQ NoData THEN BEGIN 
+                po->InRegion,0
+                GOTO, Set_AlreadyPlotted
+              ENDIF 
+            ENDFOR 
+          ENDELSE 
+        ENDIF 
+          ; Mark this node as already plotted.
+        Set_AlreadyPlotted: 
+        po-> SetAlreadyPlotted, 1
         CurrentDataNode =  self.DataList->GetNext()
         CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
       ENDWHILE 
+        ; Copy new plot to pix map
+      self->CopyToPixMap
+
     ENDIF ELSE Message," There's No Data!",/cont
 
 
@@ -1250,7 +1278,11 @@ FUNCTION Pv::Read,files
         s =  q-> Set(Decimate = self.decimate_by,$
                      CRDecimate = self.CRdecimate_by, $
                      ExcludeCols= self.ExcludeCols )
-        status =  self.DataList->append(q)
+        po = Obj_New('PvPlotObject',q)
+        IF Obj_Valid( po ) THEN BEGIN 
+          status =  self.DataList->append(po)
+          self->Draw,/NoErase
+        ENDIF ELSE status = 0
       ENDIF ELSE status = 0
 
     ENDFOR 
@@ -1260,7 +1292,7 @@ FUNCTION Pv::Read,files
 ;    Widget_Control, self.StatusId,Set_Value='Done Reading '
 
   RETURN,status
-END
+END ; End pv::Read
 
 ;====================================================
 ;
@@ -1430,15 +1462,28 @@ PRO Pv::Set, xsize       = xsize, $
       ; One or the other has changed
     Dims = *(self-> GetCurrentDimensions())
     dims-> Get, Lon = OldLonRange, Lat=OldLatRange
+    limits2 = [ OldLonRange[0], OldLatRange[0], $
+                OldLonRange[1], OldLatRange[1] ]
+    
     CASE 1 OF 
       
       Nlon EQ 2 AND Nlat EQ 2 : BEGIN 
+        limits1 =  [ LonRange[0], LatRange[0], $
+                     LonRange[1], LatRange[1] ]
+    
+        IF NOT CompletelyWithin( limits1, limits2 ) THEN $
+          self->SetResetPlotObjects,/All
+        
         NewDims = Obj_New('MAPDIMS',LonRange,LatRange )
         s = self.DimsList-> Prepend(NewDims)
         IF NOT s THEN $
            Message,'Unable to create new dimensions in Dimension List ',/cont
       END
       Nlon EQ 2: BEGIN 
+        limits1 =  [ LonRange[0], OldLatRange[0], $
+                     LonRange[1], OltLatRange[1] ]
+        IF NOT CompletelyWithin( limits1, limits2 ) THEN $
+          self->SetResetPlotObjects,/All
         
         NewDims = Obj_New('MAPDIMS',LonRange, OldLatRange )
         s = self.DimsList-> Prepend(NewDims)
@@ -1447,6 +1492,12 @@ PRO Pv::Set, xsize       = xsize, $
       END 
 
       NLat EQ 2: BEGIN 
+        limits1 =  [ OldLonRange[0], LatRange[0], $
+                     OldLonRange[1], LatRange[1] ]
+
+        IF NOT CompletelyWithin( limits1, limits2 ) THEN $
+          self->SetResetPlotObjects,/All
+
         NewDims = Obj_New('MAPDIMS',OldLonRange,LatRange )
         s = self.DimsList-> Prepend(NewDims)
         IF NOT s THEN $
@@ -1486,6 +1537,18 @@ PRO Pv::Set, xsize       = xsize, $
     ; change dimensions of plotting region
   IF N_Elements(Dimensions) NE 0 THEN BEGIN 
     IF Obj_ISA(Dimensions, 'MAPDIMS' ) THEN BEGIN 
+      CurrentDims = *(self->GetCurrentDimensions())
+      IF Ptr_Valid(CurrentDims)  THEN BEGIN 
+        Dims = *CurrentDims
+        Dims-> Get,LonRange = OldLonRange, LatRange=OldLatRange
+        Dimensions-> Get,LonRange = LonRange,LatRange=LatRange
+        limits1 =  [ LonRange[0], LatRange[0], $
+                     LonRange[1], LatRange[1] ]
+        limits2 =  [ OldLonRange[0], OldLatRange[0], $
+                     OldLonRange[1], OldLatRange[1] ]
+        IF NOT CompletelyWithin( limits1, limits2 ) THEN $
+         self-> ResetPlotObjects,/All
+      ENDIF 
       s = self.DimsList->Prepend(Dimensions)
       IF NOT s THEN $
         Message,'Unable to prepend dimension to pv.Dimslist',/cont
@@ -1504,6 +1567,7 @@ PRO Pv::Set, xsize       = xsize, $
           Obj_Destroy, Self.DimsList
           self.DimsList = DimsList
         ENDELSE 
+        self-> ResetPlotObjects,/All
       ENDIF ELSE Message,'DimsList must be an Object of type LINKEDLIST',/cont
     ENDIF ELSE Message,'DimsList must be an Object of type LINKEDLIST',/cont
   ENDIF 
@@ -1528,7 +1592,7 @@ PRO Pv::Set, xsize       = xsize, $
 
   IF n_elements(OutputFile) NE 0 THEN self.OutputFile = OutputFile
   IF n_elements(OutputPath) NE 0 THEN BEGIN 
-    self.OutputPath = OutputPath
+    self.OutputPath = DeEnvVar(OutputPath)
     IF rstrpos(self.outputPath,'/') NE $
      strlen(self.OutputPath)-1 THEN $
      self.OutputPath =  self.OutputPath + '/'
@@ -1712,14 +1776,34 @@ PRO Pv::SetCurrentDimensions, LonRange = LonRange, LatRange = LatRange
    CurrentDims =  *(*junk).data
    NLon = N_Elements(LonRange) 
    NLat = N_Elements(LatRange) 
+   CurrentDims-> Get,LonRange = OldLonRange, LatRange=OldLatRange
+   limits2 = [ OldLonRange[0], OldLatRange[0], $
+               OldLonRange[1], OldLatRange[1] ]
    IF Nlon + Nlat NE 0 THEN BEGIN 
      CASE 1 OF 
-       NLon EQ 2 AND NLat EQ 2: CurrentDims-> Set, Lon= LonRange, Lat=LatRange
-       NLon EQ 2              : CurrentDims-> Set, Lon= LonRange
-       NLat EQ 2              : CurrentDims-> Set, Lat= LatRange
-       ELSE: Message,' Lon/Lat must be 2-Vector',/cont
+       NLon EQ 2 AND NLat EQ 2: BEGIN 
+         limits1 = [ LonRange[0], LatRange[0], $
+                     LonRange[1], LatRange[1] ]
+         CurrentDims-> Set, Lon= LonRange, Lat=LatRange
+       END 
+       NLon EQ 2 : BEGIN 
+         limits1 = [ LonRange[0], OldLatRange[0], $
+                     LonRange[1], OldLatRange[1] ]
+         CurrentDims-> Set, Lon= LonRange
+       END
+       NLat EQ 2              : BEGIN 
+         limits1 = [ OldLonRange[0], LatRange[0], $
+                     OldLonRange[1], LatRange[1] ]
+         CurrentDims-> Set, Lat= LatRange
+       end
+       ELSE: BEGIN 
+         Message,' Lon/Lat must be 2-Vector',/cont
+         limits1 = limits2
+       end
      ENDCASE 
    ENDIF 
+   IF NOT CompletelyWithin( limits1, limits2 ) THEN self-> ResetPlotObjects,/All
+
 END
 
 ;====================================================
@@ -1829,6 +1913,82 @@ FUNCTION PV::Version
   return,versions(uniq(versions,sort(versions)))
 END
 
+;==================================================
+;
+; UpdateSpeedHisto - Update the speed histogram
+;
+;==================================================
+
+PRO PV::UpdateSpeedHisto, u,v, nTotPlots
+
+  good1 = where( finite(u) AND finite(v), ngood1 )
+  IF ngood1 NE 0 THEN BEGIN 
+    speed = sqrt( u[good1]^2 + v[good1]^2 ) 
+    good =  where( speed ,ngood)
+    self-> Get, SpeedHisto = SpeedHisto
+    IF ngood NE 0 THEN BEGIN 
+      speed = speed(good)
+      IF nTotPlots EQ 0 THEN BEGIN 
+          ; First plot
+        SpeedHisto-> Set, Data = speed
+        self.MinMaxSpeed = MinMax(Speed) 
+      ENDIF ELSE BEGIN 
+          ; self.MinMaxSpeed=[0,0] means there hasn't been
+          ; any good data up to this point, so disregard it.
+        test = where(self.MinMaxSpeed-[0.,0],ntest)
+        IF ntest NE 0 THEN BEGIN 
+          self.MinMaxSpeed = [ Min( [ Self.MinMaxSpeed[0], $
+                                      Min(speed,max=mx) ] ), $
+                               Max( [ Self.MinMaxSpeed[1], mx ] ) ]
+        ENDIF ELSE BEGIN 
+          self.MinMaxSpeed = [  MinMax(speed) ]
+        ENDELSE 
+        SpeedHisto-> Set, Data = speed, /Append
+      ENDELSE 
+    ENDIF ELSE BEGIN 
+       ; No good data in this plot. Don't do
+       ; anything if this isn't the first plot.
+      IF nTotPlots EQ 0 THEN BEGIN 
+          ; First plot
+        SpeedHisto-> ClearAll
+        self.MinMaxSpeed = [0.,0.]
+      ENDIF 
+    ENDELSE 
+    self-> Set,SpeedHisto = SpeedHisto
+  ENDIF 
+
+END
+
+;====================================================
+;
+; ResetPlotObjects.
+;  Goes through the DataList, setting the appropriate flags for
+;  plotting.
+;
+;====================================================
+PRO Pv::ResetPlotObjects,All = All, AlreadyPlotted=AlreadyPlotted
+   All = keyword_set(all)
+   AlreadyPlotted = keyword_set(AlreadyPlotted)
+   
+   Current = self.DataList-> GetHead()
+   WHILE Ptr_Valid(Current) DO BEGIN 
+     DataPtr = (*Current).data
+     IF Ptr_Valid(DataPtr) THEN BEGIN 
+       po = *DataPtr
+       CASE 1 OF 
+         ALL: BEGIN 
+           po-> set, InRegion = -1, PlotFlag=1, AlreadyPlotted=0
+         END
+         AlreadyPlotted: BEGIN 
+           po-> Get,InRegion = InRegion, PlotFlag=PlotFlag
+           IF InRegion AND PlotFlag THEN $
+             po-> Set, AlreadyPlotted=0
+         END
+       ENDCASE 
+     ENDIF 
+     Current = self.DataList-> GetNext()
+   ENDWHILE 
+END
 
 ;====================================================
 ;
