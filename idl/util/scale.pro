@@ -46,6 +46,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/11/25 19:06:34  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -55,7 +58,7 @@ FUNCTION scale, array, minv, maxv, double=double
   double =  keyword_set(double)
 
   IF n_params() LT 1 THEN BEGIN 
-    Usage, 'scaled_array=scale( array [, minv, maxv, /double] )', 'SCALE'
+    Usage, 'scaled_array=scale( array [, minv, maxv, /double] )'
     return,''
   ENDIF 
 
