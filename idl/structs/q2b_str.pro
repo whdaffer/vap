@@ -65,6 +65,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  2000/02/23 21:23:45  vapuser
+; Added rain_flag fields
+;
 ; Revision 1.3  1999/11/12 19:58:01  vapuser
 ; Added fields (su2/sv2) to support new DIRTH selected vectors in the
 ; new L2B data product. (per Bryan's request) Took out 'sel2' as it
@@ -97,13 +100,13 @@ IF n_elements( q2b_defined ) eq 0 OR redefine THEN BEGIN
   q2b =  {q2bdata, $
           u      : fltarr(4,numcells) ,$  
           v      : fltarr(4,numcells) ,$  
+;          mle    : fltarr(4,numcells) ,$
           lon    : fltarr(  numcells)   ,$  
           lat    : fltarr(  numcells)   ,$                
           sel    : lonarr(  numcells)   ,$                
 ;          sel2   : lonarr(  numcells)   ,$                
           idx    : lonarr(  numcells)   ,$ 
-          mp_rain_flag: intarr(numcells), $
-          nof_rain_flag: intarr(numcells), $
+          rain_flag: intarr(numcells), $
           row    : 0L                   ,$                
           rowtime: ''                   ,$
           qual   : lonarr(  numcells)   ,$                
@@ -112,8 +115,15 @@ IF n_elements( q2b_defined ) eq 0 OR redefine THEN BEGIN
           mv     : fltarr(  numcells)   ,$                
           su     : fltarr(  numcells)   ,$ ; Selected 'u' 
           sv     : fltarr(  numcells)   ,$ ; Selected 'v' 
+          smle   : fltarr( numcells)    ,$ ; mle for the 'selected'
+;          tb_h   : intarr(numcells,2)   ,$ ; mean/stdev
+;          tb_v   : intarr(numcells,2)   ,$ ; mean/stdev
+;          num_tb : bytarr(numcells,2)   ,$ ; H/V
+;          tb_rainrate: intarr(numcells), $ ; 
+;          tb_atten:    intarr(numcells), $
           su2    : fltarr(  numcells)   ,$ ; DIRTH selected 'u' 
-          sv2    : fltarr(  numcells)    } ; DIRTH selected 'v' 
+          sv2    : fltarr(  numcells)   $ ; DIRTH selected 'v' 
+   }                    
 
   ; The Level 2B files now have the DIRTH processed vectors. This is
   ; what will be in the su2,sv2 fields if those vectors are
