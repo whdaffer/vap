@@ -5,6 +5,9 @@
  *    Modification Log: (After RCS)
  *
  *    $Log$
+ *    Revision 1.3  2002/05/14 15:54:50  vapuser
+ *    General cleanup
+ *
  *    Revision 1.2  1998/10/22 21:46:09  vapuser
  *    Corrected rcsid flub
  *
@@ -78,13 +81,10 @@
  */
 #define MAX_PATH_LEN  128
 #define MAX_FILE_LEN MAX_PATH_LEN-1
-
-#ifndef AREA_FILE_TOP
-#define AREA_FILE_TOP "/disk4/vap/goes/"
-#endif
 #define YYYYMMDD_FORMAT "%Y-%m-%d"
 #define YYDOY_FORMAT "%Y-%j"
 #define VERSION 19980730
+#define OUTPUT_FILE_FORMAT "GOES%03d_%04d%02d%02d%02d_%04d,%03d,%04d,%03d.dat"
 
 struct tm *timep;
 
@@ -125,6 +125,7 @@ int main( int argc, char **argv) {
   char buff[512];         /* the CAL block */
 
   int paras[17];
+
   /* 
   for pair_goes.f:
     0: SLIN0, 1: SELE0, 2: SLIN, 3: SELE, 4: RESL, 5: RESE, 6: SCALA, 7: SCALO,  
@@ -135,6 +136,7 @@ int main( int argc, char **argv) {
   char filename[MAX_FILE_LEN+1],path[MAX_PATH_LEN+1],
       path0[MAX_PATH_LEN+1], time_string[7], areafileno_string[5],
       limit_string[MAX_PATH_LEN+1];
+  char *goes_topdir;
 
   int area_no,area_start,flag,goes_type,goes_n1,goes_n2;
   int month,day,hour,yyday,jday,mmddhh,year,yr, doy;
@@ -197,9 +199,22 @@ int main( int argc, char **argv) {
    * ============================================================= */
 
 
+
+
   /* Start timer */
   time(&t0);
 
+#if 0
+  /* comment out region 
+  goes_topdir=getenv(GOES_TOPDIR_ENV_VAR);
+  if (goes_topdir == NULL){
+  }
+# ifndef AREA_FILE_TOP
+# define AREA_FILE_TOP "/disk4/vap/goes/"
+# endif
+
+  */
+#endif
   
   ptr=argv;
   printf("Grid_goes called with arguments...\n");
@@ -213,12 +228,12 @@ int main( int argc, char **argv) {
 
   /* set up argument processing */
   (void) strncpy( time_string, "-1", 10 );
-  filename[0]='\0';
-  path[0]='\0';
+  memset(filename,(int) '\0', MAX_PATH_LEN+MAX_FILE_LEN+1);
+  memset(path, (int) '\0', MAX_PATH_LEN+MAX_FILE_LEN+1);
 
-  path_set = file_set = time_set = areafileno_set = goestype_set = sensortype_set=0;
+  path_set = file_set = areafileno_set = 0;
   limit_set=outputfile_set=0;
-  areafileno = areafile_dirno = areafile_sensorno = areafile_areano = -1;
+  areafileno = areafile_areano = -1;
   minlat=maxlat=minlon=maxlon=0;
 
 
@@ -226,53 +241,22 @@ int main( int argc, char **argv) {
   while ( (option=getopt( argc, argv, "hn:f:d:t:g:s:l:o:")) != EOF ){
     switch (option) {
       case 'h':
-          printf("Usage: \n\ngoes [-h] [-n abcd] [-g x] [-t mmddhh] [-d dir] [-f filename] [-l lon0,lat0,lon1,lat1] -o outputfile \n\n");
+          printf("Usage: \n\ngoes [-h] [-n abcd] [-d dir] [-f filename] [-l lon0,lat0,lon1,lat1] -o outputfile \n\n");
           printf(" -n xxyy: AREA file number where --\n");
           printf("    xx = 08 or 09 meaning, goes 10/8, respectively\n");
           printf("    yy is in range 00 to 99, inclusive\n");
-          printf(" Provided that the archive location for all AREA files are\n");
-	  printf("    descended from a common directory root, this option can be\n");
-	  printf("    used to completely determine the location of the AREA\n");
-	  printf("    file. The current value of the macro (AREA_FILE_TOP) which\n");
-	  printf("    determines the top of the archive directory structure is %s\n", 
-		 AREA_FILE_TOP );
-	  printf("    Directories are determined by the first two digits of the\n");
-	  printf("    name. Say those two digits are 'ab'. a=9 has a default\n");
-	  printf("    directory tree starting at %s/goes8\n",AREA_FILE_TOP);
-	  printf("    (no, this is not a misprint!)\n");
-          printf("    a=8 has default directory starting at %sgoes10.\n",AREA_FILE_TOP);
-          printf("    The second digit is the sensor number: 1=vis, 2=ir2, 3=ir3 and 4=ir4.\n");
-          printf("    So a file with first two digits = 84 is a goes 10, ir4 file\n");
-          printf("    It's default location is %sgoes10/ir4\n",AREA_FILE_TOP);
-          printf("    A file with 1st 2 digits = 91 will have a default directory of\n");
-          printf("    %sgoes8/vis\n\n",AREA_FILE_TOP);
-          printf("-f filename: Specify filename in directory specified \n");
-          printf("   or defaulted under combination of -d/-t options\n\n");
           printf("-d dir: Specify directory\n");
-          printf("    defaults to /disk2/vap/goes/goes10/ir4\n\n");
-          printf("-t mmddhh: Specify time as MMDDHH where\n");
-          printf("     MM is 2 digit month (defaults to current month)\n");
-          printf("     DD is 2 digit day (defaults to current day)\n");
-          printf("     HH is 2 digit hour(defaults to current hour)\n\n");
-          printf("    Or -1, in which case it means get latest file\n");
-          printf("    (Defaults to -1)\n\n");
-	  printf("-g x: goes type, either 8 or 10, at present(default=10)\n\n");
-	  printf("-s y: sensor type, 1=vis, 2=ir2, 3=ir3, 4=ir4 (default=4)\n\n");
-	  printf("-l lon0,lat0,lon1,lat1: Map limits. NO Spaces!! or it won't parse right\n");
+	  printf("   Both -n and -d must be present if one is\n");
+          printf("-f filename: Specify the FULLY QUALIFIED FILE NAME\n");
+	  printf("-l lon0,lat0,lon1,lat1: Map limits.\n");
+	  printf("    NO Spaces!! or it won't parse right\n");
 	  printf("    West Longitude must be < 0, lon0,lat0 is lower left corner\n");
 	  printf("    lon1,lat1 is upper right\n");
 	  printf("    Defaults to 0,0,0,0, namely, grid the whole file\n\n");
-	  printf("-o file: FULLY QUALIFIED output filename\n\n");
+	  printf("-o fqfn: the outpu FULLY QUALIFIED FILE NAME\n\n");
           printf("-h : prints this message \n\n");
-	  printf(" The parse tree works this way. If -n is present, all other options are ignored\n");
-          printf(" and the directories are determined using the rules discussed for that optinon.\n");
-          printf(" In its absence, the following holds, in order of precidence...\n");
-          printf(" -f will determine the AREA filename, -d, if present, the directory. If not\n");
-          printf(" the directory is determined from the AREA filename as discussed with -n\n");
-          printf(" If -t the directory specified by either -d or determined from -g/-s will be searched\n");
-	  printf(" for the file closest to the input time. If -t = -1, the latest file is taken.\n");
-          printf(" If -t and no -d or -g/-s, the directory %s/goes10/ir4 will be so searched\n", 
-		 AREA_FILE_TOP);
+	  printf(" You may specify the input file in one of two ways\n");
+	  printf(" Either you use the combination (-n xxyy -d dir) or you use -f fqfn\n");
 	  exit(0);
           break;
       case 'n':
@@ -294,18 +278,6 @@ int main( int argc, char **argv) {
       case 'f':
         strncpy( filename, optarg, MAX_FILE_LEN );
         file_set=1;
-        break;
-      case 'g':
-	goestype= atoi(optarg);
-	goestype_set=1;
-	break;
-      case 's':
-        sensortype=atoi(optarg);
-	sensortype_set=1;
-        break;
-      case 't':
-        strncpy( time_string, optarg, 7 );
-        time_set=1;
         break;
       case 'l':
         ijunk=sscanf( optarg, "%f,%f,%f,%f", &minlon, &minlat, &maxlon, &maxlat);
@@ -330,7 +302,11 @@ int main( int argc, char **argv) {
 
   mmddhh=atoi(time_string);
   if (areafileno_set) {
-    strncpy( fullfilename, AREA_FILE_TOP, MAX_PATH_LEN );
+    if (!path_set) {
+      fprintf(stderr,"-n without -d: both or neither must be present!\n");
+      exit(1);
+    }
+    strncpy( fullfilename, path, MAX_PATH_LEN );
     switch (areafile_dirno){
     case 8:
       strncat( fullfilename, goesdirs[1], 7 ); /* Goes 10 */
@@ -355,163 +331,11 @@ int main( int argc, char **argv) {
     strcat( fullfilename, areafileno_string );
   } else {
   
-    if (file_set) {
-      if (path_set) {
-	strncpy( fullfilename, path, MAX_PATH_LEN );
-	strcat( fullfilename, filename );
-      } else {
-	/* Determine path from filename using the -n rules */
-	ijunk = sscanf( filename, "AREA%4d", &areafileno);
-	if (ijunk != 1) {
-	  fprintf(stderr,"ERROR: area number from filename, %s\n",filename );
-	  exit (1);
-	}
-	areafile_dirno      = areafileno/1000;
-	areafile_sensorno  = (areafileno - areafile_dirno*1000)/100;
-	ijunk              = areafile_dirno*1000 + areafile_sensorno*100;
-	areafile_areano    = areafileno - ijunk;
-	
-	strncpy( fullfilename, AREA_FILE_TOP, MAX_PATH_LEN );
-	
-	switch (areafile_dirno) {
-	case 8: 
-	  strncat( fullfilename, goesdirs[1], 7 ); /* goes10 */
-	  goestype=10;
-	  break;
-	case 9:
-	  strncat( fullfilename, goesdirs[0], 6 ); /* goes8 */
-	  goestype=8;
-	  break;
-	default:
-	  fprintf(stderr, "ERROR: invalid satellite number %d\n",areafile_dirno );
-	  exit(1);
-	  break;
-	}
-	if (areafile_sensorno >= 1  &&
-	    areafile_sensorno <= 4 ) {
-	  strncat( fullfilename, sensordirs[areafile_sensorno-1], 4 );
-	} else {
-	  fprintf(stderr, "ERROR: invalid sensor number %d\n", areafile_sensorno );
-	  exit(1);
-	}
-	strncat( fullfilename, filename, 8 );
-      }
-    } else {
-      /* neither file nor path nor area file number  is set 
-       * Take the path from the goestype, sensortype variables
-       */
-      strncpy( path, AREA_FILE_TOP, MAX_PATH_LEN );
-      switch (goestype) { 
-	/* Here we use the real numbers, not the 'file' numbers */
-      case 10:
-	strncat( path, goesdirs[1], 7 ); /* goes10 */
-	break;
-      case 8:
-	strncat( path, goesdirs[0], 6 ); /* goes8 */
-	break;
-      default:
-	fprintf(stderr, "ERROR: invalid goestype (satellite number) %d\n", goestype );
-	exit(1);
-	break;
-      }
-      if (sensortype >= 1  &&
-	  sensortype <= 4 ) {
-	strncat( path, sensordirs[sensortype-1], 4 );
-      } else {
-	fprintf(stderr, "ERROR: invalid sensortype %d\n", sensortype );
-	exit(1);
-      }
-      /* Since we're going to be doing some searching, 
-       * Try to open the directory 
-       */
-      dptr = opendir( (const char *) path );
-      if (dptr == NULL) {
-	fprintf(stderr,"ERROR: Can't open dir %s\n",path );
-	exit(1);
-      }
-
-
-      if (time_set && mmddhh != -1) {
-	/* The time is explicitly specified */
-	ijunk=mmddhh;
-	
-	month=ijunk/10000;
-	if (month == 0)
-	  month=timep->tm_mon+1;
-        else
-	  ijunk -= month*10000;
-	
-	day= ijunk/100;
-	if (day == 0)
-	  day = timep->tm_mday;
-	else
-	  ijunk -= day*100;
-	
-	hour=ijunk;
-	
-	/* Get the Day-of-Year (sometimes called the julian day or jday) */
-
-	(void) sprintf( buf, "%4d-%02d-%02d", year, month, day );
-	(void) strptime( buf, YYYYMMDD_FORMAT, &tm );
-	tt=mktime( &tm );
-	doy = tm.tm_yday+1;
-        file_found=0;
-	while ( (dirent = readdir( dptr )) != NULL ) {
-	  
-	  if (strncmp( dirent->d_name, "AREA",4) == 0) {
-	    (void) strncpy( tmpfile, path, MAX_PATH_LEN);
-	    (void) strncat( tmpfile, dirent->d_name, MAX_FILE_LEN );   
-	    
-	    if ( (fin = fopen( tmpfile, "rb" )) == NULL ) {
-	      fprintf(stderr, "ERROR: Can't open file %s for time-testing\n", 
-		      tmpfile );
-	      exit(1);
-	    }
-	    /* Read the header block */
-	    f=fread((int *)dat_head,4,64,fin);
-	    fclose(fin);
-	    ddd=dat_head[3]-yr*1000;      /* jday */
-	    hh=dat_head[4]/10000;      /* hour */
-	    if (ddd == doy && hh==hour){
-	      file_found=1;
-	      break;
-	    }
-	  }
-	}
-	
-	
-	if (file_found != 1) {
-	  fprintf(stderr,"ERROR: Can't find Area file for time %d\n", mmddhh );
-	  exit (1);
-	}
-	strncpy( fullfilename, tmpfile, MAX_PATH_LEN+MAX_FILE_LEN);
-
-      } else {
-	/* mmddhh == -1, take latest file */
-	while ( (dirent=readdir(dptr)) != NULL ) {
-	  if (strncmp( dirent->d_name, "AREA", 4) == 0) {
-	    (void) strncpy( tmpfile, path, MAX_PATH_LEN );
-	    (void) strncat( tmpfile, dirent->d_name, MAX_FILE_LEN );   
-	    if ( (fin = fopen( tmpfile, "rb" )) == NULL ) {
-	      fprintf(stderr, "ERROR: Can't open file %s for time-testing\n", 
-		      tmpfile );
-	      exit(1);
-	    }
-	    /* Read the header block */
-	    f=fread((int *)dat_head,4,64,fin);
-	    fclose( fin );
-	    ddd=dat_head[3]-yr*1000;      /* jday */
-	    hh=dat_head[4]/10000;      /* hour */
-	    test_time=ddd + hh/24.;
-	    if (test_time>=keep_time){
-	      keep_time=test_time;
-	      strncpy( test_file, tmpfile, MAX_FILE_LEN );
-	    }
-	  }
-	} 
-	strncat( fullfilename, test_file, strlen(test_file) );
-      }
+    if (!file_set) {
+      fprintf(stderr,"Must use either -f or (-n/-d)\n");
+      exit(1);
     }
+    strncpy( fullfilename, filename, MAX_PATH_LEN+MAX_FILE_LEN+1 );
   }
 
   /* Well, after all that, we should know the full name of the file we
@@ -779,8 +603,9 @@ int main( int argc, char **argv) {
     iminlat=(int)minlat;
     imaxlat=(int)maxlat;
 
-    sprintf( outputfilename, "GOES%03d-%04d%02d%02d%02d-%%%04d,%03d,%04d,%03d%%.dat", 
-	     goes_type, year, month, day, hour, iminlon, iminlat, imaxlon, imaxlat );
+    sprintf( outputfilename, OUTPUT_FILE_FORMAT, 
+	     goes_type, year, month, day, hour, 
+	     iminlon, iminlat, imaxlon, imaxlat );
   }
   if ( (fout=fopen( outputfilename, "wb" )) == NULL ) {
     fprintf(stderr,"ERROR: unable to open output file %s\n",
