@@ -50,30 +50,22 @@
 ; OPTIONAL OUTPUTS:  the keywords eqx,StartTime and EndData are
 ;                   optional outputs.
 ;
-;
-;
 ; COMMON BLOCKS:  None
-;
-;
 ;
 ; SIDE EFFECTS:  
 ;
-;
-;
 ; RESTRICTIONS:  
-;
-;
 ;
 ; PROCEDURE:  
 ;
-;
-;
 ; EXAMPLE:  
-;
-;
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.9  1999/07/07 20:12:18  vapuser
+; fixed a sign problem in Q2B Longitude.
+; May have to revisit this when we upgrade to 5.2
+;
 ; Revision 1.8  1998/11/06 15:19:57  vapuser
 ; Changed a message
 ;
@@ -232,7 +224,7 @@ FUNCTION q2bhdfread, filename, $
       x = where(lon LT 0, nx )
       IF nx GT 0 THEN BEGIN 
         lon = long(lon)
-        lon[x] = lon[x] + 65535l
+        lon[x] = lon[x] + 2l^16-1
       ENDIF 
       lon =  float(lon*cal.cal + cal.offset)
 
@@ -261,6 +253,7 @@ FUNCTION q2bhdfread, filename, $
         print,'Time to extract wvc_qual: ', t2-t1
       t1 = systime(1)
 
+
       r = hdf_sd_nametoindex(fileid, 'wind_speed')
       r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
@@ -278,12 +271,13 @@ FUNCTION q2bhdfread, filename, $
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, dir
       hdf_sd_endaccess,r
+      x = where( dir LT 0, nx )
+      IF nx NE 0 THEN BEGIN 
+        dir = long(dir)
+        dir[x] =  dir[x] + 2L^16-1
+      ENDIF 
       dir =  float(dir*cal.cal + cal.offset)
 
-      t2 = systime(1)
-      IF Verbose THEN $
-        print,'Time to extract wvc_dir: ', t2-t1
-      t1 = systime(1)
 
       r = hdf_sd_nametoindex(fileid, 'wvc_selection')
       r = hdf_sd_select( fileid, r )
@@ -331,6 +325,38 @@ FUNCTION q2bhdfread, filename, $
         hdf_sd_getdata,r, rowtime
         hdf_sd_endaccess,r
       ENDIF 
+
+
+
+      r = hdf_sd_nametoindex(fileid, 'model_speed')
+      r = hdf_sd_select( fileid, r )
+      hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
+      hdf_sd_getdata,r, mspeed
+      hdf_sd_endaccess,r
+      mspeed =  float(mspeed*cal.cal + cal.offset)
+      
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_speed: ', t2-t1
+      t1 = systime(1)
+
+      r = hdf_sd_nametoindex(fileid, 'model_dir')
+      r = hdf_sd_select( fileid, r )
+      hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
+      hdf_sd_getdata,r, mdir
+      hdf_sd_endaccess,r
+      x = where(mdir LT 0, nx )
+      IF nx NE 0 THEN BEGIN 
+        mdir = long(mdir)
+        mdir[x] =  mdir[x] + 2l^16-1
+      ENDIF 
+      mdir =  float(mdir*cal.cal + cal.offset)
+
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_dir: ', t2-t1
+      t1 = systime(1)
+
       hdf_sd_end,fileid
 
       t2 = systime(1)
@@ -346,6 +372,14 @@ FUNCTION q2bhdfread, filename, $
       t2 = systime(1)
       IF Verbose THEN $
         print,'Time in NSCAT_GETUV ',t2-t1
+
+
+      NSCAT_GETUV, mdir,mspeed,mu,mv
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time in NSCAT_GETUV ',t2-t1
+
+
 
       speed = 0
       dir = 0
@@ -369,6 +403,9 @@ FUNCTION q2bhdfread, filename, $
       retstruct.sv =  temporary(sv)
       retstruct.u = temporary(u)
       retstruct.v = temporary(v)
+      retstruct.mu = temporary(mu)
+      retstruct.mv = temporary(mv)
+
       IF exist(rowtime) THEN $
         retstruct.rowtime = temporary(rowtime)
 
@@ -376,9 +413,6 @@ FUNCTION q2bhdfread, filename, $
       IF Verbose THEN $
         print,'Time to get selected vectors ',t2-t11
       t1 = t2
-
-      retstruct.mu = 0.
-      retstruct.mv = 0.
 
       print,'Time to load structure ',systime(1)-t1
       print,'Total time ', systime(1)-t0
