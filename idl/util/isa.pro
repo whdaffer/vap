@@ -8,7 +8,7 @@
 ; CATEGORY:  See Purpose
 ;
 ; CALLING SEQUENCE:  true_false=isa(variable, /keyword )
-;                     \
+;                     
 ; See 'keywords' for the explanation of the keyword
 ; argument
 ; 
@@ -36,7 +36,9 @@
 ;     type_float : Checks to see if the variable is a float or a double
 ;     type_complex : Checks to see if the variable is a complex or
 ;                    double complex
-;
+;     nonempty : if the check is for a string, this performs the
+;                additional test of non-emptiness. NB, it will return
+;                0 if *any* of the strings are empty
 ;
 ; OUTPUTS:  1, i.e. true, if the variable is of the type specified by
 ;          the input keyword
@@ -58,6 +60,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/02/01 20:12:39  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1999, William Daffer
 ;-
@@ -76,7 +81,8 @@ FUNCTION isa, variable, $
                   pointer=pointer, $
                   type_integer=type_integer, $
                   type_float=type_float, $
-                  type_complex= type_complex
+                  type_complex= type_complex, $
+                  nonempty=nonempty
 
 
 
@@ -104,7 +110,17 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
      keyword_set(double) : test = vartype( variable ) EQ 'DOUBLE'
      keyword_set(complex) : test = vartype( variable ) EQ 'COMPLEX_FLOAT'
      keyword_set(dcomplex): test = vartype( variable ) EQ 'COMPLEX_DOUBLE'
-     keyword_set(string) : test = vartype( variable ) EQ 'STRING'
+     keyword_set(string) : BEGIN 
+       test = vartype( variable ) EQ 'STRING'
+       IF keyword_set( nonempty ) THEN BEGIN 
+         ii = 0
+         nn = n_elements(variable)
+         REPEAT BEGIN 
+           test =  test AND (strlen(variable[ii]) NE 0)
+           IF test THEN ii = ii+1
+         ENDREP UNTIL test EQ 0 OR ii EQ nn
+       ENDIF
+     END 
      keyword_set(structure) : test = vartype( variable ) EQ 'STRUCTURE'
      keyword_set(object) : test = vartype( variable ) EQ 'OBJECT'
      keyword_set(pointer) : test = vartype( variable ) EQ 'POINTER'
