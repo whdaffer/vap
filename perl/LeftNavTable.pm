@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.6  2002/12/04 23:56:20  vapdev
+# Ongoing work
+#
 # Revision 1.5  2002/12/04 01:20:31  vapdev
 # Ongoing work
 #
@@ -28,6 +31,15 @@ use HTML::Table;
 @LeftNavTable::ISA= qw/HTML::Table/;
 use CGI;
 use VapUtil;
+
+=pod
+
+=head1
+
+=head2
+
+=cut
+
 
 sub new {
 
@@ -86,74 +98,96 @@ sub new {
 
 
     # Construct the table that will hold the overlay part of the nav
-    # bar. This goes in cell 1,1
+    # bar. This goes in cell 1,1 of the outermost table.
 
   my $overlay_table = HTML::Table->new(-rows=>2,-cols=>1);
   $overlay_table->setCaption("Cloud Overlays",'TOP');
   $overlay_table->setStyle("{ font: Garamond, 'Times New Roman', serif; font: 10% }");
+
      # The actual navigation links are constructed in these two tables
-     # and will get the information on which 'regions' to use from
-     # $VAP_LIBRARY/overlay_defs_oo (the WEB=>...) portion of that
-     # hash.
+     # and will get the information on which 'regions' to use from the
+     # defaults hash defined in $VAP_LIBRARY/overlay_defs_oo. The two
+     # keys of interest in this instance are the WEB->{ACTIVE} key and
+     # the WINDS->{INSTRUMENTS} key. The former dictates whether this
+     # region is active for any wind/cloud data, i.e. if WEB->{ACTIVE}
+     # = 0 this region will not appear in the navbar or the
+     # appropriate page. The latter points to any array ref whose
+     # values tell which wind data to use: [QS, SW] will produce a
+     # navigation href and a slot in both overlay pages and one
+     # individually will only produce it for the indicated SeaWinds
+     # instrument.
+
+
+     # The array @defunct_satellites refers to the cloud data
+     # satellites. This is a quick way to eliminate webprocessing of
+     # of *all* regions associated with a particular image satellite.
+
 
     # ========= SeaWinds on ADEOS-II table ============
 
+    # first we determine whether this one is needed at all! I may be
+    # that someone has decided to turn not make any SeaWinds on
+    # ADEOS-II overlays.
 
-  my $overlay_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
-  $overlay_sw_table->setCaption("SeaWinds",'TOP');
-  $row=0;
-  while ( ($key, $value) = each %{$overlay_defs}) {
-      # value here is a reference to a hash, see
-      # $VAP_LIBRARY/overlay_defs_oo for its definition.
-    $skip=0;
-    if (@defunct_satellites) {
-      foreach my $s (@defunct_satellites){
-	$skip = grep (/$s/i, $key);
-	last if $skip
+  if ($self->anyOverlays('SW')) {
+    my $overlay_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $overlay_sw_table->setCaption("SeaWinds",'TOP');
+    $row=0;
+    while ( ($key, $value) = each %{$overlay_defs}) {
+	# value here is a reference to a hash, see
+	# $VAP_LIBRARY/overlay_defs_oo for its definition.
+      $skip=0;
+      if (@defunct_satellites) {
+	foreach my $s (@defunct_satellites){
+	  $skip = grep (/$s/i, $key);
+	  last if $skip
+	}
       }
-    }
-    next if $skip;
-    next if !$value->{WEB}->{ACTIVE};
+      next if $skip;
+      next if !$value->{WEB}->{ACTIVE};
 
-    $row++;
-    $q=CGI->new(-no_debug=>1);
-    $link = $q->a({-href=>"overlay_sw.html#$key"},
-		  $value->{WEB}->{NAME} );
-    $content=$q->p({-align=>'LEFT'},$link);
-    $overlay_sw_table->setCell($row, 1, $content);
+      $row++;
+      $q=CGI->new(-no_debug=>1);
+      $link = $q->a({-href=>"overlay_sw.html#$key"},
+		    $value->{WEB}->{NAME} );
+      $content=$q->p({-align=>'LEFT'},$link);
+      $overlay_sw_table->setCell($row, 1, $content);
+    }
   }
 
 
     # ========= SeaWinds on QuikSCAT table ================
 
 
-  my $overlay_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
-  $overlay_qs_table->setCaption("QuikSCAT",'TOP');
-  $row=0;
-  while ( ($key, $value) = each %{$overlay_defs}) {
-    $skip=0;
-    if (@defunct_satellites) {
-      foreach my $s (@defunct_satellites){
-	$skip = grep (/$s/i, $key);
-	last if $skip
+  if ($self->anyOverlays('SW')) {
+    my $overlay_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $overlay_qs_table->setCaption("QuikSCAT",'TOP');
+    $row=0;
+    while ( ($key, $value) = each %{$overlay_defs}) {
+      $skip=0;
+      if (@defunct_satellites) {
+	foreach my $s (@defunct_satellites){
+	  $skip = grep (/$s/i, $key);
+	  last if $skip
+	}
       }
+      next if $skip;
+      next if !$value->{WEB}->{ACTIVE};
+      $row++;
+      $q=CGI->new(-no_debug=>1);
+      $link = $q->a({-href=>"overlay_qs.html#$key"},
+		    $value->{WEB}->{NAME});
+      $content=$q->p({-align=>'LEFT'},$link);
+      $overlay_qs_table->setCell($row, 1, $content);
     }
-    next if $skip;
-    next if !$value->{WEB}->{ACTIVE};
-    $row++;
-    $q=CGI->new(-no_debug=>1);
-    $link = $q->a({-href=>"overlay_qs.html#$key"},
-		  $value->{WEB}->{NAME});
-    $content=$q->p({-align=>'LEFT'},$link);
-    $overlay_qs_table->setCell($row, 1, $content);
+
   }
-
-
     # Now put the two tables into the overall `overlay' cell of the
     # Left Nav table
 
-  $overlay_table->setCell(1,1,$overlay_sw_table);
-  $overlay_table->setCell(2,1,$overlay_qs_table);
+  $row = 1;
+  $overlay_table->setCell($row++,1,$overlay_sw_table) if $overlay_sw_table;
+  $overlay_table->setCell($row,1,$overlay_qs_table) if $overlay_qs_table;
 
     # And put the overlay table into outermost table, self
   $self->setCell(1,1,$overlay_table);
@@ -196,6 +230,8 @@ sub new {
 
   $self->setCell(2,1,$anim_table); 
 
+
+
 #=-*=-*=-*=-*=-*=-*=-*=-*  Tropical Storms *=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*=-*
 
 
@@ -205,62 +241,66 @@ sub new {
     # 3,1. this will get the information need to construct itself from
     # the tropical_storm_defs_oo hash.
 
-
   my $ts_table = HTML::Table->new(-caption=>"Tropical Storms", -rows=>2,-col=>1);
   $ts_table->setCaption("Tropical Storms",'TOP');
   $ts_table->setStyle(" { font: Garamond, 'Times New Roman', serif; size: 10%}");
+
     # ============= Seawinds on ADEOS-II =================
 
-  my $ts_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
-  $ts_sw_table->setCaption("SeaWinds",'TOP');
-  $row=0;
+  if ($self->anyTSOverlays('SW')) {
 
-  foreach my $sat (@{$tsoo_defs->{SATELLITES}}) {
-    $skip=0;
-    if (@defunct_satellites) {
-      foreach my $s (@defunct_satellites){
-	$skip = grep (/$s/i, $sat);
-	last if $skip
+    my $ts_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $ts_sw_table->setCaption("SeaWinds",'TOP');
+    $row=0;
+
+    foreach my $sat (@{$tsoo_defs->{SATELLITES}}) {
+      $skip=0;
+      if (@defunct_satellites) {
+	foreach my $s (@defunct_satellites){
+	  $skip = grep (/$s/i, $sat);
+	  last if $skip
+	}
       }
+      next if $skip;
+      $row++;
+      $q=CGI->new(-no_debug=>1);
+      $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
+      $link = $q->a({-href=>"ts_sw.html#$sat"},
+		    "$webname");
+      $content=$q->p({-align=>'LEFT'},$link);
+      $ts_sw_table->setCell($row, 1, $content);
     }
-    next if $skip;
-    $row++;
-    $q=CGI->new(-no_debug=>1);
-    $webname = $tsoo_defs->{WEB}->{NAME}->{$sat};
-    $link = $q->a({-href=>"ts_sw.html#$sat"},
-		  "$webname");
-    $content=$q->p({-align=>'LEFT'},$link);
-    $ts_sw_table->setCell($row, 1, $content);
+
   }
-
-
     # ============= Seawinds on QuikSCAT  =================
-  my $ts_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
-  $ts_qs_table->setCaption("QuikSCAT",'TOP');
-  $row=0;
-  foreach my $sat (@{$tsoo_defs->{SATELLITES}}) {
-    $skip=0;
-    if (@defunct_satellites) {
-      foreach my $s (@defunct_satellites){
-	$skip = grep (/$s/i, $sat);
-	last if $skip
-      }
-    }
-    next if $skip;
-    $row++;
-    $q=CGI->new(-no_debug=>1);
-    $webname = $tsoo_defs->{WEB}->{NAME}->{$sat};
-    $link = $q->a({-href=>"ts_qs.html#$sat"},
-		  "$webname");
-    $content=$q->p({-align=>'LEFT'},$link);
-    $ts_qs_table->setCell($row, 1, $content);
-  }
 
+  if ($self->anyTSOverlays('QS')) {
+    my $ts_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $ts_qs_table->setCaption("QuikSCAT",'TOP');
+    $row=0;
+    foreach my $sat (@{$tsoo_defs->{SATELLITES}}) {
+      $skip=0;
+      if (@defunct_satellites) {
+	foreach my $s (@defunct_satellites){
+	  $skip = grep (/$s/i, $sat);
+	  last if $skip
+	}
+      }
+      next if $skip;
+      $row++;
+      $q=CGI->new(-no_debug=>1);
+      $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
+      $link = $q->a({-href=>"ts_qs.html#$sat"},
+		    "$webname");
+      $content=$q->p({-align=>'LEFT'},$link);
+      $ts_qs_table->setCell($row, 1, $content);
+    }
+  }
     # Now put these two tables into the overlay Tropical Storm cell
     # for the Nav Bar
-
-  $ts_table->setCell(1,1,$ts_sw_table);
-  $ts_table->setCell(2,1,$ts_qs_table);
+  $row = 1
+  $ts_table->setCell($row++,1,$ts_sw_table) if $ts_sw_table;
+  $ts_table->setCell($row,1,$ts_qs_table) if $ts_qs_table;
 
     # And put the Tropical storm table into the proper slot in the
     # navbar.
@@ -383,4 +423,59 @@ sub new {
   return bless $self, ref($class) || $class;
 }
 
+=pod 
+
+=head1 anyOverlays
+
+=head2 Usage: 1|0 = anyOverlays{[type]};
+
+       Checks for overlays of type `type'. If there are any, return 1,
+    else return 0. The 'type' is the same as appears in the
+    WINDS->{INSTRUMENT} subhash of the overlay_defs_oo hash. The
+    default is to check for both QS and SW, so if that's all you want
+    to check you may omit the argument. If you want to check for a
+    specific one, pass either 'QS' or 'SW'.
+
+=cut
+
+sub anyOverlays{
+  if (@_){
+    while (my ($k, $v) = each %{$overlay_defs}) {
+      my $i = $v->{WINDS}->{INSTRUMENTS};
+      return 1 if (ref($i) == 'ARRAY') && grep(/$_[0]/,@{$i});
+    }
+  } else {
+
+    # Check for both QS and SW. In this case it's sufficient that
+    # WINDS->{INSTRUMENTS} is a reference to an array.
+
+    while (my ($k, $v) = each %{$overlay_defs}) {
+      my $i = $v->{WINDS}->{INSTRUMENTS};
+      return 1 if (ref($i) == 'ARRAY' and $#{$i} >= 0);
+    }
+  }
+  return 0;
+}
+
+sub anyTSOverlays{
+
+  my $web = $tsoo_defs->{WEB}
+  if (@_){
+    while (my ($k, $v) = each %{$web}) {
+      my $i = $v->{INSTRUMENTS};
+      return 1 if (ref($i) == 'ARRAY') && grep(/$_[0]/,@{$i});
+    }
+  } else {
+
+    # Check for both QS and SW. In this case it's sufficient that
+    # ...->{INSTRUMENTS} is a reference to an array, assuming some
+    # miscreant hasn't put [foo] in the tsoo_defs hash!
+
+    while (my ($k, $v) = each %{$web}) {
+      my $i = $v->{INSTRUMENTS};
+      return 1 if (ref($i) == 'ARRAY' and $#{$i} >= 0);
+    }
+  }
+  return 0;
+}
 1;
