@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.11  1998/10/29 22:36:00  vapuser
+  ; added Verbose keyword/member.
+  ;
   ; Revision 1.10  1998/10/28 23:29:01  vapuser
   ; worked on getextent
   ;
@@ -187,7 +190,8 @@ FUNCTION Q2B::Init, $
             eqx_time, $ ; scalar string
             eqx_lon,  $ ; scalar string
             type= type ,$
-            data_struct = data_struct, $ ; structure of type Q2BDATA,  or RQ2BDATA
+            data_struct = data_struct, $ ; structure of type Q2BDATA,RQ2BDATA or 
+                                         ; Q2B_RNOAA
             eqx=eqx,$                    ; structure of type EQX
             filename=filename ,$
             decimate=decimate ,$
@@ -1023,7 +1027,10 @@ FUNCTION Q2b::Read, filename
       ENDIF 
 
     END 
-
+    'RNOAA': BEGIN 
+      data = Q2bRNoaaRead(filename,verbose=self.verbose)
+      status =  (VarType(data) EQ 'STRUCTURE')
+    END 
     ELSE: BEGIN 
 
       IF Hdf_IsHdf(DeEnvVar(filename)) THEN BEGIN 
@@ -1043,18 +1050,16 @@ FUNCTION Q2b::Read, filename
           self.EndTime = EndTime
         ENDIF 
       ENDIF ELSE BEGIN 
-          ; Assume it's SVH data.
-          ; Message,'Can only read SVH and HDF data currently!',/cont
-        data = q2bsvhread(filename)
+          ; Assume it's RSDs RNOAA data.
+        data = q2bRNoaaRead(filename)
         IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
           status = 1
-          self.type = 'SVH'
+          self.type = 'RNOAA'
           self.StartTime = '0000/00/00/00/00'
           self.EndTime = '0000/00/00/00/00'
         ENDIF 
       ENDELSE 
     END
-
   ENDCASE 
 
   IF status THEN BEGIN 
@@ -1190,12 +1195,12 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
 
          ; Not model data. Could still be RQ2B data. 
        IF name EQ 'RQ2BDATA' THEN BEGIN 
-         u =  (*self.data).su
-         v =  (*self.data).sv
-         lon = (*self.data).lon
-         lat = (*self.data).lat
+           u =  (*self.data).su
+           v =  (*self.data).sv
+           lon = (*self.data).lon
+           lat = (*self.data).lat
        ENDIF ELSE BEGIN 
-         ; Regular old Q2BDATA.
+         ; Regular old Q2BDATA or Q2B_RNOAA
 
 
   ;      IF Ptr_Valid( self.extent ) THEN BEGIN 
@@ -1233,7 +1238,6 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
              v = (*self.data).mv
            ENDELSE 
          ENDELSE 
-
        ENDELSE ; Come from if name eq 'RQ2BDATA'
 
        IF n_elements( limit ) NE 0 THEN BEGIN 
