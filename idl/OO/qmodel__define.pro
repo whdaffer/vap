@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/12 22:12:42  vapuser
+; Worked on Read/Init
+;
 ; Revision 1.2  1998/10/06 00:00:54  vapuser
 ; Added some Version stuff.
 ;
@@ -108,8 +111,8 @@ FUNCTION qmodel::Init, U, V, $
         nlat = s[2]
         qmodel = qmodel_str()
         IF vartype( qmodel ) EQ 'STRUCTURE' THEN BEGIN 
-          qmodel.u = Ptr_New(u )
-          qmodel.v = Ptr_New(v )
+          qmodel.u = Ptr_New(u)
+          qmodel.v = Ptr_New(v)
           qmodel.nlon = nlon
           qmodel.nlat = nlat
           loninc =  (region[2]-region[0])/nlon
@@ -228,17 +231,32 @@ END
 ; Get Routine
 ;============================================
 
-FUNCTION  qmodel::Get, $
-                nlon = nlon, $
-                nlat=nlat, $
-                region=region, $
-                filename=filename,_extra=extra
-   IF Arg_Present(nlon)     THEN nlon = self.nlon
-   IF Arg_Present(nlat)     THEN nlat = self.nlat
-   IF Arg_Present(region)   THEN region = self.region
-   IF Arg_Present(filename) THEN filename = self.filename
+PRO   qmodel::Get, $
+                nlon         = nlon, $       
+                nlat         = nlat, $       
+                region       = region, $     
+                filename     = filename,$    
+                lonpar       = lonpar,$      
+                latpar       = latpar, $     
+                shortname    = shortname,$   
+                longname     = longname,$    
+                starttime    = StartTime,$   
+                EndTime      = EndTime,$     
+                CreationTime = CreationTime,$
+                _extra       = extra
 
-  return,1
+
+   IF Arg_Present(nlon)      THEN nlon = self.nlon
+   IF Arg_Present(nlat)      THEN nlat = self.nlat
+   IF Arg_Present(region)    THEN region = self.region
+   IF Arg_Present(filename)  THEN filename = self.filename
+   IF Arg_Present(lonpar)    THEN lonpar = (*self.data).hdr.lonpar
+   IF Arg_Present(latpar)    THEN latpar = (*self.data).hdr.latpar
+   IF Arg_Present(ShortName) THEN ShortName = (*self.data).hdr.ShortName
+   IF Arg_Present(LongName)  THEN LongName = (*self.data).hdr.LongName
+   IF Arg_Present(StartTime) THEN StartTime = (*self.data).hdr.StartTime
+   IF Arg_Present(EndTime)   THEN EndTime = (*self.data).hdr.EndTime
+   IF Arg_Present(CreationTime) THEN CreationTime = (*self.data).hdr.CreationTime
 END
 
 
