@@ -149,6 +149,10 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.10  2000/02/28 18:02:34  vapuser
+; Redid some documentation. Put in flags for use
+; with Rain Flagged data.
+;
 ; Revision 1.9  1999/10/11 17:29:03  vapuser
 ; Added jpeg, {min_,max_}speed keywords. Added support for user config
 ; files.
@@ -470,19 +474,21 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     CASE grid_type OF 
       'GOES': BEGIN 
         IF visual EQ 'PSEUDOCOLOR' THEN BEGIN 
-          GOES_OVERLAY, cloud_file, wfiles=wf, $
-           minspeed=min_speed, maxspeed=max_speed, xsize=960,ysiz=720,$
-            len=length,getoutfile=ofile, thumbnail=thumbnail, $
-             Decimate=decimate, CRDecimate=CRDecimate, $
-              ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif,/z, $
-               thick=thick
+;          GOES_OVERLAY, cloud_file, wfiles=wf, $
+;           minspeed=min_speed, maxspeed=max_speed, xsize=960,ysiz=720,$
+;            len=length,getoutfile=ofile, thumbnail=thumbnail, $
+;             Decimate=decimate, CRDecimate=CRDecimate, $
+;              ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif,/z, $
+;               thick=thick
+          Message,'Pseudo-color mode obselete!'
         ENDIF ELSE BEGIN 
           GOES_OVERLAY24,cloud_file,windFiles=wf,$
            minspeed=min_speed, maxspeed=max_speed, xsize=960,ysiz=720, $
             len=length,outfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg, $
-                thick=thick, use_rf=use_rf, rf_action=rf_action, rf_color=rf_color
+                thick=thick, use_rf=use_rf, $
+                 rf_action=rf_action, rf_color=rf_color, status=status
         ENDELSE 
       END
        'GMS' : BEGIN 
@@ -492,9 +498,13 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif, $
                 maplimits=MapLimits, thick=thick, use_rf=use_rf, $
-                  rf_action=rf_action, rf_color=rf_color
+                  rf_action=rf_action, rf_color=rf_color, $
+                    status = status
       END
     ENDCASE 
+
+    IF status NE 1 THEN $
+      Message,"Error in overlay processing"
 
     IF auto_cloud_overlay THEN BEGIN 
       openw, wlun, '/tmp/auto_cloud_overlay_output_file',/get,error=err
