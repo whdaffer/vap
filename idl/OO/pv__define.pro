@@ -89,6 +89,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/01 17:52:35  vapuser
+; Modified 'version' method so that it will report
+; the versions of member classes. Put in some error handling
+; so that it'll ignore calls to undefined 'version' methods.
+;
 ; Revision 1.2  1998/10/01 15:41:26  vapuser
 ; Eliminated rcsid member. Added 'version' method that returns rcsid string, which
 ; is now local to version method.
@@ -1735,8 +1740,9 @@ FUNCTION PV::Version
    rcsid = "$Id$"
 
      ; Find version number for member objects.
-   Tags = Tag_Names(self)
+   s=execute( 'tags=tag_names({' + 'pv' + '})' ) 
    n_tags = n_elements(Tags)
+   i = 0
    WHILE i LE n_tags-1 DO BEGIN 
 
      catch, error
@@ -1750,11 +1756,13 @@ FUNCTION PV::Version
      ENDIF 
      
      IF VarType( self.(i) ) EQ 'OBJECT' THEN BEGIN 
-       V =  Call_Method( "VERSION", self.(i) )
-       nv = N_Elements(V)
-       IF exist(member_versions) THEN $
-          member_versions =  [ member_versions, v ] ELSE $
-          member_versions =  v
+       IF Obj_Valid( self.(i) ) THEN BEGIN 
+         V =  Call_Method( "VERSION", self.(i) )
+         nv = N_Elements(V)
+         IF exist(member_versions) THEN $
+            member_versions =  [ member_versions, v ] ELSE $
+            member_versions =  v
+       ENDIF 
      ENDIF 
      i =  i+1
    ENDWHILE 
@@ -1771,7 +1779,10 @@ FUNCTION PV::Version
                     "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
            error = 0
            i = i+1
-         ENDIF ELSE return,''
+         ENDIF ELSE BEGIN 
+           Message,!error_state.msg,/cont
+           return,''
+         ENDELSE 
        ENDIF 
 
        V  = call_method("VERSION",super[i])
@@ -1793,7 +1804,7 @@ FUNCTION PV::Version
       versions =  [versions, member_versions ] 
 
    Catch,/cancel
-  return,versions
+  return,versions(uniq(versions,sort(versions)))
 END
 
 
