@@ -234,6 +234,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.11  2000/02/29 15:58:12  vapuser
+; Added rain flag code
+;
 ; Revision 1.10  1999/10/05 17:27:40  vapuser
 ; Added 'config' and 'scale' keywords and support code.
 ;
@@ -905,6 +908,21 @@ PRO gms5_overlay, datetime, gmsType, $
   IF n_elements(subtitle) NE 0 THEN BEGIN 
     xyouts, 0.5, y/4., subtitle, align=0.5, $
       /normal, charsize=0.75, color=text_color
+  ENDIF 
+
+  IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
+
+    newct = ct
+    newct[*,0] =  [rf_color AND 'ff'xl, $
+                    ishft(rf_color,-8) AND 'ff'xl, $
+                     ishft(rf_color,-16) AND 'ff'xl]
+
+    Colbar,pos=[0.49,0.005,0.51,0.025],bottom=0,ncolors=1,min=0,max=1,$
+         table=newct,/true,/noannot,color='ffffff'xl
+    xyouts,0.49,0.005,'Rain ',align=1,/normal
+    xyouts,0.51,0.005,' Flagged',/normal
+
+
   ENDIF 
 
 
