@@ -186,6 +186,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.8  1999/06/23 18:11:54  vapuser
+; Added Config keyword
+;
 ; Revision 1.7  1999/04/08 22:01:01  vapuser
 ; Replaced Colorbar with ColBar
 ;
@@ -570,9 +573,9 @@ PRO goes_overlay24, goesfile, $
     ENDELSE 
 
     loncent = mean(lonrange)
-    Map_Set,0,loncent,$
-     limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
-      Ymargin=[4.,4]
+;    Map_Set,0,loncent,$
+;     limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
+;      Ymargin=[4.,4]
 
 
     IF n_Elements(outfile) EQ 0 THEN BEGIN 
@@ -683,6 +686,11 @@ PRO goes_overlay24, goesfile, $
                lonmax=lonrange[1], $
                 latmin=limits[1], $
                   latmax=limits[3]
+
+      ; Re-establish the plotting environs.
+    Map_Set,0,loncent,$
+     limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
+      Ymargin=[4.,4]
    
       ; Define the new Brightness/Saturation mappings
     xx=findgen(100)/99.

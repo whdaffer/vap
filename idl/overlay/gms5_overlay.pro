@@ -209,6 +209,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.7  1999/06/23 18:11:27  vapuser
+; Added CONFIG keyword
+;
 ; Revision 1.6  1999/06/21 14:50:52  vapuser
 ; Updated documentation
 ;
@@ -519,9 +522,9 @@ PRO gms5_overlay, datetime, gmsType, $
                           temporary(newy) ))
 
 
-  Map_Set, 0, mean(lonpar[0:1]), /noborder, $
-     limit=[ latpar[0], lonpar[0], latpar[1], lonpar[1] ],$
-      Ymargin=[4.,4]
+;  Map_Set, 0, mean(lonpar[0:1]), /noborder, $
+;     limit=[ latpar[0], lonpar[0], latpar[1], lonpar[1] ],$
+;      Ymargin=[4.,4];
 
     ; These two number come from the file
     ; spectrum06.256.950.350.325.CLUT which gmsgoes.pro and subsidiary
@@ -619,6 +622,11 @@ PRO gms5_overlay, datetime, gmsType, $
              lonmax=lonlim[1], $
               latmin=latlim[0],$
                 latmax=latlim[1]
+
+
+  Map_Set, 0, mean(lonpar[0:1]), /noborder, $
+     limit=[ latpar[0], lonpar[0], latpar[1], lonpar[1] ],$
+      Ymargin=[4.,4]
 
     ; Define the new Brightness/Saturation mappings
   xx=findgen(100)/99.
