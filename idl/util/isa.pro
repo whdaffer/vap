@@ -39,6 +39,9 @@
 ;     nonempty : if the check is for a string, this performs the
 ;                additional test of non-emptiness. NB, it will return
 ;                0 if *any* of the strings are empty
+;     name     : if check is of 'structure' will perform the
+;                additional test to see if the structure has the
+;                correct name. Will only work for named structures!
 ;
 ; OUTPUTS:  1, i.e. true, if the variable is of the type specified by
 ;          the input keyword
@@ -60,6 +63,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/03/04 00:28:00  vapuser
+; Added 'nonempty' keyword for strings
+;
 ; Revision 1.1  1999/02/01 20:12:39  vapuser
 ; Initial revision
 ;
@@ -82,12 +88,13 @@ FUNCTION isa, variable, $
                   type_integer=type_integer, $
                   type_float=type_float, $
                   type_complex= type_complex, $
-                  nonempty=nonempty
+                  nonempty=nonempty, $
+                  name=name
 
 
 
  
-usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /long, /float, /double, /complex, /dcomplex, /string, /structure, /object, /pointer, /type_integer, /float_type, /type_complex)'
+usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /long, /float, /double, /complex, /dcomplex, /string, /structure, /object, /pointer, /type_integer, /float_type, /type_complex [,nonempty, name])'
   IF n_params() LT 1 THEN BEGIN 
     usage,usage_msg
     return,-1
@@ -121,7 +128,11 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
          ENDREP UNTIL test EQ 0 OR ii EQ nn
        ENDIF
      END 
-     keyword_set(structure) : test = vartype( variable ) EQ 'STRUCTURE'
+     keyword_set(structure) : BEGIN 
+       test = vartype( variable ) EQ 'STRUCTURE'
+       IF test AND exist(name) THEN $
+         test = strupcase(tag_names(variable,/structure_name )) EQ strupcase(name) 
+     end
      keyword_set(object) : test = vartype( variable ) EQ 'OBJECT'
      keyword_set(pointer) : test = vartype( variable ) EQ 'POINTER'
      keyword_set(TYPE_INTEGER) : test = vartype(variable) EQ 'BYTE' OR $
