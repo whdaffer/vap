@@ -119,6 +119,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1999/09/21 15:19:48  vapuser
+; switch over to new succor.so.
+;
 ; Revision 1.4  1998/10/12 22:37:14  vapuser
 ; More keywords, write using QmodelWrite.
 ;
@@ -222,6 +225,10 @@ FUNCTION runsuccor, u,v,lon,lat,ui,vi,$
   IF n_elements(rainf) eq 0 THEN rainf = [12., 6, 2 ] 
   IF N_Elements(ermax) eq 0 THEN ermax = [50., 50,50]
 
+  IF n_elements(rainf) NE n_elements(ermax) THEN BEGIN 
+    Message,"Rainf and Ermax must have same number elements!",/cont
+    return,0
+  ENDIF 
   print,rainf,ermax
   good = where( finite(u) AND finite(v), ngood)
   IF ngood NE 0 THEN BEGIN 
