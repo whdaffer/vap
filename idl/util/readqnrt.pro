@@ -3,12 +3,13 @@
 ; $Id$
 ; PURPOSE:  Simple reader for QuikSCAT NRT data file.
 ; AUTHOR:   William Daffer
+;           William.Daffer@jpl.nasa.gov
+;
 ; CATEGORY:  QuikSCAT I/O
 ; CALLING SEQUENCE:  
 ;
 ;          q2b=readqnrt(file [,header=header,$
-;                          raw=raw,starttime=starttime,$
-;                          endtime=endtime,verbose=verbose)
+;                          raw=raw,little_endian=little_endian)
 ;
 ;
 ;
@@ -25,7 +26,10 @@
 ;
 ;         header: returns the header. Must be a named variable!
 ;         raw:    returns the data as q2b_rnoaa_str instead of q2b_str.
-;
+;         little_endian: Set this flag if you are running on a
+;                        little_endian machine using IDL 4.x. This
+;                        keyword only has effect if the IDL version <
+;                        5.0. It's ignored if the version is >= 5.0
 ;
 ; OUTPUTS:  
 ;
@@ -46,12 +50,22 @@
 ;
 ; SIDE EFFECTS:  
 ;
-; RESTRICTIONS:  
+; RESTRICTIONS: Requires IDL 4.0 or higher, although I don't test for
+;               it. I'm not sure that the the routine will fail
+;               outright when run with idl 3.x, I just don't remember
+;               the differences between 3.x and 4.x well enough to
+;               predict this its behavior. I've tried to write it so
+;               that it will be transparent but I can't really do that
+;               in the case of IDL 3.x. If that's the version you're
+;               using, give it a try. If you have problems, drop me a
+;               line and we'll try to work something out a little less
+;               drastic than you upgrading to IDL 5.5.
 ;
 ; PROCEDURE: Read the file using the rnoaa structure. If `raw' is set,
 ;            return, else unpack and convert the important parts,
 ;            (i.e. change wind speed/direction to u/v, etc...),
 ;            fill a q2b structure with these quantities and return.
+;
 ;
 ; EXAMPLE:  
 ;
@@ -68,6 +82,11 @@
 ;
 ;  foo=readqnrt(file,header=header)
 ;
+;  If running on a little_endian machine with IDL version < 5.0, then
+;  do
+;
+;  foo=readqnrt(file,/little_endian)
+;
 ;
 ; ROUTINES CALLED:
 ;
@@ -79,6 +98,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  2001/08/28 20:33:25  vapuser
+; Added some code to accomodate IDL 4.x users
+;
+; Revision 1.1  2001/07/23 16:28:15  vapuser
+; Initial revision
 ;
 ;
 ;Jet Propulsion Laboratory
@@ -87,8 +111,9 @@
 ;-
 
 FUNCTION readqnrt, filename, $
-                       header=header ,$
-                       raw=raw
+                   header=header ,$
+                   raw=raw, $
+                   little_endian= little_endian
 
 
 COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
@@ -97,8 +122,10 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
                       q2b_rnoaa
 
 
+  idl4 =  !version.release LT '5.0'
+
   IF n_params() LT 1 THEN BEGIN 
-    message,' Usage: retstruct=Readqnrt(filename [,header=header, raw=0|1]) ',/continue
+    message,' Usage: retstruct=Readqnrt(filename [,header=header, raw=0|1, little_endian=0|1]) ',/continue
     return,-1
   ENDIF 
 
@@ -109,12 +136,17 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
     return,-1
   ENDIF 
 
+  little_endian = keyword_set(little_endian)
+
   ncells = 76
   IF N_elements(q2bh_rnoaa_size) EQ 0 THEN q = q2b_rnoaa_str(1, ncells=ncells)
 
   q2b = -1
 
-  openr, lun, filename, /get, error=err,/SWAP_IF_LITTLE_ENDIAN
+  IF idl4 THEN $
+    openr, lun, filename, /get, error=err ELSE $
+    openr, lun, filename, /get, error=err,/SWAP_IF_LITTLE_ENDIAN
+
   IF err EQ 0 THEN BEGIN 
 
     ff = fstat(lun)
@@ -129,6 +161,10 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
       readu,lun,rnoaa
     ENDELSE 
     free_lun, lun
+
+    IF idl4 AND little_endian THEN BEGIN 
+      rnoaa =  swap_endian(rnoaa)
+    ENDIF 
 
     IF keyword_set(raw) THEN return, rnoaa
 
@@ -176,7 +212,11 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
     good = where( rnoaa.nambig GE 1 AND sel GT -1, ngood)
     bad = where(  rnoaa.nambig LT 1 OR  sel le -1, nbad)
     
-    dims = size(u,/dim)
+    IF idl4 THEN BEGIN 
+      sz = size(u)
+      dims = sz[1:sz[0]]
+    ENDIF ELSE dims = size(u,/dim)
+
     nx = dims[1] &  ny=dims[2]
 
     sel[bad] = 0
