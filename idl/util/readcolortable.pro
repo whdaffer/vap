@@ -7,13 +7,32 @@
 ; AUTHOR: William Daffer
 ; CATEGORY:  
 ;
-; CALLING SEQUENCE:  PtrToColorTable=ReadColorTable(filename)
+; CALLING SEQUENCE:  PtrToColorTable=ReadColorTable([filename])
+;
+; (this routine is slightly misnamed, it really should be called
+;  something like PtrToColorTable.)
 ; 
 ; INPUTS:  
 ;
-;   Filename: Fully qualified color table file.
-;
 ; OPTIONAL INPUTS:  
+;
+;   Filename: Fully qualified color table file 
+;                          -or-
+;             the string RSI_COLORTABLE:n 
+;             (or RSI_COLORTABLE=n, either will work)
+;                          -or-
+;             no parameter or a parameter indended as a return
+;             argument. In this case the routine will open a
+;             dialog_pickfile with path set to the value of
+;             $COLORTABLES. If this env variable isn't set,
+;             dialog_pickfile defaults the path to the current
+;             working directory.
+;                
+;
+; If filename = RSI_COLORTABLE:n, this routine will do a 'loadct,n' &
+; tvlct,r,g,b,/get and return a pointer to that colortable.
+;
+;
 ;	
 ; KEYWORD PARAMETERS:  
 ;
@@ -27,8 +46,8 @@
 ;
 ; RESTRICTIONS:  
 ;
-;  The file this routine will read must conform to the following
-;  format.
+;  If the user passes the name of a file in, this file must conform to
+;  the following format.
 ;
 ;  Everything after a ';' is treated as a comment. This allows the
 ;  user to add a header to the file by making each line begin with
@@ -49,6 +68,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  2001/02/07 20:20:00  vapuser
+; Switched to dialog_pickfile and rewrote routine to
+; allow for comments
+;
 ; Revision 1.5  2000/12/14 23:12:40  vapuser
 ; check for `arg_present' FILENAME before trying to return it.
 ;
@@ -77,14 +100,14 @@ FUNCTION ReadColorTable, filename
     return,Ptr_New()
   ENDIF 
   IF n_params() LT 1 THEN BEGIN 
-    path = '/usr/people/vapuser/Qscat/Resources/Color_Tables'
+    path =  getenv('COLORTABLES')
     filename = dialog_pickfile(path=path, /read,/must_exist)
     IF filename EQ  '' THEN return,ptr_new()
   ENDIF 
 
   IF n_elements(filename) EQ 0 THEN BEGIN 
     IF arg_present(filename) THEN BEGIN 
-      path = '/usr/people/vapuser/Qscat/Resources/Color_Tables'
+      path =  getenv('COLORTABLES')
       filename = dialog_pickfile(path=path, /read,/must_exist)
       IF filename EQ  '' THEN return,ptr_new()
     ENDIF
@@ -95,34 +118,41 @@ FUNCTION ReadColorTable, filename
     return, ptr_new()
   ENDIF 
 
-  Openr, lun, filename, /get_lun, error=err
-  IF err NE 0 THEN BEGIN 
-    Message,!error_state.msg,/cont
-    return, Ptr_New()
-  ENDIF 
-  rec = ''
-  nlines = nlines(filename)
-  ct = bytarr(3,nlines)
-  ii = 0
-  REPEAT BEGIN 
-    readf, lun, rec
-    rec = strtrim(strcompress( rec ),2)
-    IF strlen(rec) NE 0 AND strmid(rec,0,1) NE ';' THEN BEGIN 
-      x = strpos(rec,';')
-      IF x GT  0 THEN rec = strmid(rec,0,x[0])
-      tmp = strsplit(rec,' ',/extract)
-      IF n_elements(tmp) NE 3 THEN BEGIN 
-        Message,'All Non-comment Records in color table file MUST have 3 columns!',/cont
-        return, ptr_New()
-      ENDIF
-      ct[*,ii] =  byte(fix(tmp))
-      ii = ii+1
+  IF stregex(strupcase(filename),'RSI_COLORTABLE',/boolean) THEN BEGIN 
+    tmp = strsplit( filename,":|=",/extract)
+    loadct,fix(tmp[1])
+    tvlct,r,g,b,/get
+    ct = transpose([ [r],[g],[b]])
+  ENDIF ELSE BEGIN 
+    Openr, lun, filename, /get_lun, error=err
+    IF err NE 0 THEN BEGIN 
+      Message,!error_state.msg,/cont
+      return, Ptr_New()
     ENDIF 
-  ENDREP UNTIL eof(lun)
+    rec = ''
+    nlines = nlines(filename)
+    ct = bytarr(3,nlines)
+    ii = 0
+    REPEAT BEGIN 
+      readf, lun, rec
+      rec = strtrim(strcompress( rec ),2)
+      IF strlen(rec) NE 0 AND strmid(rec,0,1) NE ';' THEN BEGIN 
+        x = strpos(rec,';')
+        IF x GT  0 THEN rec = strmid(rec,0,x[0])
+        tmp = strsplit(rec,' ',/extract)
+        IF n_elements(tmp) NE 3 THEN BEGIN 
+          Message,'All Non-comment Records in color table file MUST have 3 columns!',/cont
+          return, ptr_New()
+        ENDIF
+        ct[*,ii] =  byte(fix(tmp))
+        ii = ii+1
+      ENDIF 
+    ENDREP UNTIL eof(lun)
 
-  ct = ct[*,0:ii-1]
-  free_lun, lun
+    ct = ct[*,0:ii-1]
+    free_lun, lun
 
+  ENDELSE 
   
   Return, Ptr_new(ct,/no_copy)
 END
