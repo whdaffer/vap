@@ -1,0 +1,256 @@
+# $Id
+#
+# Modification Log;
+#
+# $Log$
+#
+#
+# Current Regions are:
+#
+# 		GOES_10_4_NEPAC_1
+# 		    LonLim = [-175,-115],   # Min/Max Longitude
+# 		    LatLim = [25,65],       # Min/Max Latitude 
+# 		GOES_10_1_NEPAC_1
+# 		    LonLim = [-175,-115],   # Min/Max Longitude
+# 		    LatLim = [25,65],       # Min/Max Latitude 
+# 		GOES_8_4_NWATL_1 
+# 		    LonLim = [-90,-48],     # Min/Max Longitude
+# 		    LatLim = [25,52],       # Min/Max Latitude 
+# 		GOES_8_1_NWATL_1 
+# 		    LonLim = [-90,-48],     # Min/Max Longitude
+# 		    LatLim = [25,52],       # Min/Max Latitude 
+#
+#
+# 
+# Template-----------------------------------
+#
+#                # Goes 10 Ir4, NE Pacific
+# 		GOES_x_y_DESCRIP_z => {  <---- This is the 'region descignation' Note 1.
+# 		  REGION     => "GOES_x_y_DESCRIP_z", 
+# 		  CLOUDS => {
+# 		    SATELLITE  => "ABCD",        # Satellite Name (GOES, GMS)
+# 		    LONLIM     => [minlon,maxlon],# Min/Max Long (lower left, upper right)
+# 		    LATLIM     => [minlat,maxlat],# Min/Max Lat (lower left, upper right)
+# 		    SATNUM     => x,     # e.g. goes '10', should match x in reg.desc.
+# 		    SENSORNUM  => y,     # e.g. 4 for ir4, should matcy y in reg.desc.
+# 		    ASCTIME    => "hh:mm",  # Note 2
+# 		    DESCTIME   => "HH:MM" },# Note 2
+# 		  WIND => {                   
+# 		    NVECTORS => xx,         # Need this many vector to continue
+# 		    CRDECIMATE => [x,y],    # Take every y-th row, every x-th col
+#                   LENGTH => w             # The vectors are 'w' long
+#                   DELTA => u             # A time window of 'u' hours is put around 
+#                                          # THE 'asc/desc' time in the search for 
+#                                          # WIND data to over plot. 
+# 		    ExcludeCols => "IDL exclude string"} # Talk to me about this one.
+# 		}
+#
+#
+#
+#
+#
+# Note 1: The region 'designation' is the string (all caps) you put behind the 
+#         '--region' option. It is the way the software gets at the info in 
+#         this data structure. If you mistype, the software will fail.
+#
+# Note 2: The asctime/desctime are the default times for this
+# overlay. In the abscence of any other time info, i.e. the option
+# --time is not included on input, the software will retrieve the
+# goes/gms file which is closest to whichever of these two times
+# preceeds the current time. For example, if this software is called thusly,
+#
+# Note 3: All times are in GMT!
+#
+# auto_goes_overlay --region GOES10_4_NEPAC_1 
+#
+#  at anytime between 07:01 and 19:59 hours (GMT), the software will use the time 
+#  contained in AscTime, otherwise it will use DescTime.
+#
+#
+
+
+
+%overlay_defs= (
+               # Goes 10 Ir4, NE Pacific
+		GOES_10_4_NEPAC_1 => {  #<-------------------------------|
+		  REGION     => "GOES_10_4_NEPAC_1", # must match this --|
+		  CLOUDS => {
+		    SATELLITE  => "GOES",        # Satellite Name
+		    LONLIM     => [-175,-115],   # Min/Max Longitude
+		    LATLIM     => [25,65],       # Min/Max Latitude 
+		    SATNUM     => 10,            # Goes 10
+		    SENSORNUM  => 4,             # Ir4
+		    ASCTIME    => "18:00",       # Ascending Time 
+		    DESCTIME   => "07:00" },     # Descending time
+		  WIND => {                   
+	            DELTA => 4,                  # Go `time' +/- this many hours 
+		    NVECTORS => 2000,            # Need this many vector to continue
+		    CRDECIMATE => [1,1],         # Take all data
+		    LENGTH => 1.5,                 # Vector Length
+		    DELTA => 4,                  # Delta Time
+		    EXCLUDECOLS => ""}           # Exclude none
+		},
+
+               # GOES 10 Visible, NE Pacific
+		GOES_10_1_NEPAC_1 => {
+		  REGION     => "GOES_10_1_NEPAC_1",
+		  CLOUDS => {
+		    SATELLITE  => "GOES",        # Satellite Name
+		    LONLIM     => [-175,-115],   # Min/Max Longitude
+		    LATLIM     => [25,65],       # Min/Max Latitude 
+		    SATNUM     => 10,            # Goes 10
+		    SENSORNUM  => 1,             # Visible
+		    ASCTIME    => "18:00",       # Ascending Time 
+		    DESCTIME   => "07:00" },     # Descending time
+		  WIND => {                   
+	            DELTA => 4,                  # Go `time' +/- this many hours 
+		    NVECTORS => 2000,            # Need this many vector to continue
+		    CRDECIMATE => [1,1],         # Take all data
+		    LENGTH => 1.5,                 # Vector Length
+		    DELTA => 4,                  # Delta Time
+		    EXCLUDECOLS => ""}           # Exclude none
+		},
+               # GOES 10 Visible, Pacific Hurricane
+		GOES_10_4_PACHURR_1 => {  #<-------------------------------|
+		  REGION     => "GOES_10_4_PACHURR_1", # must match this --|
+		  CLOUDS => {
+		    SATELLITE  => "GOES",        # Satellite Name
+		    LONLIM     => [-180,-100],   # Min/Max Longitude
+		    LATLIM     => [0,60],       # Min/Max Latitude 
+		    SATNUM     => 10,            # Goes 10
+		    SENSORNUM  => 4,             # Ir4
+		    ASCTIME    => "16:00",       # Ascending Time 
+		    DESCTIME   => "05:00" },     # Descending time
+		  WIND => {                   
+	            DELTA => 4,                  # Go `time' +/- this many hours 
+		    NVECTORS => 2000,            # Need this many vector to continue
+		    CRDECIMATE => [2,2],         # Take all data
+		    LENGTH => 2,                 # Vector Length
+		    DELTA => 5,                  # Delta Time
+		    EXCLUDECOLS => ""}           # Exclude none
+		},
+
+               # Goes 8, ir4, NW Atlantic
+		GOES_8_4_NWATL_1 => {
+		  REGION     => "GOES_8_4_NWATL_1",
+		  CLOUDS => {
+		    SATELLITE  => "GOES",        # Satellite Name
+		    LONLIM     => [-90,-48],     # Min/Max Longitude
+		    LATLIM     => [25,52],       # Min/Max Latitude 
+		    SATNUM     => 8,             # Goes 8
+		    SENSORNUM  => 4,             # Ir4
+		    ASCTIME    => "12:00",       # Ascending Time 
+		    DESCTIME   => "00:10" },     # Descending time
+		  WIND => {                   
+	            DELTA => 4,                  # Go `time' +/- this many hours 
+		    NVECTORS => 2000,       # Need this many vector to continue
+		    CRDECIMATE => [1,1],    # Take every row and col
+		    LENGTH => 1.5,                 # Vector Length
+		    DELTA => 4,                  # Delta Time
+		    EXCLUDECOLS => ""}      # Exclude none
+		},
+
+               # Goes 8, Visible, NW Atlantic
+		GOES_8_1_NWATL_1 => {
+		  REGION     => "GOES_8_1_NWATL_1",
+		  CLOUDS => {
+		    SATELLITE  => "GOES",        # Satellite Name
+		    LONLIM     => [-90,-48],     # Min/Max Longitude
+		    LATLIM     => [25,52],       # Min/Max Latitude 
+		    SATNUM     => 8,             # Goes 8
+		    SENSORNUM  => 1,             # Visible
+		    ASCTIME    => "12:00",       # Ascending Time 
+		    DESCTIME   => "00:10" },     # Descending time
+		  WIND => {                   
+	            DELTA => 4,                  # Go `time' +/- this many hours 
+		    NVECTORS => 2000,            # Need this many vector to continue
+		    CRDECIMATE => [1,1],         # Take all data
+		    LENGTH => 1.5,                 # Vector Length
+		    DELTA => 4,                  # Delta Time
+		    EXCLUDECOLS => ""}           # Exclude none
+		},
+
+               # Goes 8, ir4, Atlantic Hurricane
+		GOES_8_4_ATLHURR_1 => {
+		  REGION     => "GOES_8_4_ATLHURR_1",
+		  CLOUDS => {
+		    SATELLITE  => "GOES",        # Satellite Name
+		    LONLIM     => [-100,-30],     # Min/Max Longitude
+		    LATLIM     => [0,60],       # Min/Max Latitude 
+		    SATNUM     => 8,             # Goes 8
+		    SENSORNUM  => 4,             # Ir4
+		    ASCTIME    => "12:00",       # Ascending Time 
+		    DESCTIME   => "00:00" },     # Descending time
+		  WIND => {                   
+	            DELTA => 4,                  # Go `time' +/- this many hours 
+		    NVECTORS => 2000,            # Need this many vector to continue
+		    CRDECIMATE => [2,2],         # Take every other row/col
+		    LENGTH => 2,                 # Vector Length
+		    DELTA => 5,                  # Delta Time
+		    EXCLUDECOLS => ""}      # Exclude none
+		},
+
+		# Gms 5, Ir1, West Pacific
+		GMS_5_1_WPAC_1 => {
+		  REGION     => "GMS_5_1_WPAC_1",
+		  CLOUDS => {
+		    SATELLITE  => "GMS",        # Satellite Name
+		    LONLIM     => [100,175],     # Min/Max Longitude
+		    LATLIM     => [0,55],       # Min/Max Latitude 
+		    SATNUM     => 5,             # Gms 5
+		    SENSORNUM  => 1,             # Ir1
+		    ASCTIME    => "23:00",       # Ascending Time 
+		    DESCTIME   => "11:30" },     # Descending time
+		  WIND => {                   
+	            DELTA => 4,                  # Go `time' +/- this many hours 
+		    NVECTORS => 2000,            # Need this many vector to continue
+		    CRDECIMATE => [1,1],         # Take all data
+		    LENGTH => 1.5,                 # Vector Length
+		    DELTA => 4,                  # Delta Time
+		    EXCLUDECOLS => ""}      # Exclude middle 8 columns.
+		},
+
+		# Gms 5, Ir1, Japan 
+		GMS_5_1_JAPAN_1 => {
+		  REGION     => "GMS_5_1_JAPAN_1",
+		  CLOUDS => {
+		    SATELLITE  => "GMS",        # Satellite Name
+		    LONLIM     => [120,165],     # Min/Max Longitude
+		    LATLIM     => [20,47],       # Min/Max Latitude 
+		    SATNUM     => 5,             # Gms 5
+		    SENSORNUM  => 1,             # Ir1
+		    ASCTIME    => "23:00",       # Ascending Time 
+		    DESCTIME   => "11:30" },     # Descending time
+		  WIND => {                   
+	            DELTA => 4,                  # Go `time' +/- this many hours 
+		    NVECTORS => 2000,            # Need this many vector to continue
+		    CRDECIMATE => [1,1],         # Take all data
+		    LENGTH => 1.5,                 # Vector Length
+		    DELTA => 4,                  # Delta Time
+		    EXCLUDECOLS => ""}           # Exclude none
+		},
+
+		# Gms 5, Ir1, Far East
+		GMS_5_1_FAREAST_1 => {
+		  REGION     => "GMS_5_1_FAREAST_1",
+		  CLOUDS => {
+		    SATELLITE  => "GMS",        # Satellite Name
+		    LONLIM     => [90,160],     # Min/Max Longitude
+		    LATLIM     => [-20,32],       # Min/Max Latitude 
+		    SATNUM     => 5,             # Gms 5
+		    SENSORNUM  => 1,             # Ir1
+		    ASCTIME    => "00:30",       # Ascending Time 
+		    DESCTIME   => "12:30" },     # Descending time
+		  WIND => {                   
+	            DELTA => 4,                  # Go `time' +/- this many hours 
+		    NVECTORS => 2000,            # Need this many vector to continue
+		    CRDECIMATE => [1,1],         # Take all data
+		    LENGTH => 1.5,                 # Vector Length
+		    DELTA => 4,                  # Delta Time
+		    EXCLUDECOLS => ""}           # Exclude none
+		}
+
+ );
+
+
+
