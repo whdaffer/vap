@@ -193,6 +193,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.10  1999/10/05 17:22:23  vapuser
+; Added scalevec and gridlines keywords and associated code.  Added use
+; of 'OVERLAY_CT' environmental variable for the overlay colortable, and
+; associated suport code.
+;
 ; Revision 1.9  1999/06/23 22:00:34  vapuser
 ; Move the map_set until after config.
 ;
@@ -266,18 +271,6 @@ PRO goes_overlay24, goesfile, $
 ; COMMON goes_overlay_cmn, landel
 
 
-  config =  keyword_set(config)
-  GridLines = keyword_set(GridLines)
-
-;  Default_WaterRGB = [31, 33, 129]
-;  Default_WaterRGB = [28, 15,  80]
-  Default_WaterRGB = [11,  11, 122] 
-  Default_LandRGB =  [25, 110,   0]
-
-  Color_Convert, Default_WaterRGB[0],Default_WaterRGB[1],Default_WaterRGB[2],$
-   Default_WaterHue,l,s,/rgb_hls
-  Color_Convert, Default_LandRGB[0],Default_LandRGB[1],Default_LandRGB[2],$
-   Default_LandHue,l,s,/rgb_hls
 
   genv,/save
   tvlct,orig_red,orig_green,orig_blue,/get
@@ -311,11 +304,54 @@ PRO goes_overlay24, goesfile, $
     genv,/restore
     return
   ENDIF 
+  
+  read_cfgfile = 0
+  cfgname = cfgname()
+  cfgpath = '~/.idlcfg/' 
+  ff = findfile(cfgpath + cfgname,count=nf)
+  IF nf NE 0 THEN BEGIN 
+    read_cfgfile = 1
+  ENDIF ELSE BEGIN 
+    IF getenv('VAP_LIB') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIB')
+      ff = findfile(cfgpath + cfgname,count=nf)      
+      read_cfgfile = (nf NE 0)
+    ENDIF
+  ENDELSE   
 
-  ps = keyword_set(ps)
-  gif = keyword_set(gif)
-  jpeg = keyword_set(jpeg)
-  verbose = keyword_set(verbose)
+  IF read_cfgfile THEN BEGIN 
+    print,' Reading CFG file ' + cfgname
+    read_cfgfile,cfgname, cfg,path=cfgpath
+    IF n_elements(cfg) NE 0 THEN BEGIN 
+      print,'CFG found! Details follow:'
+      help,cfg,/st
+    ENDIF 
+  ENDIF 
+
+  config =  keyword_set(config)
+  chkcfg,'GRIDLINES',GridLines,CFG,/bool
+
+  chkcfg,'DEFAULT_WATERRGB',Default_WaterRGB,CFG
+  IF n_elements(Default_WaterRGB) EQ 0 THEN $
+    Default_WaterRGB = [11,  11, 122] 
+  chkcfg,'DEFAULT_LANDRGB',default_LandRGB,CFG
+  IF n_elements(Default_LandRGB) EQ 0 THEN $
+     Default_LandRGB =  [25, 110,   0]
+
+  Color_Convert, Default_WaterRGB[0],Default_WaterRGB[1],Default_WaterRGB[2],$
+   Default_WaterHue,l,s,/rgb_hls
+  Color_Convert, Default_LandRGB[0],Default_LandRGB[1],Default_LandRGB[2],$
+   Default_LandHue,l,s,/rgb_hls
+
+  chkcfg,'PS',ps,cfg,/bool
+  chkcfg,'GIF',gif,cfg,/bool
+  chkcfg,'JPEG',jpeg,cfg,/bool
+  chkcfg,'VERBOSE',verbose,cfg,/bool
+
+  ;ps = keyword_set(ps)
+  ;gif = keyword_set(gif)
+  ;jpeg = keyword_set(jpeg)
+  ;verbose = keyword_set(verbose)
 
   IF ps AND gif OR $
      ps AND jpeg OR $
@@ -331,19 +367,32 @@ PRO goes_overlay24, goesfile, $
     jpeg = 1
   ENDIF 
 
+  chkcfg,'QUALITY',quality,cfg
+
   IF n_elements( Quality ) EQ 0 THEN Quality = 75
   Quality =  1 > Quality < 100
+
+  chkcfg,'SCALEFAC',scalefac,cfg
 
   IF n_elements(scalefac) EQ 0 THEN BEGIN 
     IF ps THEN scalefac = 0.05 ELSE scalefac = 1
   ENDIF ELSE BEGIN 
-    IF gif THEN BEGIN 
+    IF gif OR jpeg THEN BEGIN 
       Message,'Keyword SCALEFAC is ignored when creating GIFs/JPEGs',/cont
       scalefac = 1
     ENDIF 
   ENDELSE 
 
-  IF n_Elements(minspeed) EQ 0 THEN minspeed = 2
+  chkcfg,'MINSPEED',minspeed,cfg
+  chkcfg,'MAXSPEED',maxspeed,cfg
+  chkcfg,'LENGTH',length,cfg
+  chkcfg,'THICK',thick,cfg
+  chkcfg,'BRIGHTMIN',brightmin,cfg
+  chkcfg,'BRIGHTMAX',brightmax,cfg
+  chkcfg,'SATMIN',satmin,cfg
+  chkcfg,'SATMAX',satmax,cfg
+
+  IF N_Elements(minspeed) EQ 0 THEN minspeed = 2
   IF n_Elements(maxspeed) EQ 0 THEN maxspeed = 25
   IF n_elements(length)   EQ 0 THEN length = 2.5
   IF n_elements(thick)    EQ 0 THEN thick = 1
@@ -357,6 +406,13 @@ PRO goes_overlay24, goesfile, $
 
   SatMin = 0> float(SatMin) < 1.
   SatMax = SatMin+.01> SatMax < 1.
+
+
+  chkcfg,'LANDHUE',landhue,cfg
+  chkcfg,'WATERHUE',waterhue,cfg
+
+  chkcfg,'LANDRGB',landRGB,cfg
+  chkcfg,'WATERRGB',waterRGB,cfg
 
   IF n_elements(LandHue) EQ 0 THEN BEGIN 
     IF n_Elements(LandRGB) NE 3 THEN BEGIN 
@@ -383,6 +439,20 @@ PRO goes_overlay24, goesfile, $
   LandHue =  0> LandHue < 360.
   WaterHue =  0> WaterHue < 360.
   
+
+  chkcfg,'XSIZE',xsize,cfg
+  chkcfg,'YSIZE',ysize,cfg
+
+  IF n_Elements(xsize) EQ 0 THEN BEGIN 
+    IF ps THEN xsize = 8.4 ELSE xsize = 640 
+  ENDIF 
+  xoffset = 1.2
+
+  IF n_Elements(ysize) EQ 0 THEN BEGIN 
+    IF ps THEN ysize = 6.5 ELSE ysize = 480 
+  ENDIF 
+  yoffset = 9.5
+
   start_time = systime(1)
   Read_PCGoes,goesfile,limits,GoesData,hdr=hdr, status=status
 
@@ -394,15 +464,6 @@ PRO goes_overlay24, goesfile, $
     ; Make sure the longitude range is monotonic
   lonrange = FixLonRange( [ limits[0],limits[2] ])
   
-  IF n_Elements(xsize) EQ 0 THEN BEGIN 
-    IF ps THEN xsize = 8.4 ELSE xsize = 640 
-  ENDIF 
-  xoffset = 1.2
-
-  IF n_Elements(ysize) EQ 0 THEN BEGIN 
-    IF ps THEN ysize = 6.5 ELSE ysize = 480 
-  ENDIF 
-  yoffset = 9.5
 
 
   IF status THEN BEGIN 
