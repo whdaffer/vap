@@ -36,6 +36,10 @@
 ; EXAMPLE:  
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  2000/01/11 20:47:34  vapuser
+; Added metadata (rainf, ermax ...) to the structure to handle
+; processing that uses same.
+;
 ; Revision 1.4  1998/10/17 00:20:27  vapuser
 ; Increased LongName to 256 bytes.
 ;
@@ -80,8 +84,10 @@ FUNCTION qmodel_str
           CreationTime : bytarr(16),$ ;vaptime, yyyy/mm/dd/hh/mm
           StartTime    : bytarr(16),$ ;yyyy/mqm/dd/hh/mm
           EndTime      : bytarr(16),$ ;yyyy/mm/dd/hh/mm
+          InterpTime   : bytarr(16),$ ; The 'time' of this animation.
           Version      : bytarr(16),$
-          Exclude_cols : bytarr(16) $
+          Exclude_cols : bytarr(16), $
+          Wfiles       : '' $
         }
 
     qmodel =  { QMODELDATA,$
