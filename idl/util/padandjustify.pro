@@ -13,7 +13,7 @@
 ;
 ;
 ; CALLING SEQUENCE:  padded_string = PadAndJustify( array,
-;                   number_of_digits[, pad=pad , /right|/left)
+;                   number_of_digits[, pad=pad , format=format, /right|/left])
 ;
 ;
 ; 
@@ -28,9 +28,10 @@
 ;	
 ; KEYWORD PARAMETERS:  
 ;
-;   Pad: Pad character (must have length 1)
-;   right: flag, if set, right justify
-;   left: flag, if set, left justify.
+;   Pad    : Pad character (must have length 1)
+;   right  : flag, if set, right justify
+;   left   : flag, if set, left justify.
+;   format : format appropriate for string or print function
 ;
 ;
 ;
@@ -67,6 +68,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/10/22 21:24:28  vapuser
+; Handle strarr(1) case
+;
 ; Revision 1.3  1998/10/21 23:10:04  vapuser
 ; Convert numbers to long
 ;
@@ -80,7 +84,9 @@
 ;Copyright (c) 1998, William Daffer
 ;-
 
-FUNCTION PadAndJustify, number, ndigits, pad=pad,right=right, left=left
+FUNCTION PadAndJustify, number, ndigits, pad=pad, $
+                        right=right, left=left, format=format
+
  right = keyword_set(right)
  left = keyword_set(left)
  IF n_elements(pad) EQ 0 THEN pad = '0'
@@ -104,7 +110,10 @@ FUNCTION PadAndJustify, number, ndigits, pad=pad,right=right, left=left
      retarr = strarr(nnum)
    tnum = long(number)
    FOR i=0,nnum-1 DO BEGIN 
-     str = strtrim( tnum[i], 2 ) 
+     IF n_elements(format) NE 0 THEN $
+       str = strtrim(string(tnum[i],format=format),2) ELSE $
+       str = strtrim( tnum[i], 2 ) 
+
      len = strlen(str)
      IF len LT ndigits THEN BEGIN 
        padding = string(bytarr(ndigits) + replicate( byte(pad), ndigits ))
@@ -116,7 +125,7 @@ FUNCTION PadAndJustify, number, ndigits, pad=pad,right=right, left=left
      retarr[i] = padding
    ENDFOR 
  ENDIF ELSE BEGIN 
-   Message,'Usage: padded_string = PadAndJustify( number, ndigits [,pad=pad, /right|/left])',/cont
+   Message,'Usage: padded_string = PadAndJustify( number, ndigits [,pad=pad, format=format, /right|/left])',/cont
    return,0
  ENDELSE 
  return,retarr
