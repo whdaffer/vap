@@ -48,6 +48,9 @@ latsize = 0.
 ; Modification Log
 ;
 ; $Log$
+; Revision 1.2  1998/09/15 00:06:15  vapuser
+; Added the hdr=hdr return keyword
+;
 ; Revision 1.1  1998/09/09 18:29:11  vapuser
 ; Initial revision
 ;
@@ -82,8 +85,7 @@ CASE test1 OF
     time = hdr.hhmm
     nlon = hdr.cols
     nlat = hdr.rows
-    year = bin_date()
-    year = year[0]
+    year = hdr.year
     lonsize =  hdr.resolution[0]
     latsize = hdr.resolution[1]
 
