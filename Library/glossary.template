@@ -1,0 +1,39 @@
+
+<h3> Glossary</h3>
+
+<ul>
+
+<li><h4>Interpolated Field:<a name="interpolated"></h4> In order to make the
+     animations the winds must be put onto a regular grid. The process
+     by which the <a href="#swathdata">swath
+     data</a> is put onto this regular grid is known as interpolation.
+
+<br>
+<br>
+<li><h4>Swath data:<a name="swathdata"></a></h4>The native format of the
+     Scatterometer data. It's arranged in swathes whose rows and columns are
+     oriented with respect to the ground track of the satellite. You
+     can see this if you look at the overlays.
+
+     This swath data is rectangular when viewed in the ground track
+     coordinate system, but since the ground track is the composite of
+     two motions (the motion of the spacecraft and the rotation of the
+     earth) with respect to the latitude/longitude coordinate system
+     the grid is very curvelinear.
+
+<br>
+<br>
+<li><h4>Synoptic: <a name="synoptic"></h4> Of or constituting a synopsis;
+     presenting a summary of the principal parts or a general view of
+     the whole.
+
+
+<p> The satellitse on which SeaWinds fly orbit the earth about once
+     every 101 minutes, approximately. To accumulate enough wind
+     vectors to interpolate over the entire earth we must wait
+     approximately 14 hours, otherwise the interpolation will have
+     voids in it. The wind field used to create the animations,
+     however, masquerades as if it represents one instant in time,
+     that is, it is a 'synopsis' of the global wind field. 
+
+     That's what a 'synoptic' view is.

@@ -1,0 +1,23 @@
+$Id$
+
+$Log$
+
+
+Regarding the *.template files. These are for those files expected to
+change little except on long time scales. Each .template file has a
+corresponding .html file in the VAP website, which is created in much
+the same manner as the dynamic pages except that the 'body' of the
+webpage is inserted verbatim from the corresponding .template
+file. This means that these files must contain valide HTML code.
+
+To change one of this sort of files in the website, edit the html code
+in the correct .template file, then run update_website with the
+basename of the file as the argument. For example, if you want to
+change status.html, edit status.template then run
+
+% update_website STATUS
+
+The website running code assumes that the .template file is in the
+directory pointed to by the environmental variable VAP_LIBRARY.
+
+

@@ -1,0 +1,52 @@
+
+<p>Welcome to the Value Added Products webpage for QuikSCAT and SeaWinds
+on ADEOS-II. This page is merely a filler, you should probably bookmark
+the pages you want to view routinely, so that you can go directly there.
+I'll present a short explanation on this page for those who've never been
+here. There's more specific information concerning the products on this
+webpage located on the <a href="/info.html">information</a> page
+and more information on the SeaWinds instruments and the two missions carrying
+them can be perused at the <a href="http://winds.jpl.nasa.gov">Scatterometer
+Project homepage</a> . If we encounter any item of particular interest,
+we may put it on the <a href="/disk5/vapdev/www/htdocs/special.html">special
+projects</a> page. The status of the various instruments can be found
+on the <a href="/disk5/vapdev/www/htdocs/status.html">status</a>
+page.
+<br>
+<br>
+<br>
+<h2>Synopsis</h2>
+This collection of pages contain output from several processors of
+two broad types: 'overlays' and 'animations.'
+<br>
+<h3>Overlays</h3>
+
+The 'overlays' combine the cloud imagery from several geosynchronous
+satellites with SeaWinds scatterometry. They fall into two seperate
+types, the simple overlay, which is region specific and 'tropical
+storm,' were we try to follow cyclonic storms a little more
+closely. Since the geosyncrhonous satellites from which we get our
+cloud imagery are region specific, all of the overlays, regardless of
+type, have some region dependency. These regions are, roughly: North
+Atlantic (GOES8) , North-Eastern Pacific (GOES10) and, in the western
+Pacific (GMS5). We'll occasionally experience outages from these
+satellites, sometimes extended outages. The general rule is: if either
+the wind or the cloud data exists, an overlay will be made.
+
+
+
+<p>The overlays are further divided by the source of the scatterometry
+data used in the overlay, e.g., there's an <a href="http://overlay_Q.html">QuikSCAT overlay</a>page and an <a href="http://overlay_S.html">SeaWinds overlay page</a>
+
+<h3>Animations</h3>
+
+The animations take data from both scatterometers, create a <a
+href="/glossary.html#synoptic">synoptic</a> <a
+href="/glossary.html#interpolated">interpolated</a>
+field and then create an animation from that field. In this animation,
+the windspeed is conveyed by the color of the backgroup, blue is low
+windspeed and magenta high, and the direction of the wind by the
+motion of the arrows in the animation.  Despite the fact that this
+animation shows things moving, this is not a 'time series.' The wind
+field here is static, in the sense that at each location in the
+picture the direction and speed of the wind doesn't change.

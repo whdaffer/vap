@@ -1,0 +1,84 @@
+
+<h1>General information</h1>
+
+
+<p>This webpage highlights imagery and animations made from scatterometry
+data from the SeaWinds instrument. Currently there are two instruments
+on orbit, one aboard the QuikSCAT satellite, launched in June, 1999
+and run by Ball Aerospace and JPL, and the other aboard the ADvanced
+Earth Observing Satellite (II) (hereinafter ADEOS-II), built,
+launched on Dec 14, 2002 and operated by Japan's space agency,
+NASDA. Most properly these two missions should be called "SeaWinds on
+QuikSCAT" and "SeaWinds on ADEOS-II", but this is such a mouthful that
+everyone has taken to calling them QuikSCAT and SeaWinds, respectivly.
+
+
+<h2>Scatterometry</h2>
+
+
+<p>A scatterometer is a radar instrument which bounces electromagnetic
+energy off the surface of the ocean. The wind ruffles the water,
+causing small waves to form on the surface of the ocean, and this
+affects how much energy reflects back to the instrument. Combining the
+radar return off the same patch of ocean, but as seen from from
+different directions, allows the calculation of both wind speed and
+wind direction.
+
+For more information on the scatterometry in general and the projects
+here at JPL, see <a href="http://winds.jpl.nasa.gov">Scatterometry
+Project</a> homepage.
+
+<h1>The Value Added Products</h1>
+
+<p>There are two main categories of product: images, made with
+scatterometry and cloud imagery, and QuickTime&reg; animations. The
+overlays are further subdivided into two categories, Overlays and
+Tropical Storms which are, themselves, subdivided by the source of the
+scatterometry data, either QuikSCAT or SeaWinds.
+
+
+
+<h2>Animations</h2>
+
+
+<p>The scatterometry data from both missions is interpolated to a
+regular grid. This wind field is then used to determine the movement
+of an imaginary particle. The wind field itself isn't changing, but
+the velocity and direction of this imaginary particle does change as
+it is moved through the grid by the action of the interpolated vector
+field.
+
+
+
+<p>In these animations the background color shows the wind speed--
+blue is low windspeed and yellow/magenta high. The direction of the
+wind field is communicated by the direction the particles move at any
+particular location.
+
+
+<p>In general about 14 hours of data goes into each interpolation. 
+
+
+<h2>Overlays</h2>
+
+<p>The <a href="http:/glossary.html#swathdata">swath data</a> is
+plotted over cloud imagery from one of the geosynchronous
+satellites. At the moment we use GOES 8, which is over the Atlantic,
+GOES 10 which is over the Eastern Pacific and GMS5 which is over the
+Western Pacific.
+
+<p>There are a set of 'regions' that we make overlays for and these
+changes (if at all) over very long time scales. 
+
+
+
+<h2>Tropical Storms</h2>
+
+<p>These are another form of overlay, but instead of only showing a
+fixed region, as is the case with the more generic overlays discussed
+above, we try to get current views of current tropical storms. The
+areas where we can do this are roughly equivalent to the 'overlay'
+regions, though the views are generally much closer.
+
+Needless to say, there won't be any updates to the tropical storm
+pages when there aren't any tropical storms.
