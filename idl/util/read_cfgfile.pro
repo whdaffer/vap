@@ -8,13 +8,16 @@
 ;
 ; CATEGORY:  Programming Utility
 ;
-; CALLING SEQUENCE:  return_structure=read_cfgfile(filename, path=path)
+; CALLING SEQUENCE:  return_structure=read_cfgfile(filename)
 ; 
-; INPUTS:  basename: Scalar String. The filename of the configuration file.
+; INPUTS:  
+;
+;  filename: Scalar String. The fully qualified filename of the
+;            configuration file.
 ;
 ; OPTIONAL INPUTS:  
 ;	
-; KEYWORD PARAMETERS:  path: the path to the config file.
+; KEYWORD PARAMETERS:  
 ;
 ; OUTPUTS:  
 ;
@@ -58,7 +61,7 @@
 ;
 ;  To parse this routine, you call.
 ;
-;  struct=read_cfgfile('.xxx_yyy_zzz_rc',path='/path/to/file')
+;  struct=read_cfgfile('/path/to/file/.xxx_yyy_zzz_rc')
 ;
 ;  the returned structure will be:
 ;
@@ -71,6 +74,14 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  2001/02/20 20:22:19  vapuser
+; Took out path. Now the user must pass in fully qualified
+; file name.
+;
+; Revision 1.2  1999/10/11 17:17:29  vapuser
+; Make it a procedure, not a function.
+; This is so it can return undefined quantities.
+;
 ; Revision 1.1  1999/10/07 18:50:39  vapuser
 ; Initial revision
 ;
@@ -80,28 +91,25 @@
 ;-
 ; No Warranties
 ;
-PRO read_cfgfile, filename, retstruct, path=path
+PRO read_cfgfile, filename, retstruct
   
   IF n_params() LT 1 THEN BEGIN 
-    Usage,"return_structure = read_cfgfile(filename [,path=pat])"
+    Usage,"return_structure = read_cfgfile(filename)"
     return
   ENDIF 
-  IF n_elements(path) EQ 0 THEN path =  './'
    
-  IF rstrpos(path,'/') NE strlen(path)-1 THEN path = path + '/'
-  fqfn =path + filename
-  IF NOT fexist(fqfn) THEN BEGIN 
-    Message,"CFG File <" +fqfn +"> doesn't exist!",/info
+  IF NOT fexist(filename) THEN BEGIN 
+    Message,"CFG File <" +filename +"> doesn't exist!",/info
     return
   ENDIF 
 
-  nn = nlines(fqfn)
+  nn = nlines(filename)
   IF nn EQ 0 THEN BEGIN 
-    Message, "CFG file <" +fqfn +"> is EMPTY!",/info
+    Message, "CFG file <" +filename +"> is EMPTY!",/info
     return
   ENDIF 
 
-  openr,lun, fqfn,/get,error=err
+  openr,lun, filename,/get,error=err
   IF err NE 0 THEN BEGIN 
     Message,!error_state.msg,/info
     return
@@ -121,7 +129,7 @@ PRO read_cfgfile, filename, retstruct, path=path
       s = execute( 'v = ' + value )
       IF NOT s THEN BEGIN 
         Message,"Error at line " + strtrim(line,2) + $
-          " in CFG file <" + fqfn ,/cont
+          " in CFG file <" + filename ,/cont
         return
       ENDIF 
       IF NOT exist(retstruct) THEN $
