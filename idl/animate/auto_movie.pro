@@ -95,7 +95,11 @@
 ;                maxspeed    : maximum speed (m/s unless knots=1)
 ;                Length      : the length of the arrows.
 ;                thick       ; The thickness of the arrows.
-;
+;                outbase     ; (I) the base of the names for the
+;                              output frames. the actual names will be
+;                              'basename.frame_number.ext' where 'ext'
+;                              is 'gif', 'jpeg' or 'pict.' Basename
+;                              defaults to 'wind'
 ;
 
 ;
@@ -123,6 +127,10 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.17  2002/08/09 23:40:33  vapdev
+; Added lockfile keyword and modified how
+; to find and use the lockfile.
+;
 ; Revision 1.16  2002/05/03 01:06:25  vapdev
 ; Changes environmental variables to reflect new vapdev/vaprun env variables.
 ; Also made sure that all the various env variable routines were being
@@ -261,8 +269,18 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
                 knots     = knots, $ ; Report speed in knots, not meters/sec
                 minspeed  = minspeed,$ ; min speed (m/s unless 'knots' is set)
                 maxspeed  = maxspeed,$ ; max speed (m/s unless 'knots' is set)
-                length    = length, $
-                thick     = thick
+                length    = length, $ ; (I) the length of the arrows.
+                thick     = thick,  $   ; (I) the thickness of the arrows
+                outbase =  outbase    ; (I) the base of the template
+                                       ; from which the names of the
+                                       ; output frames will be built. The
+                                       ; files will have the name
+                                       ; outbase.frame_number.ext where ext
+                                       ; is 'gif' or 'jpeg' or 'pict.' Mostly
+                                       ; used in automated processing to
+                                       ; set/get the name of the first frame
+                                       ; to use on the web page.
+
 
 
 
@@ -363,11 +381,10 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 
   chkcfg,'GIF',gif,cfg,/bool
   chkcfg,'PICT',pict,cfg,/bool
-  ;gif = keyword_set(gif)
-  ;pict = keyword_set(pict)
+  chkcfg,'JPEG',jpeg,cfg,/bool
 
-  IF gif AND pict THEN BEGIN 
-    str =  " ERROR: Only one of 'gif' or 'pict' may be set" 
+  IF gif AND pict AND jpeg THEN BEGIN 
+    str =  " ERROR: Only one of 'gif', 'jpeg' or 'pict' may be set" 
     IF auto_movie_cronjob THEN BEGIN 
       printf, llun, str
       free_lun,llun
@@ -376,7 +393,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     return
   ENDIF
 
-  IF NOT (gif OR pict) THEN gif = 1
+  IF NOT (gif OR pict OR jpeg) THEN jpeg = 1
   IF pict THEN nomovie = 1
 
   CD,current=cur_dir
@@ -400,8 +417,8 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   chkcfg,'maxspeed',maxspeed,cfg
   chkcfg,'length',length,cfg
   chkcfg,'thick',thick,cfg
-
   chkcfg,'knots',knots,cfg,/bool
+  chkcfg,'outbase',outbase,cfg,/bool
 
   IF n_elements( wpath )       EQ 0 THEN wpath       = roistr.wpath 
   IF n_elements( alonpar )     NE 3 THEN alonpar     = roistr.alonpar 
@@ -425,6 +442,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 
   IF n_elements(length) EQ 0 THEN length = 3
   IF n_elements(thick) EQ 0 THEN thick = 1
+  IF n_elements(outbase) EQ 0 THEN outbase =  'wind'
 
   message,'wpath      = ' + wpath,/info
   message,'alonpar    = ' + string(alonpar,form='(3(f7.2,:,","))'),/info
@@ -439,9 +457,9 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   message,'minspeed   = ' + strtrim(minspeed,2),/info
   message,'maxspeed   = ' + strtrim(maxspeed,2),/info
   message,'knots      = ' + strtrim(knots,2),/info
-  message,'length      = ' + strtrim(length,2),/info
+  message,'length     = ' + strtrim(length,2),/info
   message,'thick      = ' + strtrim(thick,2),/info  
-
+  message,'outbase    = ' + outbase,/info
 
   roi =  strupcase(roi)
   MESSAGE,' Looking for roi ' + roi,/info
@@ -474,7 +492,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     ; files and make one.
   Interp_file = GetInterpFiles( date_time, time_inc = Time_inc, $
                                  interp_path = interp_path, $
-                                 Wpath=Wpath, nscat = nscat, $
+                                 Wpath=Wpath, $
                                  decimate=decimate, CRDecimate=CRDecimate, $
                                  ExcludeCols=ExcludeCols, min_nvect=min_nvect,$
                                  filetimes = filetimes, count = nif )
@@ -493,219 +511,79 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 
   anim_date_str =  dt2timestr( filetimes[0],sep='')
 
-;  IF nif NE 0 THEN BEGIN 
-;      ; Find which is closest to the input time. 
-;    julft = filetimes.julday + $
-;              filetimes.hour/24. + $
-;                filetimes.min/(24.*60)
+  CD,anim_path
 
-;    idldt_date_time = vaptime2idldt( date_time )
-;    j1 = idldt_date_time.julday + $
-;          idldt_date_time.hour/24. + $
-;           idldt_date_time.min/(60.*24)
+  lonpar =  alonpar[0:1]
+  latpar =  alatpar[0:1]
+  tmp =  (lonpar(0:1) + [-10,10])
+  tmp =  fixlonrange(tmp)
+  vlonpar =  [tmp, alonpar[2] ]
+  vlatpar =  alatpar
+  vlatpar(0:1) =  -60 >  (vlatpar(0:1) + [-10,10]) <  60
 
-;    m = (min( abs(julft-j1), ii ))*24.
-
-;    IF m LE 12 THEN BEGIN 
-;      nif = 1
-;      interp_file = interp_files[ii]
-;    ENDIF ELSE nif=0
-;  ENDIF 
-
-;  IF nif EQ 0 THEN BEGIN 
-;      ; Can't find the interpolated field for this time range, so make
-;      ; one.
-;    wf =  GetWindFiles( date_time, time_inc=time_inc, path=wpath, $
-;                      filter=filter, nscat=nscat, count=nf)
-;    IF nf EQ 0 THEN BEGIN 
-;      str =  'ERROR: No windfiles in dir ' + wpath + ' in time range '
-;      Message, str,/cont
-;      IF auto_movie_cronjob THEN BEGIN 
-;        printf,llun,str
-;        free_lun, llun
-;      ENDIF 
-;      return
-;    ENDIF 
-
-
-;    message,'Using time_inc = ' + string( time_inc, form='(i2)'),/cont
-;    message,'Wind Path = ' + wpath,/cont
-;    message,'Interp_path = ' + interp_path,/cont
-;    message,'anim_path = '+anim_path,/cont
-;    message,'date_time = ' + date_string,/cont
-;    print,' animpar = ',animpar
-;    Message,'Using the following files in the interpolation',/cont
-;    print,transpose(wf)
-
-;    message,' Found ' + string(nf,form='(i3)') + ' files ',/cont
-;    lonpar =  roistr.alonpar
-;    latpar =  roistr.alatpar
-;    lonpar(2) =  1.
-;    latpar(2) =  1.
-
-
-;    data =  Read_Wind_Files( wf, $
-;                             Decimate=Decimate, $
-;                             CRDecimate=CRDecimate, $
-;                             ExcludeCols=ExcludeCols, Nscat=Nscat )
-
-
-;    x =  where( llon GT lonpar(0)-10 AND llon LE lonpar(1)+10 AND $
-;                 llat GT latpar(0)-10 AND llat LE latpar(1)+10, nx )
-;    IF nx GT  min_nvect THEN BEGIN 
-
-
-;      t1 = systime(1)
-;      lonpar =  [0,360,1.] &  latpar=[-60., 60, 1]
-;      rainf = [12., 10., 6,   4 ] 
-;      ermax = [50., 20., 10., 5.]
-;      status = RunSuccor( uu,vv,llon,llat,ui,vi,lonpar,latpar,$
-;                          rainf=rainf, ermax=ermax )
-;      IF NOT status THEN BEGIN 
-;        str = 'ERROR: Bad return from 1st succor'
-;        Message,str,/cont
-;        IF auto_movie_cronjob THEN BEGIN 
-;          printf, llun, str
-;          free_lun, llun
-;        ENDIF 
-;        return
-;      ENDIF 
-
-;      rainf = [10.,6.,3.,2]
-;      ermax = [10.,6.,3.,2]
-;      tmp = str_sep( CreationTime,'/')
-;      time_string = ''
-;      FOR i=0,3 DO time_string = time_string + tmp[i]
-;      Ofile = interp_path + "/" + 'QIF-' + time_string + '.hdf'
-;      status = RunSuccor( uu,vv,llon,llat,ui,vi,lonpar,latpar,$
-;                          rainf=rainf, ermax=ermax, /reuse, Ofile=Ofile )
-;      print,'Time to do 2 succors: ',systime(1)-t1, ' seconds '
-;      IF NOT status THEN BEGIN 
-;        str = 'ERROR: Bad return from 2nd succor'
-;        Message,str,/cont
-;        IF auto_movie_cronjob THEN BEGIN 
-;          printf, llun, str
-;          free_lun, llun
-;        ENDIF 
-;        return
-;      ENDIF 
-
-;      IF keyword_set( nomovie ) THEN BEGIN 
-;        message,' INFO: keyword_set( nomovie ) = 1, returning ',/info
-;        return
-;      ENDIF 
-;      CD,anim_path
-;                                  ;
-;                                  ; Create the individual gif files for the animation.
-;                                  ;
-;      ddims  =  [[0,360.,1],[-60,60,1]]
-;      lonpar =  roistr.alonpar
-;      latpar =  roistr.alatpar
-;      tmp =  (lonpar(0:1) + [-10,10])
-;      tmp =  fixlonrange(tmp)
-;      vlonpar =  [tmp, lonpar(2) ]
-;      vlatpar =  latpar
-;      vlatpar(0:1) =  -60 >  (vlatpar(0:1) + [-10,10]) <  60
-
-;      mps2knots = 1.9444 ; takes meters/sec to knots
-;      ANIMATE_WIND_FIELD,$
-;       ui=ui, vi=vi, $
-;       ddims=ddims,$
-;       lonpar=lonpar, $
-;       latpar=latpar, $
-;       vlon = vlonpar, $
-;       vlat = vlatpar,$
-;       animpar=animpar,$
-;       min_speed=1,  $             ; meters/sec, will be converted to knots 
-;       max_speed=30, $   ; in animate_wind_field (max_speed=30 m/s)
-;       title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
-;       gif=gif, pict=pict
-
-;    ENDIF ELSE BEGIN
-;      str =  "ERROR: Not enough vectors in area: have " + strtrim( nx, 2 ) + $
-;       " need: " + strtrim( min_nvect,2 )
-
-;      message,str,/cont
-;      IF auto_movie_cronjob THEN begin
-;        printf, llun, str
-;        free_lun,llun
-;      ENDIF 
-;    ENDELSE 
-;  ENDIF ELSE BEGIN 
-      ; There is already an interpolated file to use.
-
-    CD,anim_path
-;    IF knots THEN BEGIN 
-;      minspeed = minspeed/mps2knots
-;      maxspeed = maxspeed/mps2knots
-;    ENDIF
- 
-    lonpar =  alonpar[0:1]
-    latpar =  alatpar[0:1]
-    tmp =  (lonpar(0:1) + [-10,10])
-    tmp =  fixlonrange(tmp)
-    vlonpar =  [tmp, alonpar[2] ]
-    vlatpar =  alatpar
-    vlatpar(0:1) =  -60 >  (vlatpar(0:1) + [-10,10]) <  60
-
-    ANIMATE_WIND_FIELD,Interp_File, $
-     ddims=ddims,$
-     lonpar=lonpar, $
-     latpar=latpar, $
-     vlon = vlonpar, $
-     vlat = vlatpar,$
-     animpar=animpar,$
-     min_speed=minspeed,  $       ; min/max speed. M/s unless knots=1
-     max_speed=maxspeed, $        
-     length=length, $
-     thick=thick, $
-     title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
-     gif=gif, pict=pict, knots=knots
+  ANIMATE_WIND_FIELD,Interp_File, $
+   ddims=ddims,$
+   lonpar=lonpar, $
+   latpar=latpar, $
+   vlon = vlonpar, $
+   vlat = vlatpar,$
+   animpar=animpar,$
+   min_speed=minspeed,  $       ; min/max speed. M/s unless knots=1
+   max_speed=maxspeed, $        
+   length=length, $
+   thick=thick, $
+   title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
+   gif=gif, pict=pict, jpeg=jpeg, $
+   knots=knots, outbase=outbase
 
 
 
-    omov_file =  'daily_' + strlowcase( roi ) 
-    IF dateit THEN omov_file =  omov_file + '_' + anim_date_str
-    omov_file =  omov_file + '.mov'
-    ; construct string to send to spawn and execute it.
-    ;exe_str =  'dmconvert -f qt,loop=loop -p video,' + $
-    ;'comp=qt_cvid,squal=0.9,tqual=0.9,rate=15 ' + $
-    ; ' -n gwind.0##,start=1,end=60,step=1 gwind.0## ' + omov_file
-    exe_str =  '/usr/people/vapuser/scr/DMCONVERT ' + omov_file
-    Message,'Calling dmconvert with command line: ',/cont
-    print,'    ' + exe_str
-    spawn,exe_str,ret
-    nn = n_elements(ret)
-    i = -1
-    good = 1
-    done = 0
-    REPEAT BEGIN 
-      i = i+1
-      s1 = strpos(ret[i],'dmconvert') 
-      s2 = strpos(ret[i],'bad') 
-      
-      IF s1 NE -1 OR s2 NE -1 THEN BEGIN
-        good = 0
-        str =  'ERROR: in dmconvert, Error message:  ' + ret
-        done = 1
-        IF auto_movie_cronjob THEN begin
-          printf, llun, str
-          free_lun,llun
-        ENDIF 
-        message,str, /cont
+  omov_file =  strlowcase( roi ) 
+  IF dateit THEN omov_file =  omov_file + '_' + anim_date_str
+  omov_file =  omov_file + '.mov'
+  exe_str =  'DMCONVERT ' + omov_file
+  CASE 1 OF 
+    jpeg EQ 1: ext = "jpeg"
+    gif EQ 1: ext =  "gif"
+    pict EQ 1: ext =  "pict"
+  ENDCASE 
+  exe_str =  exe_str + " " + outbase + ".0\#\#." + ext
+  Message,'Calling dmconvert with command line: ',/cont
+  print,'    ' + exe_str
+  spawn,exe_str,ret
+  nn = n_elements(ret)
+  i = -1
+  good = 1
+  done = 0
+  REPEAT BEGIN 
+    i = i+1
+    s1 = strpos(ret[i],'dmconvert') 
+    s2 = strpos(ret[i],'bad') 
+
+    IF s1 NE -1 OR s2 NE -1 THEN BEGIN
+      good = 0
+      str =  'ERROR: in dmconvert, Error message:  ' + ret
+      done = 1
+      IF auto_movie_cronjob THEN begin
+        printf, llun, str
+        free_lun,llun
       ENDIF 
-    ENDREP UNTIL done OR (i EQ nn-1)
-    IF good AND auto_movie_cronjob THEN BEGIN 
-      openw,lun,tmpfilesdir + '/auto_movie_mov_filename_'+lroi,/get,error=err
-      IF err THEN BEGIN 
-        printf,llun,'ERROR: ' + !error_state.msg
-        free_lun, llun
-      ENDIF 
-      printf, lun, omov_file
-      free_lun, lun
+      message,str, /cont
     ENDIF 
-    free_lun, llun
-;  ENDELSE 
+  ENDREP UNTIL done OR (i EQ nn-1)
+  IF good AND auto_movie_cronjob THEN BEGIN 
+    tmpfile = tmpfilesdir + '/auto_movie_mov_filename_'+lroi
+    IF n_elements(pid) NE 0 THEN tmpfile =  tmpfile + '_' +strtrim(pid,2)
+    openw,lun,tmpfile,/get,error=err
+    IF err THEN BEGIN 
+      printf,llun,'ERROR: ' + !error_state.msg
+      free_lun, llun
+    ENDIF 
+    printf, lun, omov_file
+    printf, lun, ext
+    free_lun, lun
+  ENDIF 
+  free_lun, llun
    CD,cur_dir
    message,'End Time: ' + systime(),/info
    Message,'Done!',/info
