@@ -8,6 +8,9 @@
 ;     where the input data used in the interpolated wind field starts
 ;     at date_time-time_inc and goes to date_time.
 ;
+;     It returns the file(s) sorted from minimum difference to maximum
+;     difference.
+;
 ; AUTHOR: William Daffer
 ;
 ;
@@ -74,7 +77,8 @@
 ;
 ; OUTPUTS:  
 ;
-;  InterpFiles: List of filenames
+;  InterpFiles: List of filename(s) sorted from minimum difference to
+;               maximum, if there are more than one.
 ;
 ;
 ;
@@ -107,6 +111,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.5  1999/04/09 15:37:11  vapuser
+; *** empty log message ***
+;
 ; Revision 1.4  1998/11/25 22:39:49  vapuser
 ; Squashed some bugs.
 ;
@@ -129,9 +136,10 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
                                      ; End of the timerange in question
    time_inc = time_inc,$        ; Hours to subtract from date_time to 
                                 ; establish time range, if it is
-                                ; required to create an interp file.
+                                ; required to create an interp file. 
+                                ; default=14.
    interp_time_inc = interp_time_inc, $ ; Amount of time back from date_time 
-                                ; to look for interp files.
+                                ; to look for interp files. Default=2.
    Wpath = Wpath,$              ; Path to wind files
    Interp_path = Interp_path, $ ; Path to the interpolated files
    decimate=decimate, $         ; (I) scalar, decimate=n means take 
@@ -165,7 +173,7 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
   END
 
   IF n_Elements(date_time) EQ 0 THEN date_time = TodayAsString(sep='/');
-  IF n_elements(time_inc) EQ 0 THEN time_inc = 26
+  IF n_elements(time_inc) EQ 0 THEN time_inc = 14.
   IF N_Elements(interp_time_inc) EQ 0 THEN interp_time_inc = 2.
   IF n_elements(Interp_Path) EQ 0 THEN Interp_Path = '$VAP_ANIM'
 
@@ -177,7 +185,6 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
   IF rstrpos(WPath,'/') NE strlen(WPath)-1 THEN $
      WPath = WPath + '/'
 
-  interp_time_inc = 2
   nscat = keyword_set(nscat)
  
   interp_filter = 'QIF-*.hdf'
@@ -199,10 +206,13 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
     testtime = var_to_dt( fix(tmp[0]), fix(tmp[1]), fix(tmp[2]), $
                           fix(tmp[3]), fix(tmp[4]) )
 
-    test = testtime.julian-filetimes.julian
-    x = where( test GE 0 AND test LE interp_time_inc/24., nx )
+    test = abs(testtime.julian-filetimes.julian)*24.d
+    x = where( test LE interp_time_inc, nx )
     IF nx NE 0 THEN BEGIN 
-      interp_files = interp_files[x]
+      diffs =  testtime.julian-filetimes[x].julian
+      s = sort(diffs)
+      filetimes = filetimes[x[s]]
+      interp_files = interp_files[x[s]]
       count = nx
       return, interp_files
     ENDIF ELSE make_interp_file = 1
