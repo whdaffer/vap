@@ -209,6 +209,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.8  1999/06/23 22:00:23  vapuser
+; Move the map_set until after config.
+;
 ; Revision 1.7  1999/06/23 18:11:27  vapuser
 ; Added CONFIG keyword
 ;
@@ -497,6 +500,10 @@ PRO gms5_overlay, datetime, gmsType, $
   ENDCASE 
 
   allData = Gms5ReadAll(datetime,gmsType,lonpar=lonpar)
+  IF NOT isa(alldata,/structure) THEN BEGIN 
+    Message,"Failure Reading GMS5 data",/cont
+    return
+  ENDIF 
   image = allData.imagedata.image
   ;calTemps = allData.CalData.ir[0].Temps
   xloc = allData.griddata.xloc
