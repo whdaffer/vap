@@ -69,6 +69,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/12 22:06:53  vapuser
+; Fixed some bugs
+;
 ; Revision 1.2  1998/10/07 18:31:34  vapuser
 ; don't remember.
 ;
@@ -166,9 +169,9 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
              CreationTime = '0000/00/00/00/00' 
 
            IF N_Elements(ShortName) EQ 0 THEN $
-             ShortName = 'QWSCATVAPMODEL' $
+             ShortName = 'QSCATVAPMODEL' $
            ELSE IF strlen(ShortName) EQ 0 THEN $
-             ShortName = 'QWSCATVAPMODEL' 
+             ShortName = 'QSCATVAPMODEL' 
 
            Hdf_sd_AttrSet,fileId,'LONGNAME',strtrim(LongName[0],2)
            Hdf_sd_AttrSet,fileId,'VERSION',strtrim(Version[0],2)
