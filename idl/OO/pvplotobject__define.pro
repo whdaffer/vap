@@ -63,6 +63,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/26 22:09:44  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -199,11 +202,10 @@ PRO PvPlotObject::SelectedOnly
      Message,name + ' Data already as reduced as possible',/info
 END
 
-
-
 ;============================================
 ; InRegion
 ;============================================
+
 PRO PvPlotObject::InRegion, InRegion
   IF N_Elements(InRegion) THEN BEGIN 
     Self.InRegion = InRegion
@@ -232,7 +234,6 @@ PRO PvPlotObject::Get, $
    IF Arg_Present( InRegion ) THEN $
       InRegion = self.InRegion
 END
-
 
 
 ;============================================
