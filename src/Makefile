@@ -1,9 +1,25 @@
+# VAP src Makefile
+#
 # $Id$
 #
 #
+# $Id$
+#
+# Change Log:
+#
+# $Log$
 #
 #
-AREA_FILE_TOP=\"/disk5/vap/goes/\"
+#
+
+.SUFFIXES : .o .c .f
+.c.o : 
+	$(CC) $(CFLAGS) -${DFLAGS} $<
+
+.f.o: 
+	$(F77) $<
+
+AREA_FILE_TOP=${VAP_GOES_TOP}
 
 OBJ = grid_goes.o navig_goes.o pair_goes.o doy2date.o
 SRC = grid_goes.c doy2date.c navig_goes.f pair_goes.f
@@ -17,15 +33,8 @@ F77    = f77 -g -o32 -c
 #LIBS   =  -lF77 -lm  -lc
 LIBS   =  -lftn -lm  -lc
 
-.c.o:
-	$(CC) $(DFLAGS) $<
-
-.f.o: 
-	$(F77) $<
-
 default: grid_goes
 	make grid_goes
-	make install
 
 clean:
 	-/sbin/rm *.o
@@ -48,5 +57,9 @@ pair_goes.o: pair_goes.f
 	$(F77) pair_goes.f # may use -d_lines  to get aditional output
 
 install:
-	-/bin/cp -f grid_goes /usr/people/vapuser/bin/
+	-/bin/cp -f grid_goes ${INSTALLDIR}
+
+
+
+
 
