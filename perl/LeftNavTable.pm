@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.8  2002/12/20 23:45:26  vapdev
+# Ongoing ... well, you know.
+#
 # Revision 1.7  2002/12/16 23:14:28  vapdev
 # To write the body of the page
 #
@@ -25,11 +28,37 @@
 #
 #
 package LeftNavTable;
+use Carp;
 use strict;
 use vars qw/$WESTPACIFIC $EASTPACIFIC $WESTATLANTIC $overlay_defs 
-	    @defunct_satellites $roi_hash $tsoo_defs /;
+	    $roi_hash $tsoo_defs $website_defs /;
+
+BEGIN{
+
+  # Get the defaults for the various VAP products, as well as for the
+  # website itself
+
+  #website defaults:
+
+  my $defsfile = $ENV{VAP_LIBRARY} . "/VapWebsite_defs";
+  croak("Can't find $defsfile!\n") unless (-e  $defsfile );
+  require "$defsfile" || croak "Can't require $defsfile\n";
+
+
+
+  # Overlay defaults
+  $defsfile = $ENV{VAP_LIBRARY}."/overlay_defs_oo";
+  croak "Can't find overlay_defs_oo!\n"
+    unless (-e $defsfile);
+  require "$defsfile" || croak "Can't require $defsfile\n";
+
+  # Tropical storm defaults
+  $defsfile=$ENV{VAP_LIBRARY}."/tropical_storm_defs_oo";
+  croak "Can't find tropical_storm_defs_oo!\n" unless (-e $defsfile);
+  require "$defsfile" || croak "Can't require $defsfile:$!\n";  
+
+}
 use lib ($ENV{VAP_LIBRARY}, $ENV{VAP_SFTWR_PERL});
-use Carp;
 use HTML::Table;
 @LeftNavTable::ISA= qw/HTML::Table/;
 use CGI;
@@ -47,35 +76,27 @@ use VapUtil;
 sub new {
 
   my $class = shift;
-  my $self=$class->SUPER::new(-rows=>8,-cols=>1, @_);
+
+  my $self=$class->SUPER::new(-rows=>8,-cols=>1, -valign=>"top",
+			      @_);
+
+  # arguments lacking the prefix '-' are considered appropriate only
+  # to this object and are not used in the super class, so we go
+  # through the passed array again.
+
+  my $hash = {@_};
+  my ($k,$v);
+  while (($k,$v) = each %{$hash} ) {
+    if ($k !~ /^-/) {
+      $self->{uc($k)} = $v;
+    }
+  }
+
+
   $self->setStyle( "{ font-family: Verdana, sans-serif; font-size: 500% }");
-                    
 
 
- #
-  # Get the defaults for the various VAP products, as well as for the
-  # website itself
-
-  #website defaults:
-
-
-  croak "Can't find VapWebsite!\n"
-    unless (-e $ENV{VAP_LIBRARY}."/VapWebsite");
-  require "VapWebsite" || 
-    croak "Can't require ".$ENV{VAP_LIBRARY} . "VapWebsite\n";
-
-  # Overlay defaults
-  croak "Can't find overlay_defs_oo!\n"
-    unless (-e $ENV{VAP_LIBRARY}."/overlay_defs_oo");
-  require "overlay_defs_oo" || 
-    croak "Can't require ".$ENV{VAP_LIBRARY} . "overlay_defs_oo\n";
-
-  # Tropical storm defaults
-  croak "Can't find tropical_storm_defs_oo!\n" 
-    unless (-e $ENV{VAP_LIBRARY}."/tropical_storm_defs_oo");
-  require "tropical_storm_defs_oo" or 
-    croak "Can't require tropical_storm_defs_oo:$!\n";  
-
+  #
   # Animation defaults.
 
   my $roi_hash = auto_movie_defs();
@@ -87,11 +108,14 @@ sub new {
 
   my ($row, $col, $key, $value, $content, $link, $skip, $q, $webname);
 
-    # The outermost table, which will contain the entire navbar. Each
-    # of the subsequent tables will cells in this table.
+    # The outermost table, which will contain the entire navbar, is
+    # simply the 'self' object. Each of the subsequent tables will
+    # cells in this table.
 
-  # my $table1=HTML::Table->new(-rows=>8,-cols=>1);
+  my $outermostrow=1;
 
+  # Generic CGI object to make html code on the fly!
+  $q=CGI->new(-no_debug=>1);
 
 
 
@@ -106,7 +130,7 @@ sub new {
   my $overlay_table = HTML::Table->new(-rows=>2,-cols=>1);
   $overlay_table->setCaption("Cloud Overlays",'TOP');
   $overlay_table->setStyle("{ font: Garamond, 'Times New Roman', serif; font: 10% }");
-
+  my @order = @{$self->{ORDER}->{OVERLAY}};
   my ($overlay_sw_table, $overlay_qs_table);
 
 
@@ -129,6 +153,35 @@ sub new {
      # of *all* regions associated with a particular image satellite.
 
 
+    # ========= SeaWinds on QuikSCAT table ================
+
+  my @defunct_satellites = @{$website_defs->{DEFUNCT_SATELLITES}};
+
+
+  if ($self->anyOverlays('QS')) {
+    $overlay_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $overlay_qs_table->setCaption("QuikSCAT",'TOP');
+    $row=1;
+    foreach (@order) {
+      $key = $_;
+      $value = $overlay_defs->{$key};
+      $skip=0;
+      if (@defunct_satellites) {
+	foreach my $s (@defunct_satellites){
+	  $skip = grep (/$s/i, $key);
+	  last if $skip
+	}
+      }
+      next if $skip;
+      next if !$value->{WEB}->{ACTIVE};
+      #$q=CGI->new(-no_debug=>1);
+      $link = $q->a({-href=>"overlay_Q.html#$key"},
+		    $value->{WEB}->{NAME});
+      $content=$q->p({-align=>'LEFT'},$link);
+      $overlay_qs_table->setCell($row++, 1, $content);
+    }
+  }
+
     # ========= SeaWinds on ADEOS-II table ============
 
     # first we determine whether this one is needed at all! I may be
@@ -139,8 +192,11 @@ sub new {
   if ($self->anyOverlays('SW')) {
     $overlay_sw_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
     $overlay_sw_table->setCaption("SeaWinds",'TOP');
-    $row=0;
-    while ( ($key, $value) = each %{$overlay_defs}) {
+    $row=1;
+    @order = keys %{$overlay_defs} unless @order;
+    foreach (@order) {
+      $key = $_;
+      $value = $overlay_defs->{$key};
 	# value here is a reference to a hash, see
 	# $VAP_LIBRARY/overlay_defs_oo for its definition.
       $skip=0;
@@ -153,51 +209,28 @@ sub new {
       next if $skip;
       next if !$value->{WEB}->{ACTIVE};
 
-      $row++;
-      $q=CGI->new(-no_debug=>1);
-      $link = $q->a({-href=>"overlay_sw.html#$key"},
+      #$q=CGI->new(-no_debug=>1);
+      $link = $q->a({-href=>"overlay_S.html#$key"},
 		    $value->{WEB}->{NAME} );
       $content=$q->p({-align=>'LEFT'},$link);
-      $overlay_sw_table->setCell($row, 1, $content);
+      $overlay_sw_table->setCell($row++, 1, $content);
     }
   }
 
 
-    # ========= SeaWinds on QuikSCAT table ================
 
-
-  if ($self->anyOverlays('SW')) {
-    $overlay_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
-    $overlay_qs_table->setCaption("QuikSCAT",'TOP');
-    $row=0;
-    while ( ($key, $value) = each %{$overlay_defs}) {
-      $skip=0;
-      if (@defunct_satellites) {
-	foreach my $s (@defunct_satellites){
-	  $skip = grep (/$s/i, $key);
-	  last if $skip
-	}
-      }
-      next if $skip;
-      next if !$value->{WEB}->{ACTIVE};
-      $row++;
-      $q=CGI->new(-no_debug=>1);
-      $link = $q->a({-href=>"overlay_qs.html#$key"},
-		    $value->{WEB}->{NAME});
-      $content=$q->p({-align=>'LEFT'},$link);
-      $overlay_qs_table->setCell($row, 1, $content);
-    }
-
-  }
     # Now put the two tables into the overall `overlay' cell of the
     # Left Nav table
 
   $row = 1;
-  $overlay_table->setCell($row++,1,$overlay_sw_table) if $overlay_sw_table;
-  $overlay_table->setCell($row,1,$overlay_qs_table) if $overlay_qs_table;
+  $overlay_table->setCell($row++,1,$overlay_qs_table->getTable) 
+    if $overlay_qs_table;
+  $overlay_table->setCell($row,1,$overlay_sw_table->getTable) 
+    if $overlay_sw_table;
+
 
     # And put the overlay table into outermost table, self
-  $self->setCell(1,1,$overlay_table);
+  $self->setCell($outermostrow++,1,$overlay_table->getTable);
 
 
 
@@ -215,18 +248,15 @@ sub new {
   my $anim_table = HTML::Table->new(-rows=>9,-cols=>1);
   $anim_table->setCaption("Animations",'TOP');
   $anim_table->setStyle("{ font: Garamond, 'Times New Roman', serif; size: 500%}");
+  @order = @{$self->{ORDER}->{ANIMATION}};
+
   $row=0;
-  while (($key, $value) = each %{$roi_hash}){
-    $skip=0;
-    if (@defunct_satellites) {
-      foreach my $s (@defunct_satellites){
-	$skip = grep (/$s/i, $key);
-	last if $skip
-      }
-    }
-    next if $skip;
+
+  foreach (@order) {
+    $key = $_;
+    $value = $roi_hash->{$key};
     $row++;
-    $q=CGI->new(-no_debug=>1);
+    #$q=CGI->new(-no_debug=>1);
     $link = $q->a({-href=>"anim.html#$key"},$value);
     $content=$q->p({-align=>'LEFT'},$link);
     $anim_table->setCell($row, 1, $content);
@@ -235,7 +265,7 @@ sub new {
 
     # Now put the anim_table into self
 
-  $self->setCell(2,1,$anim_table); 
+  $self->setCell($outermostrow++,1,$anim_table->getTable); 
 
 
 
@@ -248,12 +278,39 @@ sub new {
     # 3,1. this will get the information need to construct itself from
     # the tropical_storm_defs_oo hash.
 
-  my $ts_table = HTML::Table->new(-caption=>"Tropical Storms", -rows=>2,-col=>1);
+  my $ts_table = HTML::Table->new(-caption=>"Tropical Storms", 
+				  -rows=>2,-col=>1);
   $ts_table->setCaption("Tropical Storms",'TOP');
   $ts_table->setStyle(" { font: Garamond, 'Times New Roman', serif; size: 10%}");
 
   my ($ts_sw_table, $ts_qs_table);
+  @order = @{$self->{ORDER}->{TROPICAL_STORM}};
 
+    # ============= Seawinds on QuikSCAT  =================
+
+  if ($self->anyTSOverlays('QS')) {
+    $ts_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
+    $ts_qs_table->setCaption("QuikSCAT",'TOP');
+    $row=0;
+    @order = @{$tsoo_defs->{SATELLITES}} unless @order;
+    foreach my $sat (@order) {
+      $skip=0;
+      if (@defunct_satellites) {
+	foreach my $s (@defunct_satellites){
+	  $skip = grep (/$s/i, $sat);
+	  last if $skip
+	}
+      }
+      next if $skip;
+      $row++;
+      #$q=CGI->new(-no_debug=>1);
+      $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
+      $link = $q->a({-href=>"ts_Q.html#$sat"},
+		    "$webname");
+      $content=$q->p({-align=>'LEFT'},$link);
+      $ts_qs_table->setCell($row, 1, $content);
+    }
+  }
 
     # ============= Seawinds on ADEOS-II =================
 
@@ -263,7 +320,8 @@ sub new {
     $ts_sw_table->setCaption("SeaWinds",'TOP');
     $row=0;
 
-    foreach my $sat (@{$tsoo_defs->{SATELLITES}}) {
+    @order = @{$tsoo_defs->{SATELLITES}} unless @order;
+    foreach my $sat (@order) {
       $skip=0;
       if (@defunct_satellites) {
 	foreach my $s (@defunct_satellites){
@@ -273,162 +331,55 @@ sub new {
       }
       next if $skip;
       $row++;
-      $q=CGI->new(-no_debug=>1);
+      #$q=CGI->new(-no_debug=>1);
       $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
-      $link = $q->a({-href=>"ts_sw.html#$sat"},
+      $link = $q->a({-href=>"ts_S.html#$sat"},
 		    "$webname");
       $content=$q->p({-align=>'LEFT'},$link);
       $ts_sw_table->setCell($row, 1, $content);
     }
 
   }
-    # ============= Seawinds on QuikSCAT  =================
 
-  if ($self->anyTSOverlays('QS')) {
-    $ts_qs_table=HTML::Table->new(-rows=>8,-col=>1,-align=>'RIGHT');
-    $ts_qs_table->setCaption("QuikSCAT",'TOP');
-    $row=0;
-    foreach my $sat (@{$tsoo_defs->{SATELLITES}}) {
-      $skip=0;
-      if (@defunct_satellites) {
-	foreach my $s (@defunct_satellites){
-	  $skip = grep (/$s/i, $sat);
-	  last if $skip
-	}
-      }
-      next if $skip;
-      $row++;
-      $q=CGI->new(-no_debug=>1);
-      $webname = $tsoo_defs->{WEB}->{$sat}->{NAME};
-      $link = $q->a({-href=>"ts_qs.html#$sat"},
-		    "$webname");
-      $content=$q->p({-align=>'LEFT'},$link);
-      $ts_qs_table->setCell($row, 1, $content);
-    }
-  }
     # Now put these two tables into the overlay Tropical Storm cell
     # for the Nav Bar
   $row = 1;
-  $ts_table->setCell($row++,1,$ts_sw_table) if $ts_sw_table;
-  $ts_table->setCell($row,1,$ts_qs_table) if $ts_qs_table;
+  $ts_table->setCell($row++,1,$ts_qs_table->getTable) if $ts_qs_table;
+  $ts_table->setCell($row,1,$ts_sw_table->getTable) if $ts_sw_table;
 
     # And put the Tropical storm table into the proper slot in the
     # navbar.
 
-  $self->setCell(3,1,$ts_table);
+  $self->setCell($outermostrow++,1,$ts_table->getTable);
 
 
 #=-*=-*=-*=-*=-* Now, for the rest of the NavBar =-*=-*=-*=-*=-*=-*=-*=-*
 
 
     # Cell 4,1 goes the 'Status' page.
-  $q=CGI->new(-no_debug=>1);
+  #$q=CGI->new(-no_debug=>1);
   $link=$q->a({-href=>"status.html"},"Status");
   $content=$q->p({-align=>"RIGHT"},$link);
-  $self->setCell(4,1,$content);
+  $self->setCell($outermostrow++,1,$content);
 
     # Cell 5,1 goes to 'Specials', if any.
-  $q=CGI->new(-no_debug=>1);
+  #$q=CGI->new(-no_debug=>1);
   $link=$q->a({-href=>"special.html"},"Special Products");
   $content=$q->p({-align=>"RIGHT"},$link);
-  $self->setCell(5,1,$content);
+  $self->setCell($outermostrow++,1,$content);
 
     # Cell 6,1 is for "information" about the website, 
-  $q=CGI->new(-no_debug=>1);
+  #$q=CGI->new(-no_debug=>1);
   $link=$q->a({-href=>"info.html"},"Information");
   $content=$q->p({-align=>"RIGHT"},$link);
-  $self->setCell(6,1,$content);
+  $self->setCell($outermostrow++,1,$content);
 
     # Cell 7,1 is the mailto url.
-  $q=CGI->new(-no_debug=>1);
-  $link=$q->a({-href=>"mailto: webmaster\@haifung.jpl.nasa.gov"},"Contact us!");
+  #$q=CGI->new(-no_debug=>1);
+  my $webhost = $self->{WEBHOST}? $self->{WEBHOST}: "haifung.jpl.nasa.gov";
+  $link=$q->a({-href=>"mailto: webmaster\@" . $webhost},"Contact us!");
   $content=$q->p({-align=>"RIGHT"},$link);
-  $self->setCell(7,1,$content);
-
-  
-#   # Get the keys from the overlay file.
-#   my @overlay_keys = keys %{$overlay_defs};
-
-#   # ====== West Atlantic, typically Goes 8 =================
-
-#   my @regions = grep /GOES.?(8|EAST)/, @overlay_keys;
-#   @regions = grep !/$DEFUNCT_VIEWS/,@regions;
-
-#   my $WESTATLANTIC = {SATELLITE => ['GOES_8', 'GOES_EAST'],
-# 		      REGIONS => \@regions};
-#   my $htmltable = HTML::Table->new(
-# 	      -rows=>scalar(@{$WESTATLANTIC->{REGIONS}})+1,
-# 				 -cols=>2,
-# 				 -align=>"left",
-# 				 -width=>"100\%",
-# 				 -spacing=>0,
-# 				 -padding=>0);
-#   $htmltable->setCaption("
-#   $WESTATLANTIC->{HTMLTABLE} = $htmltable;
-
-#   @regions = grep /GOES.?(10|WEST)/,@overlay_keys;
-#   @regions = grep !/$DEFUNCT_VIEWS/,@regions;
-
-#   # ====== East Pacific, typically Goes 10 =================
-#   my $EASTPACIFIC = {SATELLITE =>  ['GOES_10','GOES_WEST'],
-# 		      REGIONS => \@regions};
-
-#   $htmltable = HTML::Table->new(
-# 	    -rows=>scalar(@{$EASTPACIFIC->{REGIONS}})+1,
-# 				-cols=>2,
-# 				-align=>"left",
-# 				-width=>"100\%",
-# 				-spacing=>0,
-# 				-padding=>0);
-#   $EASTPACIFIC->{HTMLTABLE} = $htmltable;
-
-
-
-#   # ====== West Pacific, typically GMS 5 =================
-#   @regions = grep /GMS_?\d?/,@overlay_keys;
-#   @regions = grep !/$DEFUNCT_VIEWS/,@regions;
-
-#   my $WESTPACIFIC = {SATELLITE => ['GMS_5','GMS'],
-# 		     REGIONS => \@regions};
-
-#   $htmltable = HTML::Table->new(
-# 	       -rows=>scalar(@{$WESTPACIFIC->{REGIONS}})+1,
-# 			      -cols=>2,
-# 			      -align=>"left",
-# 			      -width=>"100\%",
-# 			      -spacing=>0,
-# 			      -padding=>0);
-
-#   $WESTPACIFIC->{HTMLTABLE} = $htmltable;
-
-
-#   # ========= Tropical Storms ===========================
-
-#   @regions = grep !/$DEFUNCT_VIEWS/,@overlay_keys;
-#   my $TROPICALSTORMS = {SATELLITE => ['GOES_10', 'GOES_8', 'GOES_EAST',
-# 				       'GOES_WEST', 'GMS_5', 'GMS'],
-# 		       REGIONS => \@regions};
-
-
-
-#   # Set the titles
-#   $WESTATLANTIC->{HTMLTABLE}->setCell(1,1,"West Atlantic",-colspan=>2);
-#   $EASTPACIFIC->{HTMLTABLE}->setCell(1,1,"East Pacific",-colspan=>2);
-#   $WESTPACIFIC->{HTMLTABLE}->setCell(1,1,"West Pacific",-colspan=>2);
-
-
-# #   my $maintable = HTML::Table->new(-rows=>6,
-# # 			   -cols=>1,
-# # 			   -align=>"left",
-# # 			   -width=>"40\%",
-# # 			   -border=>1);
-
-#   $self->{WESTATLANTIC} = $WESTATLANTIC;
-#   $self->{EASTPACIFIC} = $EASTPACIFIC ;
-#   $self->{WESTPACIFIC} = $WESTPACIFIC;
-# #	   MAINTABLE => $maintable,
-# #	     @_};
-
+  $self->setCell($outermostrow++,1,$content);
 
   return bless $self, ref($class) || $class;
 }
@@ -449,10 +400,11 @@ sub new {
 =cut
 
 sub anyOverlays{
+  my $self=shift;
   if (@_){
     while (my ($k, $v) = each %{$overlay_defs}) {
       my $i = $v->{WINDS}->{INSTRUMENTS};
-      return 1 if (ref($i) == 'ARRAY') && grep(/$_[0]/,@{$i});
+      return 1 if (ref($i) eq 'ARRAY') && grep(/$_[0]/,@{$i});
     }
   } else {
 
@@ -461,7 +413,7 @@ sub anyOverlays{
 
     while (my ($k, $v) = each %{$overlay_defs}) {
       my $i = $v->{WINDS}->{INSTRUMENTS};
-      return 1 if (ref($i) == 'ARRAY' and $#{$i} >= 0);
+      return 1 if (ref($i) eq 'ARRAY' and $#{$i} >= 0);
     }
   }
   return 0;
@@ -473,7 +425,7 @@ sub anyTSOverlays{
   if (@_){
     while (my ($k, $v) = each %{$web}) {
       my $i = $v->{INSTRUMENTS};
-      return 1 if (ref($i) == 'ARRAY') && grep(/$_[0]/,@{$i});
+      return 1 if (ref($i) eq 'ARRAY') && grep(/$_[0]/,@{$i});
     }
   } else {
 
@@ -483,9 +435,10 @@ sub anyTSOverlays{
 
     while (my ($k, $v) = each %{$web}) {
       my $i = $v->{INSTRUMENTS};
-      return 1 if (ref($i) == 'ARRAY' and $#{$i} >= 0);
+      return 1 if (ref($i) eq 'ARRAY' and $#{$i} >= 0);
     }
   }
   return 0;
 }
+
 1;

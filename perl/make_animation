@@ -2,36 +2,53 @@
 #
 # $Id$
 #
-# make_animation -- Make a SeaWinds VAP animation
-#
-# Usage: make_animation region  [time delta filter]
-#
-#   Inputs:
-#
-#
-#      REGION: the designation for the region. The only allowed regions at
-#              the moment are those in the 'desig' tag in the
-#              $VAP_LIBRARY/auto_movie_defs.dat file. This field is
-#              *required*
-#
-#      TIME: The time (in vap 'IDL' time format,
-#            i.e. YYYY/MM/DD/HH/MM) of the animation. The time period used
-#            to determine which Wind data will be used in the animation is
-#            [TIME-DELTA,TIME] (see DELTA parameter). 
-#            DEFAULT = start time of run.
-#
-#      DELTA: the number of hours to go backward from TIME. Wind data
-#             within this period is used in making the animation. DEFAULT =
-#             14 hours.
-#
-#      FILTER: QS for QuikSCAT, SW for SeaWinds on ADEOS . Default is
-#              search for both types of Wind data.
-#
-#
-# 
+
+=pod 
+
+=head1 make_animation
+
+=head2 Usage: make_animation --region region [--time yyyy/mm/dd/hh/mm --delta x.y --filter QS|SW]
+
+Make a SeaWinds VAP animation
+
+
+=head2 Inputs:
+
+=over 4
+
+
+
+
+=item * REGION: the designation for the region. The only allowed regions at
+                the moment are those in the 'desig' tag in the
+                $VAP_LIBRARY/auto_movie_defs.dat file. This field is
+                *required*
+
+=item * TIME: The time (in vap 'IDL' time format,
+              i.e. YYYY/MM/DD/HH/MM) of the animation. The time period used
+              to determine which Wind data will be used in the animation is
+              [TIME-DELTA,TIME] (see DELTA parameter). 
+              DEFAULT = start time of run.
+
+=item * DELTA: the number of hours to go backward from TIME. Wind data
+               within this period is used in making the animation. 
+               DEFAULT=14 hours.
+
+=item * FILTER: QS for QuikSCAT, SW for SeaWinds on ADEOS . Default is
+                search for both types of Wind data.
+
+=back
+
+=cut
+
+
+ 
 # Modification Log:
 #
 # $Log$
+# Revision 1.4  2002/08/21 18:29:28  vapdev
+# *** empty log message ***
+#
 # Revision 1.3  2002/08/13 20:14:40  vapdev
 # Continuing work and improvement
 #
@@ -43,11 +60,20 @@
 #
 #
 #
-
-use lib $ENV{VAP_SFTWR_TOP};
 use strict;
+no strict 'refs';
+use lib $ENV{VAP_SFTWR_TOP};
+use Getopt::Long;
 use Animate;
-my $usage= "Usage: $0 region [time delta]\n";
+use VapWebsite;
+use VapError;
+
+my $usage = <<"EOF";
+
+  Usage: make_animation --region region [--time time --delta delta --filter filter]
+
+EOF
+
 
 my $starttime =  $^T;
 die $usage unless @ARGV;
@@ -55,33 +81,56 @@ die $usage unless @ARGV;
 $|=0; #flush buffers after every print statement. This will keep the
       #mixing of stdout/stderr from Perl and IDL to a minimum.
 
-print "=====================================================\n";
-print "$0: Start processing at ". scalar(localtime(time))."\n";
-print "$0: Input Arguments: \n". join ("\n",@ARGV). "\n";
+use vars qw/$region $time $delta $filter/;
+my @argnames = qw/region time delta filter /;
 
-# Create the animater object
-my $animobj = Animate->new(REGION => $ARGV[0],
-			   TIME => $ARGV[1],
-			   DELTA => $ARGV[2],
-			   FILTER => $ARGV[3] ) or 
-  die "Can't initialize animation object!\n";
+my $result=&GetOptions( 'region=s',\$region,
+		     'time=s',  \$time,
+		     'windfilter|filter|wfilter|wfilt=s', \$filter,
+		     'delta=f',\$delta);
 
-$animobj->Make_Anim() or die "$0:Error making animation!\n";
 
-my $t1=time();
-my $diff=$t1-$^T;
+my $errorobj = VapError->new;
+$errorobj->Report(["=====================================================",
+		   "$0: Start processing at ". scalar(localtime(time)),
+		   "$0: Input Arguments: \n". join ("\n",@ARGV). "\n"],'INFO');
 
-print "$0: Time to make animation: $diff seconds\n";
+my @args=();
+foreach $main::aa (@argnames){
+  if (${$main::aa}) {
+    push @args, (uc "$main::aa", ${$main::aa});
+  }
+}
 
-$animobj->MoveOutput() or die "$0:Error moving output to WWW area!\n";
-$animobj->WriteWebpage() or die "$0:Error writing Web Page!\n";
+push @args, ('ERROROBJ', $errorobj);
 
-$t1=time();
-$diff=$t1-$^T;
+  # Create the animator object
 
-print "$0: End Processing at ". scalar(localtime($t1))."\n";
-print "$0: Elapsed wall clock time: $diff seconds\n";
-print "=====================================================\n";
+my $animobj = Animate->new(@args)  || 
+  $errorobj->_croak("Can't initialize animation object!",
+		    "$0: Error creating animation object");
 
-# 
+
+  # Make the animation 
+
+$animobj->Make_Anim() ||
+  $errorobj->_croak("Error making animation!",
+		 "$0:Error in Make_Anim");
+
+
+  # Get the output name
+my ($outputfile, $ext)  = $animobj->getOutput;
+my $website = VapWebsite->new(FILE => $outputfile,
+			      EXT => $ext,
+			      ERROROBJ => $errorobj,
+			      PROCESSOR_DEFAULTS => $animobj->getDefs);
+$errorobj->_croak("Error delivering results\n",
+		  "$0: failure delivering product") unless $website->updateWebsite;
+
+my $elapsed_time = time() - $^T;
+$errorobj->Report(["\n\nTime: " . scalar(localtime()),
+		  "Wall Clock Time: $elapsed_time (secs)\n",
+		   "===================== Done ======================="],'INFO');
+
+exit;
 

@@ -5,6 +5,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.3  2003/01/04 00:16:21  vapdev
+# Continuing work
+#
 # Revision 1.2  2002/12/10 19:57:12  vapdev
 # Ongoing work
 #
@@ -29,7 +32,7 @@ use vars qw ($asctime  $desctime $nvectors  $crdecimate $delta  $rainflag
 	     $time  $lastrec  $fullregionname  $regionname  $msg  $windspath 
 	     $windfilter  $satname  $satnum  $sensornum  $length  $help 
 	     $tellme  $lonlim  $latlim  $testsecs  $type  $overlay_dir 
-	     $tmpdir $imagedelta $winddelta $log $error);
+	     $tmpdir $imagedelta $winddelta $get_regions);
 
 my $starttime =  $^T;
 
@@ -39,7 +42,7 @@ $|=0; #flush buffers after every print statement. This will keep the
 my @argnames = qw/region time windpath windfilter satname 
 		  satnum sensornum lonlim latlim crdecimate excludecols 
 		  rainflag rf_action rf_color length help tellme
-		  imagedelta winddelta log error/;
+		  imagedelta winddelta get_regions/;
 
 $result=&GetOptions( 'region=s',\$region,
 		     'time=s',  \$time,
@@ -60,8 +63,7 @@ $result=&GetOptions( 'region=s',\$region,
 		     'winddelta=f',\$winddelta,
 		     'help', \$help,
 		     'tellme', \$tellme,
-		     'log',\$log,
-		     'error',\$error  );
+		     'get_regions', \$get_regions);
 
 if (!$result){
   vap_perl::VapMailErrorMsg(
@@ -79,6 +81,11 @@ foreach $main::aa (@argnames){
 }
 
 my $errorobj = VapError->new();
+
+$errorobj->Report(["================== Starting ========================\n",
+		   "Time: " . scalar(localtime()). "\n"], 'INFO');
+$errorobj->Report([" Arguments: ",
+		   @args, "\n"], 'INFO');
 push @args, ('ERROROBJ', $errorobj);
 my $overlayobj = Overlay->new(@args);
 die "Can't create overlay object\n" unless $overlayobj;
@@ -89,8 +96,14 @@ $errorobj->_croak("Error running IDL\n",
 		  "$0: failure in runIDL!") unless $overlayobj->runIDL;
 my $outputfile = $overlayobj->getOutputname;
 my $website = VapWebsite->new(FILE => $outputfile,
-			      ERROROBJ => $errorobj, );
+			      ERROROBJ => $errorobj,
+			      PROCESSOR_DEFAULTS => $overlayobj->getDefs);
 $errorobj->_croak("Error delivering results\n",
 		  "$0: failure delivering product") unless $website->updateWebsite;
+
+my $elapsed_time = time() - $^T;
+$errorobj->Report(["\n\nTime: " . scalar(localtime()),
+		  "Wall Clock Time: $elapsed_time (secs)\n",
+		   "===================== Done ======================="],'INFO');
 
 exit;

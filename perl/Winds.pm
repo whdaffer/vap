@@ -15,9 +15,10 @@
 
 =item * new: 
 
-        usage: $objref = Winds->new(FILTER = some_filter, 
-                                  [ ENDTIME = 'yyyy/mm/dd/hh/mm/ss',
-                                  STARTTIME = 'yyyy/mm/dd/hh/mm/ss']);
+        usage: $objref = Winds->new(FILTER => some_filter, 
+                                  [ ENDTIME => 'yyyy/mm/dd/hh/mm/ss',
+                                  STARTTIME => 'yyyy/mm/dd/hh/mm/ss',
+                                  DELTA => x.y]);
 
 
 =over 6
@@ -63,6 +64,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.3  2002/12/06 22:54:03  vapdev
+# Continuing work
+#
 # Revision 1.2  2002/08/08 23:28:54  vapdev
 # Removed some 'my' shadowing.
 #
@@ -73,6 +77,7 @@
 
 package Winds;
 use strict;
+no strict 'refs';
 use Carp;
 
 BEGIN  {
@@ -91,7 +96,7 @@ use Time::Local;
 use File::Basename;
 use VapUtil;
 use VapError;
-@Winds::ISA = qw/VapError/;
+
 
 
 #---------------------------------------------
@@ -103,18 +108,22 @@ sub new {
   croak "ENV variable VAP_TMPFILES is undefined!\n" 
     unless $ENV{VAP_OPS_TMPFILES};
 
-  my $self= {STARTTIME => VapUtil::systime2idltime($^T-3*3600),
-	     ENDTIME => VapUtil::systime2idltime($^T),
-	     PATH => $VapUtil::VAP_DATA_TOP,
+  my $self= {DELTA => 3,
+	     ENDTIME => systime2idltime($^T),
+	     PATH => $ENV{VAP_DATA_TOP},
 	     @_};
 
-  
+  my $et = idltime2systime($self->{ENDTIME});
+  $self->{STARTTIME} = systime2idltime($et-$self->{DELTA}*3600.)
+    unless $self->{STARTTIME};
+
   $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
   bless $self, ref($class) || $class;
 
-  $self->_croak("usage obj = Winds->new(FILTER=>'filter' \n[,STARTTIME => 'yyy/mm/dd/hh/mm/ss', \nENDTIME=>'yyy/mm/dd/hh/mm/ss']);", 
+  $self->{ERROROBJ}->{ERROROBJ}->_croak("usage obj = Winds->new(FILTER=>'filter' \n[,STARTTIME => 'yyy/mm/dd/hh/mm/ss', \nENDTIME=>'yyy/mm/dd/hh/mm/ss']);", 
 		"Winds: initialization error!") unless $self->{FILTER};
 
+  $self->getFileList;
   return $self;
 }
 
@@ -141,7 +150,7 @@ sub getWindFiles{
   my ($startime, $endtime, $path, @files, $st, $et, @in_range);
 
   ($path,@files)=getFileList();
-  $self->_croak("ERROR: Can't get file list!\n",
+  $self->{ERROROBJ}->_croak("ERROR: Can't get file list!\n",
 		"Winds: ERROR from getFileList") unless $#files> -1;
   for (@files) {
     ($st,$et) = getFileTimes($_);
@@ -172,12 +181,13 @@ sub getFileList{
   my $self=shift;
   my $dir=$self->{PATH};
   opendir DIR, "$dir" || 
-    $self->_croak("Can't open directory $dir\n",
+    $self->{ERROROBJ}->_croak("Can't open directory $dir\n",
 		  "Winds: Error opening $dir");
   my $regex = $self->{FILTER}."\\d+\\.S\\d+\\.E\\d+";
   my @files=grep /^$regex/, readdir(DIR);
   closedir DIR;
   @files = sort @files;
+  $self->{FILES} = \@files;
   ($dir,@files);
 }
 
@@ -241,14 +251,15 @@ sub getFileTimes{
 =over 4
 
 =item * ($path, $time, @files) = 
-               FindClosestInTimeAndDistance(lon,lat,time 
-                                      [,time_delta, tolerance])
+               FindClosestInTimeAndDistance(lon,lat[,tolerance,time 
+                                      [,time_delta])
 
         Returns the `files' located in directory `path' which bracket
         those files closest in time and distance to the location
-        `lon',`lat'. The time range searched for is `time' +/-
-        `time_delta' (which defaults to 2 hours) and the distance is
-        `tolerance' degrees (default=5)
+        `lon',`lat'. The time range searched $self->{startime} to
+        $self->[endtime] if time/time_delta isn't passed in. Otherwise
+        its `time' +/- `time_delta' (which defaults to 2 hours) and
+        the distance is `tolerance' degrees (default=5)
 
         This routine constructs an IDL batch file, then calls IDL
         with this batchfile as the argument. The batchfile invokes the
@@ -281,9 +292,19 @@ sub FindClosestInTimeAndDistance{
 
   $lon=shift; 
   $lat=shift; 
-  $time=shift;
-  $time_delta=shift || 2;
   $tolerance=shift || 5;
+  if (@_){
+    $time=shift;
+    $time_delta=shift || $self->{DELTA};
+    ($year,$month,$day,$hour,$min) = split /\//, $time;
+    $t0=timegm(0,$min,$hour,$day,$month-1,$year-1900);
+
+    $starttime = systime2idltime($t0-$time_delta*3600);
+    $endtime   = systime2idltime($t0+$time_delta*3600);
+  } else {
+    $starttime = $self->{STARTTIME};
+    $endtime = $self->{ENDTIME};
+  }
   $delflag = shift;
 
   if (! ($lon && $lat && $time) ){
@@ -294,10 +315,7 @@ sub FindClosestInTimeAndDistance{
   $ofile= shift || $ENV{VAP_OPS_TMPFILES}."/nearto.$randomtag.dat";
   $idltmpfile=$ENV{VAP_OPS_TMPFILES}."/runnearto.$randomtag.pro";
 
-  ($year,$month,$day,$hour,$min) = split /\//, $time;
-  $t0=timegm(0,$min,$hour,$day,$month-1,$year-1900);
-  $starttime = VapUtil::systime2idltime($t0-$time_delta*3600);
-  $endtime   = VapUtil::systime2idltime($t0+$time_delta*3600);
+
 
   open IDLTMPFILE, ">$idltmpfile" || die "Can't open $idltmpfile\n";
   print IDLTMPFILE "lon=$lon\n";
@@ -311,25 +329,22 @@ sub FindClosestInTimeAndDistance{
   close IDLTMPFILE;
 
   my $r=system( "$VapUtil::IDLEXE $idltmpfile")/256;
-  $self->_croak("Error running IDL $idltmpfile\n",
+  $self->{ERROROBJ}->_croak("Error running IDL $idltmpfile\n",
 		"ERROR batch IDL") if $r != 0;
 
   unlink $idltmpfile || warn "Couldn't unlink($idltmpfile)\n";
-  croak "Can't find $ofile!\n" if (! -e $ofile) ;
+  $self->{ERROROBJ}->_croak("Can't find $ofile!\n",
+			    "ERROR: can't find output from nearto!") 
+    if (! -e $ofile) ;
 
   open OFILE, "<$ofile" || 
-    $self->_croak("Can't reopen $ofile\n",
+    $self->{ERROROBJ}->_croak("Can't reopen $ofile\n",
 		  "Winds: OPEN ERROR on $ofile");
-  my $first=1;
 
-  while (<OFILE>){
-    chomp;
-    last if /^-+\s+ERROR\s+-+.*$/;
-    my ($k,$v) = split /:/;
-    $k =~ s/\s+//g;
-    $v =~ s/\s+//g;
+  my $FILE;
 
-      # Gonna use a little trick here. The format of this file is:
+
+#      The format of this file is:
 
 
 #      FILE    : /disk5/winds/qscat/Rnoaa/QS20000911.S1139.E1340
@@ -346,27 +361,26 @@ sub FindClosestInTimeAndDistance{
 #      ------------------------ 
 
 
-    # This code will split on the ':' and then assign $$k = $v.
-    # but $k will be one of the keywords 
-    # FILE, ROWTIME, LOCATION, DISTANCE OR INSWATH so the effect is to assign
-    # $FILE = $v or $ROWTIME = $v...
-    # these are then put into the hash using $FILE as the key.
-    #
-    # Pretty slick, eh?
+    # This code will split on the ':'. For the lines line '----------'
+    # $v will be undefined, so we'll key on the existence of $v
 
-    my ($FILE, $ROWTIME, $LOCATION, $DISTANCE, $INSWATH, $path, $suffix);
-    if (!$v) {
-      if (!$first){
-	$hash{$FILE}{ROWTIME}  = $ROWTIME;
-	$hash{$FILE}{LOCATION} = $LOCATION;
-	$hash{$FILE}{DISTANCE} = $DISTANCE;
-	$hash{$FILE}{INSWATH}  = $INSWATH;
+  while (<OFILE>){
+    chomp;
+    last if /^-+\s+ERROR\s+-+.*$/;
+    ($k,$v) = split /:/;
+    $k =~ s/\s+//g;
+    if ($v) {
+      $v =~ s/^\s+(\w+)/$1/;
+      $v =~ s/(\w+)\s+^/$1/;
+      $v =~ s/(\w)\s+(\w)/$1 $2/;
+      if (/^FILE.*:.*/){
+	$v =~ s/\s+//g;
+	($v,$path) = fileparse($v);
+	$FILE = $v;
+      } else {
+	$hash{$FILE}{$k}  = $v;
       }
-    } else {
-      (($v,$path, $suffix) = fileparse($v)) if /^FILE.*:.*/;
-      $$k = $v;
     }
-    $first=0;
   }
   close OFILE;
 
@@ -378,13 +392,19 @@ sub FindClosestInTimeAndDistance{
   if ($#keys==0) {
 
       # Only one file. Find the file immediately preceeding and
-      # following it.
+      # following it. If there isn't a preceeding file, there will
+      # only be one file in the list.
 
-    @files=$self->Bracket($path, $keys[0]);
+    my @ff=$self->Bracket($path, $keys[0]);
+    push @files, ($keys[0], @ff);
+
+    @files = sort @files;
+
     @ret=($path, $hash{$keys[0]}{ROWTIME}, @files);
 
   } elsif ($#keys > 0) {
 
+    @files = @keys;
       # more than one!
 
       # Go through and get the GMT time for each file, this time is
@@ -397,20 +417,20 @@ sub FindClosestInTimeAndDistance{
     }
 
     @times = sort @times;
-
-#     foreach my $f (@times){
-#       my ($file,$t)=split(/\|/, $f);
-#       push @files, $file;
-#       push @t, $t;
-#     }
+    my @ff;
+    my @tt;
 
     my ($file, $t) = split(/\|/,$times[0]);
-    push @files,$file;
+    push @ff,$file;
+    push @tt, $t;
     ($file, $t) = split(/\|/,$times[$#times]);
-    push @files,$file;
+    push @ff,$file;
+    push @tt, $t;
 
-    @files=$self->Bracket($path, @files);
-    $time=systime2idltime(($t[0]+$t[$#t])/2);
+    @ff=$self->Bracket($path, @ff);
+    $time=systime2idltime(($tt[0]+$tt[1])/2);
+    push @files, @ff;
+    @files = sort @files;
     @ret=($path, $time, @files);
 
   }
@@ -456,11 +476,12 @@ sub Bracket{
   my @keepfiles = ();
 
   my ($name, @files);
-  ($path, @files) = $self->getFileList($path);
+
+  @files = @{$self->{FILES}};
 
   if (@files) {
     my $i=-1;
-    for (@files) {
+    foreach (@files) {
       if (/$first/ && $i>=0){
 	push @keepfiles, $files[$i] ;
       }

@@ -34,7 +34,7 @@
                  isn't passed in, it is defaulted in the IDL script
                  that this object calls.
 
-=item * WIND_FILTER: Filter for SeaWinds on QuikSCAT or on ADEOS-II.
+=item * FILTER: Filter for SeaWinds on QuikSCAT or on ADEOS-II.
                      This filter must look like a typical unix shell
                      file glob. Default = "{QS,SW}*"
 
@@ -86,6 +86,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.8  2003/01/04 00:16:21  vapdev
+# Continuing work
+#
 # Revision 1.7  2002/12/17 22:33:20  vapdev
 # ongoing work
 #
@@ -128,7 +131,7 @@ BEGIN{
   $usage = "$0: obj=Animate->new(REGION=>region [,TIME=>time,DELTA=>DELTA])\n";
 }
 use lib $ENV{VAP_SFTWR_PERL};
-use VapUtil; #qw(&systime2idltime &SysNow);
+use VapUtil; 
 use VapError;
 
 #==================================================
@@ -138,20 +141,25 @@ use VapError;
 sub new {
   my $class = shift;
   my $self={USER => $ENV{USER},
-	    WIND_FILTER => "{QS,SW}*",
+	    FILTER => "{QS,SW}*",
 	    WWW_TOP => $ENV{VAP_WWW_TOP},
 	    @_};
-  croak $usage unless $self->{REGION};
-  my $region = $self->{REGION} = uc $self->{REGION};
   $self->{DEFAULTS_FILE} = $ENV{VAP_LIBRARY}."/auto_movie_defs.dat";
   bless $self, ref($class) || $class;
 
     # Set the Error reporting object.
-  $self->{ERROROBJ} = VapError->new();
+  $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
 
 
     # Read the defaults file
   $self->ReadDefsFile;
+
+  if ($self->{GET_REGIONS}) {
+    return keys(%{$self->{ROIS}});
+  }
+
+  croak $usage unless $self->{REGION};
+  my $region = $self->{REGION} = uc $self->{REGION};
 
     # Make sure this is a valid region
   $self->{ERROROBJ}->_croak("Invalid REGION! ". $self->{REGION} .
@@ -164,19 +172,21 @@ sub new {
     # Set time and working dir, make sure the latter exists and that we
     # can CD to it.
 
-  $self->{TIME} = systime2idltime(SysNow()) unless defined $self->{TIME};
+  $self->getTime unless defined $self->{TIME};
   $self->{STARTTIME} = $^T;
+
   my $hash = $self->{ROIS}->{$region};
-  my $working_dir = $self->{WORKING_DIR} = $hash->{anim_path};
-  $self->{ERROROBJ}->_croak("$0:Can't find working directory $working_dir\n",
-		"$0:NONEXISTENT WORKING DIR")
+  my $working_dir = $self->{WORKING_DIR} = $hash->{ANIM_PATH};
+  my $name0=$self->{NAME0};
+  $self->{ERROROBJ}->_croak("$name0:Can't find working directory $working_dir\n",
+		"$name0:NONEXISTENT WORKING DIR")
     unless (-e $working_dir);
-  chdir $working_dir or $self->{ERROROBJ}->_croak("$0:Can't CD to $working_dir",
-				      "$0: CD error!");
+  chdir $working_dir or $self->{ERROROBJ}->_croak("$name0:Can't CD to $working_dir",
+				      "$name0: CD error!");
 
   $self->{TMPFILE_DIR} = $ENV{VAP_OPS_TMPFILES};
   $self->{ERROROBJ}->_croak("TMPFILE directory doesn't exist!\n",
-		"$0: NONEXISTENT TMPFILE DIRECTORY!")
+		$self->{NAME0} . ": NONEXISTENT TMPFILE DIRECTORY!")
     unless (-e $self->{TMPFILE_DIR});
 
     # Return new object
@@ -198,7 +208,7 @@ sub CreateLockFile {
   my $froi = lc $roi;
   my $file="$dir/$user.auto_movie_$froi.$$.lock";
   open FILE, ">$file" or 
-    $self->{ERROROBJ}->_croak("$0: Error opening $file: $!\n",
+    $self->{ERROROBJ}->_croak($self->{NAME0} . ": Error opening $file: $!\n",
 		  "FILE OPEN ERROR");
   print FILE "$$\n";
   close FILE;
@@ -219,16 +229,16 @@ sub CreateTmpFile{
   my $froi = lc $roi;
   my $file="$user.auto_movie_$froi.$$.pro";
   open FILE, ">$file" or 
-    $self->{ERROROBJ}->_croak("$0: Error opening $file: $!\n",
+    $self->{ERROROBJ}->_croak($self->{NAME0} . ": Error opening $file: $!\n",
 		  "FILE OPEN ERROR");
   my $date_time = $self->{TIME};
   my $exe_str = "auto_movie,\'$date_time\',roi=\'$roi\'";
   $exe_str .= ",pid=$$, lockfile = '". $self->{LOCKFILE}."'";
-  $exe_str .= ",windfilter='".$self->{WIND_FILTER}."'";
+  $exe_str .= ",windfilter='".$self->{FILTER}."'";
   $exe_str .= ",outbase = 'wind'\n";
   $exe_str .= "exit\n";
   print FILE $exe_str;
-  print "$0:Calling IDL with string\n$exe_str\n";
+  print $self->{NAME0} . ":Calling IDL with string\n$exe_str\n";
   $self->{TMPFILE} = $file;
   1;
 }
@@ -241,22 +251,22 @@ sub CreateTmpFile{
 #==================================================================
 sub Make_Anim{
   my $self=shift;
-  $self->{ERROROBJ}->_croak("$0:Error creating Lock File\n",
-	       "$0:LOCKFILE CREATION ERROR")
+  $self->{ERROROBJ}->_croak($self->{NAME0} . ":Error creating Lock File\n",
+	       $self->{NAME0} . ":LOCKFILE CREATION ERROR")
     unless $self->CreateLockFile;
-  $self->{ERROROBJ}->_croak("$0:Error creating IDL TMP .pro File\n",
-	       "$0:IDL TMPFILE CREATION ERROR")
+  $self->{ERROROBJ}->_croak($self->{NAME0} . ":Error creating IDL TMP .pro File\n",
+	       $self->{NAME0} . ":IDL TMPFILE CREATION ERROR")
     unless $self->CreateTmpFile;
   my $tmpfile=$self->{TMPFILE};
   my $r=system("idl $tmpfile")/256;
-  $self->{ERROROBJ}->_croak("$0: IDL runtime error\n",
-		"$0: IDL Runtime error") unless
+  $self->{ERROROBJ}->_croak($self->{NAME0} . ": IDL runtime error\n",
+		$self->{NAME0} . ": IDL Runtime error") unless
 		  $r==0;
   $self->{ERROROBJ}->_croak(
-         "$0: Errors reported during run of auto_movie.pro\n\n".
+         $self->{NAME0} . ": Errors reported during run of auto_movie.pro\n\n".
 		  "Errors are:\n\n".
 		  $self->{IDL_OUTPUT}."\n",
-		  "$0:ERRORS IN AUTO_MOVIE.PRO") if $self->CheckForErrors();
+		  $self->{NAME0} . ":ERRORS IN AUTO_MOVIE.PRO") if $self->CheckForErrors();
   1;
 }
 
@@ -277,8 +287,8 @@ sub ReadDefsFile{
   # open the file 
   my $file=shift || $self->{DEFAULTS_FILE};
   open (DEFS,"<$file") ||
-    $self->{ERROROBJ}->_croak("$0: Can't open $file!:$!\n",
-		  "$0:OPEN ERROR");
+    $self->{ERROROBJ}->_croak($self->{NAME0} . ": Can't open $file!:$!\n",
+		  $self->{NAME0} . ":OPEN ERROR");
 
   my $lines;
   do {
@@ -288,14 +298,35 @@ sub ReadDefsFile{
   close DEFS;
   my @rois=();
   my @lines = split /^\{\s*/m, $lines;
+
+  # These records, from $VAP_LIBRARY/auto_movie_defs.dat, look like:
+
+  #  { desig: 'NEPAC', webname: 'N.E. Pac',alonpar: [195.,245,1.5], \
+  #     alatpar: [30., 60,1.5], wpath: "$VAP_DATA_TOP", \
+  #     interp_path: "$VAP_OPS_ANIM/", anim_path: "$VAP_OPS_ANIM/nepac/daily",\
+  #     anim_par: [320,240,60], min_nvect: 4000,decimate: 0l, \
+  #     CRDecimate: [2,2], ExcludeCols: ''  }
+
+  # where '\' indicates a wrapped line: in the file itself this entire
+  # record MUST BE one one line. If it isn't, the IDL will break!
+  
   foreach (@lines) {
     s/\s*//g;
     next unless /^\s*desig/i;
     my @t=split/:/;
+
+    # $t[1] = 'NEPAC', webname. NEPAC is the name of the ROI and we'll
+    # use it for the key into the hash we'll ultimately return.
+
     my ($roi,$k) = split /,/,$t[1];
     $roi =~ s/'//g;
     my ($kk,$v);
     for (my $i=2; $i<@t; $i++){
+      # Now $t[i] = value[i], keyword[i+1] We want to assign value[i]
+      # to keyword[i], not keyword[i+1], that's why I saved it before
+      # entering the loop and set it at the end. It's a bit
+      # convoluted, but it works.
+
       $t[$i] =~ s/\s+//g;
       my $tt=reverse($t[$i]);
       my $ii=index $tt, ",";
@@ -305,7 +336,7 @@ sub ReadDefsFile{
       if ($v=~/\$/) {
 	$v = deenvvar($v);
       }
-      $self->{ROIS}->{uc $roi}->{$k} = $v;
+      $self->{ROIS}->{uc($roi)}->{uc($k)} = $v;
       $k=$kk;
     }
   }
@@ -316,9 +347,14 @@ sub ReadDefsFile{
 #==================================================================
 # getOutput
 #
+# usage: ($movie_file, $extension_of_frames) = $animobj->getOutput;
+#
 # Gets the output name from the temporary file created by
-# auto_movie.pro which holds the name, stores the name in the hash and
-# deletes that temporary file.
+# auto_movie.pro which holds the name, stores the name of the movie
+# and the extension of the individual frame files in the hash, deletes
+# that temporary file and returns a list consisting of
+# (movie_file,extension)
+#
 # ==================================================================
 sub getOutput {
   my $self=shift;
@@ -326,35 +362,20 @@ sub getOutput {
   my $region=lc $self->{REGION};
   my $file=$self->{TMPFILE_DIR} . "/auto_movie_mov_filename_".$region."_".$$;
   open (FILE, "<$file") ||
-    $self->{ERROROBJ}->_croak("$0: Error opening $file:$!\n",
-		  "$0: FILE OPEN ERROR!");
+    $self->{ERROROBJ}->_croak($self->{NAME0} . ": Error opening $file:$!\n",
+		  $self->{NAME0} . ": FILE OPEN ERROR!");
   my $mov_file = <FILE>;
   my $ext=<FILE>;
   chomp $mov_file;
   chomp $ext;
-  my $first_frame = "wind.001.$ext";
   close FILE;
   unlink $file;
-
-  $self->{MOV_FILE} = $mov_file;
+  my $dir=getcwd;
+  $mov_file = $self->{MOV_FILE} = "$dir/$mov_file";
   $self->{EXT} = $ext;
-  ($mov_file, $ext);
+  ($mov_file,$ext);
 }
 
-#==================================================================
-# MoveOutput
-#
-# Gets the output name from the temporary file created by
-# auto_movie.pro which holds the name. Deletes that temporary file and
-# moves the output movie plus the first frame of that movie to the WWW
-# area, changing the name to <roi>.mov and <roi>.001
-#
-#==================================================================
-
-sub MoveOutput{
-
-  1;
-}
 
 #==================================================================
 # CheckForErrors
@@ -364,8 +385,8 @@ sub CheckForErrors{
   my $self=shift;
   my $lockfile=$self->{LOCKFILE};
   open LOCKFILE, "<$lockfile" || 
-    $self->{ERROROBJ}->_croak("$0:Error opening $lockfile:$!\n",
-		  "$0:FILE OPEN ERROR");
+    $self->{ERROROBJ}->_croak($self->{NAME0} . ":Error opening $lockfile:$!\n",
+		  $self->{NAME0} . ":FILE OPEN ERROR");
   my $lines;
   do {
     local $/=undef;
@@ -378,11 +399,24 @@ sub CheckForErrors{
 }
 
 #==================================================================
-# WriteWebpage.
-#  At the moment, this is a blank subroutine
+# getDefs
+#
+#  Used to get default information for use in VapWebsite.pm
+#
 #==================================================================
 
-sub WriteWebpage{
+sub getDefs{
   my $self=shift;
-  1;
+  return $self->{ROIS};
 }
+
+sub getTime{
+  use Time::Local;
+  my $self=shift;
+  my ($sec,$min, $hour,$mday,$month,$year)=gmtime(time);
+  my $time=sprintf("%04d/%02d/%02d/%02d/%02d/%02d",
+		$year+1900,$month+1,$mday,$hour,$min,$sec || 0);
+  $self->{TIME} = $time;
+  $time;
+}
+1;

@@ -17,6 +17,8 @@
                           no more than this delta prior. if ABS flag is set, 
                           this interval extends on both sides of TIME, i.e. 
                           the image data may be later than TIME.
+            ABSFLAG => 0|1. (determines whether the check for image data extends 
+                             back from TIME or in an interval around TIME)
 	    SATNAME => SATELLITE_NAME, (.e.g. 'goes')
 	    SATNUM =>  SATELLITE_NUMBER, (e.g. 10 for goes10)
 	    SENSORNUM => SENSOR_NUMBER, (e.g. 1=vis, 2=ir2, 3=ir3, 4=ir4)
@@ -24,9 +26,16 @@
 	    LATLIM => [latmin,latmax],
 	    CRDECIMATE => [Col,Row],
 	    EXCLUDECOLS => idl-array-submatrix-desg (as string),
-            LOG => "/file/to/log/messages/to",
-            ERROR => "/file/to/log/errors/to",
-	    TELLME => Calculates, reports and exits )
+            LENGTH => n
+            RAINFLAG => 0|1,
+            RF_ACTION => 0|1,
+            RF_COLOR => n,
+            ERROROBJ => An object of type VapError, (a attempt at a unified logging mechanism)
+                        One is created if not passed in, but this object should really be created 
+                        by the caller and then passed to all objects used in processing some Vap product.
+	    TELLME => 1, (Calculates, reports and exits)
+            GET_REGIONS => 1, (returns the current valid regions)
+                           )
 
     where:
 
@@ -73,6 +82,15 @@
       WINDDELTA: defines the `window' around the value given in TIME
         in which to search for wind data
 
+      IMAGEDELTA: A float value. Determines (along with ABSFLAG) what
+                  time interval to search for image data. If ABSFLAG
+                  == 0, the interval is [TIME-IMAGEDELTA, TIME]. If
+                  ABSFLAG==1 then the interval is 
+                  [TIME-IMAGEDELTA/2,TIME+IMAGEDELTA/2]
+
+      ABSFLAG: 0|1. Determines the sort of interval to search in. See
+               IMAGEDELTA.
+
       PATH_TO_WIND_FILES: pretty self explanatory.
         Default given by environmental variable 'VAP_DATA_TOP'
 
@@ -107,9 +125,11 @@
          this color depends on the device environment. It's an index in 8-bit
          color and a true 24 bit color in 24 bit color environment.
 
-      LOG : Send non-error messages to this file. Default = STDOUT.
+      ERROROBJ: Used in error reporing. It should be created and
+                passed by the caller, but it will be created by this
+                object if that hasn't happened.
 
-      ERROR: Send error messages to this file. Default = STDERR.
+      GET_REGIONS: returns the current valid regions, then exits.
 
       TELLME: Calculates, reports the values for all the variables and exits
         Use this option to find out what the defaults are in any given situation
@@ -129,6 +149,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.8  2003/01/04 00:16:21  vapdev
+# Continuing work
+#
 # Revision 1.7  2002/12/20 23:45:26  vapdev
 # Ongoing ... well, you know.
 #
@@ -186,20 +209,26 @@ BEGIN {
    overlyobj = Overlay->new(REGION=>region,
 	    TIME=>'yyyy/mm/dd/hh/mm',(in GMT)
 	    WINDPATH => 'PATH_TO_WIND_FILES',
-	    WINDFILTER=> WINDFILTER, (i.e. 'Q' or 'S' (REQUIRED!)
+	    WINDFILTER=> WINDFILTER, (i.e. 'Q' or 'S' (REQUIRED!))
 	    WINDDELTA => n.m, (number of hours around TIME to look for wind data)
-            IMAGEDELTA => f.g, image data closest to TIME must be 
+            IMAGEDELTA => f.g, (image data closest to TIME must be 
                           no more than this delta prior. if ABS flag is set, 
                           this interval extends on both sides of TIME, i.e. 
-                          the image data may be later than TIME.
+                          the image data may be later than TIME.)
 	    SATNAME => SATELLITE_NAME, (.e.g. 'goes')
 	    SATNUM =>  SATELLITE_NUMBER, (e.g. 10 for goes10)
 	    SENSORNUM => SENSOR_NUMBER, (e.g. 1=vis, 2=ir2, 3=ir3, 4=ir4)
-	    LONLIM => [lonmin, lonmax],
-	    LATLIM => [latmin,latmax],
-	    CRDECIMATE => [Col,Row],
+	    LONLIM => [lonmin, lonmax], (longitude limits for overlay)
+	    LATLIM => [latmin,latmax],  (latitude limits for overlay)
+	    CRDECIMATE => [Col,Row],  (decimate the wind data by col/row)
 	    EXCLUDECOLS => idl-array-submatrix-desg (as string)
-	    TELLME =>: Calculates, reports and exits
+            LENGTH => n, (length of vectors)
+            RAINFLAG => 0|1, (what to do about rainflagged data)
+            RF_ACTION => 0|1, (what to do if doing something about rainflagged data)
+            RF_COLOR => N,    (color to use if RF_ACTION=1)
+            ERROROBJ => VapError_object, (unified logging)
+	    TELLME =>1, (Calculates, reports and exits)
+            get_regions => 1) (returns current valid regions, then exits)
 
     where:
 
@@ -280,8 +309,11 @@ BEGIN {
          this color depends on the device environment. It's an index in 8-bit
          color and a true 24 bit color in 24 bit color environment.
 
-      TELLME: Calculates, reports the values for all the variables and exits
-        Use this option to find out what the defaults are in any given situation
+      GET_REGIONS: returns valid regions, then exits.
+
+      TELLME: Calculates, reports the values for all the variables and
+                exits Use this option to find out what the defaults
+                are in any given situation
 
       If one wishes to grid and overlay an arbitrary region not predefined
       in the overlay_defs file, one must use the combination of
@@ -296,7 +328,6 @@ use lib $ENV{VAP_SFTWR_PERL};
 use lib $ENV{VAP_LIBRARY};
 use OGoes;
 use OGms5;
-use Winds;
 use VapUtil;
 use VapError;
 
@@ -314,16 +345,24 @@ sub new {
   $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
   bless $self, ref($class) || $class;
 
+
   $self->{ERROROBJ}->_croak("Can't find defaults file $msgdefsfile!\n",
 		"CAN'T FIND DEFS FILE!") unless ( -e $msgdefsfile );
   do { require "$defsfile"; } || 
     $self->{ERROROBJ}->_croak("Can't `require $msgdefsfile\n",
 		  "ERROR in `REQUIRE' of DEFS!");
+  $self->{OVERLAY_DEFAULTS} = $overlay_defs;
+  if ($self->{GET_REGIONS}){
+    my @regions = $self->getRegions;
+    return @regions;
+  }
 
   $self->{TMPDIR} = $ENV{VAP_OPS_TMPFILES};
   $self->{USER} = $ENV{USER};
   $self->{PID} = $$;
   $self->{WINDPATH} = $ENV{VAP_DATA_TOP};
+  $self->{ABSFLAG} = 0 unless $self->{ABSFLAG};
+
   my $minusage = "*** Minimally, I need either (REGION,WINDFILTER)\n";
   $minusage .= "or TIME, SATNUM, SENSORNUM, WINDFILTER, LONLIM and LATLIM\n";
   if ($self->{HELP}) {
@@ -342,7 +381,6 @@ sub new {
 
      # `null' is just a placeholder to make the indexing work out.
 
-  $self->{OVERLAY_DEFAULTS} = $overlay_defs;
 
   if ($self->{REGION} && $self->{WINDFILTER}) {
     my $region = $self->{REGION};
@@ -352,8 +390,7 @@ sub new {
     $self->{LATLIM}      = $hash->{ CLOUDS }->{ LATLIM      };
     $self->{SATNUM}      = $hash->{ CLOUDS }->{ SATNUM      };
     $self->{SENSORNUM}   = $hash->{ CLOUDS }->{ SENSORNUM   };
-    $self->{ASCTIME}     = $hash->{ CLOUDS }->{ ASCTIME     };
-    $self->{DESCTIME}    = $hash->{ CLOUDS }->{ DESCTIME    };
+
     $self->{NVECTORS}    = $hash->{ WINDS  }->{ NVECTORS    };
     $self->{CRDECIMATE}  = $hash->{ WINDS  }->{ CRDECIMATE  };
     $self->{LENGTH}      = $hash->{ WINDS  }->{ LENGTH      };
@@ -373,11 +410,40 @@ sub new {
       my $nowsecs = $^T;
       my ($ss, $mm, $hh, $mday, $mon, $year, $wday, $yday, $isdst) = 
 	gmtime(time());
-      my ($ahh,$amm) = split /:/,$self->{ASCTIME};
-      my $atime = timegm(0,$amm,$ahh,$mday,$mon,$year);
-      my ($dhh,$dmm) = split /:/,$self->{DESCTIME};
-      my $dtime = timegm(0,$dmm,$dhh,$mday,$mon,$year);
-      my $time = $atime<=$nowsecs? $atime: $dtime;
+      my $timehash;
+      $timehash = ($self->{WINDFILTER} =~ /^S/i)? 
+	$hash->{CLOUDS}->{TIME}->{SW}:$hash->{CLOUDS}->{TIME}->{QS};
+
+    $self->{ASCTIME}     = $timehash->{ASCTIME};
+    $self->{DESCTIME}    = $timehash->{DESCTIME};
+
+      my ($thh,$tmm,$atime,$dtime, $time);
+      ($thh,$tmm) = split /:/,$timehash->{ASCTIME};
+      $atime = timegm(0,$tmm,$thh,$mday,$mon,$year);
+      ($thh,$tmm) = split /:/,$timehash->{DESCTIME};
+      $dtime = timegm(0,$tmm,$thh,$mday,$mon,$year);
+
+      if ($atime > $nowsecs && $dtime > $nowsecs) {
+	if ($atime > $dtime){
+	  $atime -= 86400;
+	} else {
+	  $dtime -= 86400;
+	} 
+      } elsif ($atime < $nowsecs && $dtime < $nowsecs) {
+	if ($atime < $dtime){
+	  $atime += 86400;
+	} else {
+	  $dtime += 86400;
+	} 
+      } 
+
+      if (!$self->{ABSFLAG}){
+	$time = $atime<=$nowsecs? $atime: $dtime;
+      } else {
+	$time = abs($nowsecs-$atime) < abs($nowsecs-$dtime)? $atime: $dtime
+      }
+
+
       $self->{TIME} = systime2idltime($time);
     }
   } else {
@@ -394,8 +460,6 @@ sub new {
 
   }
   $self->{IMAGEDELTA} = 3 unless $self->{IMAGEDELTA};
-  $self->{ABSFLAG} = 0 unless $self->{ABSFLAG};
-
   $self->{DELTA} = 4 unless $self->{DELTA};
   $self->{SECS} = idltime2systime($self->{TIME});
   $self->{LIMITS} = [${$self->{LONLIM}}[0], 
@@ -539,12 +603,13 @@ sub _buildTmpfile{
   my $delta = $self->{WINDDELTA};
   my ($idl_time_string, $idl_tmp_file, $exe_str);
   $idl_time_string=$self->{TIME};
-  $idl_tmp_file=$self->{TMPDIR} ."/$0_idl_called_by_perl_$$.pro";
+  my ($name0, $path0) = fileparse($0);
+  $idl_tmp_file=$self->{TMPDIR} ."/$name0" . "_idl_called_by_perl_$$.pro";
   print "Writing IDL tmp file $idl_tmp_file\n";
 
   open(TMPFILE,">$idl_tmp_file") || 
     $self->{ERROROBJ}->_croak("Can't open IDL tmpfile\n$idl_tmp_file\n",
-		  "$0: Bad Open on IDL tmpfile\n");
+		  "$name0: Bad Open on IDL tmpfile\n");
 
   my $idl_windfilter = $self->{WINDFILTER} =~ /^Q/i? "QS*":"SW*";
 
@@ -693,4 +758,24 @@ sub getThumbnail{
   return $self->{THUMBNAIL};
 }
 
+sub getDefs{
+  my $self=shift;
+  return $self->{OVERLAY_DEFAULTS};
+}
+
+sub getRegions{
+  my $self=shift;
+  my @regions;
+  while (my ($k,$v) = each %{$self->{OVERLAY_DEFAULTS}}){
+    push @regions, $k if $v->{WEB}->{ACTIVE};
+  }
+  if (wantarray) {
+    return @regions;
+  } else {
+    my $string = "Current valid regions:\n". join("\n",@regions) ."\n";
+    $self->{ERROROBJ}->Report($string,'INFO');
+  }
+  
+  1;
+}
 1;

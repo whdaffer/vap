@@ -31,6 +31,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.14  2002/12/06 22:54:03  vapdev
+# Continuing work
+#
 # Revision 1.13  2002/12/04 23:56:20  vapdev
 # Ongoing work
 #
@@ -132,8 +135,12 @@ BEGIN {
   require $overlay_defs_file;
 
     # Get generic VAP processing Defaults
-  $vap_defs_file=$VAP_LIBRARY."/vap_defs";
-  require $vap_defs_file;
+
+    # --- commented out Thu Jan 16 08:24:34 2003 to eliminate this
+    # dependency on this default file. (whd)
+
+  #$vap_defs_file=$VAP_LIBRARY."/vap_defs";
+  #require $vap_defs_file;
 
     # Check for interactivity.
   $vap_is_batch = !defined($ENV{'TERM'});
@@ -433,12 +440,13 @@ sub auto_movie_defs {
     my @tmp = split /,/;
     my @tmp2 = split(/:/, $tmp[0]);
     my $desig=$tmp2[1];
+    $desig =~ s/\s+//g;
     @tmp2 = split(/:/, $tmp[1]);
     $desig =~ s/'|"//g;
     $tmp2[1] =~ s/'|"//g;
 #    $desig =~ s/\s+//g;
 #    $tmp2[1] =! s/\s+//g;
-    $hash->{$desig} = $tmp2[1];
+    $hash->{uc($desig)} = $tmp2[1];
   }
   close DEFS;
   $hash;
@@ -1421,12 +1429,16 @@ sub GetWindFiles{
 
 #-----------------------------------------------------------
 #
+# ***** sends email to people when error occurs ***
 #
+# This routine shouldn't be used! This functionality has been replaced
+# (I hope) by the VapError object.
 #
 #-----------------------------------------------------------
 
 
 sub VapMailErrorMsg{
+
   if ($vap_is_batch){
     my $errmsg=$_[0] || "Generic Error\n";
     my $subject=$_[1] || "<Generic Vap Error>\n";

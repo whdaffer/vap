@@ -4,15 +4,18 @@
 
 =head2 SYNOPSIS
 
-  ogms = OGms5->new(MACHINE=>"machine",
+  ogms = OGms5->new([TYPE => 'type',
+                    "MACHINE=>"machine",
                     REMOTE_TOPDIR => "/dir/on/remote/machine",
                     LOCAL_TOPDIR => "/dir/on/local/machine",
                     DATETIME=>"yyyy/mm/dd/hh/mm/ss",
-                    DELTA=>f.g);
+                    DELTA=>f.g]);
 
 =head2 KEYS
 
 =over 4
+
+=item * TYPE: The type of sensor IR{1,2,3} or 'vis'. Currently it's ir1.
 
 =item * MACHINE: The internet address of the machine with the GMS5
                  data. (default is read from the file
@@ -47,7 +50,7 @@
                  Default = 6.0. May be entered as a float.
 
 
-=item * INTERESTING_GMS_PRODUCTS: A reference to an array listing the
+=item * INTERESTING_GMS5_PRODUCTS: A reference to an array listing the
                  items (directories, really) currently thought
                  interesting to check and/or retrieve. This is
                  defaulted to [ir1, grid, grida] in
@@ -136,9 +139,12 @@ sub new {
   }
   undef $gms5_defs;
   undef $h;
+  $self->{TYPE} = "ir1" unless $self->{TYPE};
+  $self->{TYPE} = lc $self->{TYPE};
   $self->{STARTDIR}=getcwd();
   $self->{USER}=$ENV{'USER'};
-  $self->{LOCAL_HOST}=$ENV{'HOST'} . ".jpl.nasa.gov";
+  my $host = $ENV{HOSTNAME} || `hostname`;
+  $self->{LOCAL_HOST}=$host . ".jpl.nasa.gov";
   $self->{DELTA} = 6 unless $self->{DELTA};
   bless  bless $self, ref($class) || $class;
   $self->_croak( "Need KEY INTERESTING_GMS5_PRODUCTS\n",
@@ -147,7 +153,7 @@ sub new {
 
   $self->{ERROROBJ} = VapError->new() unless $self->{ERROROBJ};
   my $remote_host = $self->{REMOTE_HOST};
-  $self->{FTPOBJ} = FTP->new("$remote_host") || 
+  $self->{FTPOBJ} = Net::FTP->new("$remote_host") || 
     $self->{ERROROBJ}->_croak("$0:Error creating FTP object for $remote_host!\n",
 		  "Error Initializing FTP object");
 
@@ -173,7 +179,7 @@ sub new {
 sub GetAllFileLists{
   my $self=shift;
   $self->{GETALLFILELISTS}->{LATESTGET} = time();
-  for (@{$self->{INTERESTING_GMS_PRODUCTS}}){
+  for (@{$self->{INTERESTING_GMS5_PRODUCTS}}){
     $self->GetListing( "$_" ) or 
       $self->{ERROROBJ}->_croak("Can't get listing for $_\n",
 		    "$0:Listing Error!");
@@ -208,17 +214,24 @@ sub GetListing{
   my $self=shift;
   my $dir=shift or croak "Usage: obj->get(directory)\n";
   my $glob = shift || "*.Z";
+  my $savedir = getcwd();
   chdir $self->{LOCAL_TOPDIR} or 
     $self->{ERROROBJ}->_croak("Can't CD to ".$self->{LOCAL_TOPDIR}."\n",
 		  "$0:CD error");
   chdir $dir;
-  my $remote_dir = $self->{REMOTE_TOPDIR}. "/$dir";
+  my $remote_dir = $self->{REMOTE_TOPDIR}. "/hdf/$dir";
+  $remote_dir .= "/4km" if ($dir =~ /^ir|vis/i);
+
+
   my $ftp = $self->{FTPOBJ};
   $ftp->cwd($remote_dir) or  $self->{ERROROBJ}->_croak("Can't CD to $remote_dir\n", 
 					   "$0:CD error");
+  my @list = $ftp->ls($glob);
+  @list = join("\n",@list);
   open FILE ,">archive.filelist";
-  print $ftp->ls($glob);
+  print FILE @list;
   close FILE;
+  chdir $savedir;
   1;
 }
 
@@ -247,12 +260,14 @@ head2 SYNOPSIS @datetime = GetIntersection(type);
 
 
 sub GetIntersection{
-  my $self->shift;
-  my $type->shift or 
-    $self->{ERROROBJ}->_croak("Usage: obj->GetIntersection(type)\n",
-		  "Usage error");
+  my $self=shift;
+  my $type=shift || $self->{TYPE} || 
+    $self->{ERROROBJ}->_croak(
+               ["Usage: obj->GetIntersection([type])",
+		"Can't find the type you want!\n"],
+		  "OGms5:GetIntersetion, Usage error");
 
-  my @interesting = $self->{INTERESTING_GMS5_PRODUCTS};
+  my @interesting = @{$self->{INTERESTING_GMS5_PRODUCTS}};
   if (!grep(/$type/i,@interesting)) {
     my $msg = "$type is not in the array of INTERESTING GMS5 products!";
     $msg .= "Perhaps you should have a look at that variable!\n";
@@ -260,6 +275,8 @@ sub GetIntersection{
     my $subject="$type NOT IN ". join(" ",@interesting);
     $self->{ERROROBJ}->_croak($msg,$subject);
   }
+  my $savedir=getcwd();
+
   chdir $self->{LOCAL_TOPDIR} || 
     $self->{ERROROBJ}->_croak("Can't CD to ".$self->{LOCAL_TOPDIR}."\n",
 		  "CD Error");
@@ -299,6 +316,7 @@ sub GetIntersection{
     push @datetimes, $datetime if ($filecnt{$datetime} == $dircnt);
   }  
 
+  chdir $savedir;
   $self->{INTERSECTION} = \@datetimes;
   @datetimes;
 }
@@ -355,7 +373,8 @@ sub Get{
   my $datetime=shift || $self->{DATETIME};
   $self->{DATETIME} = $datetime;  
   $dir = $self->{REMOTE_TOPDIR}."/$dir";
-  chdir $dir or 
+  my $savedir = getcwd();
+  chdir $dir ||
     $self->{ERROROBJ}->_croak("Can't CD to $dir\n",
 		  "$0:CD Error");
     # The assumption here is that the file is named $datetime.hdf.Z
@@ -363,6 +382,7 @@ sub Get{
   $ftp->binary("$datetime.hdf.Z") or 
     $self->{ERROROBJ}->_croak("Can't get $datetime.hdf.Z\n",
 		  "$0:Ftp Fetch Error!");
+  chdir $savedir;
   1;
 }
 
@@ -444,9 +464,13 @@ sub GetClosest{
       ($time - $self->{GETALLFILELISTS}->{LASTGET}) > $self->{DELTA} ) {
     $self->GetAllFileLists;
   }
-  my @datetimes = $self->GetIntersection() or 
-    $self->{ERROROBJ}->_croak("$0:Intersection problem\n",
-		  "$0:Intersection Problem!");
+  my @datetimes = $self->GetIntersection();
+  if (!@datetimes){
+    $self->{ERROROBJ}->Report(["OGms5: Intersection problem",
+			       "Probably missing grid/grida files!\n"],
+			      'INFO');
+    return(undef, undef);
+  }
 
   my ($diff,$datetime,$mindiff);
   if (@datetimes) {

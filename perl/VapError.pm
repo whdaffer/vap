@@ -4,6 +4,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.8  2003/01/04 00:16:21  vapdev
+# Continuing work
+#
 # Revision 1.7  2002/12/16 23:14:55  vapdev
 # ongoing work
 #
@@ -170,6 +173,31 @@ sub new {
 
   $self->{IS_BATCH}  = !defined($ENV{'TERM'});
 
+  # The problem of capturing whether someone has redirected
+  # stdout/stderr at the shell-script level while also passing a
+  # logfile is too onerous to overcome with my limited time budget, so
+  # this object is sorta useless; it's basically just a fancy way of
+  # renaming STDOUT and STDERR. However, I'm going to leave it in in
+  # the hopes that I can make it work later. For the nonce I'll just
+  # set LOG to INFO, that way sending a message to either filehandle
+  # will have the same effect.
+
+  $self->{LOG} = $self->{INFO};
+
+#   if (!$self->{LOG}) {
+#     $self->{LOG} = $self->{INFO};
+#   } elsif ($self->{LOG} ne $self->{INFO}) {
+#     my $log=$self->{LOG};
+#     my $log_a_handle = (ref($log)
+# 			? (ref($log) eq 'GLOB'
+# 			   || UNIVERSAL::isa($log, 'GLOB')
+# 			   || UNIVERSAL::isa($log, 'IO::Handle'))
+# 			: (ref(\$log) eq 'GLOB'));
+#     if ($log_a_handle){
+#     } else {
+#     }
+#   }
+
   croak "ERROR_MAIL_ADDRESSES hasn't been set!\n" 
     unless defined ($self->{ERROR_MAIL_ADDRESSES});
 
@@ -186,7 +214,7 @@ sub new {
 
 =head2 Usage: $obj->Report(message,severity)
 
-  if `severity' == info|LOG, send message to $self->{LOG} (by
+  if `severity' == info|INFO|log|LOG, send message to $self->{INFO} (by
   default STDOUT unless overridden in the call to `new') otherwise
   send it to ERROR (by default STDERR)
 
@@ -195,9 +223,9 @@ sub new {
 sub Report{
   my $self=shift;
   my $message=shift or carp "Need Message!\n";
-  $message = join("",@{$message}) if ref($message) eq 'ARRAY';
-  my $severity = shift || "ERROR";
-  $severity = uc $severity;
+  $message = join("\n",@{$message}) if ref($message) eq 'ARRAY';
+  $message .= "\n";
+  my $severity = uc( shift || "ERROR" );
   my $fh=$self->{$severity};
   print $fh $message;
   1;
@@ -264,9 +292,7 @@ sub ReportAndDie{
 
 =head2 Usage: $obj->Log(message)
 
- Send message to $self->{LOG} (by default STDOUT unless
- overridden in the call to `new') if `severity' == info|LOG,
- otherwise send it to ERROR (by default STDERR)
+  Shortcut to $obj->Report(message,'INFO');
 
 =cut
 
