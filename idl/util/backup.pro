@@ -42,6 +42,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/06/17 20:13:14  vapuser
+; Initial revision
+;
 ;-
 
 FUNCTION backup, file, extsep=extsep
@@ -55,40 +58,40 @@ FUNCTION backup, file, extsep=extsep
 
    IF n_elements(extsep) EQ 0 THEN sep = '.' ELSE sep = extsep
 
-   
-   ext =  extension(file,extsep=sep)
-   newext = '1'
-   test =  file + '*'
-   ff = findfile(test,count=nff)
-   IF nff GT 1 THEN BEGIN 
-     test =  file + sep + '*'
+   IF fexist( file ) THEN BEGIN    
+     ext =  extension(file,extsep=sep)
+     newext = '1'
+     test =  file + '*'
      ff = findfile(test,count=nff)
-     IF nff GE 1 THEN BEGIN 
-       ext = extension( ff, extsep=sep)
-       good = where(isanumber(ext),ngood)
-       IF ngood NE 0 THEN $
-         newext =  strtrim( max( fix(ext[good]) )+1, 2)
+     IF nff GT 1 THEN BEGIN 
+       test =  file + sep + '*'
+       ff = findfile(test,count=nff)
+       IF nff GE 1 THEN BEGIN 
+         ext = extension( ff, extsep=sep)
+         good = where(isanumber(ext),ngood)
+         IF ngood NE 0 THEN $
+           newext =  strtrim( max( fix(ext[good]) )+1, 2)
+       ENDIF 
      ENDIF 
+
+     backupfile = file + sep + newext
+
+     openr,lun, file, /get, error=err
+     IF err NE 0 THEN Message,!error_state.msg
+
+     Message,'Copying file <' +file +'> to file <' + backupfile + '>',/info
+     openw, lun1, backupfile, /get, error=err
+     IF err NE 0 THEN Message,!error_state.msg
+
+     rec = ''
+     WHILE NOT eof(lun) DO BEGIN 
+       readf,lun,rec
+       printf,lun1,rec
+     ENDWHILE
+     close,/all
+
+     Message,'Done ',/info
    ENDIF 
-
-   backupfile = file + sep + newext
-     
-   openr,lun, file, /get, error=err
-   IF err NE 0 THEN Message,!error_state.msg
-
-   Message,'Copying file <' +file +'> to file <' + backupfile + '>',/info
-   openw, lun1, backupfile, /get, error=err
-   IF err NE 0 THEN Message,!error_state.msg
-
-   rec = ''
-   WHILE NOT eof(lun) DO BEGIN 
-     readf,lun,rec
-     printf,lun1,rec
-   ENDWHILE
-   close,/all
-
-   Message,'Done ',/info
-
   return,1
 
 END
