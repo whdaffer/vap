@@ -260,7 +260,7 @@
 ;          whatever is passed in via the 'outfile' keyword. The
 ;          default output format is Gif and the default name is :
 ; 
-;          GOES_nn_mmm_yyyymmddThh:mm-%aaaa,bbb,cccc,ddd%.ext (ext=gif,jpeg,ps)
+;          GOES_nn_mmm_yyyymmddhhmm_aaaa,bbb,cccc,ddd.ext (ext=gif,jpeg,ps)
 ;
 ;          where 
 ;          nn = 8 or 10
@@ -290,6 +290,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.20  2002/05/08 16:02:11  vapdev
+; Changed ENV variables to reflect new scenario
+;
 ; Revision 1.19  2001/12/08 00:02:36  vapdev
 ; Getting rid of obsolete RSI routines and fixing ENV vars
 ;
@@ -624,7 +627,7 @@ PRO goes_overlay, goesfile, $
       status = 1
       clouddata = 0
 
-      sat_name = strtrim(GoesFilenameStruct.SatName,2) + " " + $
+      sat_name = strtrim(GoesFilenameStruct.SatName,2) + "_" + $
        strtrim(GoesFilenameStruct.SatNum,2 )
 
       sensornum = GoesFilenameStruct.Sensornum
@@ -648,7 +651,7 @@ PRO goes_overlay, goesfile, $
 
       ;; We've successfully read the cloud data!
 
-      sat_name = "GOES " + strtrim(hdr.type/10,2)
+      sat_name = "GOES_" + strtrim(hdr.type/10,2)
       sensornum =  hdr.type-(hdr.type/10)*10
       sensors = ['VIS','IR2','IR3','IR4']
       sensor    =  sensors[ sensornum-1 ]

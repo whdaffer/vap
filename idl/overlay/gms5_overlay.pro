@@ -250,7 +250,7 @@
 ;          whatever is passed in via the 'outfile' keyword. The
 ;          default output format is Gif and the default name is :
 ; 
-;          GMS_5_mmm_yyyymmddThh:mm-%aaaa,bbb,cccc,ddd%.gif
+;          GMS_5_mmm_yyyymmddhhmm_aaaa,bbb,cccc,ddd.gif
 ;
 ;          where 
 ;          mmm = VIS, IR1,IR2,IR3
@@ -308,6 +308,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.24  2002/05/08 16:02:11  vapdev
+; Changed ENV variables to reflect new scenario
+;
 ; Revision 1.23  2001/12/08 00:02:36  vapdev
 ; Getting rid of obsolete RSI routines and fixing ENV vars
 ;
@@ -840,9 +843,9 @@ PRO gms5_overlay, datetime, gmsType, $
     dlm =  '_'
 
 
-    ofileroot = 'GMS5' +  dlm + $
-     gmsType + dlm + $
-     time_string + dlm + lim_str
+    ofileroot = 'GMS_5' +  dlm + $
+      gmsType + dlm + $
+        time_string + dlm + lim_str
 
     CASE 1 OF 
       gif:  OutputFilename = ofileroot+'.gif'
@@ -850,7 +853,7 @@ PRO gms5_overlay, datetime, gmsType, $
       ps:   OutputFilename = ofileroot+'.ps'
       ELSE: Message,"Job security!",/info
     ENDCASE 
-     outputfilename = strcompress(outputfilename,/remove_all)
+    outputfilename = strcompress(outputfilename,/remove_all)
 
   ENDIF ELSE outputFilename =  strcompress(outfile,/remove_all)
 
