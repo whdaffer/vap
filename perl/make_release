@@ -1,0 +1,128 @@
+#!/bin/perl -w
+use Cwd;
+use File::Basename;
+use File::Find;
+use File::Copy;
+
+
+my $usage = "Usage: $0 tag dir\n";
+my $tag =shift or die $usage;
+my $topdir = shift  || ".";
+
+chdir $topdir or die "$!\n";
+`cvs export -r $tag vap util` or die "$!\n";
+
+# Now the tree directly below $topdir looks just like the CVS tree,
+# but we want to flatten it some
+
+
+my @files;
+
+
+  # The IDL files!
+
+mkdir "idl" or die "$!\n" unless (-d "./idl");
+find(\&findidl,".");
+my $newpath="./idl";
+foreach my $f (@files){
+  ($name, $path) = fileparse($f);
+  my $newname = "$newpath/$name";
+  rename($f, $newname) or die "$!\n";
+}
+
+
+  # --------- Perl -------------
+
+mkdir "perl" or die "$!\n" unless (-d "perl") ;
+@files = glob('vap/perl/*');
+$newpath="./perl";
+foreach my $f (@files){
+  ($name, $path) = fileparse($f);
+  my $newname = "$newpath/$name";
+  rename($f, $newname) or die "$!\n";
+  if ($newname =~ /\.pm$/){
+    chmod 0640, $newname or die "$!\n";
+  } else {
+    chmod 0750, $newname or die "$!\n";
+  }
+}
+
+@files = glob('util/perl/*');
+foreach my $f (@files){
+  ($name, $path) = fileparse($f);
+  my $newname = "$newpath/$name";
+  rename($f, $newname) or die "$!\n";
+  if ($newname =~ /\.pm$/){
+    chmod 0640, $newname or die "$!\n";
+  } else {
+    chmod 0750, $newname or die "$!\n";
+  }
+}
+
+
+  # --------- Library ------------
+
+if (! -d "./Library") {
+  my $exe="mv ./vap/Library .";
+  #`mv ./vap/Library .` or die "$!\n";
+  my $r=system($exe)/256;
+  die "$!\n" unless $r==0;
+}
+
+  # ---- config files -----------
+
+if (! -d "./config") {
+  my $exe="mv ./vap/config .";
+  #`mv ./vap/Library .` or die "$!\n";
+  my $r=system($exe)/256;
+  die "$!\n" unless $r==0;
+}
+
+  # --------- source ------------
+
+mkdir "src" or die "$!\n" unless (-d "src") ;
+@files=glob('vap/src/*');
+$newpath="./src";
+foreach my $f (@files){
+  ($name, $path) = fileparse($f);
+  my $newname = "$newpath/$name";
+  rename($f, $newname) or die "$!\n";
+}
+
+@files=glob('util/src/*');
+foreach my $f (@files){
+  ($name, $path) = fileparse($f);
+  my $newname = "$newpath/$name";
+  rename($f, $newname) or die "$!\n";
+}
+
+  # ---------- scripts -------------
+
+
+mkdir "scr" or die "$!\n" unless (-d "scr") ;
+@files=glob('vap/scr/*');
+$newpath="./scr";
+foreach my $f (@files){
+  ($name, $path) = fileparse($f);
+  my $newname = "$newpath/$name";
+  rename($f, $newname) or die "$!\n";
+  chmod 0750, $newname or die "$!\n";
+}
+
+@files=glob('util/scr/*');
+foreach my $f (@files){
+  ($name, $path) = fileparse($f);
+  my $newname = "$newpath/$name";
+  rename($f, $newname) or die "$!\n";
+  chmod 0750, $newname or die "$!\n";
+}
+
+`rm -rf ./vap` and die "$!\n";
+`rm -rf ./util` and die "$!\n";
+
+print "Done!\n";
+exit;
+
+sub findidl{
+  push @files, $File::Find::name if /\.pro$/;
+}
