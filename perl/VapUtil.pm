@@ -1,4 +1,3 @@
-#!/bin/perl -w
 #
 #
 # $Id$
@@ -32,6 +31,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.6  2002/07/03 22:36:54  vapdev
+# Continuing upgrade (-w/use strict) work
+#
 # Revision 1.5  2002/07/01 20:24:20  vapdev
 # VapUtil: Moved stuff from vap_perl/VapWWW to VapUtil
 # ts_overlay: check $gms4mindiff for nullness
@@ -52,7 +54,14 @@
 #
 # 
 package VapUtil;
-
+use strict;
+use vars qw/@ISA @EXPORT/;
+use subs qw/&doy2mday_mon  &date2doy &vaptime2systime &systime2vaptime 
+	   &systime2idltime &idltime2systime &leapyear 
+	   &GetNow &DeltaTime &ParseVapTime &vaptime2idltime
+	   &vaptime2decyear &systime2decyear &parts2decyear 
+	   &fixlonrange &prepend_yyyymmdd &SysNow &makeIDLOplotString
+	   &makeRandomTag/;
 require Exporter;
 @ISA = qw(Exporter);
 @EXPORT=qw( doy2mday_mon  date2doy vaptime2systime systime2vaptime 
@@ -62,7 +71,6 @@ require Exporter;
 	   fixlonrange prepend_yyyymmdd SysNow makeIDLOplotString
 	   makeRandomTag );
 
-use strict;
 use Time::Local;
 use Carp;
 
@@ -70,41 +78,52 @@ use Carp;
 BEGIN {
     # Get ENV variables
 
-  $VapUtil::VAP_LIB=$ENV{'VAP_LIBRARY'} || 
+  $VapUtil::VAP_LIBRARY=$ENV{'VAP_LIBRARY'} || 
     croak "ENV VAP_LIBRARY is not defined!\n";
 
   # Get ENV variables
-  my $ARCHIVETOP=$ENV{'VAP_GOES_TOP'}  || 
+  $VapUtil::ARCHIVETOP=$ENV{'VAP_GOES_TOP'}  || 
     croak "ENV var VAP_GOES_TOP undefined!\n";
-  my $GRIDDINGTOP=$ENV{'VAP_GOES_GRIDDED_TOPDIR'} || 
-    croak "ENV var VAP_GOES_GRIDDED_TOPDIR undefined\n";
+  $VapUtil::GRIDDINGTOP=$ENV{'VAP_GOES_GRIDDED_TOP'} || 
+    croak "ENV var VAP_GOES_GRIDDED_TOP undefined\n";
+  $VapUtil::WINDS_DIR = $ENV{'VAP_DATA_TOP'} || 
+        croak "ENV var  VAP_DATA_TOP undefined\n";
 
+  $VapUtil::IDLEXE = $ENV{IDLEXE} || croak "ENV var IDLEXE is undefined!\n";
 
     # MOVIE DEFS
-  $VapUtil::auto_movie_defs_file=$VapUtil::VAP_LIB."/auto_movie_defs.dat";
+  $VapUtil::auto_movie_defs_file=$VapUtil::VAP_LIBRARY."/auto_movie_defs.dat";
 
     # Get the Overlay Defaults
-  $VapUtil::overlay_defs_file=$VapUtil::VAP_LIB."/overlay_defs";
+  $VapUtil::overlay_defs_file=$VapUtil::VAP_LIBRARY."/overlay_defs";
   require $VapUtil::overlay_defs_file;
 
     # Get generic VAP processing Defaults
-  $VapUtil::vap_defs_file=$VapUtil::VAP_LIB."/vap_defs";
+  $VapUtil::vap_defs_file=$VapUtil::VAP_LIBRARY."/vap_defs";
   require $VapUtil::vap_defs_file;
 
     # Check for interactivity.
   $VapUtil::vap_is_batch = !defined($ENV{'TERM'});
 
-  my %sat_num= ( '10','8',
-		 '8','9',  
-	       );
+  %VapUtil::satnum2areanum = (10 => 8,
+			    8 => 9);
 
-  my %sensor_dir = (
-		    '1','vis',
-		    '2','ir2',
-		    '3','ir3',
-		    '4','ir4',
-		    '5','ir5'
-		   );
+  %VapUtil::areanum2satnum = (8 => 10, 
+			    9 => 8 );
+
+  %VapUtil::satloc2satnum = (WEST=>10,
+			   EAST=>8);
+
+  %VapUtil::sensornum2name = ('1' => 'vis',
+			   '2' => 'ir2',
+			   '3' => 'ir3',
+			   '4' => 'ir4',
+			   '5' => 'ir5'
+			   );
+
+
+  %VapUtil::sensorname2num = reverse %VapUtil::sensornum2dir;
+
 
 }
 
@@ -299,15 +318,15 @@ sub ParseVapTime{
 
 sub idltime2systime{
   my $idltime=shift || croak "Param #1 <yyyy/mm/dd/hh/mm[/ss]> is REQUIRED!\n";
-  my ($year, $month, $day, $hour, $min, $sec) = split "/", $idltime;
-  my $secs=timegm( $sec, $min, $hour, $day, $month-1, $year-1900 );  
+  my ($year, $month, $mday, $hour, $min, $sec)= split "/", $idltime;
+  my $secs=timegm( $sec || 0, $min, $hour, $mday, $month-1, $year-1900 );  
 }
 
 sub systime2idltime{
   my $secs = shift || croak "Param #1 <unix time> is REQUIRED!\n";
-  my ($sec,$min,$hour,$mday,$mon,$year)=gmtime($secs);
+  my ($sec,$min, $hour,$mday,$month,$year)=gmtime($secs);
   my $time=sprintf("%04d/%02d/%02d/%02d/%02d/%02d",
-		$year+1900,$mon+1,$mday,$hour,$min,$sec);
+		$year+1900,$month+1,$mday,$hour,$min,$sec || 0);
   $time;
 }
 
@@ -328,6 +347,8 @@ sub DeltaTime{
 }
 
 sub fixlonrange{
+  croak "Usage fixed_array=VapUtil::fixlonrange(minlon,maxlon)\n"
+    unless @_ == 2;
   my ($minlon, $maxlon) = @_;
   while ($minlon>$maxlon) {
     if ($minlon>180.){
@@ -342,7 +363,7 @@ sub fixlonrange{
 
 sub prepend_yyyymmdd{
   my ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T);
-  my $tmp_hhmm=sprintf("%02d:$02d",$hour,$min);
+  my $tmp_hhmm=sprintf("%02d:%02d",$hour,$min);
   my $hhmm=shift @_ || $tmp_hhmm;
   
   my $time=sprintf("%04d%02d%02dT%s",
@@ -699,7 +720,7 @@ sub make_hhmm{
 #     $limstr = "%".$minlon.",".$minlat.",".$maxlon.",".$maxlat."%";
 #     #$time=substring( $time, 0, 4 );
 #     $newfile=$file."-".$last4."-".$limstr.".dat";
-#     rename( $oldfile, $newfile) || die " couldn't rename $oldfile to $newfile \n";
+#     rename( $oldfile, $newfile) || croak " couldn't rename $oldfile to $newfile \n";
 #     chmod 0755, $newfile || print "Couldn't chmod 0755 on $newfile \n";
 
 #   }
@@ -825,19 +846,7 @@ sub gag {
   # Goes 10 files have the name goes8, goes 8 have names AREA9
   # $sat_num{10} = 8;
 
-  my %sat_num= ( '10','8',
-		 '8','9',  
-	       );
-
-  my %sensor_dir = (
-		    '1','vis',
-		    '2','ir2',
-		    '3','ir3',
-		    '4','ir4',
-		    '5','ir5'
-		   );
-
-  my $goes_type="goes".$satnum." ".$sensor_dir{$sensornum};
+  my $goes_type="goes".$satnum." ".$VapUtil::sensornum2name{$sensornum};
 
 
 
@@ -885,8 +894,8 @@ sub gag {
 
     # NB, this loop is reading the 'noaa_area_info' file.
     # Construct the filename for the noaa_area_info file.
-  my $noaa_area_info_filename=$ARCHIVETOP."/goes".$satnum."/";
-  $noaa_area_info_filename.=$sensor_dir{$sensornum}."/noaa_area_info";
+  my $noaa_area_info_filename=$VapUtil::ARCHIVETOP."/goes".$satnum."/";
+  $noaa_area_info_filename.=$VapUtil::sensornum2name{$sensornum}."/noaa_area_info";
     # Open 'info' file
   if (!open(NOAA_AREA_INFO, "<$noaa_area_info_filename") )
   {
@@ -911,7 +920,7 @@ sub gag {
       print "  Corrupted data/time for $filename\n";
         # Somehow, this field (mm/dd/yyyy) in the area_info file has
         # been corrupted, so we're going to read the file itself.
-      my $local_path=$ARCHIVETOP."/goes".$satnum."/".$sensor_dir{$sensornum}."/";
+      my $local_path=$VapUtil::ARCHIVETOP."/goes".$satnum."/".$VapUtil::sensornum2name{$sensornum}."/";
       my $ttmp=$local_path.$filename;
       if (open( AREAFILE, "<$ttmp" )){
 	my $hdr;
@@ -966,7 +975,7 @@ sub gag {
   my $filenum = substr( $area_file, $off+3, 2);
 
   # Construct path and file name on remote server.
-  my $remote_path = "goes".$satnum."/".$sensor_dir{$sensornum}."/";
+  my $remote_path = "goes".$satnum."/".$VapUtil::sensornum2name{$sensornum}."/";
 
   if ( $remote_path =~ m#^g# ) {
     $tmp = "/".$remote_path ;
@@ -978,8 +987,8 @@ sub gag {
     # on this machine.
     # While we're at it, might as well produce the path 
     # to the gridding files.
-  my $local_path=$ARCHIVETOP.$tmp;
-  my $gridding_path=$GRIDDINGTOP.$tmp;
+  my $local_path=$VapUtil::ARCHIVETOP.$tmp;
+  my $gridding_path=$VapUtil::GRIDDINGTOP.$tmp;
   my $local_area_file=$local_path.$area_file;
   my $test2 = 1.e20;
   my $local_file;
@@ -1101,7 +1110,7 @@ sub gag {
       }
       my $goes_type=$satnum.$sensornum;
       my $tyear=$year;
-      my $tmonth=$month+1;
+      my $tmonth=$mon+1;
       my $grid_file_name=sprintf( 
 	    "GOES%03d-%04d%02d%02d%02d-%%%04d,%03d,%04d,%03d%%.dat", 
 			      $goes_type, $tyear, $tmonth, $mday, $hour, 
@@ -1114,7 +1123,7 @@ sub gag {
       # construct the name of the gridded file.
       print "   Testing for grid file matching glob\n   $local_gridded_file\n";
       if (-e $local_gridded_file) {
-	  print "  $grid_file already exists, I'll return this file instead\n";
+	  print "  grid_file ($local_gridded_file) already exists, I'll return this file instead\n";
 	  # Not he prettiest way to code this, I'll think of something later.
 	  return $local_gridded_file;
       } else {
@@ -1152,9 +1161,9 @@ sub getgoesarchive{
   my $start_dir = Cwd::cwd();
   my $goes_info_file=shift or croak "Need name of goes_archive file!\n";
   open(ARCHIVE_INFO, "<$goes_info_file") || croak "Can't open $goes_info_file file\n";
-  my $host = chomp <ARCHIVE_INFO>;
-  my $user = chomp <ARCHIVE_INFO>;
-  my $pw   = chomp <ARCHIVE_INFO>;
+  my $host = <ARCHIVE_INFO>; chomp $host;
+  my $user = <ARCHIVE_INFO>; chomp $user;
+  my $pw   = <ARCHIVE_INFO>; chomp $pw;
   {HOST=>$host, USER=>$user, PW=>$pw};
 }
 
@@ -1171,27 +1180,16 @@ sub getgoesfile{
   my $start_dir = Cwd::cwd(); 
   my ($host,$user,$pw) = getgoesarchive();
   croak "Can't get goes Archive info\n" unless defined $pw;
-
-  %sat_num= ( '8', '10', # AREA8* are goes 10 files !
-	     '9',  '8',   # AREA9* are goes 8 files !
-	     );
-  
-  %sensor_dir = ('1','vis',
-		 '2','ir2',
-		 '3','ir3',
-		 '4','ir4',
-		 '5','ir5'
-		 );
   
   my $area_file=shift;
-  $area_file="AREA".$area_file unless $area_file =~ /^A/
+  $area_file="AREA".$area_file unless $area_file =~ /^A/;
   my $off=4;
-  my $tmp=substr( $area_file,$off,2 );
+  my $tmp=substr( $area_file, $off,2 );
   my $sat=substr( $area_file, $off, 1 );
   my $sen=substr( $area_file, $off+1, 1);
   my $filenum = substr( $area_file, $off+2, 2);
 
-  my $remote_path = "goes".$sat_num{$sat}."/".$sensor_dir{$sen}."/";
+  my $remote_path = "goes".$VapUtil::satnum2areanum{$sat}."/".$VapUtil::sensornum2name{$sen}."/";
   my $remote_file = $remote_path.$area_file;
   
   print "remote_path = $remote_path\n";
@@ -1204,7 +1202,7 @@ sub getgoesfile{
 	$tmp = $remote_path;
       }
     print "tmp = $tmp\n";
-    $local_path=$ARCHIVETOP.$tmp;
+    $local_path=$VapUtil::ARCHIVETOP.$tmp;
   }
   my $local_file=$local_path.$area_file;
 
@@ -1234,9 +1232,9 @@ sub grid_goes {
   my $area_file = shift @_ ||
       croak "Usage grid_goes path area_file [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";;
   my $minlon = shift @_ || 0;
-  my $minat  = shift @_ || 0 ;
+  my $minlat = shift @_ || 0 ;
   my $maxlon = shift @_ || 0 ;
-  my $maxat  = shift @_ || 0 ;
+  my $maxlat = shift @_ || 0 ;
 
   chdir $grid_path || croak "   Can't CD to $grid_path\n";
   print "  Preparing to grid area file $area_file\n";
@@ -1245,8 +1243,8 @@ sub grid_goes {
   if ($minlon != 0 || $minlat != 0 || $maxlon != 0 || $maxlat != 0) {
     my $minlon2=$minlon;
     my $maxlon2=$maxlon;
-    my $minlon2 -= 360 if ($minlon >= 180);
-    my $maxlon2 -= 360 if ($maxlon >= 180);
+    $minlon2 -= 360 if ($minlon >= 180);
+    $maxlon2 -= 360 if ($maxlon >= 180);
     $exe_string=sprintf( "grid_goes -f %s -l %04d,%03d,%04d,%03d", 
 	    $area_file, $minlon2, $minlat, $maxlon2, $maxlat );
   } else {
@@ -1269,7 +1267,7 @@ sub grid_goes {
 
 #=====================================================
 # parsegoesfilename
-# 
+#
 #=====================================================
 sub parsegoesfilename {
 
@@ -1302,6 +1300,14 @@ sub parsegoesfilename {
   
 }
 
+
+#-----------------------------------------------------------
+#
+#
+#
+#-----------------------------------------------------------
+
+
 sub ParseWindFileNames{
     # Takes filenames of the form Qyyyymmdd.Shhmm.Ehhmm and returns
     # a two references to the start time and end time of the files.
@@ -1312,12 +1318,12 @@ sub ParseWindFileNames{
     my ($base,$start,$end) = split( '.',$file);
     next if !$start;
     my $yyyymmdd = substr($base,length($base)-8,8);
-    my $start = substr( $start, 1,4);
-    my $end = substr( $end, 1, 4 );
+    $start = substr( $start, 1,4);
+    $end = substr( $end, 1, 4 );
     $start = $yyyymmdd."T".$start;
     $end = $yyyymmdd."T".$end;
-    $start_time = vaptime2systime($start);
-    $end_time = vaptime2systime($end);
+    my $start_time = vaptime2systime($start);
+    my $end_time = vaptime2systime($end);
       # Add a day to the end time if it's less than start time.
     $end_time +=  86400 if ($start_time>$end_time);
     $start = systime2vaptime( $start_time);
@@ -1331,6 +1337,14 @@ sub ParseWindFileNames{
   @retarray;
 }
 
+
+#-----------------------------------------------------------
+#
+#
+#
+#-----------------------------------------------------------
+
+
 sub GetWindFiles{
 
     # Gets the wind files that have any data between the input start
@@ -1343,13 +1357,14 @@ sub GetWindFiles{
   my $filter = shift @_ || croak "usage files=GetWindFiles(file_filter [endtime startime])\n";
   my $end_time= shift @_ || GetNow() ;
   my $start_time = shift @_ || DeltaTime( $end_time, -24 );
-  opendir WINDDIR, $WINDS_DIR || croak "Couldn't open $WINDS_DIR\n";
+  opendir WINDDIR, $VapUtil::WINDS_DIR || 
+    croak "Couldn't open $VapUtil::WINDS_DIR\n";
   my @allfiles=readdir WINDDIR;
   my @windfiles=grep( /^Q*\.*.\*/, @allfiles );
-  croak "grep didn't find any wind files \n" if !$windfiles;
+  croak "grep didn't find any wind files \n" if !@windfiles;
 
   my @junk=ParseWindFileNames(@windfiles);
-  my @windfiles   = \$junk[0];
+  @windfiles   = \$junk[0];
   my @file_starts = \$junk[1];
   my @file_ends   = \$junk[2];
 
@@ -1358,18 +1373,24 @@ sub GetWindFiles{
   my ($test_start_time, $test_end_time);
   my @ret_file_array;
 
-  for ($i=0 ; $i<=$#windfiles ; $i++ ){
+  for (my $i=0 ; $i<=$#windfiles ; $i++ ){
     $test_start_time=vaptime2systime( $file_starts[$i] );
     $test_end_time=vaptime2systime( $file_ends[$i] );
 
-    if ($test_start_time >= start_time_sys ||
-	$test_end_time <= end_time_sys ) {
+    if ($test_start_time >= $start_time_sys ||
+	$test_end_time <= $end_time_sys ) {
       push @ret_file_array, $windfiles[$i];
     }
   }
 
   @ret_file_array;
 }
+
+#-----------------------------------------------------------
+#
+#
+#
+#-----------------------------------------------------------
 
 
 sub VapMailErrorMsg{
@@ -1383,5 +1404,167 @@ sub VapMailErrorMsg{
   }
   1;
 }
+
+#-----------------------------------------------------------
+# CheckForErrors
+# 
+#
+#-----------------------------------------------------------
+
+sub CheckForErrors{
+
+  my $lock_file=shift or croak "usage: CheckForErrors file\n";
+
+  do{
+    VapUtil::VapMailErrorMsg(
+	   "cloud_overlay: Couldn't open $lock_file after IDL \n",
+			     "ERROR OPEN LOCKFILE");
+      croak "Couldn't open $lock_file after IDL \n";} 
+    unless open ( LOCK, "<$lock_file");
+
+  my @idlout = <LOCK>;
+  close (LOCK);
+
+
+    # see if there are any lines in the idl output file 
+    # with the work ERROR in them. Exit if there are.
+
+  foreach (@idlout) {
+    if (/ERROR/) {
+      print "Error in IDL processing \n";
+      print @idlout;
+      my $msg=join "\n",@idlout;
+      VapUtil::VapMailErrorMsg($msg,"ERRORINIDLPROC");
+      exit;
+    }
+  }
+
+  unlink $lock_file  ||  print "Couldn't delete $lock_file \n";
+  1;
+}
+
+#-----------------------------------------------------------
+# MoveOverlayOutput
+# Copies the overlay output to the WWW directory
+#
+#-----------------------------------------------------------
+
+sub MoveOverlayOutput{
+
+
+  my $VAP_OVERLAY_ARCHIVE = $ENV{VAP_OVERLAY_ARCHIVE} ||
+    do {
+      VapUtil::VapMailErrorMessage("Undefined ENV var (VAP_OVERLAY_ARCHIVE)\n",
+				   "UNDEFINED_ENV_VAR");
+      croak "Undefined ENV var (VAP_OVERLAY_ARCHIVE)\n";
+    };
+
+  my $srcdir = shift or croak "Need source directory!\n";
+  my $file_with_output_name = shift or croak "Need file with output name in it!\n";
+  my $fullregionname = shift or croak "Need <FULLREGIONNAME>\n";
+  my $regionname = shift or croak "Need <REGIONNAME>\n";
+
+  do {VapUtil::VapMailErrorMsg(
+				"cloud_overlay: Couldn't CD to $srcdir\n",
+				"CD TO SOURCE DIR ERROR");
+    croak " Couldn't CD to $srcdir\n\n";} unless chdir $srcdir;
+
+
+  do {
+    VapUtil::VapMailErrorMsg(
+			      "cloud_overlay: Can't open $file_with_output_name\n",
+			      "AUTO CLOUD OVERLAY OUTPUT FILE OPEN ERROR");
+      croak "Can't open $file_with_output_name\n";
+    } unless open (PICTURENAME,"<$file_with_output_name");
+
+  my @picturefile=<PICTURENAME>;
+  close(PICTURENAME);
+  unlink "$file_with_output_name" || 
+	print "Couldn't delete $file_with_output_name\n";
+
+    # Read the picture name
+  my $bigpicture = $picturefile[0];
+  chomp $bigpicture;
+  my @ext=(".JPEG",".jpeg",".jpg",".JPG");
+  my ($fileroot, $thumbnailroot, $path, $ext);
+  ($fileroot, $path, $ext) = fileparse($bigpicture, @ext);
+
+
+  # Read the thumbnail name
+  my $smallpicture = $picturefile[1];
+  chomp $smallpicture;
+  @ext = (".JPEG.TN",".jpeg.TN",".jpg.TN",".JPG.TN", 
+	  ".JPEG.tn", ".jpeg.tn", ".jpg.tn", ".JPG.tn");
+  ($thumbnailroot, $path, $ext) = fileparse($smallpicture, @ext);
+
+     #
+     #---------------------- the file ------------------------
+     #
+
+  my $file="$VAP_OVERLAY_ARCHIVE/$fileroot-$regionname.jpeg";
+  print "Renaming $bigpicture to $file\n";
+  do {VapUtil::VapMailErrorMsg(
+	    "cloud_overlay: Couldn't rename $bigpicture to $file, error = $!\n",
+				"PICTURE COPY ERROR");
+	  croak "Couldn't rename $bigpicture to $file, error = $!\n";} 
+    unless copy($bigpicture,$file);
+  unlink $bigpicture;
+  chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
+
+
+    # create name of file in images archive to be linked to it.
+
+  my $VAP_WWW_TOP = $ENV{VAP_WWW_TOP};
+  do {
+    VapUtil::VapMailErrorMessage("Undefined ENV var (VAP_WWW_TOP)\n",
+				  "UNDEFINED_ENV_VAR");
+      croak "Undefined ENV var (VAP_WWW_TOP)\n";
+    } unless $VAP_WWW_TOP;
+
+  my $wwwfile="$VAP_WWW_TOP/images/$fullregionname.jpeg";
+
+    #delete it if it exists
+  if (-e $wwwfile) {
+    unlink ($wwwfile ) || print "Couldn't unlink $wwwfile\n";
+  }
+    # create the symbolic link to the gif file.
+  print "Linking $wwwfile to $file\n";
+  symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
+
+
+     #
+     #---------------------- And its thumbnail ------------------------
+     #
+
+
+    # copy thumbnail to image overlay archive.
+  $file= "$VAP_OVERLAY_ARCHIVE/$thumbnailroot-$regionname.TN.jpeg";
+  print "Renaming $smallpicture to $file\n";
+  do {VapUtil::VapMailErrorMsg(
+				"cloud_overlay: Couldn't rename $smallpicture to $file, error = $!\n",
+				"THUMBNAIL COPY ERROR") ;
+	  croak "Couldn't rename $smallpicture to $file, error = $!\n";} 
+    unless copy($smallpicture,$file);
+  unlink $smallpicture;
+  chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
+
+
+
+    # Create the symbolic name for the thumbnail
+
+  $wwwfile="$VAP_WWW_TOP/images/$fullregionname.TN.jpeg";
+    #delete it if it exists
+  if (-e $wwwfile) {
+    unlink ($wwwfile ) || print "Couldn't unlink $wwwfile\n";
+  }
+
+    # create the symbolic link to the gif file.
+  print "Linking $wwwfile to $file\n";
+  symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
+
+
+}
+
+
 1;
 
