@@ -4,6 +4,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.6  2002/12/10 19:57:12  vapdev
+# Ongoing work
+#
 # Revision 1.5  2002/12/06 00:39:22  vapdev
 # Continuing work
 #
@@ -281,12 +284,12 @@ sub Log{
 
 =head2 _croak
 
-=head2 Usage: $obj->_croak(message)
+=head2 Usage: $obj->_croak(message [,subject])
 
 
 =cut
 #=============================================================
-# _croak(msg, subject)
+# _croak(msg [, subject])
 #  Wrapper for ReportAndDie
 #==================================================================
 
