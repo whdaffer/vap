@@ -1,11 +1,14 @@
 #!/usr/bin/perl5  
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <99/04/02 14:26:40 vapuser>
+# Time-stamp: <99/08/20 16:28:30 vapuser>
 # $Id$
 #
 # Modification History:
 #
 # $Log$
+# Revision 1.5  1999/04/02 22:29:22  vapuser
+# More changes than I care to even think about.
+#
 # Revision 1.4  1998/10/27 16:27:35  vapuser
 # Fixed some problems with getcwd and undefined ARCHIVETOP and GRIDDINGTOP
 # variables
@@ -222,6 +225,8 @@ sub date_index{
 	       'daily_npac.mov',
 	       'daily_nwatl.mov',
 	       'daily_indian.mov',
+	       'daily_atlhurr.mov',
+	       'daily_pachurr.mov',
 	       'GOES104NEPAC1.jpeg',
 	       'GOES84NWATL1.jpeg',
 	       'GMS51WPAC1.jpeg',
@@ -234,6 +239,8 @@ sub date_index{
 	       'npac_anim',
 	       'nwatl_anim',
 	       'indian_anim',
+	       'atlhurr_anim',
+	       'pachurr_anim',
 #	       'npac_evol_anim',
 	       'goes104nepac1',
 	       'goes84nwatl1',
@@ -248,6 +255,8 @@ sub date_index{
 	    'npac_anim'      => 'daily_npac.mov', 
 	    'nwatl_anim'     => 'daily_nwatl.mov',
 	    'indian_anim'    => 'daily_indian.mov',
+	    'atlhurr_anim'   => 'daily_atlhurr.mov',
+	    'pachurr_anim'   => 'daily_pachurr.mov',
 #	    'npac_evol_anim' => 'daily_npac_evol.mov',
 	    'goes104nepac1'  => 'GOES104NEPAC1.jpeg',
 	    'goes84nwatl1'   => 'GOES84NWATL1.jpeg',
