@@ -3,6 +3,9 @@
 #
 #
 # $Log$
+# Revision 1.1  1999/04/09 23:12:03  vapuser
+# Initial revision
+#
 #
 #
 # $Id$
@@ -36,7 +39,7 @@ SO_OBJS = \
 	wvcsel.so \
 	kprimes.so
 
-default: land_mask.so succor.so
+default: land_mask.so succor.so kprimes.so
 
 #isanumber.so: isanumber.o isanumber.c \
 #	$(RSIINC)/export.h
