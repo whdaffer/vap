@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.13  1998/11/25 22:42:22  vapuser
+  ; Set start/End time when reading Rnoaa data.
+  ;
   ; Revision 1.12  1998/11/10 00:46:57  vapuser
   ; Change to assuming rnoaa data.
   ;
@@ -1036,8 +1039,8 @@ FUNCTION Q2b::Read, filename
       self.StartTime =  '0000/00/00/00/00'
       self.EndTime =  '0000/00/00/00/00'
       IF VarType(retstruct) EQ 'STRUCTURE' THEN BEGIN 
-        self.StartTime =  retstruct.StartTime
-        self.EndTime =  retstruct.EndTime
+        self.StartTime =  retstruct.DataStartTime
+        self.EndTime =  retstruct.DataEndTime
       ENDIF 
       status =  (VarType(data) EQ 'STRUCTURE')
     END 
@@ -1069,8 +1072,8 @@ FUNCTION Q2b::Read, filename
           self.StartTime =  '0000/00/00/00/00'
           self.EndTime =  '0000/00/00/00/00'
           IF VarType(retstruct) EQ 'STRUCTURE' THEN BEGIN 
-            self.StartTime =  retstruct.StartTime
-            self.EndTime =  retstruct.EndTime
+            self.StartTime =  retstruct.DataStartTime
+            self.EndTime =  retstruct.DataEndTime
           ENDIF 
         ENDIF 
       ENDELSE 
