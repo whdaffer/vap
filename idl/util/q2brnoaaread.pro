@@ -77,6 +77,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  2000/02/29 21:20:40  vapuser
+; Fill 'qual' with 'wvcqual_flag'
+;
 ; Revision 1.5  2000/02/23 21:26:12  vapuser
 ; General cleanup. Added rain_flag code
 ;
@@ -248,15 +251,31 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
     mu[bad] = !values.f_nan
     mv[bad] = !values.f_nan
 
+    mle = rnoaa.mle_like
+    smle = q2b.smle
+    smle[*] =  temporary(mle[sel])
+    smle[bad] = -1.
+
+    q2b.smle =temporary(smle)
+;    q2b.mle =  mle
+
     q2b.u = temporary(u)
     q2b.v = temporary(v)
     q2b.su = temporary(mu)
     q2b.sv = temporary(mv)
 
-    q2b.mp_rain_flag = ishft(rnoaa.wvcqual_flag,-12) AND 3
-    q2b.nof_rain_flag = ishft(rnoaa.wvcqual_flag,-14) AND 3
+    q2b.rain_flag = ((ishft(rnoaa.wvcqual_flag,-12) AND 3) EQ 2)
 
     q2b.rowtime =  string( rnoaa.row_time )
+;    q2b.tb_h[*,0] = rnoaa.tb_mean_h
+;    q2b.tb_h[*,1] = rnoaa.tb_stdev_h
+;    q2b.tb_v[*,0] = rnoaa.tb_mean_v
+;    q2b.tb_v[*,1] =  rnoaa.tb_stdev_v
+;    q2b.num_tb[*,0] = rnoaa.num_tb_h
+;    q2b.num_tb[*,1] =  rnoaa.num_tb_v
+;    q2b.tb_rainrate = rnoaa.tb_rain_rate
+;    q2b.tb_atten = rnoaa.tb_rain_attenuation
+
     t2 = systime(1)
     IF verbose THEN print,'time to do load arrays',t2-t1
     t1 = t2
