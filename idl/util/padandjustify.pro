@@ -19,7 +19,7 @@
 ; 
 ; INPUTS:  
 ;
-;   array : array of numbers
+;   array : array of numbers or strings to be padded
 ;   ndigits: length of returned string(s)
 ;
 ; OPTIONAL INPUTS:  
@@ -68,6 +68,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1999/01/28 21:05:40  vapuser
+; Added 'format' keyword.
+;
 ; Revision 1.4  1998/10/22 21:24:28  vapuser
 ; Handle strarr(1) case
 ;
@@ -108,7 +111,9 @@ FUNCTION PadAndJustify, number, ndigits, pad=pad, $
    nnum = n_elements(number)
    IF nnum EQ 1 THEN retarr = '' ELSE $
      retarr = strarr(nnum)
-   tnum = long(number)
+   IF isa(number,/number) THEN $
+     tnum = long(number) ELSE $
+     tnum=number
    FOR i=0,nnum-1 DO BEGIN 
      IF n_elements(format) NE 0 THEN $
        str = strtrim(string(tnum[i],format=format),2) ELSE $
