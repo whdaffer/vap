@@ -33,6 +33,9 @@
 ;                    Default=3. degrees
 ;        vlatspace - The latitude spacing between vectors
 ;                    Default=3. degrees
+;        latpar  - Alternately, specify the latitude range of the
+;                  window. The part of the interpolated field that
+;                  extends beyond this range (if any) is ignored.
 ;        animpar - 3 vector, xsize, ysize, nframes of animation. 
 ;                  NB, since this is a satellite projection, the area
 ;                  of the  window taken up with the actual animation 
@@ -67,6 +70,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 22:58:03  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -77,6 +83,7 @@ PRO ROTATING_SATMOVIE, interp_file, $
                        loncent=loncent, $
                        vlonspace=vlonspace, $
                        vlatspace=vlatspace, $
+                       latp=latp, $
                        animpar=animpar, $
                        path_inc=path_inc, $
                        rsfbase=rsfbase, $
@@ -180,13 +187,33 @@ uu = *qmodel.u
 vv = *qmodel.v
 loni = *qmodel.lon
 lati =  *qmodel.lat
-xf0 = qmodel.hdr.lonpar[0]
-xf1 = qmodel.hdr.lonpar[1]
-xfinc = qmodel.hdr.lonpar[2]
+lonpar = qmodel.hdr.lonpar
+latpar = qmodel.hdr.latpar
 
-yf0 = qmodel.hdr.latpar[0]
-yf1 = qmodel.hdr.latpar[1]
-yfinc = qmodel.hdr.latpar[2]
+
+  ; Cut off any portion of the wind file, if you want to.
+
+IF n_elements(latp) NE 0 THEN BEGIN 
+  x = where(lati GE latp[0] AND lati LE latp[1],nx)
+  IF nx NE 0 AND nx LT n_elements(lati) THEN BEGIN 
+    unpack_where,lati,x,c,r
+    r = minmax(r)
+    uu = uu[*,r[0]:r[1]]
+    vv = vv[*,r[0]:r[1]]
+    loni = loni[*,r[0]:r[1]]
+    lati = lati[*,r[0]:r[1]]
+    lonpar = [min(loni,max=mx),mx,lonpar[2]]
+    latpar = [min(lati,max=mx),mx,lonpar[2]]
+  ENDIF 
+ENDIF 
+
+xf0 = lonpar[0]
+xf1 = lonpar[1]
+xfinc = lonpar[2]
+
+yf0 = latpar[0]
+yf1 = latpar[1]
+yfinc = latpar[2]
 
 set_plot,'z'
 
