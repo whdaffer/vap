@@ -3,7 +3,7 @@
 #include "/usr/local/rsi/idl/external/export.h"
 #define NVEC 200000
 
-void succor2( int argc, IDL_VPTR argv[], char * argk )
+void succor( int argc, IDL_VPTR argv[], char * argk )
 /* succor2.c - IDL linkimage routine.
  * 
  *
@@ -32,6 +32,9 @@ void succor2( int argc, IDL_VPTR argv[], char * argk )
  *            input guess field, or the current guess field, if 
  *            not the initial iteration, is dropped.
  * $Log$
+ * Revision 1.2  1999/09/21 18:31:30  vapuser
+ * Rewrote to handle variable rainf/ermax.
+ *
  * $Id$
  * */
 
