@@ -74,6 +74,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.7  1998/10/29 22:33:57  vapuser
+; added /Isfile to DeEnvVar call.
+;
 ; Revision 1.6  1998/10/28 23:37:51  vapuser
 ; Adde verbose keyword and some print statements.
 ;
@@ -119,7 +122,7 @@ FUNCTION q2bhdfread, filename, $
   t1 = systime(1)
   t0 = t1
   IF n_params() LT 1 THEN BEGIN 
-    message,' Usage: retstruct=hdfqread(filename) '
+    message,' Usage: retstruct=q2bhdfqread(filename) '
     return, -1
   ENDIF 
 
