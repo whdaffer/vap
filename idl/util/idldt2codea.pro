@@ -32,6 +32,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/03/09 15:27:28  vapuser
+; changed justification to /right (what *was* I thinking?)
+;
 ; Revision 1.1  1999/03/04 18:53:37  vapuser
 ; Initial revision
 ;
@@ -50,7 +53,6 @@ FUNCTION idldt2codea, idldt
   ENDIF 
   
   nn = n_elements(idldt)
-  codea =  strarr( nn )
   dt_to_var, idldt, year=year, month=month, day=day, hour=hour, min=min, sec=sec
   codea =  strtrim( year,2 ) + '-' + $
              PadAndJustify( month, 2, pad='0', /right ) + '-' + $
