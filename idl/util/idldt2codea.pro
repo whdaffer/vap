@@ -32,6 +32,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/03/04 18:53:37  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1999, William Daffer
 ;-
@@ -50,11 +53,11 @@ FUNCTION idldt2codea, idldt
   codea =  strarr( nn )
   dt_to_var, idldt, year=year, month=month, day=day, hour=hour, min=min, sec=sec
   codea =  strtrim( year,2 ) + '-' + $
-             PadAndJustify( month, 2, pad='0', /left ) + '-' + $
-             PadAndJustify( day, 2, pad='0', /left ) + 'T' + $
-             PadAndJustify( hour, 2, pad='0', /left ) + ':' + $
-             PadAndJustify( min, 2, pad='0', /left ) + ':' + $
-             PadAndJustify( sec, 2, pad='0', /left ) + '.000Z'
+             PadAndJustify( month, 2, pad='0', /right ) + '-' + $
+             PadAndJustify( day, 2, pad='0', /right ) + 'T' + $
+             PadAndJustify( hour, 2, pad='0', /right ) + ':' + $
+             PadAndJustify( min, 2, pad='0', /right ) + ':' + $
+             PadAndJustify( sec, 2, pad='0', /right ) + '.000Z'
 return,codea
 END
 
