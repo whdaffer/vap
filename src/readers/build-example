@@ -1,0 +1,3 @@
+#!/bin/csh
+# $Id$
+cc -g -o example_reader example_reader.c qread_rmgdr.c -lc -lm
