@@ -1,5 +1,5 @@
 ;+
-; NAME:  StrJoin
+; NAME:  Whdstrjoin
 ; $Id$
 ; PURPOSE:  Join strings using input separator
 ;
@@ -7,7 +7,7 @@
 ;
 ; CATEGORY:  String processing
 ;
-; CALLING SEQUENCE:  joined_string = strjoin(array[, separator])
+; CALLING SEQUENCE:  joined_string = whdstrjoin(array[, separator])
 ; 
 ; INPUTS:  
 ;  
@@ -41,13 +41,16 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/11/20 20:16:56  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
 
-FUNCTION strjoin, array, separator
+FUNCTION whdstrjoin, array, separator
   IF n_params() LT 1 THEN BEGIN 
-    Message,'Usage: joined_string=strjoin(array [,separator])',/cont
+    Message,'Usage: joined_string=whdstrjoin(array [,separator])',/cont
     return,-1
   ENDIF 
   IF n_elements(separator) EQ 0 THEN $
