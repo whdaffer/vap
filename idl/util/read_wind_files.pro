@@ -1,0 +1,237 @@
+;+
+; NAME:  read_wind_files
+; PURPOSE:  Read Qscat/Nscat files, return data
+;
+;
+; AUTHOR; William Daffer
+;
+;
+; CATEGORY:   Data I/O
+;
+;
+;
+; CALLING SEQUENCE:  data = read_wind_files( files, 
+;                                           Decimate    = Decimate, $
+;                                           CRDecimate  = CRDecimate, $
+;                                           ExcludeCols = ExcludeCols, $
+;                                           Help        = Help, $
+;                                           Nscat       = Nscat
+;
+;
+; 
+; INPUTS:   
+;
+;        files - vector of fully qualified filenames
+;
+;
+;
+; OPTIONAL INPUTS:  
+;
+;
+;	
+; KEYWORD PARAMETERS:  
+;
+;  decimate - (I) scalar: take every nth vector, i.e. 2=> take
+;                 every other, 3=> take every 3rd. (Defaults to 1,
+;                 meaning take evey vector)
+;
+; CRDecimate - (I) 2-vector: 1st entry specifies column, 2nd the
+;                 row. e.g. [2,3] means take every other column, every
+;                 3rd row. (defaults to [1,1] meaning take every
+;                 vector)
+;
+; ExcludeCols - (I) string: comma seperated list of individual columns
+;                 or ranges of colums to exclude. Ranges are indicated
+;                 by start:stop (e.g. 33:42 will exclude columns 33
+;                 through 42, inclusive). Ex: 0,40:42,72 will exclude
+;                 columns 0, 40,41,42 and 72.  (Defaults to '' meaning
+;                 exclude NO columns)
+;
+; Help        - (F) Emit message and exit.
+; Nscat       - (F) Expect Nscat data, ignore decimate, CRDecimate and
+;                 ExcludeCols. (default=0, meaning, expect Qscat data)
+;
+;
+;
+; OUTPUTS:  Success: a [nrecs,4] array with [*,0] = U, [*,1] = v, [*,2] = lon
+;                    and [*,3] = lat.
+;           Failure: a scalar 0.
+;
+;
+;
+; OPTIONAL OUTPUTS:  None
+;
+;
+;
+; COMMON BLOCKS:  None
+;
+;
+;
+; SIDE EFFECTS:  None
+;
+;
+;
+; RESTRICTIONS:  None
+;
+;
+;
+; PROCEDURE:  
+;
+;    Nscat Flag set: repeatedly call READ_RMGDR_DATA for each file
+;    appending the result of that call to the output array.
+;
+;    Nscat flag NOT set: (the default) iterate over the file array
+;    creating a Q2B object for each file. Pass the decimate/CRDecimate
+;    and ExcludeCols data to the object, call q->getplotdata() for it
+;    to return the data. Get rid of any data flagged as Nans (i.e. the
+;    excluded data). Add this data into the output array.
+;
+;
+;
+;
+;
+; EXAMPLE:  
+;
+;
+;
+; MODIFICATION HISTORY:
+; $Log$
+;
+;Jet Propulsion Laboratory
+;Copyright (c) 1998, California Institute of Technology
+;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
+;-
+
+FUNCTION read_wind_files, files, $
+                          Decimate    = Decimate, $
+                          CRDecimate  = CRDecimate, $
+                          ExcludeCols = ExcludeCols, $
+                          Help        = Help, $
+                          Nscat       = Nscat
+
+   rcsid="$Id$"
+   lf = string(10b)
+
+   hstr1 =             'Usage: data=read_wind_files( files, $ ' 
+   hstr1 = hstr1 + lf + "  [, decimate=n [, CRDecimate=[m,n] [,$ "
+   hstr1 = hstr1 + lf + "    ExcludeCols='exclude_string' [, help=0|1 [, $" 
+   hstr1 = hstr1 + lf + "     Nscat=0|1 [,fill=0|1 ]]]]]] "
+   hstr1 = hstr1 + lf + lf + 'Where...' + lf + lf
+   hstr1 = hstr1 + " Files  - vector of fully qualified file names " + lf
+   hstr1 = hstr1 + " Decimate - scalar, take every n-th vector, e.g. 2 " + lf
+   hstr1 = hstr1 + "   means take every 2nd, 3 means every 3rd " + lf 
+   hstr1 = hstr1 + "   (def=1)" + lf
+   hstr1 = hstr1 + " CRDecimate (Col/Row Decimate) a 2-vector. " + lf
+   hstr1 = hstr1 + "   1st element = Columns, 2nd = rows, e.g. " + lf
+   hstr1 = hstr1 + "   CRDecimate=[2,3] means take every other column " + lf
+   hstr1 = hstr1 + "   and every third row. (def=[1,1])" + lf
+   hstr2 =         " ExcludeCols - a string designating the columns to exclude " + lf
+   hstr2 = hstr2 + "   in addition to those excluded by Decimate/CRDecimate. " + lf
+   hstr2 = hstr2 + "   The string is a comma separated list of two types " + lf
+   hstr2 = hstr2 + "   of entries. "+lf
+   hstr2 = hstr2 + "   The first type is a single number, in which case the " + lf
+   hstr2 = hstr2 + "   indicated column is excluded. The second is " + lf
+   hstr2 = hstr2 + "   two numbers separated by a colon. This second type " + lf
+   hstr2 = hstr2 + "   expands into a range with the indicated starting and " + lf
+   hstr2 = hstr2 + "   ending columns. Example: ExcludeCols='0,34:42,75 will " + lf 
+   hstr2 = hstr2 + "   exclude Columns 0, 34,35,36,37,38,39,40,41,42 and 75" + lf 
+   hstr2 = hstr2 + "   (def='')" + lf
+   hstr3 =         " Nscat - Flag, if set, expect nscat data " + lf
+   hstr3 = hstr3 + "   If set, decimate/CRDecimate/Fill and ExcludeCols are " + lf
+   hstr3 = hstr3 + "   ignored. " + lf
+   hstr3 = hstr3 + " Help  - flag, if set, emit this message and exit. " + lf 
+;   hstr3 = hstr3 + " Fill - flag, if set, the return array contains NaNs for " + lf
+;   hstr3 = hstr3 + "   excluded data " + lf
+   hstr4 =         " Returns an array of data if successful, a scaler 0 if not." + lf
+   hstr4 = hstr4 + "   The returned array has the form [nrecs,4] " + lf
+   hstr4 = hstr4 + "   where u=[*,0], v=[*,1], lon=[*,2] and " + lf
+   hstr4 = hstr4 + "   lat=[*,3] " + lf
+;   hstr4 = hstr4 + "   If Fill is set, the returned array will be " + lf
+;   hstr4 = hstr4 + "   [nrows,ncols,4] with u=[*,*,0], v=[*,*,1], lon=[*,*,2]" + lf
+;   hstr4 = hstr4 + "   and lat=[*,*,3] with NaNs occupying the excluded locations" + lf
+;   hstr4 = hstr4 + lf 
+
+   hstr = hstr1 + hstr2 + hstr3 + hstr4
+   IF keyword_set(Help) THEN BEGIN 
+     Print,hstr
+     return,0
+   ENDIF 
+
+   IF n_params() EQ 0 THEN BEGIN 
+     Message, "No Parameters! ",/cont
+     Print,hstr
+     return,0
+   ENDIF 
+
+   nf = n_elements(files)
+   nofill = keyword_set(fill) NE 1
+
+   IF keyword_set( Nscat ) THEN BEGIN 
+
+     print,'reading ' + files(0)
+     READ_RMGDR_DATA,files(0),uu,vv,llon,llat,mint=mmint,maxt=mmaxt
+     FOR f=1,nf-1 DO BEGIN
+       print,'reading ' + files(f)
+       READ_RMGDR_DATA,files(f),u,v,lon,lat,mint=mint,maxt=maxt
+       uu =  [uu,u]
+       vv =  [vv,v]
+       llon = [llon,lon]
+       llat = [llat,lat]
+       mmint = [mmint, mint]
+       mmaxt =  [mmaxt,maxt]
+     ENDFOR 
+     
+   ENDIF ELSE BEGIN 
+     IF n_Elements(decimate) EQ 0 THEN decimate = 1
+     IF N_Elements(CRDecimate) NE 2 THEN CRDecimate =  [1,1]
+     IF VarType(ExcludeCols) EQ 'UNDEFINED' OR $
+        VarType(ExcludeCols) NE 'STRING' THEN ExcludeCols = ''
+     FOR f=0,nf-1 DO BEGIN 
+       print,'reading ' + files(f)
+       q = obj_new('q2b',file=files(f), $
+                   decimate=decimate, $
+                   crdecimate=crdecimate, $
+                   excludecols=excludecols )
+       IF obj_valid(q) THEN BEGIN 
+         s = q-> GetPlotData(u,v,lon,lat)
+         IF nofill THEN BEGIN 
+           good = where( finite(u) AND finite(v), ngood )
+           IF ngood NE 0 THEN BEGIN 
+             u = u[good]
+             v = v[good]
+             lon = lon[good]
+             lat = lat[good]
+             IF exist(uu) THEN BEGIN 
+               uu = [uu,u]
+               vv = [vv,v]
+               llon = [llon,lon]
+               llat = [llat,lat]
+             ENDIF ELSE BEGIN 
+               uu = u
+               vv = v
+               llon = lon
+               llat = lat
+             ENDELSE 
+           ENDIF 
+         ENDIF ELSE BEGIN 
+           ; fill.
+;           IF exist(uu) THEN BEGIN 
+;             uu =  [ [[uu]],[[u]] ]
+;             vv =  [ [[vv]],[[v]] ]
+;             llon =  [ [[llon]],[[lon]] ]
+;             llat =  [ [[llat]],[[lat]] ]
+;           ENDIF ELSE BEGIN 
+;             uu = u
+;             vv = v
+;             llon = lon
+;             llat = lat
+;           ENDELSE 
+         ENDELSE 
+         Obj_destroy,q
+       ENDIF ELSE $
+         Message,"Can't Read file " + files(f),/cont
+     ENDFOR 
+   ENDELSE 
+   data =  [ [uu], [vv], [llon], [llat] ]
+   return, data
+END
