@@ -29,6 +29,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1999/10/06 21:59:02  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -52,8 +55,10 @@
 
 ;============================================
 
-FUNCTION rsf::Init,basename
+FUNCTION rsf::Init,basename, animpar, loncent
   IF n_elements(basename) NE 0 THEN self.basename= basename
+  IF n_elements(animpar) EQ 3 THEN self.animpar = animpar
+  IF n_elements(loncent) NE 0 THEN self.loncent = loncent
   return,1
 END
 
