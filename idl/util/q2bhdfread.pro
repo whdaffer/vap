@@ -74,6 +74,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.8  1998/11/06 15:19:57  vapuser
+; Changed a message
+;
 ; Revision 1.7  1998/10/29 22:33:57  vapuser
 ; added /Isfile to DeEnvVar call.
 ;
@@ -226,6 +229,11 @@ FUNCTION q2bhdfread, filename, $
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, lon
       hdf_sd_endaccess,r
+      x = where(lon LT 0, nx )
+      IF nx GT 0 THEN BEGIN 
+        lon = long(lon)
+        lon[x] = lon[x] + 65535l
+      ENDIF 
       lon =  float(lon*cal.cal + cal.offset)
 
       t2 = systime(1)
