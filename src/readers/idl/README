@@ -1,0 +1,146 @@
+README for IDL code to read QuikSCAT Near RealTime (NRT) (also known
+as RMGRD) data.
+
+Inventory:
+
+  readqnrt.pro      ; The function which reads the data. This routine has
+		      two possible non-error returns, (on error it
+		      returns a -1) both arrays of structures,
+		      depending on the argumentation. If the boolean
+		      keyword `raw' is set, the data is returned in an
+		      array of structures defined in the routine
+		      q2b_rnoaa_str.pro. This is the raw data as it
+		      appears in the file. If `raw' is *not* set (the
+		      default) the data is converted from wind
+		      speed/direction to rectilenear coordinates and
+		      returned in an array of structures as defined by
+		      q2b_str.pro.
+
+                      Additionally, the routine will return the
+		      'header' in a raw byte array. The header is a
+		      sequence of keyword=value pairs which may be
+		      used by converting this array to a string
+		      array, splitting on the line termination
+		      characters ('\n') and then splitting on '='.
+
+                      That is:
+
+	              q=readqnrt(file,header=h)
+                      h= strsplit( h, string(10b),/extract)
+
+                      (IIRC, this requires at least IDL 5.3)
+
+                      Now `h' is an array of strings, all in the form
+                    
+                      "keyword      =        value                 ;"
+
+	              You can get the *raw* data by using the `raw'
+	              keyword and, if you're running idl < 5.0 and
+	              you're on a little endian machine, you can tell
+	              the routine to byte swap the data by using the
+	              'little_endian' keyword.
+
+  q2b_rnoaa_str.pro ; Defines structure used to read the data. This
+		      will be the structure returned if the keyword
+		      `raw' is set.
+
+  q2b_str.pro       ; Defines structure used to *return* the data (unless /raw
+		      is set, in which case the data are returned
+		      `uninterpreted' in the q2b_rnoaa structure.
+
+  nscat_getuv.pro   ; Converts wind speed/direction to U/V 
+
+Coordinate Systems:
+
+
+  In the `raw' data, wind speed is in meters/second. Direction is in
+  degrees clockwise from the North. This is the direction the wind is
+  blowing TOWARDS, e.g. a direction of 0 means the wind is southerly,
+  blowing from south to north.
+
+  In the data returned in the q2b structure, which have had all
+  speed/dir quantities converted to rectilinear vector components, the
+  coordinate vectors are defined so U points east and V north. A wind
+  which has U=25 and V=0 is blowing from west to east at 25
+  meters/second. 
+
+
+  Longitudes are in east longitudes (0 to 360.)
+
+
+For the Q2B_Rnoaa structure:
+
+  This is just the raw data, as it appears in the file. The alert user
+  will note the presence of fields not found in the q2b structure,
+  i.e. the one returned by readqnrt.pro when the /raw flag is *NOT*
+  set. These fields are the brightness temperatures as calculated
+  using the scatterometer data. I have no need for them and so I don't
+  including them in the output of the q2b structure. The user may
+  choose to modify readqnrt.pro and q2b_str.pro if they wish.
+
+
+For the Q2B structure:
+
+  All of the ambiguities are contained in the U/V fields, but the
+  'selected' ambiguity, if one exists, is contained in the 'SU/SV'
+  fields. This field is set to NAN if no selected ambiguity is
+  present.
+
+  A second set of 'selected ambiguities,' those selected using the
+  DIRTH algorithm, is also maintained in the 'su2/sv2' fields.
+
+  The model field used in 'nudging' the data is in the fields mu/mv.
+
+  As noted above, all 'missing' quantities are set to NAN. The user
+  should filter the data using something like:
+
+    x=where( finite(q2b.su) and finite(q2b.sv), nx )
+    if nx ne 0 then begin 
+      u=q2b[x].su
+      b=q2b[x].sv
+    endif
+
+  before plotting it or making other use of it.
+
+  If you wish to retain the row/column structure of the data, you can
+  do something like:
+
+
+    x=where( not (finite(q2b.su) and finite(q2b.sv)), nx )
+    u=q2b.su
+    v=q2b.sv
+    if nx ne 0 then begin 
+      u[x] = 0
+      v[x]= 0
+    endif
+     
+
+  Although '0' is a valid value for u/v, but it won't be visible if you
+  actually draw the vectors.
+
+  The `Rain' flag:
+
+  This flag was added after launch. It is an attempt to flag rain
+  contaminated data. The user will find that it can be quite zealous
+  in situations such as storms, especially hurricanes. There's little
+  that can be done about it, however, the data in those situations are
+  very suspect.	
+
+
+  A cautionary tail about byte swapping and endianess.
+
+    These data are created on a Big Endian system. If you are reading
+    them on a Little Endian system, such as an PC, and you are using
+    IDL with version < 5.0 (IIRC) then you'll have to use the
+    `little_endian' keyword to tell the routine to byteswap the
+    data. With versions >= 5.0, this is handled automatically via the
+    '/SWAP_IF_LITTLE_ENDIAN' keyword to `open' call.
+
+
+Questions?
+
+Contact: 
+William Daffer
+William.Daffer@jpl.nasa.gov
+818-354-0161 (vox)
+Last Modified: Thu Nov  8 08:05:52 2001

@@ -1,0 +1,114 @@
+#!/usr/bin/perl -w
+#
+# $Id$
+#
+# Modifications:
+#
+#
+
+
+=pod
+
+=head1 make_ts_overlay 
+
+
+
+=head2 USAGE
+
+          make_ts_overlay --region REGION --time yyyy/mm/dd/hh/mm 
+                              --wind_delta n
+                              --storm_delta m
+
+=over 4
+
+=item * REGION : The region in which we'll search for storms.
+
+                 currently, those regions are: GMS5, GOESEAST and GOESWEST
+	         GMS5 has 70<=longitude<=190 and -60<=latitude<=60
+		 GOESEAST is roughly the Northern Atlantic and 
+		 GOESWEST is roughly the North Eastern Pacific, 
+                 about as far west as the Hawaiian Islands.
+=item *	TIME: has the format YYYY/MM/DD/HH/MM
+	   (defaults to current time (in UT)- wind_delta_time)
+	   and should be input as UT!
+
+=item *	STORM_DELTA_TIME is in fractional hours.
+	   (defaults to 8)
+
+=item *	WIND_DELTA_TIME is in factional hours.
+	   (defaults to 4)
+
+=item * ABSFLAG: 0|1, if 1, time range is TIME +/- `delta'/2
+                 (whichever delta we're talking about) Otherwise it's
+                 TIME-`delta'
+
+=item *	HELP : emits this message
+
+=back
+
+The cloud data closest to TIME will be used in the overlay.
+
+
+=cut
+
+use strict;
+use TropicalStormsOverlay;
+use GetOpt::Long;
+
+my $starttime = $^T;
+my $starttimeasstring = scalar(localtime($^T));
+$|=0;
+
+
+my @argnames = qw/region time windpath windfilter crdecimate excludecols 
+		  rainflag rf_action rf_color length help tellme
+		  stormdelta winddelta/;
+
+$result=&GetOptions( 'region=s',\$region,
+		     'time=s',  \$time,
+		     'windpath|path|wpath=s', \$windspath,
+		     'windfilter|filter|wfilter|wfilt=s', \$windfilter,
+		     'crdecimate=i@',\@crdecimate,
+		     'excludecols=s',\$excludecols,
+		     'rainflag=i',\$rainflag,
+		     'rf_action=i',\$rf_action,
+		     'rf_color=i',\$rf_color,
+		     'length=i',\$length,
+		     'stormdelta=f',\$stormdelta,
+		     'winddelta=f',\$winddelta,
+		     'help', \$help,
+		     'tellme', \$tellme );
+
+my @args = ();
+foreach $main::aa (@argnames){
+  if (${$main::aa}) {
+    push @args, (uc "$main::aa", ${$main::aa});
+  }
+}
+
+
+my $obj = TropicalStormsOverlay->new(@args);
+my @msg,
+push @msg, "\n\n=*=*=*=*=*=* Start processing $starttimeasstring =*=*=*=*=*=*=*=*\n\n";
+$obj->Report(\@msg,'INFO');
+@msg=()
+my @storms = $obj->stormsFound();
+foreach (@storms){
+  push @msg,"\n\n\t =========== Working on $_ ========\n\n";
+  push @msg,$obj->PrettyPrint($_);
+  push @msg,"\n\n";
+  $obj->Report(\@msg,'INFO');
+  $product = $obj->makeOverlay($_);
+  $obj->moveOutput($product);
+  $obj->redoHTML($product);
+}
+
+@msg=();
+my $endtime = time();
+my $endtimeasstring = scalar( localtime(time()));
+my $wallclock = ($endtime - $starttime/60.0;
+my @msg = "\n\n =============== Done ====================== \n\n";
+push @msg, "Time: $endtimeasstring\n";
+push @msg, "Wallclock: $wallclock\n";
+$obj->Report(\@msg,'INFO');
+exit;

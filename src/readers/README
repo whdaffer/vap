@@ -1,0 +1,191 @@
+$Id$
+
+An example program showing how to read the Vap RMGDR (Reduced Merged
+GDR) data in C. This program is meant for illustration
+purposes. Nothing more. The user is advised that they are on their own
+with this data. There are no warranties, express or implied.
+
+In particular, this README files is mostly geared towards those using
+variants of the Unix operating system. I've never compiled or run code
+under Windows, so if someone does pick up this code and make it run
+under Windows, I'd appreciate a line telling me what changes I need to
+make in order to do the same. 
+
+In fact, if anyone needs to make any changes, please drop me a line
+and tell me what you did! 
+
+William.Daffer@jpl.nasa.gov
+
+A word about endian issues:
+
+  The data itself is created on a Big Endian machine. If you plan to
+  run this on an Intel machine (which is little endian) the multi-byte
+  quantities must be byteswapped. I've modified the program so that it
+  will byteswap the four quantities (lat/lon/speed/direction) if
+  needed. If the user decides to modify this program to output other
+  multi-byte quantities, (see qscat_rec.h to see which those might be)
+  he must extend the code for those items 'mutatis mutandis.'
+
+Nomenclature:
+
+  WVC = wind vector cell. QuikSCAT data is arranged in a swath of
+  these WVC which is 76 cells wide and however many rows are needed to
+  get all the way around the earth. This particular form of the
+  QuikSCAT data, which is created by the SeaWind Near Real Time
+  Processor (the SeaNRT) starts and stops at odd places, depending on
+  what data was in that particular downlink, and so has a varying
+  number of rows. Succeeding files can overlap, there can be
+  regresssions and gaps. And because the SeaNRT processor can't wait
+  to assemble all the data in a nice orderly manner, as can the
+  science processor, but must get on with the job of producing near
+  real time winds, the beginning and end of the files can sometimes be
+  a little raggedy.
+
+  That's the price you pay for getting the data fast!
+
+
+To Compile: 
+
+  cc -g -o example_reader example_reader.c qread_rmgdr.c -lc -lm
+
+or
+
+  You can execute ./build-example, provided you make it executable.
+
+
+To Use:
+
+  example_reader name-of-RMGDR-file [use-rain-flag output-type-flag]
+
+  Where:
+   
+     name-of-RMGDR-file is the fully qualified path to the RMGDR file
+
+     use-rain-flag = 0|1, (default=0). If 1, don't print the 
+                          data that have been rainflagged.
+	The default is to print all data.
+
+     output-type-flag = 1 or (present, but not 1) (default=1)
+        1                     : output as speed, direction
+        anything-other-than-1 : output as U,V
+
+	As noted, if this flag is not present, the default is to
+	output speed and direction.
+
+
+A word on the structure of some of the data.
+
+  The user will note, if they look at qscat_rec.h, that many of the
+  quantities are NCELLS by 4. The scatterometer processing produces at
+  most 4 ambiguities, or possible wind directions/speeds, although it
+  frequently produces fewer than 4 and sometimes none at all. It also
+  tells us (in the element wvc_sel) which one it thinks is the 'best',
+  i.e. which is the *selected* ambiguity. Those far wiser than I are
+  able to make use of these other ambiguities, but I would caution the
+  user to stay with the one pointed to by wvc_sel and it is only these
+  which example_reader.c will write out without modification.
+
+  Caveat programmer. Change this attribute of the program at your own
+  risk!
+
+The 'Time' of a WVC.
+
+  Each measurement in a WVC is an average of several looks of a
+  particular cell and these individual looks can be minutes
+  apart. Time is not a very meaningful concept for such
+  quantities. Nevertheless, there is a 'time' associated with each row
+  of the data. A 'row,' in this case, is one record from the
+  file. That time is stored as a 24 character array named 'row_time.'
+  This data has NOT* been null terminated, so the user will have to
+  copy it into a properly null-terminated character array (of at least
+  25 elements) to use it in C.
+
+  The format of this time variable is YYYY-DOYTHH:MM:SS.CCC,
+  e.g. 2002-001T00:00:01.010 for 1.01 seconds after the new year of
+  2002.
+
+  Currently example_reader will print out the row time for each row.
+
+Data Quality Checking:
+
+  In example_reader.c the user will see a test before data is 
+  written out
+
+      if (qrec.nambig[i]>0 && qrec.wvc_sel[i]>0){
+	s=qrec.wvc_sel[i]-1;
+ 	...
+	do stuff here...
+	...
+	write data out
+     }
+
+  where i is the WVC.
+
+  qrec.nambig[i] is the number of ambiguities this WVC has. If that
+  number == 0, this WVC isn't useable.
+
+  wvc_sel[i] is the 'selected ambiguity.' (see above)
+  If that number == 0, then the WVC isn't useable.
+ 
+  Wvc_sel[i] is 'one-indexed' so I subtract 1 from it to make it play
+  with C nicely.
+
+Rain Flagging: 
+
+  To QuikSCAT, and scatterometers in general, problems can arise in
+  regions of the ocean with high rain and/or high wind (like storms or
+  fronts) If the user wants to eliminate rainflagged data, simply set
+  the 'use-rain-flag' commandline switch to 1.
+
+  
+Output Format:
+
+  All output is to stdout except errors, which go to stderr.
+
+   After some header lines of explanation the format is:
+
+
+    Record #, column #, wvc_sel-1 followed by either:
+
+     lon, lat, speed, direction (if output-type-flag=1)
+  
+                     - or -
+	
+     lon, lat, U,     V         (if output-type-flag is present and != 1)
+
+
+     Record # is 0 offset, from the first record after the header.
+
+     So, it looks like
+
+     rec, col, sel, lon, lat, speed, dir
+
+          -or-
+
+     rec, col, sel, lon, lat, u, v
+
+Coordinate system:
+
+     direction: 0 points to the north, increases in the clockwise
+                direction and indicates the direction the wind is
+                blowing *towards*. Thus 90 has the wind blowing from
+                west to east, 180 north to south and 270 east to west.
+
+     u=positive,v=0: Vector points due east
+     u=0, V=positive: vector points due north.
+
+     These vectors indicate which direction the wind is blowing
+     towards, not the direction the wind is coming from.
+     
+
+
+Contact info:
+
+If the user wishes to make use of quantities other than those which I
+have explained in this README file or if you simply have questions
+about the existing code, I may be reached at:
+
+
+William Daffer
+William.Daffer@jpl.nasa.gov
+818-354-0161
