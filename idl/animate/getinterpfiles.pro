@@ -107,6 +107,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1998/10/22 21:19:24  vapuser
+; Added/Changed some comments, squashed bugs.
+;
 ; Revision 1.1  1998/10/17 00:21:39  vapuser
 ; Initial revision
 ;
@@ -177,7 +180,7 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
     interp_filter = 'NIF-*.hdf'
     windfile_filter = 'N*'    
   ENDIF 
-  interp_files = findfile(Inpterp_Path+interp_filter,count=cnt)
+  interp_files = findfile(Interp_Path+interp_filter,count=cnt)
   make_interp_file =  0 
 
   IF cnt NE 0 THEN BEGIN 
