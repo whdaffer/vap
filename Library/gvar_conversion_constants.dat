@@ -1,0 +1,9 @@
+; Got this file from http://www.nnic.noaa.gov/SOCC/page19.html
+; Discussion of calibrating Goes IR data.
+; $Id$
+;
+;       Channel         Gain            Bias
+        2               227.3889        68.2167
+        3               38.8383         29.1287
+        4               5.2285          15.6854
+        5               5.0273          15.3332
