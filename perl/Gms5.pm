@@ -27,6 +27,9 @@
 
 # Modifications:
 # $Log$
+# Revision 1.3  1999/04/02 22:29:38  vapuser
+# Many many changes
+#
 # Revision 1.2  1999/04/02 18:35:10  vapuser
 # Removed 'doc' and 'cal' processing. We really don't need it.
 #
@@ -59,10 +62,20 @@ BEGIN {
   $startdir=Cwd::getcwd();
   $user=$ENV{'USER'};
   $local_host="$ENV{'HOST'}.jpl.nasa.gov";
-  $remote_host="explorer.arc.nasa.gov";
-  $REMOTE_TOPDIR="/pub/Weather/GMS-5";
-  #$LOCAL_TOPDIR="$VAP_GMS_TOPDIR" || "$VAP_ROOT/gms5" || "/disk4/vap/gms5";
-  $LOCAL_TOPDIR="/disk4/vap/gms5";
+
+  $VAP_LIB=$ENV{'VAP_LIB'}                  || "/usr/people/vapuser/Qscat/Library";
+
+#   Put these in $VAP_LIB/gms5_archive, so 
+#   that we could change quickly. (whd 2000/03/09)
+#   
+#  $remote_host="explorer.arc.nasa.gov";
+#  $remote_host="rsd.gsfc.nasa.gov";
+#  $REMOTE_TOPDIR="/pub/Weather/GMS-5";
+
+  require $VAP_LIB."/gms5_archive";
+
+  $LOCAL_TOPDIR= $ENV{'VAP_GMS_TOPDIR'} || $ENV{'VAP_ROOT'}."/gms5" || "/disk5/vap/gms5";
+  #$LOCAL_TOPDIR="/disk4/vap/gms5";
   
 }
 
@@ -93,7 +106,7 @@ sub GetIntersection {
     $filecnt{$tmp}++;
   }
 
-  @dirs=('grid','grida'); #removed cal and doc from list
+  @dirs=('grid'); #removed cal and doc from list
   foreach $dir (@dirs) {
     chdir $dir || die "Can't CD to $dir\n";
     open ARCHIVE, "<archive.filelist";
@@ -183,7 +196,7 @@ sub GetAll {
   die "Need datetime!\n" unless $datetime;
 
   $test = CheckAll($datetime);
-  if ($test) {
+#  if ($test) {
 
     Open(); #unless defined ($ftp);
 #     CdDoc();
@@ -207,13 +220,6 @@ sub GetAll {
     GetGrid( $file);
 
 
-     CdGrida();
-     @list=List("$datetime*");
-     carp"No Grida files found for $datetime\n" if $#list<0;
-     $file="$datetime.hdr.Z";
-     GetGrida( $file);
-
-
      CdIr1();
      @list=List("$datetime*");
      carp "No Ir1 files found for $datetime\n" if $#list<0;
@@ -232,14 +238,20 @@ sub GetAll {
   #   $file="$datetime.hdf.Z";
   #   GetIr3( $file);
 
-    CdVis();
-    @list=List("$datetime*");
-    carp "No Vis files found for $datetime\n" if $#list<0;
-    $file="$datetime.hdf.Z";
-    GetVis( $file);
+#     CdVis();
+#     @list=List("$datetime*");
+#     carp "No Vis files found for $datetime\n" if $#list<0;
+#     $file="$datetime.hdf.Z";
+#     GetVis( $file);
+
+#      CdGrida();
+#      @list=List("$datetime*");
+#      carp"No Grida files found for $datetime\n" if $#list<0;
+#      $file="$datetime.hdr.Z";
+#      GetGrida( $file);
 
     Close();
-  }
+#  }
   $test;
   
 } # GetAll
@@ -406,12 +418,12 @@ sub CheckAll {
   }
 
 
-  CdGrida();
-  @list=List("$datetime*");
-  if (!$list[0]) {
-    carp"No Grida files found for $datetime\n";
-    $ret=0 ;
-  }
+#   CdGrida();
+#   @list=List("$datetime*");
+#   if (!$list[0]) {
+#     carp"No Grida files found for $datetime\n";
+#     $ret=0 ;
+#   }
  
 
   CdIr1();
@@ -435,12 +447,12 @@ sub CheckAll {
 #    $ret=0 ;
 #  }
 
-  CdVis();
-  @list=List("$datetime*");
-  if (!$list[0]) {
-    carp "No Vis files found for $datetime\n";
-    $ret=0 ;
-  }
+#   CdVis();
+#   @list=List("$datetime*");
+#   if (!$list[0]) {
+#     carp "No Vis files found for $datetime\n";
+#     $ret=0 ;
+#  }
   Close();
   $ret;
 } # CheckAll
@@ -449,6 +461,7 @@ sub Gms5DateTime2SysTime{
 
   die "Need datetime!\n" if !$_[0];
   $year=substr($_[0],0,2);
+  $year += 2000 if $year < 90; # kludge
   $month=substr($_[0],2,2);
   $day=substr($_[0],4,2);
   $hour=substr($_[0],6,2);
