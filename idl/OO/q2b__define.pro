@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.10  1998/10/28 23:29:01  vapuser
+  ; worked on getextent
+  ;
   ; Revision 1.9  1998/10/26 22:08:38  vapuser
   ; Added Rq2bdata structure stuff, updated comments.
   ;
@@ -189,7 +192,8 @@ FUNCTION Q2B::Init, $
             filename=filename ,$
             decimate=decimate ,$
             crdecimate=crdecimate ,$
-            ExcludeCols=ExcludeCols
+            ExcludeCols=ExcludeCols, $
+            Verbose=Verbose
 
 
   Forward_Function  q2b_str  
@@ -210,6 +214,8 @@ FUNCTION Q2B::Init, $
   status = 0
   self.filename = '<No Name>'
   self.type = 'UNKOWN'
+  self.Verbose = keyword_set(Verbose)
+
   IF N_Elements(filename) NE 0 THEN BEGIN 
     IF N_Elements(type) NE 0 THEN self.type = StrupCase(type)
     self.filename = filename
@@ -995,7 +1001,8 @@ FUNCTION Q2b::Read, filename
 
   CASE self.type OF 
     'SVH' : BEGIN 
-      data =  q2bsvhread(filename )
+      data =  q2bsvhread(filename, $
+                        verbose=self.verbose)
       IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
         status = 1
         self.type = 'SVH'
@@ -1005,7 +1012,8 @@ FUNCTION Q2b::Read, filename
     'HDF': BEGIN 
       data = q2bhdfread(filename,eqx=eqx,$
                         StartTime=StartTime,$
-                        EndTime=EndTime)
+                        EndTime=EndTime, $
+                       Verbose=self.Verbose )
       IF Vartype(eqx) EQ 'STRUCTURE' THEN self.eqx = eqx
       IF Vartype(data) EQ 'STRUCTURE' THEN BEGIN 
         status = 1
@@ -1022,7 +1030,7 @@ FUNCTION Q2b::Read, filename
         IF IsQ2b( DeEnvVar(filename) ) THEN BEGIN 
           data = q2bhdfread(filename,eqx=eqx,$
                             StartTime=StartTime,$
-                            EndTime=EndTime)
+                            EndTime=EndTime, verbose=self.verbose)
         ENDIF ELSE BEGIN 
           Message,"Not a Q2B HDF file " + filename,/cont
           return,0
@@ -1585,8 +1593,8 @@ PRO q2b__define
            StartTime: '',$        ; Start time of data (yyyy/mm/dd/hh/mm)
            EndTime  : '',$        ; End time of data (yyyy/mm/dd/hh/mm)
            type     : '',$        ; 'SVH', 'HDF' or '???'
-           
-           model    : 0l,$        ; Indicates model data (which means 
+           Verbose  : 0l,$
+           model    : 0l,$               ; Indicates model data (which means 
                                   ; ncells and nrecs are meaningless)
            ncells   : 0l,$        ; number of crosstrack cells 
                                   ; (see note on 'model')
