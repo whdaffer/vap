@@ -35,6 +35,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/10/05 16:23:59  vapuser
+; Changed calls to 'read_jpeg'
+;
 ; Revision 1.1  1999/04/07 22:34:43  vapuser
 ; Initial revision
 ;
@@ -101,6 +104,8 @@ PRO frames2xmovie, files, gif=gif, title=title
         return
       ENDIF 
       ncolors = n_elements(r)
+      window,colors=ncolors,/free,/pixmap,xsize=10,ysize=10
+      wdelete,!d.window
       tvlct,r,g,b
     END 
     'JPG': BEGIN 
@@ -127,6 +132,7 @@ PRO frames2xmovie, files, gif=gif, title=title
     CASE type OF 
       'GIF': BEGIN 
         read_gif, files[i], image, r,g,b
+        tvlct,r,g,b
       END 
       'JPG': BEGIN 
         read_jpeg, files[i], image, colortable
