@@ -1,11 +1,42 @@
 #!/usr/bin/perl5  
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <00/02/28 10:56:06 vapuser>
+# Time-stamp: <00/08/09 11:32:19 vapuser>
 # $Id$
+#
+#
+#
+# Note on unfortunate historical accident.
+#
+#
+#
+# When I first started writing the idl/perl code to run VAP, I was
+# using the time format YYYYMMDDThh:mm:ss.ccc, which I took to calling
+# 'vaptime' in the Perl code. Unfortunately, the IDL code is much
+# easier to write if I separate all the fields in whatever time format
+# I use by the same separator, instead of the 3 (one a null) that this
+# format requires. So I made 'yyyy/mm/dd/hh/mm/ss' the default in the
+# IDL code and took to calling that 'vaptime' as well. Now, I have two
+# 'vaptimes', one for the perl code and one for the IDL code. To make
+# matters infinitely worse, in the perl code that has to construct the
+# IDL 'vaptimes' I call that 'vaptime' 'idltime,' easily confused with
+# idldt time, the native IDL structure used to manipulate times.
+#
+# I'm going to continue this usage here, until I have the desire (not
+# likely) to go around changing nomenclature. So, to recap:
+#
+#  fmt('vaptime' in perl) = yyyymmddThh:mm:ss.ccc
+#  fmt('vaptime' in idl) = fmt('idltime' in perl) = yyyy/mm/dd/hh/mm/ss
+#
+#
 #
 # Modification History:
 #
 # $Log$
+# Revision 1.9  2000/02/28 19:00:35  vapuser
+# Added subroutine VapMailErrorMsg.
+# Got rid of lots of 'die's in date_index and gag.
+# More work to be done on this later.
+#
 # Revision 1.8  1999/09/22 23:06:37  vapuser
 # Added hurricane alley overlays
 #
