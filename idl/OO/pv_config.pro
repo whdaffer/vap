@@ -57,6 +57,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/28 23:33:45  vapuser
+; Modified comments. Took some out. Added code to support pvplotobjects
+; in pv object
+;
 ; Revision 1.1  1998/10/26 22:11:20  vapuser
 ; Initial revision
 ;
@@ -483,7 +487,16 @@ FUNCTION ConfigChoiceBgroup_Events, event
       ENDIF 
       IF (*info).ColorIndex EQ -1 THEN $
          (*info).ColorIndex = !d.N_Colors-1 
-
+      Device, get_visual_name=visual
+      visual = strupcase(visual)
+      IF visual NE 'PSEUDOCOLOR' THEN BEGIN 
+          ; If this is not pseudo color, we'll assume the grayscale
+          ; color and construct the color under that assumption
+        tvlct,r,g,b,/get
+        ii = (*info).ColorIndex
+        rgb = [ r[ii], g[ii], b[ii] ]
+        (*info).ColorIndex = Color24(rgb,/transpose)
+      ENDIF 
         ; Get the information from the Speed Histogram Object.
       SpeedHisto-> Get, Histo = Histo, XHisto=XHisto, $
         BinSize=BinSize, NBins=Nbins, Min=Min, Max=Max

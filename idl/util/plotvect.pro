@@ -93,6 +93,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/28 23:34:22  vapuser
+; added 'dots' keyword. Took out norm calculation.
+;
 ; Revision 1.1  1998/10/23 22:22:36  vapuser
 ; Initial revision
 ;
@@ -112,7 +115,9 @@ PRO plotvect,u,v,x,y, $
              start_index = start_index ,$
              ncolors = ncolors, $
              thick =  thick , $
-             Dots=Dots 
+             Dots=Dots ,$
+             table=Table,$
+             truecolor=truecolor
 
   lf = string(10b)
   IF n_params() NE 4 THEN BEGIN 
@@ -152,22 +157,33 @@ PRO plotvect,u,v,x,y, $
     x2 = x[good1[good]]
     y2 = y[good1[good]]
   ENDIF ELSE BEGIN 
-    Message,' There are NO Vectors of Non-Zero length ',/cont
+    Message,' There are NO Non-Zero length Vectors ',/cont
     return
   ENDELSE 
   speed =  minspeed >  speed < maxspeed
 
-  IF NOT( keyword_set(color ) ) THEN  BEGIN
-    col = bytscl( speed, min=minspeed,max=maxspeed, $
-                  top= ncolors-1) + byte(start_index)
+  IF keyword_set(TrueColor) THEN BEGIN 
+    IF NOT(keyword_set(Table)) THEN BEGIN 
+      tvlct,r,g,b,/get
+      table = transpose([ [r],[g],[b]])
+    ENDIF 
+    veccol = BytScl( speed, min=minspeed, $
+                     max=maxspeed, $
+                     top=NCOLORS-1) + start_index
+    col = color24(veccol, Colortable=table)
   ENDIF ELSE BEGIN 
-    IF n_elements( color ) EQ 1 THEN BEGIN 
-      IF color EQ -1 THEN $
-         col = Bytscl( speed, min=minspeed,max=maxspeed, $
-                       top= ncolors-1) + byte( start_index)  ELSE $
-         col= bytarr( n_elements( speed ) ) + byte(color )
-    ENDIF ELSE $
-          col =  byte(color)
+    IF NOT( keyword_set(color ) ) THEN  BEGIN
+      col = bytscl( speed, min=minspeed,max=maxspeed, $
+                    top= ncolors-1) + byte(start_index)
+    ENDIF ELSE BEGIN 
+      IF n_elements( color ) EQ 1 THEN BEGIN 
+        IF color EQ -1 THEN $
+           col = Bytscl( speed, min=minspeed,max=maxspeed, $
+                         top= ncolors-1) + byte( start_index)  ELSE $
+           col= bytarr( n_elements( speed ) ) + byte(color )
+      ENDIF ELSE $
+            col = color
+    ENDELSE 
   ENDELSE 
   ;
   r = .2                          ;len of arrow head

@@ -90,6 +90,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.10  1998/10/29 22:36:46  vapuser
+; Added verbose keyword/member
+;
 ; Revision 1.9  1998/10/28 23:28:12  vapuser
 ; More work on adding pvplotobject.
 ; More stable now.
@@ -742,6 +745,17 @@ FUNCTION pv::Init, $
 
   IF keyword_set( help ) THEN self-> SelfHelp
 
+
+    ; Set the pseudo 8 bit class. It may not take, since the visual
+    ; class may already been set and a connection to the X-server may
+    ; already have been created, in which case, we'll find out when we
+    ; get the visual name in the 2nd call.
+
+  Device, pseudo=8
+  device,get_visual_name= visual_name
+  self.visual = strupcase(visual_name)
+  
+
   self.Sensitivity = 1 ; Make sure we can operate on the widget.
 
   self.MinMaxSpeed = [ 1.e10, -1.e10 ] 
@@ -1026,11 +1040,18 @@ FUNCTION Pv::CreateWidget
     self.Quit2Id = Widget_Button( self.MiscId, Value='Quit', $
                                    Uvalue='QUIT2' )
 
-    self.DrawId =  Widget_Draw( self.tlb, scr_xsize=self.xsize, $
-                                scr_ysize=self.ysize, $
-                                /button_events, retain=2, $ 
-                                colors=self.Ncolors,$
-                                event_pro='pv_draw_events')
+    IF self.visual EQ 'PSEUDOCOLOR' THEN BEGIN 
+      self.DrawId =  Widget_Draw( self.tlb, scr_xsize=self.xsize, $
+                                  scr_ysize=self.ysize, $
+                                  /button_events, retain=2, $ 
+                                  colors=self.Ncolors,$
+                                  event_pro='pv_draw_events')
+    ENDIF ELSE BEGIN
+      self.DrawId =  Widget_Draw( self.tlb, scr_xsize=self.xsize, $
+                                  scr_ysize=self.ysize, $
+                                  /button_events, retain=2, $ 
+                                  event_pro='pv_draw_events')
+    ENDELSE 
     junk = Widget_Base( self.tlb, col=1 )
   ;  self.StatusId = Widget_Label( junk,Scr_XSize=self.xsize/2-4,$
   ;                                   Scr_YSize=20, Frame=2, $
@@ -1051,10 +1072,17 @@ FUNCTION Pv::CreateWidget
     Widget_Control,self.tlb,/Realize
     Widget_Control, self.DrawId, get_value=wid
     self.wid = wid
-    Window,/Free,/Pixmap,colors=self.Ncolors,XSize=self.XSize, YSize=self.YSize
+    IF self.visual EQ 'PSEUDOCOLOR' THEN BEGIN 
+      Window,/Free,/Pixmap,colors=self.Ncolors,$
+        XSize=self.XSize, YSize=self.YSize
+    ENDIF ELSE BEGIN 
+      Window,/Free,/Pixmap,colors=self.Ncolors,$
+        XSize=self.XSize, YSize=self.YSize
+    ENDELSE 
     self.PixId = !d.Window
     Wset, wid
-    TvLct, transpose(*self.PtrToCT)
+    IF self.visual EQ 'PSEUDOCOLOR' THEN $
+      TvLct, transpose(*self.PtrToCT) ELSE loadct,0
     Widget_Control, self.tlb, set_uval=self
       ; Call Xmanager to Manage the Widget.
     XManager, 'PV', self.TLB, event_handler='pv_events', /no_block
@@ -1073,10 +1101,6 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
 
   COMMON PrevDims, oldLimit
 
-  force = keyword_set(Force)
-  IF keyword_set(AlreadyPlotted) THEN self->ResetPlotObjects,/AlreadyPlotted
-  IF force THEN self-> ResetPlotObjects,/AlreadyPlotted
-  Erase = keyword_set( NoErase) NE 1
 
   Catch, Error
   IF Error NE 0 THEN BEGIN 
@@ -1086,6 +1110,12 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
     return
   ENDIF 
 
+  force = keyword_set(Force)
+  IF keyword_set(AlreadyPlotted) THEN self->ResetPlotObjects,/AlreadyPlotted
+  IF force THEN self-> ResetPlotObjects,/AlreadyPlotted
+  Erase = keyword_set( NoErase) NE 1
+
+  IF NOT exist(CT) THEN CT = *self.PtrToCt
   status = 1
   nTotPlots = 0
   noData = -2 ; A particular failure mode from q2b->getplotdata
@@ -1180,7 +1210,10 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
                       MinSpeed=self.MinSpeed, $
                        MaxSpeed=self.MaxSpeed, $
                          Start_index=self.Wind0,$
-                          NColors=self.NWind, dots=dots
+                          NColors=self.NWind, dots=dots,$
+                           truecolor=self.visual ne 'PSEUDOCOLOR' , $
+                            table=CT
+              
               po->InRegion,1
               nTotPlots =  nTotPlot+1
             ENDIF ELSE IF status EQ NoData THEN BEGIN 
@@ -1208,7 +1241,9 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
                         MinSpeed=self.MinSpeed, $
                          MaxSpeed=self.MaxSpeed, $
                            Start_index=self.Wind0,$
-                            NColors=self.NWind, dots=dots
+                            NColors=self.NWind, dots=dots,$
+                           truecolor=self.visual ne 'PSEUDOCOLOR' , $
+                            table=CT
                 po->InRegion,1
                 nTotPlots =  nTotPlots + 1
               ENDIF ELSE IF status EQ NoData THEN BEGIN 
@@ -2062,15 +2097,18 @@ PRO pv::CreateMap, Erase = Erase, force=force, $
 
    map_extent = abs(limit[3]-limit[1])*abs(limit[2]-limit[0])
    dots =  map_extent GE (140*110)
+   IF self.visual NE 'PSEUDOCOLOR' THEN titlecolor = 'ffffff'x
+
    IF strlen(!p.SubTitle) NE 0 OR $
      strlen( Xtitle )    NE 0 OR $
      strlen( YTitle )    NE 0 THEN BEGIN 
 
      IF Erase OR Force THEN BEGIN 
        self-> ResetPlotObjects,/AlreadyPlotted
+       titlecolor = 255
        Map_Set, 0,center[0], /Grid,/Label,/Continent,$
         limit=limit,Title=mtitle, $
-        xmargin=6, ymargin=5
+         xmargin=6, ymargin=5, color=titlecolor
                                ;        oldLimit = limit
      ENDIF 
 
@@ -2086,7 +2124,7 @@ PRO pv::CreateMap, Erase = Erase, force=force, $
      IF Erase OR Force THEN BEGIN 
        self-> ResetPlotObjects,/AlreadyPlotted
        Map_Set, 0,center[0], /Grid,/Label,/Continent,$
-        limit=limit,Title=mtitle
+        limit=limit,Title=mtitle, color=titlecolor
      ENDIF 
    ENDELSE 	
 
@@ -2145,6 +2183,7 @@ PRO Pv__define
             yd           : 0l ,$
             xs           : 0l ,$
             ys           : 0l ,$
+            visual       : '' ,$ ; either DIRECT, TRUE or PSEUDO.
 
   ;------------ Vector plotting quantities ---------------
 
