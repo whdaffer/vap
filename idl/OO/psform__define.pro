@@ -33,6 +33,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/06/15 15:36:37  vapuser
+; Added a call to forward_function to define ps_form
+;
 ; Revision 1.1  1999/04/09 21:36:45  vapuser
 ; Initial revision
 ;
@@ -198,7 +201,7 @@ PRO psform::Get, $
                                   Inches       : self.Inches, $
                                   Color        : self.Color, $
                                   filename     : self.Filename, $   
-                                  Bit_Per_Pixel: self.bits_per_pixel }
+                                  Bits_Per_Pixel: self.bits_per_pixel }
    
 
 END
