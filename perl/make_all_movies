@@ -1,0 +1,11 @@
+#!/usr/bin/perl -w
+use Animate;
+use VapWebsite;
+@regions = qw/ATLHURR PACHURR NWPAC NEPAC INDIAN NWATL NPAC/;
+foreach my $r (@regions) {
+  my $exe = "make_animation --region $r";
+  my $rr=system($exe)/256;
+  die "$!\n" if $rr;
+}
+
+exit;

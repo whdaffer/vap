@@ -1,0 +1,25 @@
+#!/usr/bin/perl -w
+#
+# Make all overlays in one fell swoop
+# $Id$
+#
+
+use lib $ENV{VAP_SFTWR_PERL};
+use strict;
+no strict 'refs';
+use Overlay;
+
+my @overlays = Overlay->new(GET_REGIONS=>1);
+my @wf = qw/Q S/;
+my $logdir = $ENV{VAP_OPS_LOGFILES};
+foreach my $overlay (@overlays) {
+  foreach (@wf){
+    print "Working on $overlay ($_)\n";
+    my $exe = "make_overlay --region $overlay --windfilter $_";
+    $exe .= ">> $logdir/$overlay" . "_" . "$_.log 2>&1";
+    my $r=system( $exe )/256;
+    warn "$exe failed!" if $r;
+  }
+}
+
+exit;
