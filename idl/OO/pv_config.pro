@@ -31,6 +31,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.7  1999/08/30 15:44:35  vapuser
+; Added Colorbar. Quit now destroys PV.
+; Did some General cleanup and bug fixes
+;
 ; Revision 1.5  1999/04/08 20:20:28  vapuser
 ; Changed color24 to rgb2true
 ;
@@ -64,8 +68,17 @@ PRO Pv_Config_Cleanup, id
 END
 
 ;-----------------------------------------------------
+;pv_config_whichtoplot
+;  Currently, just a stub to aid 'makedep'
+;  This routine isn't called by anything
+;-----------------------------------------------------
+PRO pv_config_whichtoplot, base
+END
+
+;-----------------------------------------------------
 ;pv_config_Cleanup
 ;-----------------------------------------------------
+
 
 FUNCTION pv_config_annot_events, event
   retevent = 0
