@@ -674,13 +674,13 @@ IF n_elements( latpar ) NE 2 THEN BEGIN
 ENDIF 
 
 IF n_elements(vlonpar ) NE 3 THEN BEGIN 
-  vlonpar =  [0. >  (lonpar(0)-5), 360<(lonpar(1)+5), 1. ]
+  vlonpar =  [0. >  (lonpar[0]-5), 360<(lonpar[1]+5), 1. ]
   message,' Taking default vlonpar ',/info
   print,vlonpar
 ENDIF 
 
 IF n_elements( vlatpar ) NE 3 THEN BEGIN 
-  vlatpar =  [-90. > (latpar(0)-5), 90 <  (latpar(1)+5), 1. ]
+  vlatpar =  [-90. > (latpar[0]-5), 90 <  (latpar[1]+5), 1. ]
   message,' Taking default vlatpar', /info
   print,vlatpar
 ENDIF 
@@ -689,7 +689,7 @@ IF n_elements( animpar ) NE 3 THEN BEGIN
   message,' Taking default animpar = [640,512, 60 ] ',/cont
 ENDIF 
 
-nframes =  animpar(2) ; number of frames in the animation.
+nframes =  animpar[2] ; number of frames in the animation.
 IF nframes MOD harmonic NE 0 THEN BEGIN 
   Message,'Nframes != 0 (Mod Harmonic): Returning',/cont
   print,'nframes: ', nframes, ' harmonic: ', harmonic
@@ -697,9 +697,9 @@ IF nframes MOD harmonic NE 0 THEN BEGIN
 ENDIF 
 
 IF tvsafe THEN $
- pad = [ round(animpar(0)*0.09375/2.),round(animpar(1)*0.0916667/2.) ]
+ pad = [ round(animpar[0]*0.09375/2.),round(animpar[1]*0.0916667/2.) ]
 IF titsafe THEN $
- pad =  [ round( animpar(0)*0.184375/2.),round(animpar(1)*0.184/2.) ]
+ pad =  [ round( animpar[0]*0.184375/2.),round(animpar[1]*0.184/2.) ]
 
 
 message,'path_inc = ' + string(path_inc,form='(f7.2)'),/info
@@ -761,13 +761,13 @@ nwindcolors = windEnd-windStart+1
 
 set_plot,'z'
 ap = animpar
-  ; subtract 40 from animpar(1) (the y size). this'll get added back
+  ; subtract 40 from animpar[1] (the y size). this'll get added back
   ; in when we put the logo on.
 
-IF dologo THEN ap(1) = ap(1)-40
+IF dologo THEN ap[1] = ap[1]-40
 
 IF padframe THEN ap(0:1) =  ap(0:1) - 2*pad
-device,set_resolution=[ap(0),ap(1)]
+device,set_resolution=[ap[0],ap[1]]
 
 tvlct,red,green,blue
 
@@ -899,8 +899,8 @@ ENDELSE
 
 IF read_success THEN BEGIN 
   ;
-  lonmin =  lonpar(0) &  lonmax= lonpar(1) 
-  latmin =  latpar(0) &  latmax= latpar(1) 
+  lonmin =  lonpar[0] &  lonmax= lonpar[1] 
+  latmin =  latpar[0] &  latmax= latpar[1] 
 
 
   lons = (findgen( nxf )*xfinc + xf0) # (fltarr( nyf ) + 1.)
@@ -913,30 +913,30 @@ IF read_success THEN BEGIN
   IF nt1  NE 0  OR nt2 NE 0 THEN BEGIN 
     east_long = 0
     IF nt1 NE 0 THEN BEGIN
-      x =  where( lonpar(0:1) GT 180, nx )
-      IF nx THEN lonpar(x) =  lonpar(x) -360.
+      x =  where( lonpar[0:1] GT 180, nx )
+      IF nx THEN lonpar[x] =  lonpar[x] -360.
     ENDIF 
 
     IF nt1 NE 0 THEN BEGIN
       x =  where( vlonpar(0:1) GT 180, nx )
-      IF nx THEN vlonpar(x) =  vlonpar(x) -360.
+      IF nx THEN vlonpar[x] =  vlonpar[x] -360.
     ENDIF 
 
     x =  where( lons GT 180, nx )
-    IF nx NE 0 THEN lons(x) =  lons(x) - 360.
-    IF xf0 EQ 0 AND lonpar(0)*lonpar(1) LT 0 THEN BEGIN 
+    IF nx NE 0 THEN lons[x] =  lons[x] - 360.
+    IF xf0 EQ 0 AND lonpar[0]*lonpar[1] LT 0 THEN BEGIN 
       ; the requested area crosses the prime meridian and the file is
       ; arranged in  East longitude. So, in order to make the array
       ; indexing argumentation work in the sections below, we have to
       ; rearrange the uu/vv/lons/lats arrays so that they start at -180. 
       ; This section will undoubtably have to be revisited when we
       ; start making interpolation which don't cover the whole globe.
-      x = where( lons(*,0) LT 0, nx )
-      lons =  shift( lons, nxf- x(0), 0 )
-      lats =  shift( lats, nxf-x(0), 0 )
+      x = where( lons[*,0] LT 0, nx )
+      lons =  shift( lons, nxf - x[0], 0 )
+      lats =  shift( lats, nxf - x[0], 0 )
       FOR i=0,nfiles-1 DO BEGIN 
-        uu0(*,*,i) =  shift( uu0(*,*,i), nxf-x(0), 0 ) 
-        vv0(*,*,i) =  shift( vv0(*,*,i), nxf-x(0), 0 )
+        uu0[*,*,i] =  shift( uu0[*,*,i], nxf-x[0], 0 ) 
+        vv0[*,*,i] =  shift( vv0[*,*,i], nxf-x[0], 0 )
       ENDFOR 
       xf0 =  min(lons, max=xf1)
       yf0 =  min(lats, max=yf1)
@@ -950,8 +950,8 @@ IF read_success THEN BEGIN
   ;
   ;This piece does the animation and interpolation stuff
   ;
-  xv0 =  vlonpar(0) &  xv1= vlonpar(1) &  xvinc= vlonpar(2)
-  yv0 =  vlatpar(0) &  yv1= vlatpar(1) &  yvinc= vlatpar(2)
+  xv0 =  vlonpar[0] &  xv1= vlonpar[1] &  xvinc= vlonpar[2]
+  yv0 =  vlatpar[0] &  yv1= vlatpar[1] &  yvinc= vlatpar[2]
 
   nxv =  long( (xv1-xv0)/xvinc)
   nyv =  long( (yv1-yv0)/yvinc)
@@ -976,7 +976,7 @@ IF read_success THEN BEGIN
   tottime =  0.
   iter =  0l
 
-  ss = min_speed> sqrt( uu0(*,*,0)^2 + vv0(*,*,0)^2 )       < max_speed ; 
+  ss = min_speed> sqrt( uu0[*,*,0]^2 + vv0[*,*,0]^2 )       < max_speed ; 
 
   ;
   ; *********************************** Main LOOP *****************************
@@ -985,8 +985,8 @@ IF read_success THEN BEGIN
   ; possibly initial, if multiple) map for 60 iterations, then
   ; start laying down the frames.
 
-  uu =  uu0(*,*,0)
-  vv =  vv0(*,*,0)
+  uu =  uu0[*,*,0]
+  vv =  vv0[*,*,0]
 
 
   ; Here's how we handle multiple files.
@@ -1076,7 +1076,7 @@ IF read_success THEN BEGIN
         ;    and
         ; nfiles = number of files 
         ;    and 
-        ; nframe = number of frames in the animation (=animpar(2) here)
+        ; nframe = number of frames in the animation (=animpar[2] here)
         ; 
         ; THEN the frames which will be directly from the files and not
         ; interpolated are all those for which 
@@ -1084,35 +1084,35 @@ IF read_success THEN BEGIN
         ; frame_num/nfiles mod nframes EQ 0. except the last frame
         ; which will be from the last file.  
         IF nfiles EQ 2 THEN BEGIN 
-          du =  uu0(*,*,1) - uu0(*,*,0)
-          dv =  vv0(*,*,1) - vv0(*,*,0)
+          du =  uu0[*,*,1] - uu0[*,*,0]
+          dv =  vv0[*,*,1] - vv0[*,*,0]
           CASE 1 OF 
             frm EQ nframes-1: BEGIN 
-              uu =  uu0(*,*,1)
-              vv =  vv0(*,*,1)
+              uu =  uu0[*,*,1]
+              vv =  vv0[*,*,1]
             END 
             frm EQ 0:  BEGIN 
-              uu =  uu0(*,*,0)
-              vv =  vv0(*,*,0)
+              uu =  uu0[*,*,0]
+              vv =  vv0[*,*,0]
             END
             ELSE : BEGIN 
               IF interpolate THEN BEGIN 
-                uu =  uu0(*,*,0) + 1.0*frm*du/nframes
-                vv =  vv0(*,*,0) + 1.0*frm*dv/nframes
+                uu =  uu0[*,*,0] + 1.0*frm*du/nframes
+                vv =  vv0[*,*,0] + 1.0*frm*dv/nframes
               ENDIF ELSE BEGIN 
-                uu =  (uu0(*,*,1)*frm + uu0(*,*,0)*(nframes-frm))/nframes
-                vv =  (vv0(*,*,1)*frm + vv0(*,*,0)*(nframes-frm))/nframes
+                uu =  (uu0[*,*,1]*frm + uu0[*,*,0]*(nframes-frm))/nframes
+                vv =  (vv0[*,*,1]*frm + vv0[*,*,0]*(nframes-frm))/nframes
               ENDELSE 
             END
           ENDCASE 
         ENDIF ELSE BEGIN
           IF last_segment THEN BEGIN 
             print,'      last segment! '
-            du =   uu0(*,*,nfiles-1)-uu0(*,*,nfiles-2)
-            dv =   vv0(*,*,nfiles-1)-vv0(*,*,nfiles-2)
+            du =   uu0[*,*,nfiles-1]-uu0[*,*,nfiles-2]
+            dv =   vv0[*,*,nfiles-1]-vv0[*,*,nfiles-2]
             IF frm EQ nframes-1 THEN BEGIN 
-              uu =  uu0(*,*,nfiles-1)
-              vv =  vv0(*,*,nfiles-1)
+              uu =  uu0[*,*,nfiles-1]
+              vv =  vv0[*,*,nfiles-1]
             ENDIF ELSE BEGIN 
               i1 = nfiles-2
               i2 =  i1+1
@@ -1124,11 +1124,11 @@ IF read_success THEN BEGIN
               print,'     nn = ',nn
               print,'     ii/nn,(nn-ii)/nn = ',ii/nn,(nn-ii)/nn
               IF interpolate THEN BEGIN 
-                uu = du*ii/nn + uu0(*,*,nfiles-2)
-                vv = dv*ii/nn + vv0(*,*,nfiles-2)
+                uu = du*ii/nn + uu0[*,*,nfiles-2]
+                vv = dv*ii/nn + vv0[*,*,nfiles-2]
               ENDIF ELSE BEGIN 
-                uu =  (uu0(*,*,i2)*ii + uu0(*,*,i1)*(nn-ii))/nn
-                vv =  (vv0(*,*,i2)*ii + vv0(*,*,i1)*(nn-ii))/nn
+                uu =  (uu0[*,*,i2]*ii + uu0[*,*,i1]*(nn-ii))/nn
+                vv =  (vv0[*,*,i2]*ii + vv0[*,*,i1]*(nn-ii))/nn
               ENDELSE 
             ENDELSE 
                         
@@ -1137,13 +1137,13 @@ IF read_success THEN BEGIN
             CASE 1 OF 
               frm EQ 0:  BEGIN 
                 print,' frm=0'
-                uu =  uu0(*,*,0)
-                vv =  vv0(*,*,0)
+                uu =  uu0[*,*,0]
+                vv =  vv0[*,*,0]
               END
               ( frm  MOD cutoff ) EQ 0: BEGIN 
                 print,' frm mod cutoff eq 0:, frm/cutoff = ',frm/cutoff
-                uu =  uu0(*,*,frm/cutoff)
-                vv =  vv0(*,*,frm/cutoff)
+                uu =  uu0[*,*,frm/cutoff]
+                vv =  vv0[*,*,frm/cutoff]
               END 
               ELSE : BEGIN 
                 i1   = frm/cutoff 
@@ -1156,16 +1156,16 @@ IF read_success THEN BEGIN
 
                 IF interpolate THEN BEGIN 
                   IF oi1 NE i1 OR oi2 NE i2 THEN BEGIN 
-                    du =  uu0(*,*,i2)-uu0(*,*,i1)
-                    dv =  vv0(*,*,i2)-vv0(*,*,i1)
+                    du =  uu0[*,*,i2]-uu0[*,*,i1]
+                    dv =  vv0[*,*,i2]-vv0[*,*,i1]
                   ENDIF 
-                  uu = du*frm2/cutoff + uu0(*,*,i1)
-                  vv = dv*frm2/cutoff + vv0(*,*,i1)
+                  uu = du*frm2/cutoff + uu0[*,*,i1]
+                  vv = dv*frm2/cutoff + vv0[*,*,i1]
                 ENDIF ELSE BEGIN 
                   print,'frm2/cutoff, (cutoff-frm2)/cutoff = ',$
                    1.0*frm2/cutoff,1.0*(cutoff-frm2)/cutoff
-                  uu =  (uu0(*,*,i2)*frm2 + uu0(*,*,i1)*(cutoff-frm2))/cutoff
-                  vv =  (vv0(*,*,i2)*frm2 + vv0(*,*,i1)*(cutoff-frm2))/cutoff
+                  uu =  (uu0[*,*,i2]*frm2 + uu0[*,*,i1]*(cutoff-frm2))/cutoff
+                  vv =  (vv0[*,*,i2]*frm2 + vv0[*,*,i1]*(cutoff-frm2))/cutoff
                 ENDELSE 
                 oi1 = i1
                 oi2 = i2
@@ -1182,18 +1182,18 @@ IF read_success THEN BEGIN
         ; this is the first frame for the animate, so set up the
         ; contour, land and land elevation image masks.
         first =  0l
-        continent_im =  bytarr(ap(0), ap(1)) + 255b
+        continent_im =  bytarr(ap[0], ap[1]) + 255b
                 
 
-        loncent =  (lonpar(1)+lonpar(0))/2.
+        loncent =  (lonpar[1]+lonpar[0])/2.
         latcent =  0.
         map_set,latcent,loncent,/noborder, $
-           limit = [ latpar(0), lonpar(0), latpar(1), lonpar(1) ]
+           limit = [ latpar[0], lonpar[0], latpar[1], lonpar[1] ]
 
         tt = where( lons ge lonmin and lons le lonmax and $ ; take out the '5's
                     lats ge latmin and lats le latmax, ntt ) 
         unpack_where, ss, tt, c,r 
-
+        c = minmax(c) &  r=minmax(r)
         ; !x/y.window gives the coordinates (in normal coordinates) of
         ; the plot area. Use convert_coord to convert these to device
         ; coords, fudge inward 3 row/colums and find those point in
@@ -1202,10 +1202,10 @@ IF read_success THEN BEGIN
         ; to contour set down and hence the ones for which we need to
         ; determine the land/water value.
         o = convert_coord( !x.window, !y.window,/norm,/to_dev )
-        xw = transpose( o(0,*) ) & yw = transpose( o(1,*) )  
+        xw = transpose( o[0,*] ) & yw = transpose( o[1,*] )  
         ; Fudge factor
-        xw = [ ceil(xw(0) )+3, floor( xw(1) )-3 ] ; +/- 3
-        yw = [ ceil(yw(0) )+3, floor( yw(1) )-3 ] ; +/- 3
+        xw = [ ceil(xw[0] )+3, floor( xw[1] )-3 ] ; +/- 3
+        yw = [ ceil(yw[0] )+3, floor( yw[1] )-3 ] ; +/- 3
 
 
         ; Find where the latitude and longitudes are within the
@@ -1216,9 +1216,9 @@ IF read_success THEN BEGIN
         ; those to data coordinates, send the data coords to land_mask
         ; to get the land/water mask value.
 
-        contour,ss( min(c):max(c), min(r):max(r))*0b + !d.n_colors-1,$
-         lons(min(c):max(c), min(r):max(r)),$
-         lats(min(c):max(c), min(r):max(r)), $
+        contour,ss( c[0]:c[1], r[0]:r[1])*0b + !d.n_colors-1,$
+         lons(c[0]:c[1], r[0]:r[1]),$
+         lats(c[0]:c[1], r[0]:r[1]), $
          level = !d.n_colors-1, c_colors=!d.n_colors-1,$
          /overplot,/cell_fill 
 
@@ -1230,14 +1230,14 @@ IF read_success THEN BEGIN
 ;        ; Exclude the 'borders'
         unpack_where, contour_im, g, cc, rr  
 
-        g = where( cc GE xw(0) AND cc LE xw(1) and $
-                   rr GE yw(0) AND rr LT yw(1), ng ) 
+        g = where( cc GE xw[0] AND cc LE xw[1] and $
+                   rr GE yw[0] AND rr LT yw[1], ng ) 
 
         cc =  cc(g) &  rr=rr(g)
         g = 0
 
-;        cc =  indgen( xw(1)-xw(0)+1 )+xw(0)
-;        rr =  indgen( yw(1)-yw(0)+1 )+yw(0)
+;        cc =  indgen( xw[1]-xw[0]+1 )+xw[0]
+;        rr =  indgen( yw[1]-yw[0]+1 )+yw[0]
 
         ; Convert those pixels back to data coords
         o =  convert_coord( cc, rr, /dev, /to_data )
@@ -1257,11 +1257,11 @@ IF read_success THEN BEGIN
 
          ; Handle east/west longitude.
         IF east_long THEN BEGIN  
-         t =  where( lon LT 0, nt )
+          t =  where( lon LT 0, nt )
           IF nt NE 0 THEN lon(t) =  lon(t) + 360.
         ENDIF ELSE BEGIN
-          x =  where( lons GT 180, nx )
-          IF nx NE 0 THEN lons(x) =  lons(x) - 360.
+          x =  where( lon GT 180, nx )
+          IF nx NE 0 THEN lon(x) =  lon(x) - 360.
         ENDELSE 
 
         lonmin1 =  min( lon, max=lonmax1 )
@@ -1269,14 +1269,14 @@ IF read_success THEN BEGIN
 
         ; extend the extrema 1/2 of the vector grid increment out and
         ; use this extent to chose the vectors to plot.
-        lonmin1 =  lonmin1 + vlonpar(2)/2.
-        lonmax1 =  lonmax1 - vlonpar(2)/2.
+        lonmin1 =  lonmin1 - vlonpar(2)/2.
+        lonmax1 =  lonmax1 + vlonpar(2)/2.
 
-        latmin1 =  latmin1 + vlatpar(2)/2.
+        latmin1 =  latmin1 - vlatpar(2)/2.
         latmax1 =  latmax1 - vlatpar(2)/2.
 
-        IF lonmin1 LT 0 THEN lonmin1 =  lonmin1 + 360.
-        IF lonmax1 LT 0 THEN lonmax1 =  lonmax1 + 360.
+        IF east_long AND (lonmin1 LT 0) THEN lonmin1 =  lonmin1 + 360.
+        IF east_long AND (lonmax1 LT 0) THEN lonmax1 =  lonmax1 + 360.
 
 
         mask =  long( lat*0l )
@@ -1315,8 +1315,8 @@ IF read_success THEN BEGIN
           ; put the wind speed contour 
         tt = bytscl(min_speed >  ss( min(c):max(c),min(r):max(r)) < max_speed, $
                     min=min_speed, max=max_speed, top=windEnd)
-        contour,tt,lons( min(c):max(c),min(r):max(r))     ,$
-           lats( min(c):max(c),min(r):max(r)),$
+        contour,tt,lons( c[0]:c[1],r[0]:r[1])     ,$
+           lats( c[0]:c[1],r[0]:r[1]),$
              level = findgen( nwindcolors ),$
                c_colors=bindgen(nwindcolors)+windStart,$
                  /overplot,/cell_fill 
@@ -1326,11 +1326,11 @@ IF read_success THEN BEGIN
 
       IF frm GT 0 THEN BEGIN 
         IF nfiles GT 1 THEN BEGIN 
-          tt = bytscl(min_speed >  ss( min(c):max(c),min(r):max(r)) < max_speed, $
+          tt = bytscl(min_speed >  ss( c[0]:c[1],r[0]:r[1]) < max_speed, $
                       min=min_speed, max=max_speed, top=windEnd)
             Contour,tt,$
-             lons( min(c):max(c),min(r):max(r))     ,$
-              lats( min(c):max(c),min(r):max(r))     ,$
+             lons( c[0]:c[1],r[0]:r[1])     ,$
+              lats( c[0]:c[1],r[0]:r[1])     ,$
                 level = findgen(nwindcolors),$
                    c_colors=bindgen(nwindcolors)+windStart,$
                      /overplot,/cell_fill 
@@ -1342,10 +1342,10 @@ IF read_success THEN BEGIN
 
       IF nxx NE 0 THEN BEGIN 
         ; plot only those points in the plot window
-        tuu_sel   =  uu_sel(xx)
-        tvv_sel   =  vv_sel(xx)
-        tlong_sel =  long_sel(xx)
-        tlats_sel =  lats_sel(xx)
+        tuu_sel   =  uu_sel[xx]
+        tvv_sel   =  vv_sel[xx]
+        tlong_sel =  long_sel[xx]
+        tlats_sel =  lats_sel[xx]
         PLOTVECT, tuu_sel, tvv_sel, tlong_sel, tlats_sel, $
          length=length, color=!d.n_colors-1,/scale, thick=thick
       ENDIF 
@@ -1374,21 +1374,21 @@ IF read_success THEN BEGIN
             ; and any annotation the user may have passed in through the
             ; 'title' keyword.
           sz =  size(im)
-          ttmp =  bytarr( sz(1), sz(2) + 40 )
-            ; NB animpar(1)=ap(1)+40
-          device, set_resolution=[sz(1),sz(2)+40]
+          ttmp =  bytarr( sz[1], sz[2] + 40 )
+            ; NB animpar[1]=ap[1]+40
+          device, set_resolution=[sz[1],sz[2]+40]
           tv,ttmp
             ; Now we know that the top 40 pixels
             ; are blank, so figure out the normal coordinates of these
             ; pixels and use those coordidnates.
           x =  [0,0]
-          y =  [sz(2), sz(2)]
+          y =  [sz[2], sz[2]]
           coords =  convert_coord( x,y, /devi, /to_normal )
             ; We'll arrange the annotation in halves, title in top
             ; half, colorbar and nasa/jpl logo in bottom
 
           y =  coords(1,*)
-          y1 =  y(0) &  y2= y1 + (1-y(0))/4.
+          y1 =  y[0] &  y2= y1 + (1-y[0])/4.
 
 
           ; Set up Title/min/max speed for color bar.
@@ -1409,24 +1409,24 @@ IF read_success THEN BEGIN
                   charsize=0.65,format='(F4.0)'
 
             ; Set up nasa/jpl logo
-          y1 =  y(0)  ; + (1-y(0))/6.
+          y1 =  y[0]  ; + (1-y[0])/6.
           xyouts, 0.17, y1, '!17NASA!X', /normal, align=1.0,size=0.0
           xyouts, 0.85, y1, '!17JPL!X', /normal, align=0.0,size=0.9
-          y1 =  y(0) + 3*(1-y(0))/4.
+          y1 =  y[0] + 3*(1-y[0])/4.
           xyouts, 0.5, y1,'!17' + title + '!X',/normal,align=0.5, size=0.9
 
          logo_colorbar_im =  tvrd()
 
            ; re-establish old coordinate system so that subsequent
            ; iterations won't mess up.
-         device, set_resolution=[ap(0),ap(1)]
+         device, set_resolution=[ap[0],ap[1]]
 
            ; We have to re-establish the coordinate system, since the
            ; COLBAR procedure destroy's it by it's call to 'PLOT' so
            ; another call to map_set.
 
          MAP_SET,latcent,loncent,/noborder, $
-          limit = [ latpar(0), lonpar(0), latpar(1), lonpar(1) ]
+          limit = [ latpar[0], lonpar[0], latpar[1], lonpar[1] ]
 
          setup_logo = 0; 
 
@@ -1436,13 +1436,13 @@ IF read_success THEN BEGIN
           ; Now load the image into the augemented image array.
         ttmp =  logo_colorbar_im*0b
         sz =  size(im)
-        ttmp( 0:sz(1)-1, 0:sz(2)-1 ) =  im
+        ttmp( 0:sz[1]-1, 0:sz[2]-1 ) =  im
         im =  ttmp OR logo_colorbar_im
       ENDIF 
       sz =  size(im)
       IF padframe THEN BEGIN 
-        outim =  bytarr( sz(1)+2*pad(0), sz(2)+2*pad(1) )
-        outim( pad(0):pad(0)+sz(1)-1, pad(1):pad(1)+sz(2)-1) =  im
+        outim =  bytarr( sz[1]+2*pad[0], sz[2]+2*pad[1] )
+        outim( pad[0]:pad[0]+sz[1]-1, pad[1]:pad[1]+sz[2]-1) =  im
       ENDIF ELSE outim =  im
 
       frame = PadAndJustify(frm+1,3,pad='0',/right)
