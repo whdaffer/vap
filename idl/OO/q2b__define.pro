@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.20  2000/02/23 21:59:15  vapuser
+  ; Added code to handle the rain flags.
+  ;
   ; Revision 1.19  2000/01/11 20:39:47  vapuser
   ; Added a 'self-destruct' method
   ;
@@ -1375,7 +1378,7 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
          IF N_Elements(ambig) eq 0 THEN ambig = 0
          IF self.rain_flag NE 0 THEN BEGIN 
            IF self.rain_flag EQ 1 THEN $
-             rf = (*self.data).mp_rain_flag 
+             rf = (*self.data).mp_rain_flag ELSE $
              rf = (*self.data).nof_rain_flag
          ENDIF
 
