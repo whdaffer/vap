@@ -31,6 +31,7 @@
 ;     structure : Checks to see if the variable is a structure
 ;     object : Checks to see if the variable is a object
 ;     pointer : Checks to see if the variable is a pointer
+;     idldt   : Checks to see if the variable[0] is an IDLDT structure.
 ;     type_integer : Checks to see if the variable is a byte, short
 ;                    or long.
 ;     type_float : Checks to see if the variable is a float or a double
@@ -67,6 +68,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.9  1999/07/04 16:55:28  daffer
+; Added 'number' type.  True if
+; not string,structure,object or pointer.
+;
 ; Revision 1.8  1999/07/01 18:37:18  vapuser
 ; Fixed small bug in 'object' section
 ;
@@ -108,6 +113,7 @@ FUNCTION isa, variable, $
               structure=structure, $
               object=object, $
               pointer=pointer, $
+              idldt=idldt, $
               type_integer=type_integer, $
               type_float=type_float, $
               type_complex= type_complex, $
@@ -143,6 +149,7 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
     return,0
   ENDIF 
 
+  IF n_elements(variable) EQ 0 THEN return,0
   test = 0
 
   CASE 1 OF 
@@ -179,6 +186,13 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
        ENDIF 
      END 
      keyword_set(pointer) : test = vartype( variable ) EQ 'POINTER'
+     keyword_set(idldt) : BEGIN 
+       test = isa(variable[0],/structure)
+       IF test THEN BEGIN 
+         name =  tag_names(variable[0],/structure_name)
+         test =  test AND name EQ 'IDLDT'
+       ENDIF 
+     END 
      keyword_set(TYPE_INTEGER) : $
         test = vartype(variable) EQ 'BYTE'    OR $
                vartype(variable) EQ 'INTEGER' OR  $
