@@ -1,0 +1,1 @@
+#define GOES_TOPDIR_ENV_VAR "VAP_GOES_TOP"
