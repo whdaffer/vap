@@ -41,6 +41,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.4  1998/12/01 18:21:44  vapuser
+; Put in some more error checking and tacked a righteous header
+; on the file.
+;
 ; Revision 1.3  1998/11/17 21:02:36  vapuser
 ; Added a 'year' field to the goes header, which required extraction.
 ;
@@ -61,7 +65,7 @@ PRO read_pcgoes, file, limits, data, image, year, jday, time, $
                  just_header= just_header, version= version, $
                  status= status , area_file= area_file, hdr=hdr
 
-status =  -1 ; dress for failure
+status =  0 ; dress for failure
 on_error,2 
 IF n_params() LT 1 THEN BEGIN 
   Usage,'Read_PcGoes,file [,limits, data, status=status, hdr=hdr ]'
