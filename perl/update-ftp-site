@@ -1,0 +1,64 @@
+#!/usr/bin/perl5  
+#
+# $Id$
+#
+# Goes through the FTP site and puts any new links in that need it.
+#
+# Modifications:
+#
+# $Log$
+#
+#
+use Cwd 'chdir';
+local(%mark);
+%mark=();
+($name,$passwd,$uid,$gid,$quota,$comment,$gcos,$dir,$shell)=getpwnam('ftp');
+
+chdir $dir || die "Can't cd to ftp home dir $dir\n";
+
+
+# ---------- do the rmgdr archive site (pub/nudged) -------------- #
+opendir(ARCNUDGED,"/disk3/winds") || die "Couldn't open archive dir /disk3/winds\n";
+@arc_files = grep( /N\d{6,6}\.S\d{4,4}\.E\d{4,4}$/, readdir(ARCNUDGED) );
+opendir(FTPNUDGED,"pub/nudged") || die "Couldn't open dir pub/nudged\n";
+@ftp_files = grep( s/(N\d{6,6}\.S\d{4,4}\.E\d{4,4}).bin/$1/, readdir(FTPNUDGED) );
+
+grep($mark{$_}++,@ftp_files);
+@diff=grep(!$mark{$_},@arc_files);
+
+
+
+foreach $f (@diff) {
+  $oldfile="/disk3/winds/".$f;
+  $newfile=$dir."/pub/nudged/".$f.".bin";
+  print "Linking $oldfile to $newfile\n";
+  link( $oldfile, $newfile ) || print "Couldn't link $oldfile to $newfile\n";
+}
+
+
+# ---------- do the mgdr archive site (pub/mgdr) -------------- #
+opendir(ARCNUDGED,"/disk3/mgdr") || die "Couldn't open archive dir /disk3/mgdr\n";
+@arc_files = grep( /N\d{6,6}\.S\d{4,4}\.E\d{4,4}.gz/, readdir(ARCNUDGED) );
+opendir(FTPNUDGED,"pub/mgdr") || die "Couldn't open dir pub/mgdr\n";
+@ftp_files = grep(  /N\d{6,6}\.S\d{4,4}\.E\d{4,4}.gz/, readdir(FTPNUDGED) );
+
+grep($mark{$_}++,@ftp_files);
+@diff=grep(!$mark{$_},@arc_files);
+
+
+
+foreach $f (@diff) {
+  $oldfile="/disk3/mgdr/".$f;
+  $newfile=$dir."/pub/mgdr/".$f;
+  print "Linking $oldfile to $newfile\n";
+  link( $oldfile, $newfile ) || print "Couldn't link $oldfile to $newfile\n";
+}
+
+exit;
+
+
+
+
+
+
+
