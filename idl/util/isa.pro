@@ -66,6 +66,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.7  1999/05/28 17:12:07  vapuser
+; Put in test of classname for 'object' case
+;
 ; Revision 1.6  1999/04/21 17:09:44  vapuser
 ; changed 'LONG' to 'LONGWORD'
 ;
@@ -165,8 +168,9 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
      keyword_set(object) : BEGIN 
          test = vartype( variable ) EQ 'OBJECT'
        IF test THEN BEGIN 
-         IF n_elements(objname) NE 0 AND $
-          obj_isa(variable,objname) EQ 0 THEN test = 0
+         IF n_elements(objname) NE 0 THEN BEGIN 
+           IF obj_isa(variable,objname) EQ 0 THEN test = 0
+         ENDIF 
        ENDIF 
      END 
      keyword_set(pointer) : test = vartype( variable ) EQ 'POINTER'
