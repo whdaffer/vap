@@ -1,3 +1,60 @@
+;+
+; NAME:  Read_PCGoes
+; $Id$
+; PURPOSE:  Read a file created by PCs gridding software.
+;
+; AUTHOR:  WHD
+;
+; CATEGORY:  Goes imageray
+;
+; CALLING SEQUENCE:  Read_PCGoes, filename, limits, data, $
+;                   status=status, hdr=hdr
+; 
+; INPUTS:  
+;
+;   filename : fully qualified name of file containing gridded goes file
+;
+; OPTIONAL INPUTS:  None
+;	
+; KEYWORD PARAMETERS:  
+;
+;    Hdr: (O) - Contains file header, should there be one.
+;
+; OUTPUTS:  
+;
+; OPTIONAL OUTPUTS:  
+;  Limits: A 4-vector, [lonmin, latmin, lonmax, latmax ]
+;  data:   The data from the file.
+;
+; COMMON BLOCKS:  None
+;
+; SIDE EFFECTS:  None
+;
+; RESTRICTIONS:  None
+;
+; PROCEDURE: Open file, try to determine it's type from the first few
+;            bytes, then read it according to that type. See the
+;            documentation below and within the procedure itself.
+;
+; EXAMPLE:  Read_PCGoes, '/disk1/dir1/goes-file.dat', limits, data, hdr=hdr
+;
+; MODIFICATION HISTORY:
+;
+; $Log$
+; Revision 1.3  1998/11/17 21:02:36  vapuser
+; Added a 'year' field to the goes header, which required extraction.
+;
+; Revision 1.2  1998/09/15 00:06:15  vapuser
+; Added the hdr=hdr return keyword
+;
+; Revision 1.1  1998/09/09 18:29:11  vapuser
+; Initial revision
+;
+;Jet Propulsion Laboratory
+;Copyright (c) 1998, California Institute of Technology
+;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
+;-
+
 PRO read_pcgoes, file, limits, data, image, year, jday, time, $
                  nlon, nlat, lonsize, latsize, info_string, $
                  xs= xs, ys= ys , map = map,save= save, $
@@ -6,6 +63,13 @@ PRO read_pcgoes, file, limits, data, image, year, jday, time, $
 
 status =  -1 ; dress for failure
 on_error,2 
+IF n_params() LT 1 THEN BEGIN 
+  Usage,'Read_PcGoes,file [,limits, data, status=status, hdr=hdr ]'
+  return
+END
+
+file = file[0]
+
 sensors =  ['vis','ir1','ir2','ir3','ir4']
 map =  keyword_set( map )
 save =  keyword_set( save )
@@ -44,15 +108,6 @@ latsize = 0.
 ; the first longword and make decisions based on it. If the file has a
 ; version later than 19980730, then we read it as a stream file,
 ; otherwise, we'll close the file and reopen it as /f77.
-;
-; Modification Log
-;
-; $Log$
-; Revision 1.2  1998/09/15 00:06:15  vapuser
-; Added the hdr=hdr return keyword
-;
-; Revision 1.1  1998/09/09 18:29:11  vapuser
-; Initial revision
 ;
 
 rcsid = "$Id$"
