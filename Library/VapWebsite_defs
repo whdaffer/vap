@@ -3,6 +3,9 @@
 # Modifications
 #
 # $Log$
+# Revision 1.6  2003/01/28 19:01:20  vapdev
+# Added INDEX
+#
 # Revision 1.5  2003/01/25 00:38:08  vapdev
 # Continuing work
 #
@@ -61,7 +64,11 @@ $website_defs = {
  				  TROPICAL_STORM => "ts",
  				  OVERLAY => "overlay",
  				  ANIMATION => "anim",
-				  INDEX => "index"},
+				  INDEX => "index",
+				  STATUS => "status",
+				  INFO => 'info',
+				  SPECIAL=>'special',
+				  GLOSSARY=>'glossary'},
 
 		   # the order in which the overlays will appear
  		 OVERLAY => {ORDER => [qw/GOES_10_4_NEPAC_1 
