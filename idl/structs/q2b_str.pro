@@ -65,6 +65,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1999/11/12 19:58:01  vapuser
+; Added fields (su2/sv2) to support new DIRTH selected vectors in the
+; new L2B data product. (per Bryan's request) Took out 'sel2' as it
+; wasn't being used.
+;
 ; Revision 1.2  1998/10/05 23:14:45  vapuser
 ; Added Rowtime, a string.
 ;
@@ -96,7 +101,9 @@ IF n_elements( q2b_defined ) eq 0 OR redefine THEN BEGIN
           lat    : fltarr(  numcells)   ,$                
           sel    : lonarr(  numcells)   ,$                
 ;          sel2   : lonarr(  numcells)   ,$                
-          idx    : lonarr(  numcells)   ,$                
+          idx    : lonarr(  numcells)   ,$ 
+          mp_rain_flag: intarr(numcells), $
+          nof_rain_flag: intarr(numcells), $
           row    : 0L                   ,$                
           rowtime: ''                   ,$
           qual   : lonarr(  numcells)   ,$                
