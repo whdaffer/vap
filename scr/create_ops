@@ -1,0 +1,18 @@
+#!/bin/bash
+#
+
+# Create the ops directory structure for the VAP task. These
+# directories contain the operational directories where products are
+# made.
+
+top=$1;
+
+if [ -z $top  ]; then
+  echo $0: need name of top directory\!;
+  exit;
+fi;
+
+mkdir -p $top/{overlay,tmpfiles,logs}
+mkdir -p $top/animate/{atlhurr,indian,nepac,npac,nwatl,nwpac,pachurr}
+mkdir -p $top/tropical_storms/200{0,1,2,3}
+

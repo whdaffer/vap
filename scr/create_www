@@ -1,0 +1,12 @@
+#!/bin/bash
+top=$1
+if [ -z $top ]; then 
+  echo Usage: $0 top-directory
+  exit;
+fi;
+
+mkdir -p $top/{images,js}
+mkdir -p $top/images/{overlay,mov,storms}_archive
+mkdir -p $top/images/storms_archive/200{1,2,3}
+
+exit;

@@ -1,0 +1,12 @@
+#!/bin/bash
+top=$1;
+
+if [ -z $top  ]; then
+  echo $0: need name of top directory\!;
+  exit;
+fi;
+
+mkdir -p $top/goes/goes{8,10}/ir{1,2,3,4}
+mkdir -p $top/goes/goes{8,10}/vis
+mkdir -p $top/goes/gridded_files/goes{8,10}/ir{1,2,3,4}
+mkdir -p $top/gms5/{grid,grida,ir1,ir2,ir3,vis}
