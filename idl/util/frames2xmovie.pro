@@ -35,6 +35,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/07 22:34:43  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -101,10 +104,10 @@ PRO frames2xmovie, files, gif=gif, title=title
       tvlct,r,g,b
     END 
     'JPG': BEGIN 
-      read_jpeg, files[0], image, r,g,b
+      read_jpeg, files[0], image, colortable
     END 
     'JPEG': BEGIN 
-      read_jpeg, files[0], image, r,g,b
+      read_jpeg, files[0], image, colortable
     END 
     ELSE: BEGIN 
       Message,'Unknown file type ' + type ,/cont
@@ -126,10 +129,10 @@ PRO frames2xmovie, files, gif=gif, title=title
         read_gif, files[i], image, r,g,b
       END 
       'JPG': BEGIN 
-        read_jpeg, files[i], image, r,g,b
+        read_jpeg, files[i], image, colortable
       END 
       'JPEG': BEGIN 
-        read_jpeg, files[i], image, r,g,b
+        read_jpeg, files[i], image, colortable
       END 
     ENDCASE 
     cw_animate_load, animate, frame=i, image=image
