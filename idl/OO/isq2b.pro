@@ -82,6 +82,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/21 15:53:40  vapuser
+; Added test for shortname=QSCATL2B
+;
 ; Revision 1.1  1998/10/12 22:30:26  vapuser
 ; Initial revision
 ;
@@ -147,6 +150,7 @@ FUNCTION IsQ2B, filename
     result = -1 ; Don't know whether Q2B or not.
   ENDELSE 
 
+  hdf_sd_end,fid
 
   RETURN,result
 END 

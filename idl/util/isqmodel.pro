@@ -77,6 +77,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/12 22:30:49  vapuser
+; put in rcsid
+;
 ; Revision 1.1  1998/10/12 22:27:30  vapuser
 ; Initial revision
 ;
@@ -137,7 +140,7 @@ FUNCTION IsQmodel, filename
     Message,"Error opening file " + filename
     result = -1 ; Don't know whether Qmodel or not.
   ENDELSE 
-
+  hdf_sd_end, fid
 
   RETURN,result
 END 
