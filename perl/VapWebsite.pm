@@ -1228,7 +1228,7 @@ sub startPage{
 				      -align=>"left",
 				      -border=>'1',
 				      #-background=>"/images/fuji7.gif",
-				      -width=>"100\%");
+				      -width=>"400");
 
 
   $outsidetable->setColWidth(1,"15\%");
