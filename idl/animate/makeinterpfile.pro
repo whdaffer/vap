@@ -165,6 +165,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/07 00:08:33  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -226,7 +229,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
 
   LongName = "QSCAT_VAP_SUCCOR_INTERP_FIELD"
   VersionID=rcsid
-  CreationTime =  idldt2Vaptime(today())
+  CreationTime =  (idldt2Vaptime(today()))[0]
 
   Nscat = Keyword_set(Nscat)
   IF n_elements(Wfiles) eq 0 THEN BEGIN 
