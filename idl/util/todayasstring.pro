@@ -32,7 +32,8 @@
 ; KEYWORD PARAMETERS:  
 ;
 ;   Separator : a string to be used in separating the fields.
-;
+;   GMT:  return the current GMT time. If this flag isn't
+;               set, the current local time is returned.
 ;
 ;
 ; OUTPUTS:  
@@ -73,15 +74,31 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/08 16:48:28  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
 
-FUNCTION TodayAsString, separator=separator
+FUNCTION TodayAsString, separator=separator, GMT=GMT
   rcsid = "$Id:"
-  Dt_To_Var,today(),year=year,month=month,day=day, hour=hour, min=min
+  gmt = keyword_set(gmt)
+  now = today()
+
+  IF gmt THEN BEGIN 
+    tz = getenv('TZ')
+    IF tz NE '' THEN BEGIN 
+      delta =  fix(strmid(tz,3,1))
+      now =  dt_add(now, hour=delta)
+    ENDIF ELSE $
+      Message,$
+        "Time Zone ENV variable isn't set, returning local time",/cont
+  ENDIF 
+
+  Dt_To_Var,now,year=year,month=month,day=day, hour=hour, min=min
 
   IF n_elements(separator) EQ  0 THEN separator = ''
 
