@@ -58,7 +58,9 @@
 ;                      thick     = thick, $
 ;                      rainflag    = rainflag, $
 ;                      rf_action = rf_action, $
-;                      rf_color  = rf_color 
+;                      rf_color  = rf_color, $
+;                      oplot     = oplot, $
+;                      help      = help
 ;                      
 ;
 ;
@@ -110,35 +112,86 @@
 ;                      flagged vectors. If 1, plot using rf_color.
 ;        rf_color    - The color to plot the vectors, if rf_action=1.
 ;
-;     
-;       
+;        oplot         : (I), array of structures (can be singleton)
+;                        having the following form (NB, only those
+;                        quantities marked *required* are ... um.. well
+;                        required. Everything else takes default values if
+;                        absent.)
 ;
+;                    { lon        : float array (*required*); 
+;                         (The 'x' locations where to
+;                          plot symbol, data cordinates)
+;                      lat        : float array (*required*) ; 
+;                         (The 'y' location where to
+;                          plot symbol, data cordinates)
+;                      psym: int    
+;                            (the symbol to use, between 0 and
+;                               7, default=1 a '+')
+;                      symsize: float 
+;                               (size of symbol, def=1)
+;                      title      : string array,  
+;                                 (annotation for for (each) symbol)
+;                                 (default = '', which means (see note
+;                                 below, 'no annotation')
+;                      x_title    : float array, 
+;                                  (x location for annotation, 
+;                                   `data' corrds unless normal=1,
+;                                   default=lon, which will most
+;                                   likely be wrong, if you've set normal=1)
+;                      y_title    : float array, 
+;                                   (y location for annotation, 
+;                                   `data' corrds unless normal=1
+;                                   default=lat, see note for x_title)
+;                      alignment  : float array,    
+;                                  (justification of `title'
+;                                   on [xy]_title, 0=left, 1=right,
+;                                   0.5 is center, between 0 and 1,
+;                                   default=1)
+;                      orientation: float array 
+;                                  (degrees CCW from
+;                                           horizontal of title,
+;                                   default=0.0)
+;                      normal: 0|1 
+;                              depending on whether [x|y]_title
+;                              are data or normal
+;                              coordinates. default=0 => [x|y]_title
+;                              are in data corrdinates.
+;                      charsize: float (size of characters, def=1)
+;                      charthick: int (character thickness, def=1) }
+;
+;                    
+;                      No annotation is done when oplot[i].title is a
+;                      null string. The 'alignments' and
+;                      'orientations' will be reused, i.e. if there
+;                      are 5 titles but only 3 orientations, the 4-th
+;                      title will have the same orientation as the
+;                      first. Siimilarly for 'alignment.' To be most
+;                      sure of the results, the 'title', 'x_title',
+;                      'y_title', 'alignment', 'orientation' arrays
+;                      should all be the same size, with null strings
+;                      in the 'title' array where you don't want any
+;                      annotation.
+;
+;                      If psym is less than 0 the points are connected
+;                      by a line.
+;
+;                      This array of structures is passed directly
+;                      through cloud_overlay to
+;                      goes_overlay|gms5_overlay without
+;                      interpretation. It is those routines that make
+;                      use of the structures.
+;
+;       help:  emit a help message.
 ;
 ; OUTPUTS: 
 ;
 ;  A jpeg file with the overlay.
 ;
-;
 ; OPTIONAL OUTPUTS:  None
-;
-;
-;
 ; COMMON BLOCKS:  None
-;
-;
-;
 ; SIDE EFFECTS: 
-;
-;
-;
 ; RESTRICTIONS: 
-;
-;
-;
 ; PROCEDURE: 
-;
-;
-;
 ; EXAMPLE: 
 ;
 ;
@@ -147,6 +200,11 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.15  2000/05/17 20:44:50  vapuser
+; Write file with output filename to OVERLAY_PATH (typically
+; $VAP_OVERLAY).  Give it a name unique to this run using the pid
+; communicated through the lock file
+;
 ; Revision 1.14  2000/05/17 16:52:12  vapuser
 ; Make the routine continue to the end even if the cloud file isn't
 ; there or can't be read.
@@ -237,7 +295,9 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                       thick     = thick, $
                       rainflag    = rainflag, $
                       rf_action = rf_action, $
-                      rf_color  = rf_color 
+                      rf_color  = rf_color, $
+                      oplot     = oplot, $
+                      help      = help
                       
 
 
@@ -256,8 +316,16 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
   IF n_params() LT   2 THEN BEGIN 
     message,' Both paramters (CLOUD_FILE & DATE_TIME) are required ',/cont
+    Usage, "CLOUD_OVERLAY, cloud_file, date_time[,time_inc,wpath=wpath,overlay_path=overlay_path,decimate=decimate,CRDecimate=CRDecimate,ExcludeCols=ExcludeCols,Length=Length,/jpeg|/gif|/ps,gmsType=gmsType,mapLimits=mapLimits,min_speed=min_speed,max_speed=max_speed,thick=thick,rainflag=rainflag,rf_action=0|1,rf_color=rf_color,oplot=oplot,/help]"
     return
   ENDIF 
+
+  IF keyword_set(help) THEN BEGIN 
+    message,' Both paramters (CLOUD_FILE & DATE_TIME) are required ',/cont
+    Usage, "CLOUD_OVERLAY, cloud_file, date_time[,time_inc,wpath=wpath,overlay_path=overlay_path,decimate=decimate,CRDecimate=CRDecimate,ExcludeCols=ExcludeCols,Length=Length,/jpeg|/gif|/ps,gmsType=gmsType,mapLimits=mapLimits,min_speed=min_speed,max_speed=max_speed,thick=thick,rainflag=rainflag,rf_action=0|1,rf_color=rf_color,oplot=oplot,/help]"
+    return
+  ENDIF 
+
 
   cloud_file = strcompress(cloud_file,/remove_all)
 
@@ -477,7 +545,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
               ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg, $
                 thick=thick, rainflag=rainflag, $
                  rf_action=rf_action, rf_color=rf_color, $
-                  mapLimits=mapLimits, status=status
+                  mapLimits=mapLimits, status=status, oplot=oplot
 ;        ENDELSE 
       END
        'GMS' : BEGIN 
@@ -488,7 +556,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
               ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif, $
                 maplimits=MapLimits, thick=thick, rainflag=rainflag, $
                   rf_action=rf_action, rf_color=rf_color, $
-                    status = status
+                    status = status, oplot=oplot
       END
     ENDCASE 
 
