@@ -63,6 +63,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1999/02/27 00:45:14  vapuser
+; Change 'QMODEL' to 'QMODELDATA' in some tests
+;
 ; Revision 1.3  1998/10/29 22:37:31  vapuser
 ; added filename member/keywords
 ;
@@ -89,12 +92,17 @@ FUNCTION PvPlotObject::Init, data, $
   self.AlreadyPlotted = 0
   self.SelectedOnly = 0
   self.InRegion = -1 ; Don't know
+  self.starttime = obj_new('eatime')
+  self.endtime = obj_new('eatime')
+  self.creationtime = obj_new('eatime')
 
   IF N_Elements(Filename) NE 0 THEN $
     self.Filename = Filename
 
   IF obj_valid( data ) THEN BEGIN 
-    s = data-> Get(data=tdata)
+    s = data-> Get(data=tdata, starttime=starttime, endtime=endtime)
+    self.starttime->set,vaptime = starttime
+    self.endtime->set,vaptime = endtime
     IF s THEN BEGIN 
       name = Tag_Names(*tdata,/Structure_Name)
       test =  where( $
@@ -121,6 +129,9 @@ END
 
 PRO PvPlotObject::Cleanup
   Obj_Destroy, self.data
+  obj_destroy, self.starttime  
+  obj_destroy, self.endtime
+  obj_destroy, self.creationtime 
 END
 
 
@@ -354,6 +365,9 @@ END
 PRO PvPlotObject__define
   junk = { PVPLOTOBJECT, $
           filename       : '',$
+          starttime      : Obj_new(), $
+          endtime        : obj_new(), $
+          creationTime   : Obj_New(),$
           AlreadyPlotted : 0L, $
           PlotFlag       : 0L,$
           SelectedOnly   : 0l ,$
