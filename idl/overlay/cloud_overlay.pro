@@ -99,7 +99,7 @@
 ;        jpeg        - make a jpeg, the default
 ;        ps          - Make Postscript file 
 ;        gif         - make a gif
-;        pid         - used with cronjobs
+;        lockfile    - used with cronjobs
 ;        MapLimits   - [lonmin, latmin, lonmax, latmax] (only for GMS
 ;                      overlays.)
 ;        min_speed   - the minimum WVC speed
@@ -147,6 +147,9 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.13  2000/05/16 15:05:16  vapuser
+; Changed from multi-valued 'use_rf' to single-valued 'rainflag'
+;
 ; Revision 1.12  2000/03/09 21:09:02  vapuser
 ; Switched over to the Z-buffer version of goes_overlay.
 ;
@@ -219,7 +222,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                       ps =  ps,$       ; make a postscript file.
                       gif=gif,$        ; Make gif file
                       jpeg=jpeg, $     ; make jpeg file.
-                      pid=pid,$        ; Used with cron jobs
+                      lockfile=lockfile,$ ; Used with cron jobs
                       gmsType = gmsType, $     ; GmsType, IF set, treat the 
                                        ; 'cloud_file' name as the 
                                        ; datetime used in gms5readall 
@@ -236,31 +239,13 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
  Rcs_id = "$Id$";
 
-  auto_cloud_overlay = n_elements(pid)  NE 0 ; flag for cronjob runs.
-  user = getenv('USER')
-  IF (user NE "" ) AND auto_cloud_overlay THEN BEGIN 
-    lockfile = (findfile('/tmp/' + user + '.cloud_overlay.lock', count=n))(0)
-    IF n NE 0 THEN BEGIN 
-      openr, lun, lockfile, /get, error=err
-      IF err ne 0 THEN BEGIN 
-        Message,!error_state.msg,/cont
-        return
-      ENDIF 
-      ppid = 0L
-      readf, lun, ppid
-      free_lun, lun
-      IF ppid ne pid THEN auto_cloud_overlay = 0 ; not our lock file.
-    ENDIF ELSE BEGIN 
-      Message,'ERROR: No lock file!',/cont
-      return
-    ENDELSE 
-  ENDIF 
-
-
   catch, error_status
   IF error_status NE 0 THEN BEGIN
     IF auto_cloud_overlay THEN $
-     IF exist(llun) THEN printf, llun, 'ERROR: ' + !err_string
+     IF exist(llun) THEN BEGIN 
+       printf, llun, 'ERROR: ' + !err_string
+       free_lun, llun
+     ENDIF 
     message, !err_string,/cont
     return
   ENDIF 
@@ -269,6 +254,11 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     message,' Both paramters (CLOUD_FILE & DATE_TIME) are required ',/cont
     return
   ENDIF 
+
+  cloud_file = strcompress(cloud_file,/remove_all)
+
+
+  auto_cloud_overlay = n_elements(lockfile)  NE 0 ; flag for cronjob runs.
 
   
   read_cfgfile = 0
@@ -351,9 +341,17 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   IF n_elements(rf_action) EQ 0 THEN rf_action = 1
   IF n_elements(rf_color) EQ 0 THEN rf_color =  0l
 
-  cd,current=cur_dir
 
 
+  print,'$VAP_ROOT=',getenv('VAP_ROOT')
+  overlay_path = DeEnvVar(overlay_path)
+  print,' overlay_path = ',overlay_path
+
+
+
+    ; CD to the directory where the overlay will reside.
+  CD,overlay_path, current=cur_dir
+  
 
   IF auto_cloud_overlay THEN BEGIN 
     openw, llun, lockfile, /get, error= err
@@ -363,48 +361,9 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
    ENDIF 
   ENDIF 
 
-  CASE 1 OF 
-    strpos( cloud_file, 'GOES' ) NE -1: grid_type = 'GOES'
-    gms EQ 1 : BEGIN 
-      grid_type = 'GMS'
-;      str =  'ERROR: GMS not implemented'
-;      Message,str,/cont
-;      IF auto_cloud_overlay THEN BEGIN 
-;        printf, llun, str
-;        free_lun, llun
-;      ENDIF 
-;      return
-    end
-    ELSE: BEGIN 
-      str =  'ERROR: Unknown Grid type in file ' + cloud_file
-      Message,str,/cont
-      IF auto_cloud_overlay THEN BEGIN 
-        printf, llun, str
-        free_lun, llun
-      ENDIF 
-      return
-    END 
-  ENDCASE 
-
-  print,'$VAP_ROOT=',getenv('VAP_ROOT')
-  overlay_path = DeEnvVar(overlay_path)
-  print,' overlay_path = ',overlay_path
-
-
-
-    ; CD to the directory where the overlay will reside.
-  CD,overlay_path
-
-  IF grid_type EQ 'GOES' THEN BEGIN 
-    openr,rlun, cloud_file, /get_lun, error= err
-    IF err NE 0 THEN BEGIN
-      message,!err_string,/cont
-      IF auto_cloud_overlay THEN $
-       printf, llun,' ERROR: ' + !err_string
-      return
-    ENDIF 
-    free_lun,rlun
-  ENDIF 
+  IF gms EQ 1  THEN $
+    grid_type = 'GMS' ELSE $
+    grid_type = 'GOES'
 
   str =  ' Taking wind data from   ' + wpath
   message,str,/info
@@ -505,7 +464,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg, $
                 thick=thick, rainflag=rainflag, $
-                 rf_action=rf_action, rf_color=rf_color, status=status
+                 rf_action=rf_action, rf_color=rf_color, $
+                  mapLimits=mapLimits, status=status
 ;        ENDELSE 
       END
        'GMS' : BEGIN 
