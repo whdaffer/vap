@@ -35,6 +35,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/08 23:27:24  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -114,7 +117,7 @@ IF n_elements( area_hdr_defined ) eq 0 THEN BEGIN
 
 ENDIF
 
-RETURN, replicate( { area_hdr })
+RETURN, { area_hdr }
 end
 
 
