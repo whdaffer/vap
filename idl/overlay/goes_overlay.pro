@@ -1,8 +1,143 @@
-; IDL Procedure GOES_OVERLAY - read in a GOES file (one created by the
+;+
+; NAME:  GOES_OVERLAY - read in a GOES file (one created by the
 ; goes program obtained from Paul Chang ) run it through map_image,
 ; put on pretty colors and overlay winds, if there are any.
 ; $Id$
+;
+; PURPOSE:  
+;
+;
+; AUTHOR;
+;
+;
+; CATEGORY:  
+;
+;
+;
+; CALLING SEQUENCE:  
+;
+;  Minimally:
+;
+;   goes_overlay, goesfile, wfiles=wfiles
+;
+;  Read 'Inputs', and 'Keywords' for fuller descriptions.
+;
+;
+; 
+; INPUTS:  
+;
+;   goesfile  - (I) name of goes file to read
+
+;
+;
+;
+; OPTIONAL INPUTS:  
+;
+;
+;	
+; KEYWORD PARAMETERS:  
+;
+;      wfiles : (I) vector containing the fully qualified filenames of
+;               windfiles to read
+;      minpix : -1, minpix : avg-sigma of data -2, call widget
+;               configurator. 0 is illegal value. Otherwise, take
+;               number as given. In anycase, minpix it is the minimum
+;               image value that will remain as clouds. Pixels with
+;               values below this are set to be land OR water.
+;
+;      getminpix : returns minpix if it changed
+;      minspeed  : minimum wind speed
+;      maxspeed  : max wind speed
+;      thick     : thickness of vectors (default:2)
+;      length    : length of vector (def:2)
+;      uu        : (I) u value of vectors
+;      vv        : (I) v value
+;      llon      : (I) long of u/v
+;      llat      : (I) lat of u/v
+;      save      : (IF) save to save set
+;      Z         : (IF) work in Z buffer
+;      nogrid    : (IF) Don't put down grid
+;      gif       : (IF) write gif file
+;      ps        : (IF) write postscript file
+;      title     : (I) string to add onto title string
+;      file_str  : (I) string to add onto file string
+;      thumbnail : (IF) if set, will make a 1/4 size (160x120)
+;               thumbnail image.
+;      watcolor : use only this color index for water (allowable range:
+;                 1<watcolor<11)
+;      windcolor : either a color index (int) in which case use only
+;               this color index for wind (allowable range:
+;               73<windcolor<97) or a color keyword.  available
+;               keywords are 'red', 'green','blue','white'
+;
+;      l2        :  (I) if set, wind data is in  nscat level 2 files
+;      xsize     : Number of pixels in the x directionr (def:640)
+;      ysize     : Number of pixels in y dir(def:480)
+;      windowid  : (I) if set, plot to specified window.
+;      outpath   : (I) output directory
+;      getoutfile: (O) get output file name
+;      debug     : debug flag
+;      nscat     : flag: if set, this routine expects nscat style data
+;                 files.;
+;
+;                               ; These next three keywords
+;                               ; are Qscat/Seawinds
+;                               ; specific.
+;
+;      decimate : Take every n-th vector, i.e. 2 means take every 2nd,
+;               3 : take every 3rd...
+;
+;
+;      CRDecimate: two element array, CRD[0] :n, take every nth column,
+;               CRD[1]:m, take every mth row, e.g. [2,3] means take
+;               every 2nd col, 3rd row. crdecimate:[0,0],
+;               CRDecimate:[1,1] take every vector.  CRDecimate takes
+;               precidence over decimate.;
+;
+;      excludecols : String suitible for an 'execute' call,
+;               e.g. "2,3,23:35,71,72".  These columns will be
+;               excluded, in addition to the ones excluded by decimate
+;               and CRDecimate
+;
+;
+;
+; OUTPUTS:  
+;
+;
+;
+; OPTIONAL OUTPUTS:  
+;
+;  bimage : (o) resulting byte imate
+;  wdata  : (O) output of wind data, if any was read,  using the
+;          'wfiles' keyword. A 4 X nn array where nn is the number of
+;          data. wdata(0,*) = u, (1,*)=v, (2,*)=lon ...
+;
+; COMMON BLOCKS:  
+;
+;
+;
+; SIDE EFFECTS:  
+;
+;
+;
+; RESTRICTIONS:  
+;
+;
+;
+; PROCEDURE:  
+;
+;
+;
+; EXAMPLE:  
+;
+;
+;
+; MODIFICATION HISTORY:
+;
 ; $Log$
+; Revision 1.5  1998/11/11 20:51:18  vapuser
+; Took out 'limits' keyword, did other remediation of memory usage.
+;
 ; Revision 1.4  1998/11/04 19:39:21  vapuser
 ; Put in call to ColorBar, use Hist_Equal on data array, other
 ; oddiments here and there.
@@ -18,6 +153,13 @@
 ; Initial revision
 ;
 ;
+
+;
+;Jet Propulsion Laboratory
+;Copyright (c) 1998, California Institute of Technology
+;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
+;-
+; $Id$
 ;
 ;
 PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
@@ -29,8 +171,6 @@ PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
                               ; where nn is the number
                               ; of data. wdata(0,*)
                               ; = u, (1,*)=v, (2,*)=lon ...
-                  image,$     ; (O) int. image warped to map
-                  data,$      ; (0) data read from this file
                   wfiles = wfiles,$         ; (I) vector containing the
                                            ; fully qualified filenames
                                            ; OF windfiles to read 
