@@ -12,7 +12,7 @@
 ;
 ;
 ;
-; CALLING SEQUENCE:  times=wfnames2dt(filenames [,nscat=nscat)
+; CALLING SEQUENCE:  times=wfnames2dt(filenames)
 ;
 ;
 ; 
@@ -27,9 +27,6 @@
 ;
 ;	
 ; KEYWORD PARAMETERS:  
-;
-;      nscat : flag, if set, expect nscat naming conventions,
-;              i.e. Nyymmdd.Shhmm.Ehhmm instead of Hyyyymmdd.S....
 ;
 ;
 ;
@@ -63,6 +60,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.7  2002/04/30 21:07:43  vapdev
+; Renamed from util/idl to vap/idl/util
+;
 ; Revision 1.1  2001/12/11 22:26:44  vapdev
 ; Renamed from vap/idl/util to util/idl
 ;
@@ -92,10 +92,8 @@
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
 
-FUNCTION wfnames2dt, windfiles, nscat=nscat
-
+FUNCTION wfnames2dt, windfiles
   rcsid = "$Id$"
-  nscat = keyword_set(nscat)
 
   catch, error
   IF error NE 0 THEN BEGIN 
@@ -116,10 +114,6 @@ FUNCTION wfnames2dt, windfiles, nscat=nscat
   retstruct =  wfdt_str( nf )
   baselen = 9
   yearlen = 4
-  IF nscat THEN BEGIN 
-    baselen = 7
-    yearlen = 2
-  ENDIF 
   FOR f=0,nf-1 DO BEGIN 
     file = windfiles[f]
     s = strpos( file,'/',/reverse_search) + 1
@@ -134,7 +128,6 @@ FUNCTION wfnames2dt, windfiles, nscat=nscat
       year       = fix( strmid( basetime, 0, yearlen ) )
       month      = fix( strmid( basetime, 4, 2 ) )
       day        = fix( strmid( basetime, 6, 2 ) )
-      IF nscat THEN year =  year + 1900
       retstruct[ff].name = windfiles[f]
       t0 = var_to_dt( year,month,day,start_hour,start_min)
       t1 =var_to_dt( year,month,day,end_hour,end_min)

@@ -39,7 +39,7 @@ PRO qmodelvelfield, filename, u,v,lon,lat,s,lonrange=lonrange, latrange=latrange
   s = minspeed> sqrt(u^2+v^2) < maxspeed
 
 
-  ctfile = '/usr/people/vapuser/Qscat/Resources/Color_Tables/vap-animation.ct'
+  ctfile = '$VAP_COLORTABLES/vap-animation.ct'
   ptc = ReadColorTable(ctfile)
   ct = *ptc &  ptr_free,ptc
 

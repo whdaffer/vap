@@ -1,15 +1,12 @@
 ;+
 ; NAME:  read_wind_files
 ; $Id$
-; PURPOSE:  Read Qscat/Nscat files, return data
+; PURPOSE:  Read Qscat/Adeos files, return data
 ;
 ;
 ; AUTHOR; William Daffer
 ;
-;
 ; CATEGORY:   Data I/O
-;
-;
 ;
 ; CALLING SEQUENCE:  
 ;
@@ -20,23 +17,16 @@
 ;                         StartTime   = StartTime, $
 ;                         EndTime     = EndTime, $                                       
 ;                         Help        = Help, $
-;                         Nscat       = Nscat, $
 ;                         rainflag    = rainflag, $
 ;                         rf_action   = rf_action, $
 ;                         rf_index    = rf_index
-;                         
-;
-;
 ; 
 ; INPUTS:   
 ;
 ;        files - vector of fully qualified filenames
 ;
 ;
-;
 ; OPTIONAL INPUTS:  
-;
-;
 ;	
 ; KEYWORD PARAMETERS:  
 ;
@@ -57,8 +47,6 @@
 ;                 exclude NO columns)
 ;
 ; Help        - (F) Emit message and exit.
-; Nscat       - (F) Expect Nscat data, ignore decimate, CRDecimate and
-;                 ExcludeCols. (default=0, meaning, expect Qscat data)
 ; StartTime   - (O) Earliest Time in Data files
 ; EndTime     - (O) Latest Time in Data files
 ;
@@ -76,45 +64,27 @@
 ;                    and [*,3] = lat.
 ;           Failure: a scalar 0.
 ;
-;
-;
 ; OPTIONAL OUTPUTS:  None
-;
-;
-;
 ; COMMON BLOCKS:  None
-;
-;
-;
 ; SIDE EFFECTS:  None
-;
-;
-;
 ; RESTRICTIONS:  None
-;
-;
-;
 ; PROCEDURE:  
 ;
-;    Nscat Flag set: repeatedly call READ_RMGDR_DATA for each file
-;    appending the result of that call to the output array.
+; EXAMPLE:
 ;
-;    Nscat flag NOT set: (the default) iterate over the file array
-;    creating a Q2B object for each file. Pass the decimate/CRDecimate
-;    and ExcludeCols data to the object, call q->getplotdata() for it
-;    to return the data. Get rid of any data flagged as Nans (i.e. the
-;    excluded data). Add this data into the output array.
+; data=read_wind_files(wfiles,crd=[2,2],$
+;                      exclude='0,23:35,75',rainf=1,
+;                      rf_action=1, rf_index=index, startt=t0,
+;                      endt=t1)
 ;
-;
-;
-;
-;
-; EXAMPLE:  
-;
+; `data' is an nrecs by 4 array as describe above under 'OUTPUTS:'
 ;
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.8  2001/12/08 00:02:37  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.7  2001/02/02 19:21:21  vapuser
 ; Change use_rf to rainflag. Fixed some small bugs
 ;
@@ -149,7 +119,6 @@ FUNCTION read_wind_files, files, $
                           StartTime   = StartTime,$
                           EndTime     = EndTime,$
                           Help        = Help, $
-                          Nscat       = Nscat, $
                           rainflag      = rainflag, $
                           rf_action   = rf_action, $
                           rf_index    = rf_index
@@ -160,7 +129,7 @@ FUNCTION read_wind_files, files, $
    hstr1 =             'Usage: data=read_wind_files( files, $ ' 
    hstr1 = hstr1 + lf + "  [, decimate=n , CRDecimate=[m,n] ,$ "
    hstr1 = hstr1 + lf + "    ExcludeCols='exclude_string' , help=0|1 , $" 
-   hstr1 = hstr1 + lf + "     Nscat=0|1, rainflag=0|1, rf_action=0|1, $ "
+   hstr1 = hstr1 + lf + "     rainflag=0|1, rf_action=0|1, $ "
    hstr1 = hstr1 + lf + "  rf_index=rf_index ]"
    hstr1 = hstr1 + lf + lf + 'Where...' + lf + lf
    hstr1 = hstr1 + " Files  - vector of fully qualified file names " + lf
@@ -182,9 +151,6 @@ FUNCTION read_wind_files, files, $
    hstr2 = hstr2 + "   ending columns. Example: ExcludeCols='0,34:42,75 will " + lf 
    hstr2 = hstr2 + "   exclude Columns 0, 34,35,36,37,38,39,40,41,42 and 75" + lf 
    hstr2 = hstr2 + "   (def='')" + lf
-   hstr3 =         " Nscat - Flag, if set, expect nscat data " + lf
-   hstr3 = hstr3 + "   If set, decimate/CRDecimate/Fill and ExcludeCols are " + lf
-   hstr3 = hstr3 + "   ignored. " + lf
    hstr3 = hstr3 + " Help  - flag, if set, emit this message and exit. " + lf 
    hstr4 =         " Returns an array of data if successful, a scaler 0 if not." + lf
    hstr4 = hstr4 + "   The returned array has the form [nrecs,4] " + lf
@@ -214,23 +180,23 @@ FUNCTION read_wind_files, files, $
    nf = n_elements(files)
    nofill = keyword_set(fill) NE 1
 
-   IF keyword_set( Nscat ) THEN BEGIN 
-
-     print,'reading ' + files(0)
-     READ_RMGDR_DATA,files(0),uu,vv,llon,llat,mint=mmint,maxt=mmaxt
-     FOR f=1,nf-1 DO BEGIN
-       print,'reading ' + files(f)
-       READ_RMGDR_DATA,files(f),u,v,lon,lat,mint=mint,maxt=maxt
-       uu =  [uu,u]
-       vv =  [vv,v]
-       llon = [llon,lon]
-       llat = [llat,lat]
-       mmint = [mmint, mint]
-       mmaxt =  [mmaxt,maxt]
-     ENDFOR 
-     StartTime =  min(mint)
-     EndTime =  min(mint)
-   ENDIF ELSE BEGIN 
+;  IF keyword_set( Nscat ) THEN BEGIN 
+;
+;      print,'reading ' + files(0)
+;      READ_RMGDR_DATA,files(0),uu,vv,llon,llat,mint=mmint,maxt=mmaxt
+;      FOR f=1,nf-1 DO BEGIN
+;        print,'reading ' + files(f)
+;        READ_RMGDR_DATA,files(f),u,v,lon,lat,mint=mint,maxt=maxt
+;        uu =  [uu,u]
+;        vv =  [vv,v]
+;        llon = [llon,lon]
+;        llat = [llat,lat]
+;        mmint = [mmint, mint]
+;        mmaxt =  [mmaxt,maxt]
+;      ENDFOR 
+;      StartTime =  min(mint)
+;      EndTime =  min(mint)
+;    ENDIF ELSE BEGIN 
      IF n_Elements(decimate) EQ 0 THEN decimate = 1
      ;IF N_Elements(CRDecimate) NE 2 THEN CRDecimate =  [1,1]
      IF VarType(ExcludeCols) EQ 'UNDEFINED' OR $
@@ -341,7 +307,7 @@ FUNCTION read_wind_files, files, $
          Message,"Can't Read file " + files(f),/cont
 
      ENDFOR 
-   ENDELSE 
+;   ENDELSE 
    data =  [ [temporary(uu)],   [temporary(vv)], $
              [temporary(llon)], [temporary(llat)] ]
    rf_index =  temporary(rrf_index)

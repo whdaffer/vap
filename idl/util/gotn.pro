@@ -32,6 +32,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  2001/12/08 00:02:37  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.1  1999/04/08 23:08:41  vapuser
 ; Initial revision
 ;
@@ -271,7 +274,7 @@ ENDIF ELSE date_str =  ''
 
 IF n_elements( landel ) EQ 0 THEN BEGIN 
   ; read the land elevation file if it isn't in the common
-  openr,1,'$VAP_ROOT/animate/land_elevations.bin'
+  openr,1,'$VAP_LIBRARY/land_elevations.bin'
   landel =  intarr( 12l*360, 12l*180 + 1 )
   readu,1, landel
   close,1

@@ -45,12 +45,22 @@
 ;                  this time. Otherwise, simply subtract it.
 ;     start_time : time in same format as end_time. Can be used to
 ;                  address arbitary time ranges.
-;     path       : the standard unix style path
-;     filter     : string, a filter to use in 'findfile'
-;     nscat      : flag, if set, expect nscat filenaming convention.
-;                  (yymmdd.Shhmm.Ehhmm instead of yyyymmdd.Shh...)
+;     path       : string(s): the standard unix style path
+;                  If more than one path, the array is iterated over
+;                  and the results concatenated. 
+;     filter     : string(s), a filter to use in 'vfindfile'
+;                  If more than one filter, the array is interated
+;                  over and the results concatenated together.
 ;     twoway    : flag. If set, add and subtract
 ;                  delta. I.e. 'endtime' is really a 'middletime'
+;
+;     The windfiles array is arranged with path then filter, so all
+;     the files in one directory will be in one block of the array.
+;    
+;     The user should be aware, however, that some routines can't
+;     handle huge quantities of data. Linkimage has a hard coded limit
+;     and concatenating together the results of too many combinations
+;     of path/filter may exceed some limits.
 ;
 ; OUTPUTS:  Vector of filennames.
 ;
@@ -107,6 +117,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.8  2001/12/08 00:02:37  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.7  1999/10/06 16:00:07  vapuser
 ; Call 'vfindfile' instead of 'findfile' to handle findfile's problems
 ; with too many files in one directory.
@@ -142,12 +155,10 @@ FUNCTION getwindfiles, end_time, $
                        path       = path, $
                        filter     = filter,$
                        count      = count,$
-                       nscat      = nscat, $
                        twoway    = twoway
 
   rcsid = "$Id$";
 
-  nscat = keyword_set(nscat)
   twoway = keyword_set(twoway)
   IF n_elements(delta) EQ 0 THEN delta = 24
 
@@ -168,7 +179,7 @@ FUNCTION getwindfiles, end_time, $
     tmp = strsplit( end_time, '/',/extract);
     IF n_Elements(tmp) LT 3 THEN BEGIN 
       Message,'End_time must have at least yyyy/mm/dd',/cont
-      return,retarray
+      return,''
     ENDIF 
     yyyy  = fix(tmp[0]) 
     IF yyyy LE 99 THEN yyyy =  yyyy+1900
@@ -195,34 +206,45 @@ FUNCTION getwindfiles, end_time, $
  IF twoway THEN end_time_dt=dt_add(end_time_dt,hour=delta_hours, min=delta_mins)
 
   IF n_elements(path) EQ 0 THEN BEGIN 
-    path =  GetEnv('VAP_WINDS')
+    path =  GetEnv('VAP_DATA_TOP')
     IF strlen(path) EQ 0 THEN BEGIN 
-      message,"Can't get_env(VAP_WINDS), defaulting to '/disk5/winds/qscat/Rnoaa'",/cont
-      path = '/disk5/winds/qscat/Rnoaa'
+      message,"Can't GETENV(VAP_DATA_TOP), pass path explicitly or set VAP_DATA_TOP!",/cont
+      return,''
     ENDIF 
   ENDIF 
 
   path = deenvvar(path)
-  IF strpos(path,'/',/reverse_search) NE strlen(path)-1 THEN path = path + '/'
+  FOR i=0,n_elements(paths)-1 DO BEGIN 
+    IF strpos(path[i],'/',/reverse_search) NE strlen(path[i])-1 THEN $
+       path[i] = path[i] + '/'
+  ENDFOR 
    
-  IF n_elements(filter) EQ 0 THEN BEGIN 
-    IF nscat THEN filter = 'N*' ELSE filter =  'Q*'
-  ENDIF 
+  IF n_elements(filter) EQ 0 THEN filter =  "{Q,S}*"
+
+
     ;-----------------------------------------
     ;
     ; Begin processing
     ;
     ;-----------------------------------------
 
-  ;filespec = path + '/' + filter
-  ;windfiles = findfile(filespec, count=cnt)
-  windfiles = vfindfile(filter,path,count=cnt)
-  windfiles = deenvvar(path) + windfiles
+  FOR p=0,n_elements(path)-1 DO BEGIN 
+    FOR f=0,n_elements(filter)-1 DO BEGIN 
+      tmpfiles = vfindfile(filter[f],path[p],count=cnt)
+      IF cnt GT 0 THEN BEGIN 
+        tmpfiles = deenvvar(path[p]) + tmpfiles
+        IF n_elements(windfiles) EQ 0 THEN $
+          windfiles = tmpfiles ELSE $
+          windfiles = [windfiles,tmpfiles]
+        tmpfiles = 0
+      ENDIF 
+    ENDFOR 
+  ENDFOR 
   retarray = ''
 
   IF cnt NE 0 THEN BEGIN 
       ; Output is {name:'', start_time:{idldt}, end_time:{idldt} }
-    windfiletimes =  wfnames2dt( windfiles, nscat=nscat )
+    windfiletimes =  wfnames2dt(windfiles)
 
     IF VarType(Windfiletimes) EQ 'STRUCTURE' THEN BEGIN 
 
@@ -248,9 +270,15 @@ FUNCTION getwindfiles, end_time, $
     ENDIF ELSE $
      Message,"Bad return from wfnames2dt",/cont
 
-  ENDIF ELSE $
-    Message,"Can't find any wind files in " + path + "/Q*",/cont
-   
+  ENDIF ELSE BEGIN 
+    lf =  string(10b)
+    ipath = path
+    ifilt = filter
+    IF n_elements(path) GT 1 THEN ipath =  strjoin(path,",") 
+    IF n_elements(filter) GT 1 THEN ifilter =  strjoin(filter,",")
+    Message,"Can't find any wind files in " + $
+            ipath + lf + 'using filter ' + ifilt,/cont
+  ENDELSE 
 return, retarray
 END
 

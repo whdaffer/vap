@@ -3,25 +3,56 @@
 ; $Id$
 ; PURPOSE:  
 ;
-; AUTHOR:
+; AUTHOR: Lay out one or more SeaWinds swaths
 ;
-; CATEGORY:  
+; CATEGORY:  QuikSCAT/SeaWinds utility
 ;
-; CALLING SEQUENCE:  
+; CALLING SEQUENCE:  swath=qswath(nodes, times, cols, rowtime=rowtime)
 ; 
 ; INPUTS:  
 ;
+;   nodes: float vector: the longitude of the ascending nodes for 
+;          the ground tracks desired. 
+;
+;
 ; OPTIONAL INPUTS:  
+;
+;  times: (I) A vector of floats or doubles of the same shape as
+;         `nodes,' the time of the equator crossings given in `nodes'
+;         as 'days' from some convenient epoch. The user is completely
+;         responsible for making the proper conversions of time, but
+;         nothing about the swath really depends on time, this is just
+;         a convenience calculation in case the user wants to have
+;         some idea what time a particular row occured in the
+;         orbit.
+;
+;         Used in calculating `rowtimes.' If absent this
+;         variable is ignored.
+;
+;  cols: (I). A vector listing the desired columns of the swath (zero
+;        indexed!). If this variable is absent the full swath of 76
+;        columns is returned.
+;  
 ;	
 ; KEYWORD PARAMETERS:  
 ;
+;   rowtime: (O) The `time' of each row as calculated from the
+;            variable 'times.'
+;
+;
 ; OUTPUTS:  
 ;
-; OPTIONAL OUTPUTS:  
+;       swath: An n_elements(cols: default=76) by 1624 by 2 by
+;              n_elements(nodes) array of floats. 
 ;
-; COMMON BLOCKS:  
+;       swath[*,*,0,*] are the longitudes
+;       swath[*,*,1,*] are the latitudes
 ;
-; SIDE EFFECTS:  
+; OPTIONAL OUTPUTS: none  
+;
+; COMMON BLOCKS:  none
+;
+; SIDE EFFECTS:  Takes a while if you request the full swath.
 ;
 ; RESTRICTIONS:  
 ;
@@ -33,6 +64,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  2001/12/10 23:59:10  vapdev
+; Renamed from  to
+;
 ; Revision 1.1.1.1  2001/11/30 23:57:08  vapuser
 ; Initial Checkin
 ;

@@ -1,65 +1,57 @@
 ;+
 ; NAME:  
 ; $Id$
-; PURPOSE:  
 ;
+; PURPOSE: Quick and dirty routine to get the 'extent' of the seawinds
+;          swath. This routine just returns the two ends and the
+;          'middle' of each row (since the swath has an even number of
+;          columns, the real middle of the swath is the
+;          edge of two middle cells, I don't calculate that I just
+;          return the lat/lon of the 76/2-th cell.)
 ;
-; AUTHOR:
+; AUTHOR: William Daffer
+;         William.Daffer@jpl.nasa.gov
 ;
+; CATEGORY: SeaWinds utility 
 ;
-; CATEGORY:  
-;
-;
-;
-; CALLING SEQUENCE:  
-;
-;
+; CALLING SEQUENCE:  swath=qswathextent(node)
 ; 
-; INPUTS:  
+; INPUTS:  node: The longitude of the ascending nodes.
 ;
-;
-;
-; OPTIONAL INPUTS:  
-;
-;
-;	
-; KEYWORD PARAMETERS:  
-;
-;
+; OPTIONAL INPUTS:  none
+; KEYWORD PARAMETERS:  none
 ;
 ; OUTPUTS:  
 ;
+;   lonlat: a 3 by 1624 by 2 array of floats
 ;
+; OPTIONAL OUTPUTS:  none
+; COMMON BLOCKS:  none
+; SIDE EFFECTS:  none
+; RESTRICTIONS: Implements the Space Oblique Mercator Projection
+;               given in 
 ;
-; OPTIONAL OUTPUTS:  
-;
-;
-;
-; COMMON BLOCKS:  
-;
-;
-;
-; SIDE EFFECTS:  
-;
-;
-;
-; RESTRICTIONS:  
-;
-;
-;
+;               _Map Projections-- A Working Manual_
+;               U.S. Geological Survey Professional Paper 1395.
+;                         
 ; PROCEDURE:  
-;
-;
-;
 ; EXAMPLE:  
+;
+;  lonlat=qswathextent(120.25)
+;
+;  lons = lonlat[*,*,0]
+;  lats = lonlat[*,*,1]
 ;
 ;
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/28 23:38:48  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
-;Copyright (c) YYYY, California Institute of Technology
+;Copyright (c) 1998, California Institute of Technology
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
 
