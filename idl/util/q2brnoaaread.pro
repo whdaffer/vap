@@ -77,6 +77,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1999/10/05 17:24:24  vapuser
+; Fixed some unsigned INT bugs. Increased use of 'verbose' flag. Return
+; nambig and wvc_sel. return rowtime. General optimization.
+;
 ; Revision 1.3  1998/11/12 20:59:50  vapuser
 ; Added comments/documentation and header keyword
 ;
@@ -105,22 +109,26 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
                       q2b_rnoaa_defined, $
                       q2b_rnoaa
 
+
+  IF n_params() LT 1 THEN BEGIN 
+    message,' Usage: retstruct=Q2BRnoaaRead(filename, starttime=starttime, endtime=endtime, ncells=ncells, verbose=verbose) ',/continue
+    return,-1
+  ENDIF 
+
+
   catch, error
   IF error NE 0 THEN BEGIN 
     Message,!error_state.msg,/cont
     return,-1
   ENDIF 
 
-  IF NOT exist(q2bh_rnoaa_size) THEN q = q2b_rnoaa_str(1)
   Verbose = keyword_set(verbose)
   IF N_elements(ncells) EQ 0 THEN ncells = 76
+  IF NOT exist(q2bh_rnoaa_size) THEN q = q2b_rnoaa_str(1, ncells=ncells)
 
   q2b = -1
   t1 = systime(1)
   t0 = t1
-  IF n_params() LT 1 THEN $
-    message,' Usage: retstruct=Q2BRnoaaRead(filename, starttime=starttime, endtime=endtime, ncells=ncells, verbose=verbose) '
-
   tfilename = DeEnvVar(filename,/isfile)
 
   openr, lun, tfilename, /get, error=err
@@ -241,6 +249,9 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
     q2b.v = temporary(v)
     q2b.su = temporary(mu)
     q2b.sv = temporary(mv)
+
+    q2b.mp_rain_flag = ishft(rnoaa.wvcqual_flag,-12) AND 3
+    q2b.nof_rain_flag = ishft(rnoaa.wvcqual_flag,-14) AND 3
 
     q2b.rowtime =  string( rnoaa.row_time )
     t2 = systime(1)
