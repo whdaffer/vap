@@ -3,6 +3,11 @@
 #
 # Modification History
 # $Log$
+# Revision 1.7  1999/09/22 18:10:43  vapuser
+# Changed default crdecimate to [1,1], added
+# 'hurricane' alley regions, added a 'length' and 'delta'
+# parameter to the WVCdata portion of the structure.
+#
 # Revision 1.6  1999/07/27 16:42:42  vapuser
 # Changed times
 #
@@ -129,13 +134,13 @@
 		    LatLim     => [0,60],       # Min/Max Latitude 
 		    SatNum     => 10,            # Goes 10
 		    SensorNum  => 4,             # Ir4
-		    AscTime    => "19:00",       # Ascending Time 
-		    DescTime   => "07:00" },     # Descending time
+		    AscTime    => "16:00",       # Ascending Time 
+		    DescTime   => "05:00" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
 		    CRDecimate => [2,2],         # Take all data
 		    Length => 2,                 # Vector Length
-		    Delta => 7,                  # Delta Time
+		    Delta => 5,                  # Delta Time
 		    ExcludeCols => ""}           # Exclude none
 		},
 
@@ -186,13 +191,13 @@
 		    LatLim     => [0,60],       # Min/Max Latitude 
 		    SatNum     => 8,             # Goes 8
 		    SensorNum  => 4,             # Ir4
-		    AscTime    => "14:00",       # Ascending Time 
-		    DescTime   => "02:00" },     # Descending time
+		    AscTime    => "12:00",       # Ascending Time 
+		    DescTime   => "00:00" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
 		    CRDecimate => [2,2],         # Take every other row/col
 		    Length => 2,                 # Vector Length
-		    Delta => 7,                  # Delta Time
+		    Delta => 5,                  # Delta Time
 		    ExcludeCols => ""}      # Exclude none
 		},
 
