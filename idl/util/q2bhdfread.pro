@@ -74,6 +74,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1998/10/23 22:19:24  vapuser
+; Use DeEnvVar to protect HDF_... code from itself.
+;
 ; Revision 1.4  1998/10/22 21:32:56  vapuser
 ; Corrected definition of 'lf', protected some
 ; string only code
@@ -96,7 +99,8 @@
 FUNCTION q2bhdfread, filename, $
                      eqx=eqx, $
                      StartTime=StartTime, $
-                     EndTime=EndTime
+                     EndTime=EndTime, $
+                     Verbose=Verbose
 
   rcsid = "$Id$"
 
@@ -105,6 +109,8 @@ FUNCTION q2bhdfread, filename, $
     Message,!error_state.msg,/cont
     return,-1
   ENDIF 
+
+  Verbose = keyword_set(verbose)
 
   retstruct = -1
   t1 = systime(1)
@@ -123,6 +129,7 @@ FUNCTION q2bhdfread, filename, $
       ; print,'Number of SD data sets: ',datasets
       ; print,'Number of attributes:   ',attributes
       eqx = eqx_str(1)
+      t1 = systime(1)
       FOR ai =0,attributes-1 DO BEGIN 
         hdf_sd_attrinfo,fileid,ai,name=name,type=type,count=count,data=data
         name = strupcase(name)
@@ -144,7 +151,9 @@ FUNCTION q2bhdfread, filename, $
         ENDCASE
 
       ENDFOR
-
+      IF verbose THEN $
+        print,'Time to extract attributes: ', t1-systime(1)
+      t1 = systime(1)
       IF exist( StartDate ) AND exist( StartTime) THEN BEGIN 
           ; Date has yyyy-DDD format
           ; Time has hh:mm:ss.ccc format
@@ -172,7 +181,10 @@ FUNCTION q2bhdfread, filename, $
         EndDate = EndDate+'/'+tmp[0]+'/'+tmp[1]
         EndTime = temporary(enddate)
       ENDIF ELSE EndTime = '0000/00/00/00/00'
-
+      
+      IF Verbose THEN $
+        print, 'Time to get start/stop/creation time: ',systime(1)-t1
+     t1  = systime(1)
 
       r = hdf_sd_nametoindex(fileid, 'wvc_lat')
       r = hdf_sd_select( fileid, r )
@@ -184,7 +196,10 @@ FUNCTION q2bhdfread, filename, $
       retstruct  =  Q2B_STR( dims[1], ncells=dims[0] )
 
       retstruct.lat =  float(lat) &  lat=0
-
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_lat: ', t2-t1
+      t1 = systime(1)
 
       r = hdf_sd_nametoindex(fileid, 'wvc_row')
       r = hdf_sd_select( fileid, r )
@@ -194,6 +209,10 @@ FUNCTION q2bhdfread, filename, $
       hdf_sd_endaccess,r
       retstruct.row =  temporary(fix(row*cal.cal + cal.offset))
       
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_row: ', t2-t1
+      t1 = systime(1)
 
 
       r = hdf_sd_nametoindex(fileid, 'wvc_lon')
@@ -202,6 +221,11 @@ FUNCTION q2bhdfread, filename, $
       hdf_sd_getdata,r, lon
       hdf_sd_endaccess,r
       lon =  float(lon*cal.cal + cal.offset)
+
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_lon: ', t2-t1
+      t1 = systime(1)
 
         ; Make it East Longitude.
       bad = where( Lon LT 0, nbad)
@@ -218,6 +242,11 @@ FUNCTION q2bhdfread, filename, $
 
       retstruct.qual = temporary(qual)
 
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_qual: ', t2-t1
+      t1 = systime(1)
+
       r = hdf_sd_nametoindex(fileid, 'wind_speed')
       r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
@@ -225,12 +254,22 @@ FUNCTION q2bhdfread, filename, $
       hdf_sd_endaccess,r
       speed =  float(speed*cal.cal + cal.offset)
       
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_speed: ', t2-t1
+      t1 = systime(1)
+
       r = hdf_sd_nametoindex(fileid, 'wind_dir')
       r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, dir
       hdf_sd_endaccess,r
       dir =  float(dir*cal.cal + cal.offset)
+
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_dir: ', t2-t1
+      t1 = systime(1)
 
       r = hdf_sd_nametoindex(fileid, 'wvc_selection')
       r = hdf_sd_select( fileid, r )
@@ -239,6 +278,10 @@ FUNCTION q2bhdfread, filename, $
       hdf_sd_endaccess,r
       sel =  fix(sel*cal.cal + cal.offset)
 
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_selection: ', t2-t1
+      t1 = systime(1)
 
       r = hdf_sd_nametoindex(fileid, 'wvc_index')
       r = hdf_sd_select( fileid, r )
@@ -248,6 +291,10 @@ FUNCTION q2bhdfread, filename, $
       idx =  fix(idx*cal.cal + cal.offset)
 
       retstruct.idx =  temporary(idx)
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract wvc_index: ', t2-t1
+      t1 = systime(1)
 
       r = hdf_sd_nametoindex(fileid, 'num_ambigs')
       r = hdf_sd_select( fileid, r )
@@ -257,6 +304,10 @@ FUNCTION q2bhdfread, filename, $
       nambig =  fix(nambig*cal.cal + cal.offset)
 
       retstruct.nambig =  nambig
+      t2 = systime(1)
+      IF Verbose THEN $
+        print,'Time to extract num_ambigs: ', t2-t1
+      t1 = systime(1)
 
 
       r = hdf_sd_nametoindex(fileid, 'wvc_row_time')
@@ -269,11 +320,18 @@ FUNCTION q2bhdfread, filename, $
       hdf_sd_end,fileid
 
       t2 = systime(1)
-      print, 'Time to Extract data from HDF file ',t2-t1
+      IF Verbose THEN $
+        print,'Time to extract wvc_row_time: ', t2-t1
+      t1 = systime(1)
+
+      t2 = systime(1)
+      IF Verbose THEN $
+        print, 'Time to Extract data from HDF file ',t2-t1
       t1 = t2
       NSCAT_GETUV, dir,speed,u,v
       t2 = systime(1)
-      print,'Time in NSCAT_GETUV ',t2-t1
+      IF Verbose THEN $
+        print,'Time in NSCAT_GETUV ',t2-t1
 
       speed = 0
       dir = 0
@@ -301,7 +359,8 @@ FUNCTION q2bhdfread, filename, $
         retstruct.rowtime = temporary(rowtime)
 
       t2 = systime(1)
-      print,'Time to get selected vectors ',t2-t11
+      IF Verbose THEN $
+        print,'Time to get selected vectors ',t2-t11
       t1 = t2
 
       retstruct.mu = 0.
