@@ -90,6 +90,13 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.16  1999/08/26 20:59:47  vapuser
+; Let See....
+;   Misc code fixes.
+;   Improved support for postscript
+;   output.
+;   Color Bar support
+;
 ; Revision 1.15  1999/07/01 15:25:28  vapuser
 ; Change inputpath/outputpath defaults
 ;
@@ -552,11 +559,11 @@ PRO pv::Hardcopy
         set_plot,'ps'
         self.PsInfo-> Get,ps = ps
         device,_extra=ps
-        self.Annotation-> ReCalcColorBar
+        self.ColorBar->Calc
         self-> draw,/force
         device,/close
         set_plot,'x'
-        self.Annotation-> ReCalcColorBar
+        self.ColorBar->Calc
        END 
        ELSE: message,'Unknown Hardcopy Type!!',/cont
      ENDCASE 
@@ -624,7 +631,7 @@ PRO Pv::Resize, x,y
   self.xsize = x
   self.ysize = y
   Window,/Free,/Pixmap, XSize=x, YSize=y
-  self.Annotation->ReCalcColorBar
+  self.ColorBar->Calc
   self-> Draw
   ;self.pixId = !d.Window
   ;self-> CopyToPixmap
@@ -747,7 +754,6 @@ FUNCTION pv::Init, $
            decimate_by   = decimate_by,$
            CRDecimate_by = CRDecimate_by,$
            ExcludeCols   = ExcludeCols,$
-
            InputPath     = InputPath ,$     
            InputFilter   = InputFilter,$    
            OutputPath    = OutputPath,$     
@@ -760,7 +766,9 @@ FUNCTION pv::Init, $
            MinSpeed      = MinSpeed,$       
            MaxSpeed      = MaxSpeed,$       
            Help          = Help, $
-           Verbose      = Verbose
+           Verbose       = Verbose, $
+           doColorBar    = doColorBar, $
+           doAnnotations = doAnnotations
    
 
 
@@ -792,6 +800,8 @@ FUNCTION pv::Init, $
 
   self.Verbose = keyword_set( Verbose )
 
+  self.doAnnotations =  keyword_set(doAnnotations)
+  self.doColorBar =  keyword_set(doColorBar)
   IF N_Elements(xsize)       EQ 0 THEN xsize = 640 
   IF N_Elements(ysize)       EQ 0 THEN ysize = 480 
   
@@ -978,7 +988,8 @@ FUNCTION pv::Init, $
   CT =  *PtrToColorTable
   self.Ncolors = N_elements( CT[0,*] )
   self.PsInfo = Obj_New('PSFORM') ;
-  self.Annotation = Obj_new('ANNOTATION',$
+  self.Annotation = Obj_new('ANNOTATION')
+  self.ColorBar =  Obj_New('ColorBar', $
                        table=ct,ncolors=self.nwind,title='Wind Speed (m/s)',$
                             bottom=self.wind0,$
                             true= (self.visual NE 'PSEUDOCOLOR'), $
@@ -1156,16 +1167,6 @@ PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
   nTotPlots = 0
   noData = -2 ; A particular failure mode from q2b->getplotdata
   DontKnow = -1 ; Setting for PvPlotObject.InRegion
-
-  self.Annotation-> Get,MainTitle = Mtitle, Xtitle=Xtitle, $
-                      Ytitle=Ytitle, SubTitle=SubTitle, $
-                       DOcolorbar=docolorbar, Colorbar=CB
-
-  ; X/Y title must be applied using _xyouts_
-  ; Mtitle gets passed in to Map_set. Subtitle will be seen only if
-  ; x/y margin is set in _Map_set_
-
-  !p.subTitle = subTitle
 
   IF NOT Widget_Info( self.Tlb,/Valid ) THEN BEGIN 
     status =  self-> CreateWidget()
@@ -1520,10 +1521,13 @@ PRO Pv::Set, xsize       = xsize, $
              OutputFile   = OutputFile,$
              PsInfo       = PsInfo,$
              Annotation   = Annotation, $
+             ColorBar     = ColorBar, $
              MainTitle    = MainTitle,$
              Xtitle       = Xtitle,$
              Ytitle       = Ytitle,$
-             Subtitle     = Subtitle
+             Subtitle     = Subtitle,$
+             doAnnotations=doAnnotations, $
+             doColorBar=doColorBar
 
 
 
@@ -1544,12 +1548,12 @@ PRO Pv::Set, xsize       = xsize, $
    
   IF N_Elements(MinSpeed) NE 0 THEN BEGIN 
     self.MinSpeed = Minspeed
-    self.annotation-> Set,Min = MinSpeed
+    self.ColorBar-> Set,Min = MinSpeed
   ENDIF 
  
   IF N_Elements(MaxSpeed) NE 0 THEN BEGIN 
     self.MaxSpeed = MaxSpeed
-    self.annotation-> Set,Max = MaxSpeed
+    self.ColorBar-> Set,Max = MaxSpeed
   ENDIF 
 
   IF N_Elements(Length) NE 0 THEN BEGIN 
@@ -1786,6 +1790,13 @@ PRO Pv::Set, xsize       = xsize, $
     ENDIF 
   ENDIF 
 
+  IF N_elements(ColorBar) NE 0 THEN BEGIN 
+    IF Obj_Isa( ColorBar,'COLORBAR') THEN BEGIN 
+      IF ColorBar NE self.ColorBar THEN obj_destroy, ColorBar
+      self.ColorBar = ColorBar
+    ENDIF 
+  ENDIF 
+
   
   IF N_elements(Maintitle) NE 0 THEN BEGIN 
     IF VarType( MainTitle ) EQ 'STRING' THEN $
@@ -1809,6 +1820,9 @@ PRO Pv::Set, xsize       = xsize, $
     IF VarType( SubTitle ) EQ 'STRING' THEN $
       self.Annotation-> Set,SubTitle = Subtitle
   ENDIF 
+
+  IF n_Elements(doAnnotations) NE 0 THEN self.doAnnotations = doAnnotations
+  IF n_Elements(doColorBar) NE 0 THEN self.doColorBar = doColorBar
 
 END
 
@@ -1858,7 +1872,10 @@ PRO Pv::Get, xsize             = xsize, $
              OutputPath        = OutputPath,$
              OutputFile        = OutputFile, $
              PsInfo            = PsInfo,$
-             Annotation        = Annotation
+             Annotation        = Annotation, $
+             ColorBar          = colorBar, $
+             doAnnotations     = doAnnotations, $
+             doColorBar        = doColorBar
 
    IF Arg_Present(xsize)             THEN xsize             = self.xsize 
    IF Arg_Present(ysize)             THEN ysize             = self.ysize 
@@ -1898,6 +1915,9 @@ PRO Pv::Get, xsize             = xsize, $
    IF Arg_Present(OutputFiles)       THEN OutputFiles       = self.OutputFiles
    IF Arg_Present(PsInfo)            THEN PsInfo            = self.PsInfo
    IF Arg_Present(Annotation)        THEN Annotation        = self.Annotation
+   IF Arg_Present(ColorBar)          THEN ColorBar          = self.ColorBar
+   IF Arg_Present(doAnnotations)     THEN doAnnotations     = self.doAnnotations
+   IF Arg_Present(doColorBar)        THEN doColorBar        = self.doColorBar
 
    IF Arg_Present(CurrentDims)       THEN CurrentDims = $
       self->GetCurrentDimensions()  
@@ -2132,21 +2152,17 @@ PRO Pv::ResetPlotObjects,All = All, AlreadyPlotted=AlreadyPlotted
    AlreadyPlotted = keyword_set(AlreadyPlotted)
    
    n = self.Datalist-> WhichNode()
-   ;Current = self.DataList-> GetHead()
    DataPtr =  self.DataList-> GetHead()
    WHILE Ptr_Valid(DataPtr) DO BEGIN 
-     ; DataPtr = (*Current)
-;     IF Ptr_Valid(DataPtr) THEN BEGIN 
-       po = *DataPtr
-       CASE 1 OF 
-         ALL: BEGIN 
-           po-> set, InRegion = -1, PlotFlag=1, AlreadyPlotted=0
-         END
-         AlreadyPlotted: BEGIN 
-           po-> Set, AlreadyPlotted=0
-         END
-       ENDCASE 
-;     ENDIF 
+     po = *DataPtr
+     CASE 1 OF 
+       ALL: BEGIN 
+         po-> set, InRegion = -1, PlotFlag=1, AlreadyPlotted=0
+       END
+       AlreadyPlotted: BEGIN 
+         po-> Set, AlreadyPlotted=0
+       END
+     ENDCASE 
      DataPtr = self.DataList-> GetNext()
    ENDWHILE 
    IF n NE 0 THEN s = self.Datalist-> GotoNode(n)
@@ -2165,12 +2181,6 @@ PRO pv::CreateMap, Erase = Erase, force=force, $
 
   postscriptDevice = !d.name EQ 'PS'
 
-  self.Annotation-> Get,MainTitle = Mtitle, Xtitle=Xtitle, $
-                      Ytitle=Ytitle, SubTitle=SubTitle, $
-                       DoColorBar=DoColorBar
-
-  IF DoColorBar THEN self.Annotation-> Get,Colorbar = CB
-
    map_extent = abs(limit[3]-limit[1])*abs(limit[2]-limit[0])
    dots =  map_extent GE (140*110)
    IF postscriptdevice THEN BEGIN 
@@ -2183,35 +2193,43 @@ PRO pv::CreateMap, Erase = Erase, force=force, $
      ENDELSE 
    ENDELSE 
 
-   labels =  strlen(subtitle) NE 0 OR $
-             strlen(Xtitle)      NE 0 OR $
-             strlen(Ytitle)      NE 0 OR $
-             strlen(Mtitle)      NE 0
+   IF self.doAnnotations OR self.doColorBar THEN BEGIN 
+   
+     IF self.doAnnotations THEN BEGIN   
 
+       self.Annotation-> Get,MainTitle = Mtitle, $
+        Xtitle=Xtitle, $
+        Ytitle=Ytitle, SubTitle=SubTitle, $
+        Xmargin=Xmargin, Ymargin=Ymargin, $
+        Charsize=Charsize, CharThick=CharThick
 
-   IF labels OR doColorBar THEN BEGIN 
+       !p.subtitle = subtitle
+       IF xmargin[0] eq 0 AND xmargin[1] EQ 0 THEN xmargin = 6
+       IF ymargin[0] eq 0 AND ymargin[1] EQ 0 THEN ymargin = 5
 
-     !p.subtitle = subtitle
-     IF Erase OR Force THEN BEGIN 
-       self-> ResetPlotObjects,/AlreadyPlotted
-       Map_Set, 0,center[0], /Grid,/Label,/Continent,$
-        limit=limit,Title=mtitle, $
-         xmargin=6, ymargin=5, color=titlecolor
-                               ;        oldLimit = limit
+       IF Erase OR Force THEN BEGIN 
+         self-> ResetPlotObjects,/AlreadyPlotted
+         Map_Set, 0,center[0], /Grid,/Label,/Continent,$
+          limit=limit,Title=mtitle, $
+           xmargin=xmargin, ymargin=ymargin, color=titlecolor
+                                 ;        oldLimit = limit
+       ENDIF 
+
+       
+       IF strlen( Xtitle ) NE 0 THEN $
+         XYOUTS,mean(!x.window), 0.75*!y.window[0], Xtitle, Align=0.5, /normal, $
+         charsize=charsize, charthick=charthick,color=titlecolor
+
+       IF strlen( Ytitle ) NE 0 THEN $
+         XYOUTS, 0.75*!x.window[0], mean(!y.window), Ytitle, Align=0.5, /normal, $
+         charsize=charsize, charthick=charthick, Orient=90,color=titlecolor
+        !p.subtitle = ''
      ENDIF 
-
-     IF strlen( Xtitle ) NE 0 THEN $
-      XYOUTS, 0.5, 0.75*!y.window[0], Xtitle, Align=0.5, /normal, $
-      charsize=1.2, color=titlecolor
-
-     IF strlen( Ytitle ) NE 0 THEN $
-      XYOUTS, 0.75*!x.window[0], 0.5, Ytitle, Align=0.5, /normal, $
-      charsize=1.2, Orient=90,color=titlecolor
-     !p.subtitle = ''
-     IF DOColorBar THEN CB-> calc,/apply
-     
-     Map_Set, 0,center[0], limit=limit, $
-         xmargin=6, ymargin=5, /noerase,/noborder
+     IF self.doColorBar THEN BEGIN 
+       self.ColorBar-> calc,/apply
+       Map_Set, 0,center[0], limit=limit, $
+         xmargin=xmargin, ymargin=ymargin, /noerase,/noborder
+     ENDIF 
      
    ENDIF ELSE BEGIN 
      IF Erase OR Force THEN BEGIN 
@@ -2224,6 +2242,79 @@ PRO pv::CreateMap, Erase = Erase, force=force, $
 
   
 END
+
+;====================================================
+; GetData
+;  Get data out of object for current map limits
+;   Gets only 1 ambiguity! 
+;   Applies current decimation scheme!
+;====================================================
+PRO pv::GetData, u,v,lon,lat, ambig
+  IF n_elements(ambig) EQ 0 THEN ambig = 0
+  Dim = *(self.DimsList->GetCurrent())
+  Dim->Get,lon = lon,lat=lat,center=center
+  limit = [  lon[0], lat[0], lon[1], lat[1]  ]
+  CurrentPlotDataPtr = self.DataList->GetHead()
+  nrecs = 0
+  IF Ptr_Valid( CurrentPlotDataPtr ) THEN BEGIN 
+    first = 1
+    WHILE Ptr_Valid(CurrentPLotDataPtr) DO BEGIN 
+
+
+      po = *(CurrentPlotDataPtr)
+      po-> Get,Data=Q2b, $
+               SelectedOnly=SelectedOnly, $
+               PlotFlag=PlotFlag, $
+               AlreadyPlotted=AlreadyPlotted, $
+               InRegion=InRegion
+      s = q2b-> Set( Decimate    = self.Decimate_by, $
+                     CRDecimate  = self.CRDecimate_by, $
+                     ExcludeCols = self.ExcludeCols)
+      nrecs =  nrecs + q2b-> Nrecs()
+      CurrentPlotDataPtr = self.DataList-> GetNext()
+    ENDWHILE
+  ENDIF 
+  u = (v= (lon= (lat= fltarr( 76, nrecs ))))
+  
+  ii = 0
+  CurrentPlotDataPtr = self.DataList->GetHead()
+  nfiles = self.dataList-> GetCount()
+  file_cntr = 0
+  IF Ptr_Valid( CurrentPlotDataPtr ) THEN BEGIN 
+    first = 1
+    WHILE Ptr_Valid(CurrentPLotDataPtr) DO BEGIN 
+      file_cntr = file_cntr+1
+      print,'working on ',file_cntr, ' of ', nfiles
+
+      po = *(CurrentPlotDataPtr)
+      po-> Get,Data=Q2b, $
+               SelectedOnly=SelectedOnly, $
+               PlotFlag=PlotFlag, $
+               AlreadyPlotted=AlreadyPlotted, $
+               InRegion=InRegion
+      s = q2b-> Set( Decimate    = 0, $
+                     CRDecimate  = [0,0], $
+                     ExcludeCols = '' )
+      status = q2b-> GetPlotData(uu,vv,llon,llat,ambig,limit=limit,/Silent)
+      nn = q2b-> Nrecs()
+      IF status NE 1 THEN BEGIN 
+        Message,"Error Getting Data!",/cont
+        return
+      ENDIF 
+      u  [*,ii:ii+nn-1] =  uu
+      v  [*,ii:ii+nn-1] =  vv
+      lon[*,ii:ii+nn-1] =  llon
+      lat[*,ii:ii+nn-1] =  llat
+      ii = ii+nn
+      CurrentPlotDataPtr = self.DataList-> GetNext()
+    ENDWHILE 
+    u = temporary(u[*,0:ii-1])
+    v = temporary(v[*,0:ii-1])
+    lon = temporary(lon[*,0:ii-1])
+    lat = temporary(lat[*,0:ii-1])
+  ENDIF 
+END
+
 
 ;====================================================
 ;
@@ -2248,7 +2339,10 @@ PRO Pv__define
             Sensitivity  : 0l, $ ; flag for sensitivity s
                                  ; tate of widget.
             Verbose      : 0l, $ ; Verbosity flag.
+            doAnnotations: 0l, $
+            doColorBar   : 0l, $ 
             Annotation   : Obj_New(),$ ; for titles, and such
+            ColorBar     : Obj_New(), $
 
  ;------------- Widget quantities ---------------
             tlb          : 0l ,$
