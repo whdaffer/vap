@@ -46,6 +46,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  2002/05/03 01:11:34  vapdev
+; Changed these support files to use multiple paths/filters (in case
+; we want to segregate QuikSCAT/ADEOS streams). Modifed env variables to
+; reflect new schema. Just cosmetic work on the swath routines.
+;
 ; Revision 1.1  1998/10/28 23:38:48  vapuser
 ; Initial revision
 ;
@@ -119,7 +124,9 @@ FUNCTION qswathextent,node
   latw = latw/!dtor
 
   bad = where( lonw LT 0, nbad )
-  IF nbad NE 0 THEN lonw[bad] =  lonw[bad] + 360.
+  IF nbad NE 0 THEN lonw[bad] =  (lonw[bad] + 360.)
+  bad = where(lonw GT 360.,nbad)
+  IF nbad NE 0 THEN lonw[bad] =  lonw[bad] MOD 360.
   
 
   lonlat = [ [[lonw]],[[latw]] ] ; a 3 by nrows by 2 array.
