@@ -14,6 +14,17 @@
 ;
 ; CALLING SEQUENCE:  
 ;
+;  status=QModelHdfWrite( filename, u,v,$
+;                         ShortName = ShortName,$
+;                         LongName  = LongName, $
+;                         Version   = Version, $
+;                         CreationTime= CreationTime,$
+;                         StartTime = StartTime, $
+;                         EndTime   = EndTime,$
+;                         LonPar    = LonPar,$    
+;                         LatPar    = LatPar, $   
+;                         Region    = region )
+;
 ;
 ; 
 ; INPUTS:  
@@ -58,6 +69,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/07 18:31:34  vapuser
+; don't remember.
+;
 ; Revision 1.1  1998/10/07 00:07:48  vapuser
 ; Initial revision
 ;
@@ -68,6 +82,7 @@
 ;-
 
 FUNCTION qmodelhdfwrite, filename, u,v,$
+                         ShortName = ShortName,$
                          LongName  = LongName, $
                          Version   = Version, $
                          CreationTime= CreationTime,$
@@ -102,7 +117,8 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
    ENDIF ELSE BEGIN 
      IF n_elements(Lonpar) ne 3 AND $
         n_elements(Latpar) ne 3 THEN BEGIN 
-       Message,'either region must be set (and a 4 vector) or lonpar/latpar must be set',/cont
+       Message,$
+         'Either region must be set (a 4-vector) or lonpar/latpar must be set',/cont
        return,0
      ENDIF ELSE BEGIN 
        region = [ lonpar[0], latpar[0], lonpar[1], latpar[1] ]
@@ -121,20 +137,47 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
          nlon = s[1]
          nlat = s[2]
          fileid = Hdf_Sd_Start(tfilename,/create)
+
          IF fileid GT 0 THEN BEGIN 
-           IF N_Elements(LongName) EQ 0 THEN LongName = ''
-           IF N_Elements(Version) EQ 0 THEN Version = ''
-           IF N_Elements(StartTime) EQ 0 THEN StartTime = ''
-           IF N_Elements(EndTime) EQ 0 THEN EndTime = ''
-           IF N_Elements(CreationTime) EQ 0 THEN CreationTime = ''
-           Hdf_sd_AttrSet,fileId,'SHORTNAME','QSCATVAPMODEL'
+
+           IF N_Elements(LongName) EQ 0 THEN $
+             LongName = '<no longname>' $
+           ELSE IF strlen(LongName) EQ 0 THEN $
+             LongName = '<no longname>' 
+
+           IF N_Elements(Version) EQ 0 THEN $
+            Version = '<no version>' $ 
+           ELSE IF strlen(Version) EQ 0 THEN $
+            Version = '<no version>' 
+
+           IF N_Elements(StartTime) EQ 0 THEN $
+             StartTime = '0000/00/00/00/00' $
+           ELSE IF strlen(StartTime) EQ 0 THEN  $
+             StartTime = '0000/00/00/00/00' 
+
+           IF N_Elements(EndTime) EQ 0 THEN  $
+             EndTime = '0000/00/00/00/00' $
+           ELSE IF strlen(EndTime) EQ 0 THEN $
+             EndTime = '0000/00/00/00/00' 
+
+           IF N_Elements(CreationTime) EQ 0 THEN $
+             CreationTime = '0000/00/00/00/00' $
+           ELSE IF strlen( CreationTime ) EQ 0 THEN $
+             CreationTime = '0000/00/00/00/00' 
+
+           IF N_Elements(ShortName) EQ 0 THEN $
+             ShortName = 'QWSCATVAPMODEL' $
+           ELSE IF strlen(ShortName) EQ 0 THEN $
+             ShortName = 'QWSCATVAPMODEL' 
+
+           Hdf_sd_AttrSet,fileId,'LONGNAME',strtrim(LongName[0],2)
+           Hdf_sd_AttrSet,fileId,'VERSION',strtrim(Version[0],2)
+           Hdf_sd_AttrSet,fileId,'STARTTIME',strtrim(StartTime[0],2)
+           Hdf_sd_AttrSet,fileId,'ENDTIME',strtrim(EndTime[0],2)
+           Hdf_sd_AttrSet,fileId,'CREATIONTIME',strtrim(CreationTime[0],2)
+           Hdf_sd_AttrSet,fileId,'SHORTNAME',ShortName
            Hdf_sd_AttrSet,fileId,'NLON',nlon,/short
            Hdf_sd_AttrSet,fileId,'NLAT',nlat,/short
-           Hdf_sd_AttrSet,fileId,'LONGNAME',strtrim(LongName,2)
-           Hdf_sd_AttrSet,fileId,'VERSION',strtrim(Version,2)
-           Hdf_sd_AttrSet,fileId,'STARTTIME',strtrim(StartTime,2)
-           Hdf_sd_AttrSet,fileId,'ENDTIME',strtrim(EndTime,2)
-           Hdf_sd_AttrSet,fileId,'CreationTime',strtrim(CreationTime,2)
            Hdf_sd_AttrSet,fileId,'REGION',region,/float
            Hdf_sd_AttrSet,fileId,'LONPAR',lonpar,/float
            Hdf_sd_AttrSet,fileId,'LATPAR',latpar,/float
@@ -142,9 +185,9 @@ FUNCTION qmodelhdfwrite, filename, u,v,$
            VSdsId =  Hdf_sd_create( fileid, "V",[nlon,nlat],/float)
            Hdf_Sd_AddData,USdsId, U
            Hdf_Sd_AddData,VSdsId,V
-           caldata.Num_type = idltype2hdftype('FLOAT')
-           Hdf_sd_setinfo, UsdsId, caldata=caldata
-           Hdf_sd_setinfo, VsdsId, caldata=caldata
+;           caldata.Num_type = idltype2hdftype('FLOAT')
+;           Hdf_sd_setinfo, UsdsId, caldata=caldata
+;           Hdf_sd_setinfo, VsdsId, caldata=caldata
            HDF_SD_ENDACCESS, USdsId
            HDF_SD_ENDACCESS, VSdsId
            HDF_SD_END, fileid
