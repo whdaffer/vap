@@ -9,12 +9,15 @@
 #   and time is of the form 'yy/mm/dd/hh'
 # 
 # $Log$
+# Revision 1.1  1998/10/02 22:59:18  vapuser
+# Initial revision
+#
 #
 # 
 #
 #
 require 5.000;
-
+require vap_perl;
 use Cwd 'chdir';
 
 $rcsid="$Id$";
