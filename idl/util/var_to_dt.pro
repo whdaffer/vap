@@ -80,6 +80,9 @@
 ; 1.0 - Fixed a scalar .vs. 1-element array confusion below. WHD 15-oct-1998
 ;
 ; $Log$
+; Revision 1.1  1998/10/15 23:26:49  vapuser
+; Initial revision
+;
 ;-
 
 FUNCTION VAR_TO_DT, yyyy, mm, dd, hh, min, ss
@@ -110,7 +113,7 @@ endif else begin
     if n_elements( min ) eq 0 then min = replicate( 0B, nElements )
     if n_elements( ss ) eq 0 then ss = replicate( 0., nelements )
     retVal = replicate( {IDLDT}, nElements )
-    for i = 0, nElements-1 do begin
+    for i = 0L, nElements-1 do begin
         retVal[i] = VAR_TO_DT( yyyy[i], mm[i], dd[i], $
                                hh[i], min[i], ss[i] )
     endfor
