@@ -3,6 +3,9 @@
 #
 #
 # $Log$
+# Revision 1.4  1999/10/05 17:38:12  vapuser
+# Added some debug targets.
+#
 # Revision 1.3  1999/06/17 19:15:23  vapuser
 # Put isanumber back in
 #
@@ -94,11 +97,23 @@ succor-debug.so: succor-debug.o objanl-debug.o objanl.f succor.c
 	$(LD) $(LDFLAGS) -o succor-debug.so succor-debug.o \
 	objanl-debug.o $(CLIBS) $(F77LIBS)
 
+succor.o: succor.c
+	$(CC) $(CFLAGS) -c -o succor.o succor.c
+
 succor-debug.o: succor.c
 	$(CC) $(CFLAGS) -DDEBUG -c -o succor-debug.o succor.c
 
 objanl-debug.o: objanl.f
 	$(F77) $(F77_FLAGS) -d_lines -c -o objanl-debug.o objanl.f  
+
+objanl-test.o: objanl-test.f
+	$(F77) $(F77_FLAGS) -c -o objanl-test.o objanl-test.f  
+
+new-succor.so: succor.o objanl-test.o \
+	$(RSIINC)/export.h
+	echo Making new-succor.so
+	$(LD) $(LDFLAGS) -o new-succor.so succor.o objanl-test.o $(CLIBS) $(F77LIBS)
+
 
 land_mask.so: land_mask.o lndmsk.o \
 	$(RSIINC)/export.h
