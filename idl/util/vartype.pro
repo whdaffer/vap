@@ -16,6 +16,10 @@ FUNCTION vartype, in
             'STRUCTURE',$
             'COMPLEX_DOUBLE',$
             'POINTER',$
-            'OBJECT']
+            'OBJECT', $
+            'UINT', $
+            'ULONG',$
+            'LONG64',$
+            "ULONG64"]
 RETURN, types(t)
 END
