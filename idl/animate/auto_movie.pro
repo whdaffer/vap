@@ -3,7 +3,7 @@
 ; $Id$
 ; NAME:  AUTO_MOVIE
 ;
-; Time-stamp: <98/11/23 16:21:43 vapuser>
+; Time-stamp: <99/02/04 13:32:14 vapuser>
 ;
 ;		
 ; 
@@ -130,6 +130,9 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.6  1999/01/24 20:13:00  vapuser
+; Robustified calling dmconvert.
+;
 ; Revision 1.5  1998/10/22 21:04:49  vapuser
 ; Added some messages, some catch code around first
 ; auto_movie_cronjob test.
@@ -349,7 +352,8 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     return
   ENDIF 
   
-  
+  Message,' File containing interpolated field: ' + Interp_file ,/cont
+
   anim_date_str =  dt2timestr( filetimes[0],sep='')
 
 ;  IF nif NE 0 THEN BEGIN 
