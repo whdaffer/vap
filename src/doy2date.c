@@ -4,13 +4,16 @@
  * Modification History:
  * 
  * $Log$
+ * Revision 1.1  1998/10/22 21:43:50  vapuser
+ * Initial revision
+ *
  *
  *
  */
 #include <stdio.h>
 int doy2date( int year, int doy, int *month, int *day) {
 
-  static const char doy2date_c_rcsid=
+  static const char doy2date_c_rcsid[]=
     "$Id$";
   int dpm[2][12]   =  { 31, 28, 31, 30,  31,  30,  31,  31,  30,  31,  30,  31,
                        31, 29, 31, 30,  31,  30,  31,  31,  30,  31,  30,  31 }; 

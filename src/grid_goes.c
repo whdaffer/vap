@@ -4,7 +4,10 @@
  *
  *    Modification Log: (After RCS)
  *
- *    $Log$:
+ *    $Log$
+ *    Revision 1.1  1998/10/22 21:43:58  vapuser
+ *    Initial revision
+ *:
  *
  *
  *    7/29/98  Added getopt processing (whd)
@@ -92,8 +95,8 @@ extern int optind, opterr, optopt;
 
 int main( int argc, char **argv) {
 
-  static const char grid_goes_c_rcsid=
-     "$Id$;
+  static const char grid_goes_c_rcsid[]=
+     "$Id$";
   FILE *fin,*fout;
   DIR  *dptr;
   char **ptr;
