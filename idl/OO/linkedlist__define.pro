@@ -1,61 +1,41 @@
 ;+
 ; NAME:  LinkedList__Define
+; $Id$
 ; PURPOSE:  Creates a Linked List
-;
 ;
 ; AUTHOR; William Daffer
 ;
-;
 ; CATEGORY:  OO
 ;
-;
-;
 ; CALLING SEQUENCE:  ll=Obj_New('LinkedList'[,data])
-;
-;
 ; 
 ; INPUTS:  Data - can be anything
 ;
-;
-;
 ; OPTIONAL INPUTS:  None
-;
-;
 ;	
 ; KEYWORD PARAMETERS:  None
 ;
-;
-;
 ; OUTPUTS:   If successful, and object of type 'linkedlist'
-;
-;
 ;
 ; OPTIONAL OUTPUTS:  None
 ;
-;
-;
 ; COMMON BLOCKS:  
-;
-;
 ;
 ; SIDE EFFECTS:  
 ;
-;
-;
 ; RESTRICTIONS:  
-;
-;
 ;
 ; PROCEDURE:  
 ;
-;
-;
 ; EXAMPLE:  ll=Obj_New('LinkedList',fltarr(10))
-;
-;
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.8  1999/04/09 15:49:23  vapuser
+; Beefed up error checking.
+; In get{head,tail,next,prev,current}, return data,
+; not pointer to data.
+;
 ; Revision 1.7  1999/01/22 23:50:37  vapuser
 ; Change 'Obj_valid' to "vartype() eq 'OBJECT'" because of
 ; some weird bug in OBJ_VALID.
@@ -86,9 +66,9 @@
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
 
-;----------------------------------------
+;===================================================
 ; Init 
-;----------------------------------------
+;===================================================
 FUNCTION LinkedList::Init,data
   COMMON nodebase, nodebase
 
@@ -106,9 +86,9 @@ FUNCTION LinkedList::Init,data
   ENDELSE 
   return,1
 END
-;----------------------------------------
+;===================================================
 ; cleanup
-;----------------------------------------
+;===================================================
 PRO LinkedList::cleanup
   current = self->GetHead()
   WHILE Ptr_Valid(current) AND self.count GE 1 DO BEGIN 
@@ -118,9 +98,9 @@ PRO LinkedList::cleanup
 
 END
 
-;----------------------------------------
+;===================================================
 ; GetCurrent
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::getCurrent
    IF ptr_valid(self.current) THEN $
@@ -128,9 +108,9 @@ FUNCTION LinkedList::getCurrent
    ELSE return, ptr_new()
 END
 
-;----------------------------------------
+;===================================================
 ; GetHead
-;----------------------------------------
+;===================================================
 FUNCTION LinkedList::gethead
   IF ptr_valid(self.head) THEN BEGIN 
     self.current = self.head
@@ -139,9 +119,9 @@ FUNCTION LinkedList::gethead
 END
 
 
-;----------------------------------------
+;===================================================
 ; GetTail
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::GetTail
   IF ptr_valid( self.tail) THEN BEGIN 
@@ -151,9 +131,9 @@ FUNCTION LinkedList::GetTail
 END
 
 
-;----------------------------------------
+;===================================================
 ; GetNext
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::GetNext
   current =  self.current
@@ -166,9 +146,9 @@ END
 
 
 
-;----------------------------------------
+;===================================================
 ; GetPrev
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::GetPrev
    current = self.current
@@ -181,9 +161,9 @@ FUNCTION LinkedList::GetPrev
 END
 
 
-;----------------------------------------
+;===================================================
 ; Prepend
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::Prepend, data
   COMMON nodebase, nodebase
@@ -206,9 +186,9 @@ FUNCTION LinkedList::Prepend, data
   return,status
 END
 
-;----------------------------------------
+;===================================================
 ;  Append
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::Append, data
   COMMON nodebase, nodebase
@@ -234,9 +214,9 @@ FUNCTION LinkedList::Append, data
 END
 
 
-;----------------------------------------
+;===================================================
 ; AppendList
-;----------------------------------------
+;===================================================
 FUNCTION LinkedList::AppendList, added_list
   COMMON nodebase, nodebase
   status = 0
@@ -260,9 +240,9 @@ END
 
 
 
-;----------------------------------------
+;===================================================
 ; RemoveCurrent
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::RemoveCurrent
     ; Removes current node from list, repairs the gap and returns the
@@ -271,7 +251,7 @@ FUNCTION LinkedList::RemoveCurrent
     ; starting at the head and calling this method until there a NULL
     ; pointer is returned, then there are no nodes left.
 
-  current = self.current
+  current = self.current ; need to save this!
   IF ptr_valid(self.current) THEN BEGIN 
     IF ptr_valid( (*self.current).prev ) THEN BEGIN 
       ;prev = (*self.current).prev
@@ -295,16 +275,16 @@ FUNCTION LinkedList::RemoveCurrent
       self.current = self.tail
     ENDIF 
     self.count = self.count-1
-    IF ptr_valid( (*current).data ) THEN  $
-     return, (*current).data ELSE $
-     return, ptr_new()
+    retval = (*current).data
+    ptr_free, current
+    return, retval
   ENDIF ELSE return,ptr_new()
   
 END
 
-;----------------------------------------
+;===================================================
 ; GotoNode
-;----------------------------------------
+;===================================================
 FUNCTION LinkedList::GoToNode, index
   return_node = Ptr_New()
   IF index LE self.count AND  $
@@ -330,18 +310,18 @@ FUNCTION LinkedList::GoToNode, index
 END
 
 
-;----------------------------------------
+;===================================================
 ; GetCount
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::GetCount
   return, self.count
 END
 
 
-;----------------------------------------
+;===================================================
 ; NodeCount
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::NodeCount, Repair = Repair
   count = 0
@@ -354,9 +334,9 @@ FUNCTION LinkedList::NodeCount, Repair = Repair
   return, count
 END
 
-;----------------------------------------
+;===================================================
 ; InsertBefore
-;----------------------------------------
+;===================================================
 FUNCTION LinkedList::InsertBefore, data
   COMMON nodebase, nodebase
 
@@ -397,9 +377,9 @@ FUNCTION LinkedList::InsertBefore, data
 END
 
 
-;----------------------------------------
+;===================================================
 ; InsertAfter
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::InsertAfter, data
   COMMON nodebase, nodebase
@@ -438,18 +418,18 @@ FUNCTION LinkedList::InsertAfter, data
   return, status
 END 
 
-;----------------------------------------
+;===================================================
 ; IsEmpty
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::IsEmpty
   ; Returns 1 if empty, 0 otherwise.
   RETURN,self.head EQ Ptr_New();
 END
 
-;---------------------------------------
+;===================================================
 ; GetCurrentDataPtr
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::GetCurrentDataPtr
    ; Returns pointer to data stored at 'current' node
@@ -459,13 +439,13 @@ FUNCTION LinkedList::GetCurrentDataPtr
   return, ret_ptr
 END
 
-;---------------------------------------
+;===================================================
 ; SetData
 ; Resets the data pointer  of the current node to the input data. If
 ; the keyword 'node' is set, the method first makes that the current
 ; node.
 ;
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::SetData, data, node = node
   COMMON nodebase, nodebase
@@ -483,9 +463,9 @@ FUNCTION LinkedList::SetData, data, node = node
 END
 
 
-;---------------------------------------
+;===================================================
 ; Print (more like a 'help' on each node) 
-;----------------------------------------
+;===================================================
 
 PRO LinkedList::Print, full = full
   full = keyword_set( full )
@@ -514,12 +494,12 @@ END
 
 
 
-;---------------------------------------
+;===================================================
 ; DeleteCurrent 
 ;  Like 'Removecurrent' but doesn't return
 ;  the current node and frees the data
 ;  pointer of current node.
-;----------------------------------------
+;===================================================
 
 PRO LinkedList::DeleteCurrent
 
@@ -555,62 +535,10 @@ PRO LinkedList::DeleteCurrent
 END
 
 
-
-;============================================
-; Version
-;============================================
-
-FUNCTION LinkedList::Version
-
-     ; Version number for this class
-   rcsid = "$Id$"
-
-     ; Find version number for objects in the list
-   n = self-> Gethead()
-   i = 0
-   WHILE Ptr_Valid( n ) DO BEGIN 
-
-     data = self->GetCurrentDataPtr()
-     IF Ptr_Valid(data) THEN BEGIN 
-       IF VarType(*data) EQ 'OBJECT' THEN BEGIN 
-         IF Obj_Valid(*data) THEN BEGIN 
-            v = Call_Method( "VERSION", *data)
-            IF exist( list_versions ) THEN $
-               list_versions = [list_versions,v] ELSE $
-               list_versions = v
-         ENDIF 
-       ENDIF 
-     ENDIF 
-
-     catch, error
-     IF error NE 0 THEN BEGIN 
-         ; Ignore 'undefined method' errors
-       IF strpos( strupcase(!Error_state.Msg), $
-                  "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
-         error = 0
-       ENDIF ELSE BEGIN 
-         Message,!error_State.msg,/cont
-         return,''
-       ENDELSE 
-     ENDIF 
-
-     n = self->GetNext()
-   ENDWHILE 
-
-   versions =  rcsid
-
-   IF exist(list_versions) THEN $
-      versions =  [versions, list_versions]
-
-   Catch,/cancel
-  return,versions(uniq(versions,sort(versions)))
-END
-
-
-;----------------------------------------
+;===================================================
 ; WhichNode - returns which node the list 
 ; is currently set to.
-;----------------------------------------
+;===================================================
 
 FUNCTION LinkedList::WhichNode
   nodenum = 0
@@ -621,9 +549,9 @@ FUNCTION LinkedList::WhichNode
   return,nodenum
 END
 
-;----------------------------------------
+;===================================================
 ; Define
-;----------------------------------------
+;===================================================
 
 
 PRO LinkedList__define
