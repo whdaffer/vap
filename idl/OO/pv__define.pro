@@ -89,6 +89,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  1998/10/21 17:40:57  vapuser
+; Added a 'print' statement while reading files.
+;
 ; Revision 1.5  1998/10/21 16:28:06  vapuser
 ; Free attr.value PTR after call to hdfgetattr
 ;
@@ -348,7 +351,8 @@ END
 PRO Pv::WidgetRead
   files = Mpickfile( path=self.InputPath, filter=self.InputFilter, $
                      Get_Path=NewPath, Get_Filter=NewFilter)
-  self.InputPath = NewPath
+  files = DeEnvVar(files)
+  self.InputPath = DeEnvVar(NewPath)
   self.InputFilter = NewFilter
   
   cnt = n_elements( files )
@@ -812,7 +816,7 @@ FUNCTION pv::Init, $
   self.ysize         = ysize      
   self.ExcludeCols   = ExcludeCols
   self.ambiguities   = ambiguities 
-  self.InputPath     = InputPath     
+  self.InputPath     = DeEnvVar(InputPath)
   self.InputFilter   = InputFilter   
   self.OutputPath    = OutputPath  
   self.HCType        = HCType  
@@ -1109,23 +1113,34 @@ PRO Pv::Draw
             IF ngood1 NE 0 THEN BEGIN 
               speed = sqrt( u[good1]^2 + v[good1]^2 ) 
               good =  where( speed ,ngood)
+              self-> Get, SpeedHisto = SpeedHisto
               IF ngood NE 0 THEN BEGIN 
-                self-> Get, SpeedHisto = SpeedHisto
-
                 speed = speed(good)
                 IF nTotPlots EQ 0 THEN BEGIN 
                     ; First plot
                   SpeedHisto-> Set, Data = speed
                   self.MinMaxSpeed = MinMax(Speed) 
                 ENDIF ELSE BEGIN 
-                  self.MinMaxSpeed = [ Min( [ Self.MinMaxSpeed[0], $
-                                              Min(speed,max=mx) ] ), $
-                                     Max( [ Self.MinMaxSpeed[1], mx ] ) ]
+                    ; self.MinMaxSpeed=[0,0] means there hasn't been
+                    ; any good data up to this point, so disregard it.
+                  test = where(self.MinMaxSpeed-[0.,0],ntest)
+                  IF ntest NE 0 THEN BEGIN 
+                    self.MinMaxSpeed = [ Min( [ Self.MinMaxSpeed[0], $
+                                                Min(speed,max=mx) ] ), $
+                                         Max( [ Self.MinMaxSpeed[1], mx ] ) ]
+                  ENDIF ELSE BEGIN 
+                    self.MinMaxSpeed = [  MinMax(speed) ]
+                  ENDELSE 
                   SpeedHisto-> Set, Data = speed, /Append
                 ENDELSE 
               ENDIF ELSE BEGIN 
-                SpeedHisto-> Set, data = Ptr_New()
-                self.MinMaxSpeed = [0.,0.]
+                 ; No good data in this plot. Don't do
+                 ; anything if this isn't the first plot.
+                IF nTotPlots EQ 0 THEN BEGIN 
+                    ; First plot
+                  SpeedHisto-> ClearAll
+                  self.MinMaxSpeed = [0.,0.]
+                ENDIF 
               ENDELSE 
               self-> Set,SpeedHisto = SpeedHisto
   ;            print,'Time to extract SpeedHisto info: ', systime(1)-t1
@@ -1210,7 +1225,7 @@ FUNCTION Pv::Read,files
 
       IF Hdf_IsHdf( files(f) ) THEN BEGIN 
         ; It may be a q2b file or a model file.
-        attr = hdfgetattr( files(f), attr='ShortName' )
+        attr = hdfgetattr( files(f), attr='SHORTNAME' )
         IF VarType( attr ) EQ 'STRUCTURE' THEN BEGIN 
           CASE *attr.value OF 
             'QSCATVAPMODEL': q = Obj_New('qmodel',filename=files(f) )
@@ -1456,7 +1471,7 @@ PRO Pv::Set, xsize       = xsize, $
   ENDIF 
 
     ; Input path and filter
-  IF N_Elements(InputPath) NE 0 THEN self.InputPath = InputPath
+  IF N_Elements(InputPath) NE 0 THEN self.InputPath = DeEnvVar(InputPath)
   IF N_Elements(InputFilter) NE 0 THEN self.InputFilter = InputFilter
 
     ; used in zooming
