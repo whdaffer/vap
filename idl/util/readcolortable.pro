@@ -60,6 +60,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1999/10/05 16:35:59  vapuser
+; Allow for null filename on input, call mpickfile instead of returning
+; NULL
+;
 ; Revision 1.3  1999/07/14 22:55:26  vapuser
 ; Added call to mpickfile, simplified code.
 ;
@@ -85,9 +89,11 @@ FUNCTION ReadColorTable, filename
     IF filename EQ  '' THEN return,ptr_new()
   ENDIF 
 
-  IF arg_present(filename) THEN BEGIN 
-    filename = mpickfile(path='/usr/people/vapuser/Qscat/Resources/Color_Tables')
-    IF filename EQ  '' THEN return,ptr_new()
+  IF n_elements(filename) EQ 0 THEN BEGIN 
+    IF arg_present(filename) THEN BEGIN 
+      filename = mpickfile(path='/usr/people/vapuser/Qscat/Resources/Color_Tables')
+      IF filename EQ  '' THEN return,ptr_new()
+    ENDIF
   ENDIF 
 
   IF NOT isa(filename,/string, /nonempty) THEN BEGIN 
