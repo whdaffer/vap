@@ -214,6 +214,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.14  2000/05/17 20:41:03  vapuser
+; Fixed a problem with latitude calculation.
+;
 ;
 ; Revision 1.13  2000/05/17 16:49:52  vapuser
 ; Make the routine continue to the end even if the goes file isn't
@@ -510,12 +513,12 @@ PRO goes_overlay, goesfile, $
 
       date = doy2date(hdr.year,hdr.doy)
       year = strtrim(hdr.year)
-      hh = (hdr.hhmm)/10
-      mm = hdr.hhmm-hh*10
+      hh = (hdr.hhmm)/100
+      mm = hdr.hhmm-hh*100
 
       goes_date = strcompress(year + date[0] + date[1]+ 'T' + $
-                  PadAndJustify(mm, 2, /right ) + $
-                  PadAndJustify(hh, 2, /right ),/remove_all)
+                  PadAndJustify(hh, 2, /right ) + $
+                  PadAndJustify(mm, 2, /right ),/remove_all)
 
       goes_string =  sat_name + ' ' + sensor + ' ('  + goes_date + ')'
       
@@ -812,7 +815,7 @@ PRO goes_overlay, goesfile, $
 
   FOR i=0,2 DO BEGIN 
     tmpIm = Map_Image( Im[*,*,i], $
-                       xs,ys,xsize,ysize,$
+                       xs,ys,txsize,tysize,$
                        lonmin=lonrange[0],$
                        latmin=limits[1],$
                        lonmax=lonrange[1],$
@@ -855,7 +858,7 @@ PRO goes_overlay, goesfile, $
   IF ps THEN BEGIN 
 
     text_color = '000000'xl
-    Tv,mapIm,xs,ys,xsize=xsize,ysize=ysize,true=3 
+    Tv,mapIm,xs,ys,xsize=txsize,ysize=tysize,true=3 
     tvlct,orig_red,orig_green,orig_blue,/get
     tvlct,transpose(ct)
     IF nn GT 1 THEN $
