@@ -56,6 +56,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/09/30 23:44:02  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -67,7 +70,7 @@
 ;----------------------------------------
 FUNCTION LinkedList::Init,data
   COMMON nodebase, nodebase
-  self.rcsid = "$Id$"
+
   IF n_params() EQ 1 THEN BEGIN 
     node =  nodebase
     node.data =  Ptr_New(data)
@@ -519,6 +522,21 @@ PRO LinkedList::DeleteCurrent
 END
 
 
+;============================================
+; Version
+;============================================
+
+FUNCTION LinkedList::Version
+  rcsid = "$Id$"
+  super = Obj_Class(self,/Super,count=cnt)
+  IF cnt NE 0 THEN BEGIN 
+    versions = strarr(cnt+1)
+    versions[0] = rcsid
+    FOR i=0,cnt-1 DO versions[i] = call_method("VERSION",super[i])
+    return,versions
+  ENDIF ELSE return,rcsid
+END
+
 
 
 
@@ -538,7 +556,6 @@ PRO LinkedList__define
 
   struct =  { LinkedList,$
               count   : 0L,$
-              rcsid   : '',$
               head    : Ptr_New() ,$
               tail    : Ptr_New() ,$
               current : Ptr_New() }
