@@ -1,6 +1,6 @@
-#!/usr/bin/perl5  
+#!/bin/perl -w
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <2001-08-06 11:31:29 vapuser>
+# Time-stamp: <2002-05-07 11:08:34 vapdev>
 # $Id$
 #
 #
@@ -32,6 +32,9 @@
 # Modification History:
 #
 # $Log$
+# Revision 1.11  2001/08/06 18:33:33  vapuser
+# rewrote doy2mday_mon
+#
 # Revision 1.10  2000/08/09 18:33:33  vapuser
 # Put a long note in about the possible confusion between 'vaptime' format in
 # the perl code and 'vaptime' format in the IDL code.
@@ -62,14 +65,15 @@
 #
 #
 #
+
 package vap_perl;
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT=qw( $VAP_LIB $VAP_ROOT $VAP_WINDS $VAP_ANIM 
-	   $VAP_OVERLAY $VAP_WWW_TOP $ARCHIVETOP 
-	   $GRIDDINGTOP $IDLEXE $VAP_OVERLAY_ARCHIVE 
-	   $VAP_WWW_TOP $vap_is_batch auto_movie_defs doy2mday_mon 
+@EXPORT=qw( VAP_LIB VAP_ROOT VAP_WINDS VAP_ANIM 
+	   VAP_OVERLAY VAP_WWW_TOP ARCHIVETOP 
+	   GRIDDINGTOP IDLEXE VAP_OVERLAY_ARCHIVE 
+	   VAP_WWW_TOP vap_is_batch auto_movie_defs doy2mday_mon 
 	   date2doy date_string  make_yyyymmdd gag grid_goes 
 	   getgoesfile fixlonrange vaptime2systime systime2vaptime 
 	   ParseWindFileNames GetWindFiles GetNow DeltaTime 
@@ -77,6 +81,9 @@ require Exporter;
 
 use Cwd 'chdir', 'getcwd';
 use Time::Local;
+
+use strict;
+
 BEGIN {
     # Get ENV variables
 
@@ -241,7 +248,7 @@ sub date_index{
   umask( 023 ) || die "Couldn't reset umask to 023\n";
   $umask = umask;
   print "New umask = $umask\n";
-  $tmp = oct(023);
+  $tmp = oct("023");
   print "Should equal $tmp\n";
 
   @months=("Jan","Feb","Mar","Apr","May","Jun","Jul",
@@ -719,7 +726,7 @@ sub gag {
     print "   Not here! Retrieving $area_file from the NOAA archive \n";
     $file=getgoesfile( $area_file);
 
-    if (!file) 
+    if (!$file) 
     { 
       print "Error retrieving $area_file\n";
       return undef;

@@ -1,4 +1,4 @@
-#!/usr/bin/perl 
+#!/usr/bin/perl  -w
 #
 # $Id$
 #
@@ -20,6 +20,10 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.14  2001/02/09 18:38:30  vapuser
+# Added code for doing gridlines and rain flag.
+# Put in more calls to VapErrorMsg
+#
 # Revision 1.13  2000/05/17 20:42:27  vapuser
 # Reworked so that it wouldn't die from lack of cloud data.
 #
@@ -64,14 +68,14 @@
 #
 #
 #
-
-
+use strict;
+use lib $ENV{VAP_SFTWR_PERL};
 use vap_perl;
 use Gms5;
 use Getopt::Long;
 use File::Copy ;
 
-$usage =  "\nUsage:\n";
+my $usage =  "\nUsage:\n";
 $usage .= " cloud_overlay --region REGION_DESIGNATION\n";
 $usage .= "  --time TIME_DESIGNATION (GMT: yyyymmddThh:mm)\n";
 $usage .= "  --windpath PATH_TO_WIND_FILES\n";
@@ -139,7 +143,12 @@ $usage .= "    whatever satname is. \n\n";
 
 
 
+print "=====================================================\n";
+print " $0: Beginning run\n";
+print scalar(localtime());
+print "\n===================================================\n";
 die $usage if !@ARGV;
+print "Input Arguments are:\n\t".join("\n\t",@ARGV)."\n";
 $result=&GetOptions( 'region=s',\$region,
 		    'time=s',  \$area_file_time,
 		    'windpath|path|wpath=s', \$winds_path,
@@ -162,6 +171,11 @@ die $usage if $help;
 
 # Set the IDL starup file to get '24 bit true' color
 #$ENV{'IDL_STARTUP'}="/disk4/vapuser/idl-startup-true24";
+
+my ($asctime, $desctime,$nvectors, $crdecimate,
+    $delta, $rainflag, $rf_action, $rf_color, $excludecols,
+    $time, $lastrec, $fullregionname, $regionname, $msg);
+
 
 if ($region) {
   # Get the defaults for overlays.
@@ -189,20 +203,20 @@ if ($region) {
   $rf_color    = $vap_perl::overlay_defs{ $region } { WVCData   }{ rf_color    };
   $excludecols = $vap_perl::overlay_defs{ $region } { WVCData   }{ ExcludeCols };
   
-  @lonlim=@$lonlim;
-  @latlim=@$latlim;
+  @lonlim=@{$lonlim};
+  @latlim=@{$latlim};
   
   if (!$area_file_time) {
     $asctime  = vap_perl::prepend_yyyymmdd($asctime);
     $desctime = vap_perl::prepend_yyyymmdd($desctime);
-    ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T-4*3600);
+    my ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T-4*3600);
     $time=sprintf("%04d%02d%02dT%02d:%02d",
 		  $year+1900,$mon+1,$mday,$hour,$min);
-    @testtimes=( $time, $asctime,$desctime);
+    my @testtimes=( $time, $asctime,$desctime);
     @testtimes = sort @testtimes;
-    foreach $rec (@testtimes) {
-      last if $rec =~ /$time/;
-      $lastrec=$rec;
+    foreach (@testtimes) {
+      last if /$time/;
+      $lastrec=$_;
     }
     
     if (!$lastrec)  { 
@@ -268,14 +282,14 @@ if ($region) {
   # goes/gms/whatever file.
   $asctime  = vap_perl::prepend_yyyymmdd($asctime);
   $desctime = vap_perl::prepend_yyyymmdd($desctime);
-  ($sec,$min,$hour,$mday,$mon,$year)=vap_perl::systime2vaptime($^T-3600);
+  my ($sec,$min,$hour,$mday,$mon,$year)=vap_perl::systime2vaptime($^T-3600);
   $time=sprintf("%04d%02d%02dT%02d:%02d",
 		$year+1900,$mon,$mday,$hour,$min);
-  @testtimes=( $time, $asctime,$desctime);
+  my @testtimes=( $time, $asctime,$desctime);
   @testtimes = sort @testtimes;
-  foreach $rec (@testtimes) {
-    last if $rec =~ /$time/;
-    $lastrec=$rec;
+  foreach (@testtimes) {
+    last if /$time/;
+    $lastrec=$_;
   }
   
   if (!$lastrec)  { 
@@ -353,15 +367,36 @@ if (abs($latlim[0]) > 90 || abs($latlim[1]) > 90) {
 
   # create lock file (for IDL session)
 
-$user=$ENV{'USER'};
-$overlay_dir=$vap_perl::VAP_OVERLAY;
-$lock_file="$overlay_dir/$user.cloud_overlay.$$.lock";
-open (LOCK,">$lock_file") || 
-{ vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't open $lock_file\n", 
-			 "OPENERR <LOCKFILE>") && 
-			     die "Couldn't open $lock_file\n"};
+my $user=$ENV{'USER'};
+
+$overlay_dir= $overlay_dir || $ENV{VAP_OPS_OVERLAY};
+do {
+ vap_perl::VapMailErrorMsg( "cloud_overlay: Undefined env vars(VAP_OPS_OVERLAY)\n", 
+			    "UNDEFINED_ENV_VARS!");
+     die "ENV variable VAP_OPS_OVERLAY is undefined!\n";
+ } unless $overlay_dir;
+
+
+
+$tmpdir = $tmpdir || $ENV{VAP_OPS_TMPFILES};
+do {
+ vap_perl::VapMailErrorMsg("$0: Undefined env vars (VAP_OPS_TMPDIR)\n",
+			   "UNDEFINED_ENV_VARS!");
+   die "ENV variable VAP_OPS_TMPFILES is undefined!\n";
+ } unless $tmpdir;
+
+
+
+my $lock_file="$tmpdir/$user.cloud_overlay.$$.lock";
+
+do { 
+  vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't open $lock_file\n", 
+			       "OPENERR <LOCKFILE>");
+    die "Couldn't open $lock_file\n"} unless open (LOCK,">$lock_file");
 print LOCK "$$\n";
 close (LOCK);
+
+my ($minlon, $maxlon, $minlat, $maxlat, $mapLimits, $gridded_file, $wwwfile);
 
 $minlon=$lonlim[0];
 $maxlon=$lonlim[1];
@@ -369,85 +404,95 @@ $minlat=$latlim[0];
 $maxlat=$latlim[1];
 $mapLimits ="[ $minlon, $minlat, $maxlon, $maxlat ]";
 
+
+my @gms5sensornames=('ir1','ir2','ir3','vis');
+
 if ($satname =~ /GMS/) {
 
- Gms5::GetAllFileLists() || 
-     {vap_perl::VapMailErrorMsg(
-	"cloud_overlay:Can't Get all Gms5 archives listings!\n",
-			    "GMS5 GETALLFILELISTS") && 
-	  die "Can't Get all Gms5 archives listings!\n"};
-  @gms5sensornames=('ir1','ir2','ir3','vis');
-  @isec=Gms5::GetIntersection($gms5sensornames[$sensornum-1]);
+  if (!Gms5::GetAllFileLists())
+  {
+    vap_perl::VapMailErrorMsg(
+			      "cloud_overlay:Can't Get all Gms5 archives listings!\n",
+			      "GMS5 GETALLFILELISTS");
+      die "Can't Get all Gms5 archives listings!\n" ;
+    }
+  
+  my @isec=Gms5::GetIntersection($gms5sensornames[$sensornum-1]);
   if (!$isec[0]) { 
     vap_perl::VapMailErrorMsg("cloud_overlay: Can't get GMS5 intersect\n", 
 			      "GMS5 INTERSECT");
       die "Can't get GMS5 intersection\n";
   } 
-  $mindif=1.e10;
-  $testsecs=vap_perl::vaptime2systime($time);
-  foreach $datetime (@isec) {
-    $syst=Gms5::Gms5DateTime2SysTime($datetime);
-    $dif = abs($syst-$testsecs) ;
-    if ( $dif <= $mindif ) {
+  my $mindiff=1.e10;
+  $gridded_file="";
+  my $testsecs=vap_perl::vaptime2systime($time);
+  foreach my $datetime (@isec) {
+    my $syst=Gms5::Gms5DateTime2SysTime($datetime);
+    my $dif = abs($syst-$testsecs) ;
+    if ( $dif <= $mindiff ) {
       $gridded_file=$datetime ;
-      $mindif = $dif;
+      $mindiff = $dif;
     }
   }
-  if ($mindif > 7200){ 
+  if ($mindiff > 7200){ 
     $gridded_file="";
+
       # Don't fail if there isn't a file close enough!
       # But don't bother to FTP all the requisite files either!
       # Still send the error message, though!
 
-     vap_perl::VapMailErrorMsg(
- 	  "cloud_overlay: No Files closer than 2 hours! <$mindir>\n",
+    vap_perl::VapMailErrorMsg(
+			      "cloud_overlay: No Files closer than 2 hours! <$mindiff>\n",
  			      "GMS5 MINDIFF");
-#       die "No Files closer than 2 hours!<$mindif>\n";
   }  else {
-
-    $T=time;
-    Gms5::GetAll($gridded_file) || 
-       do { vap_perl::VapMailErrorMsg(
-             "cloud_overlay: Can't GetAll for datetime $gridded_file\n", 
-	  	    "GMS5 GRIDDEDFILE") ;
-          die "Can't GetAll for datetime $gridded_file\n"; }
+    
+    my $T=time();
+    if (!Gms5::GetAll($gridded_file)){
+      vap_perl::VapMailErrorMsg(
+				"cloud_overlay: Can't GetAll for datetime $gridded_file\n", 
+				"GMS5 GRIDDEDFILE");
+	die "Can't GetAll for datetime $gridded_file\n";
     }
-   $T=time-$T;
-   print "GMS5::GetAll took $t seconds \n";
+    $T=time()-$T;
+    print "GMS5::GetAll took $T seconds \n";
+  }
 
 } else {
+  # It's a GOES file 
+  # Supposedly we can now get and grid the AREA file 
+
 
   # Supposedly we can now get and grid the AREA file 
-  $T=time;
+  my $T=time();
+  print "$0: Calling GAG with arguments\n\tsatnum:$satnum\n\tsensornum:$sensornum";
+  print "\n\ttime:$time\n\tminlon:$minlon\n\tminlat:$minlat\n\tmaxlon:$maxlon\n\tmaxlat:$maxlat\n";
   $gridded_file = vap_perl::gag( $satnum, $sensornum, $time, 
-				$minlon, $minlat, $maxlon, $maxlat );
-  $T=time-$T;
+				 $minlon, $minlat, $maxlon, $maxlat );
+  $T=time()-$T;
   print "GAG took $T seconds\n";
 
-    # New mode. Don't fail if the gridding didn't work. Just continue
-    # and let it plot the vectors anyway.
 
-#   if (!$gridded_file) {
-#     vap_perl::VapMailErrorMsg(
-# 	 "cloud_overlay: Unsuccessful call to vap_perl::gag, gridded_file=NULL\n",
-# 			      "GOES BADGAG");
-#       die "Unsuccessful call to vap_perl::gag, gridded_file=NULL\n";
-#   }
-      
+
+  # New mode. Don't fail if the gridding didn't work. Just continue
+    # and let it plot the vectors anyway.
   
 }
 
 
+
 # The IDL routines like time as yyyy/mm/dd/hh/mm. 
 # So, construct this time string.
+
+my ($idl_time_string, $idl_tmp_file, $exe_str);
 $idl_time_string=vap_perl::vaptime2idltime($time);
-$idl_tmp_file="$overlay_dir/idl_called_by_perl_$$.pro";
+$idl_tmp_file="$tmpdir/$0_idl_called_by_perl_$$.pro";
 print "Writing IDL tmp file $idl_tmp_file\n";
+
 open(IDLFILE,">$idl_tmp_file") || 
-    {vap_perl::VapMailErrorMsg(
-	   "Cloud_overlay: Couldn't open $idl_tmp_file\n",
-	      "BAD IDL TMPFILE OPEN") && 
-		  die "Couldn't open $idl_tmp_file\n"};
+    do {vap_perl::VapMailErrorMsg(
+				  "Cloud_overlay: Couldn't open $idl_tmp_file\n",
+				  "BAD IDL TMPFILE OPEN") && 
+				  die "Couldn't open $idl_tmp_file\n"};
 
 
 $exe_str = "cloud_overlay,\'$gridded_file\',\'$idl_time_string\'";
@@ -458,22 +503,19 @@ $exe_str .= ",ExcludeCols=\'$excludecols\'";
 $exe_str .= ",rainflag=$rainflag,rf_action=$rf_action,rf_color=$rf_color";
 $exe_str .= ",mapLimits=$mapLimits";
 $exe_str .= ",/gridlines";
-$exe_str .= ",gmsType=\'$gms5sensornames[$sensornum-1]\'" 
-    if ($satname =~ /GMS/);
+$exe_str .= ",gmsType=\'$gms5sensornames[$sensornum-1]\'" if ($satname =~ /GMS/);
   
 print IDLFILE "$exe_str\nexit\n" || 
    {vap_perl::VapMailErrorMsg(
        "cloud_overlay: Can't write to idl tmp file $idl_tmp_file\n",
        "BAD WRITE TO IDL TMPFILE") && 
 	   die "Can't write to idl tmp file $idl_tmp_file\n"};
-#  print IDLFILE "exit\n" || 
-#      die "Can't write to idl tmp file $idl_tmp_file\n";
 close IDLFILE;
 
 print "wrote following to idl_tmp_file\n  $exe_str\n";
 
 $exe_str=$vap_perl::IDLEXE." ".$idl_tmp_file;
-$r=system( $exe_str )/256;
+my $r=system( $exe_str )/256;
 
 if ($r != 0){
   vap_perl::VapMailErrorMsg("cloud_overlay: Error in IDL\n",
@@ -481,19 +523,21 @@ if ($r != 0){
     die " Error in IDL\n";
 }
 
-open ( LOCK, "<$lock_file") || 
-  {vap_perl::VapMailErrorMsg(
-	"cloud_overlay: Couldn't open $lock_file after IDL \n",
-	      "ERROR OPEN LOCKFILE") && 
-		  die "Couldn't open $lock_file after IDL \n"};
-@idlout = <LOCK>;
+
+do{
+  vap_perl::VapMailErrorMsg(
+			    "cloud_overlay: Couldn't open $lock_file after IDL \n",
+			    "ERROR OPEN LOCKFILE");
+    die "Couldn't open $lock_file after IDL \n";} unless open ( LOCK, "<$lock_file");
+my @idlout = <LOCK>;
 close (LOCK);
 
 
   # see if there are any lines in the idl output file 
   # with the work ERROR in them. Exit if there are.
-foreach $r (@idlout) {
-  if ($r =~ /ERROR/) {
+
+foreach (@idlout) {
+  if (/ERROR/) {
     print "Error in IDL processing \n";
     print @idlout;
     $msg=join "\n",@idlout;
@@ -502,69 +546,80 @@ foreach $r (@idlout) {
   }
 }
 
-# unlink $idl_tmp_file || 
-#     {vap_perl::VapMailErrorMsg(
-# 	       "cloud_overlay: Couldn't unlink $idl_tmp_file\n",
-# 	     "TMPFILE UNLINK ERROR") && 
-# 	  die "Couldn't unlink $idl_tmp_file\n"};
-
 unlink $lock_file  ||  print "Couldn't delete $lock_file \n";
 
   # goes_overlay gives the output gif file a name based on the input
-  # grid file name get that name and rename the file to the standard
+  # grid file name. Get that name and rename the file to the standard
   # 'pac_overlay_$type.gif'
 
-$output_file_name_file="$overlay_dir/auto_cloud_overlay_output_file.$$";
+my $output_file_name_file="$overlay_dir/auto_cloud_overlay_output_file.$$";
 
-chdir $overlay_dir || 
-    {vap_perl::VapMailErrorMsg(
-	       "cloud_overlay: Couldn't CD to $overlay_dir\n",
-	     "CD TO OVERLAY_DIR ERROR") && 
-	  die " Couldn't CD to $overlay_dir\n\n"};
 
-open (PICTURENAME,"<$output_file_name_file") || 
- {vap_perl::VapMailErrorMsg(
-     "cloud_overlay: Can't open $output_file_name_file\n",
-       "AUTO CLOUD OVERLAY OUTPUT FILE OPEN ERROR") && 
-	   die "Can't open $output_file_name_file\n"};
-@picturefile=<PICTURENAME>;
+do {vap_perl::VapMailErrorMsg(
+			      "cloud_overlay: Couldn't CD to $overlay_dir\n",
+			      "CD TO OVERLAY_DIR ERROR");
+  die " Couldn't CD to $overlay_dir\n\n";} unless chdir $overlay_dir;
+
+
+do {
+  vap_perl::VapMailErrorMsg(
+			    "cloud_overlay: Can't open $output_file_name_file\n",
+			    "AUTO CLOUD OVERLAY OUTPUT FILE OPEN ERROR");
+    die "Can't open $output_file_name_file\n";
+  } unless open (PICTURENAME,"<$output_file_name_file");
+
+my @picturefile=<PICTURENAME>;
 close(PICTURENAME);
   unlink "$output_file_name_file" || 
       print "Couldn't delete $output_file_name_file\n";
 
   # Read the picture name
-$picture = "$picturefile[0]";
-chop($picture);
-@tmp = split("/",$picture);
+my $picture = "$picturefile[0]";
+chomp $picture;
+my @tmp = split("/",$picture);
 $picture = $tmp[$#tmp];
 @tmp = split( /\./, $picture );
-$fileroot = $tmp[0];
+my $fileroot = $tmp[0];
 
   # Read the thumbnail name
-$thumbnail = $picturefile[1];
-chop($thumbnail);
+my $thumbnail = $picturefile[1];
+chomp$thumbnail;
 @tmp = split("/",$thumbnail);
 $thumbnail = $tmp[$#tmp];
 @tmp = split( /\./, $thumbnail );
-$thumbnailroot = $tmp[0];
+my $thumbnailroot = $tmp[0];
 
    #
    #---------------------- the file ------------------------
    #
-$file=$vap_perl::VAP_OVERLAY_ARCHIVE."/".$fileroot."-".$regionname.".jpeg";
+
+my $VAP_OVERLAY_ARCHIVE = $ENV{VAP_OVERLAY_ARCHIVE} ||
+do {
+  vap_perl::VapMailErrorMessage("Undefined ENV var (VAP_OVERLAY_ARCHIVE)\n",
+				"UNDEFINED_ENV_VAR");
+    die "Undefined ENV var (VAP_OVERLAY_ARCHIVE)\n";
+  } unless $VAP_OVERLAY_ARCHIVE;
+
+my $file="$VAP_OVERLAY_ARCHIVE/$fileroot-$regionname.jpeg";
 print "Renaming $picture to $file\n";
-copy($picture,$file) ||
-  {vap_perl::VapMailErrorMsg(
-	"cloud_overlay: Couldn't rename $picture to $file, error = $!\n",
-	      "PICTURE COPY ERROR") && 
-       die "Couldn't rename $picture to $file, error = $!\n"};
+do {vap_perl::VapMailErrorMsg(
+			      "cloud_overlay: Couldn't rename $picture to $file, error = $!\n",
+			      "PICTURE COPY ERROR");
+	die "Couldn't rename $picture to $file, error = $!\n";} unless copy($picture,$file);
 unlink $picture;
 chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
 
 
   # create name of file in images archive to be linked to it.
 
-$wwwfile=$vap_perl::VAP_WWW_TOP."/images/".$fullregionname.".jpeg";
+my $VAP_WWW_TOP = $ENV{VAP_WWW_TOP};
+do {
+  vap_perl::VapMailErrorMessage("Undefined ENV var (VAP_WWW_TOP)\n",
+				"UNDEFINED_ENV_VAR");
+    die "Undefined ENV var (VAP_WWW_TOP)\n";
+  } unless $VAP_WWW_TOP;
+
+$wwwfile="$VAP_WWW_TOP/images/$fullregionname.jpeg";
 
   #delete it if it exists
 if (-e $wwwfile) {
@@ -584,21 +639,20 @@ symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
 
 
   # copy thumbnail to image overlay archive.
-$file=
-  $vap_perl::VAP_OVERLAY_ARCHIVE."/".$thumbnailroot."-".$regionname.".TN.jpeg";
+$file= "$VAP_OVERLAY_ARCHIVE/$thumbnailroot-$regionname.TN.jpeg";
 print "Renaming $thumbnail to $file\n";
-copy($thumbnail,$file) ||
-  {vap_perl::VapMailErrorMsg(
-	    "cloud_overlay: Couldn't rename $thumbnail to $file, error = $!\n",
-	     "THUMBNAIL COPY ERROR") && 
-       die "Couldn't rename $thumbnail to $file, error = $!\n"};
+do {vap_perl::VapMailErrorMsg(
+			      "cloud_overlay: Couldn't rename $thumbnail to $file, error = $!\n",
+			      "THUMBNAIL COPY ERROR") ;
+	die "Couldn't rename $thumbnail to $file, error = $!\n";} unless copy($thumbnail,$file);
 unlink $thumbnail;
 chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
 
 
 
   # Create the symbolic name for the thumbnail
-$wwwfile=$vap_perl::VAP_WWW_TOP."/images/".$fullregionname.".TN.jpeg";
+
+$wwwfile="$VAP_WWW_TOP/images/$fullregionname.TN.jpeg";
   #delete it if it exists
 if (-e $wwwfile) {
   unlink ($wwwfile ) || print "Couldn't unlink $wwwfile\n";
@@ -609,24 +663,27 @@ print "Linking $wwwfile to $file\n";
 symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
 
   # go to where the index.html is
-chdir $vap_perl::VAP_WWW_TOP || 
-   {vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't go to $VAP_WWW_TOPDIR\n",
-		      "CD ERROR WWW TOP DIR") && 
-	die "Couldn't CD to $VAP_WWW_TOPDIR\n"};
-print "11\n";
+
+do {vap_perl::VapMailErrorMsg(
+          "cloud_overlay: Couldn't go to $VAP_WWW_TOP\n",
+			      "CD ERROR WWW TOP DIR");
+	die "Couldn't CD to $VAP_WWW_TOP\n";} unless chdir $VAP_WWW_TOP;
 
   # update the dates in that file
 print "Updating index.html\n";
 vap_perl::date_index();
 
   # make sure it's readible.
-chmod 0644, "index.html" ||  
-    {vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't chmod index.html to 0644\n",
-			       "INDEX.HTML CHMOD ERROR") && 
-	 die "Couldn't chmod index.html to 0644\n"};
-$tottime=time-$^T;
+do {vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't chmod index.html to 0644\n",
+			      "INDEX.HTML CHMOD ERROR");
+  die "Couldn't chmod index.html to 0644\n"} unless chmod(0644,"index.html");
+my $tottime=time()-$^T;
 
-print "Total Time: $tottime\n";
+print "$0: Total Time: $tottime\n";
+print "=================================================\n" ;
+print "$0:\n Ending run\n";
+print scalar(localtime());
+print "\n================================================\n";
 
 exit;
 
