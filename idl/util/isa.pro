@@ -21,8 +21,14 @@
 ; 
 ;   
 ;     byte : Checks to see if the variable is a byte 
+;     uint : Checks to see if the variable is an unsigned short integer
 ;     short : Checks to see if the variable is a short integer
-;     long : Checks to see if the variable is a long integer
+;     long : Checks to see if the variable is a long integer,
+;     ulong: Checks to see if the variable is a unsigned long integer
+;     long64: Checks to see if the variable is a signed longlong
+;             integer
+;     ulong64: Checks to see if the variable is a unsigned longlong
+;              integer
 ;     float : Checks to see if the variable is a float
 ;     double : Checks to see if the variable is a double float
 ;     complex : Checks to see if the variable is a  complex
@@ -68,6 +74,13 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.13  2001/11/07 17:38:12  vapuser
+; Added uint,ulong and ulong64
+;
+; Revision 1.12  2000/06/22 18:28:11  vapuser
+; Added a test in string case to protect against
+; testing the string length of... oh... say an object.
+;
 ; Revision 1.11  2000/05/17 21:35:35  vapuser
 ; Added /help. Make it return,0 if variable is undefined instead of
 ; throwing an error.
@@ -111,8 +124,12 @@
 
 FUNCTION isa, variable, $
               byte=byte, $
+              uint=uint, $
               short=short, $
               long=long, $
+              long64=long64, $
+              ulong=ulong, $
+              ulong64 = ulong64, $
               float=float, $
               double=double, $
               complex=complex, $
@@ -163,7 +180,11 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
   CASE 1 OF 
      keyword_set(byte) : test =  vartype( variable ) EQ 'BYTE'
      keyword_set(short) : test = vartype( variable ) EQ  'INTEGER'
+     keyword_set(uint) : test = vartype( variable ) EQ  'UINT'
      keyword_set(long) : test = vartype( variable ) EQ  'LONGWORD'
+     keyword_set(long64) : test = vartype( variable ) EQ  'LONG64'
+     keyword_set(ulong) : test = vartype( variable ) EQ  'ULONG'
+     keyword_set(ulong64) : test = vartype( variable ) EQ  'ULONG64'
      keyword_set(float) : test = vartype( variable ) EQ 'FLOAT'
      keyword_set(double) : test = vartype( variable ) EQ 'DOUBLE'
      keyword_set(complex) : test = vartype( variable ) EQ 'COMPLEX_FLOAT'
@@ -204,7 +225,12 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
      keyword_set(TYPE_INTEGER) : $
         test = vartype(variable) EQ 'BYTE'    OR $
                vartype(variable) EQ 'INTEGER' OR  $
-               vartype(variable) EQ 'LONGWORD'
+               vartype(variable) EQ 'UINT' OR  $
+               vartype(variable) EQ 'LONGWORD' OR $
+               vartype(variable) EQ 'LONG64' OR $
+               vartype(variable) EQ 'ULONG' OR $
+               vartype(variable) EQ 'ULONG64' 
+      
      keyword_set(TYPE_FLOAT) : $
          test = vartype(variable) EQ 'FLOAT' OR $
                 vartype(variable) EQ 'DOUBLE'
