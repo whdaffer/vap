@@ -18,6 +18,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.5  1998/10/22 21:37:52  vapuser
+# Took out '-d' switch
+#
 # Revision 1.4  1998/10/17 00:15:52  vapuser
 # Added code for CRDecimate,ExcludeCols and Decimate.
 #
@@ -306,6 +309,7 @@ use Getopt::Long;
 
   # The IDL routines like time as yyyy/mm/dd/hh/mm. So, construct this time string.
   $idl_time_string=vap_perl::vaptime2idltime($time);
+  print "CDing to $vap_perl::VAP_OVERLAY\n";
   chdir $vap_perl::VAP_OVERLAY || 
     die "Can't chdir to overlay dir $vap_perl::VAP_OVERLAY\n";
 
@@ -321,8 +325,8 @@ use Getopt::Long;
   $exe_str .= ",CRDecimate=[".join(",",@$crdecimate)."]";
   $exe_str .= ",ExcludeCols=\'$excludecols\'";
 
-  print IDLFILE "$exe_str\n";
-  print IDLFILE "exit\n";
+  print IDLFILE "$exe_str\n" || die "Can't write to idl tmp file $idl_tmp_file\n";
+  print IDLFILE "exit\n" || die "Can't write to idl tmp file $idl_tmp_file\n";
   close IDLFILE;
 
   print "wrote following to idl_tmp_file\n  $exe_str\n";
