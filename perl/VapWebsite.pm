@@ -1230,7 +1230,7 @@ sub startPage{
   my $outsidetable = HTML::Table->new(#-rows=>3,
 				      -cols=>2,
 				      -align=>"left",
-				      -border=>'1',
+				      #-border=>'1',
 				      #-background=>"/images/fuji7.gif",
 				      -width=>"400");
 
