@@ -52,21 +52,73 @@
 ;           Thickness    : Thickness of Vector (0.1 to 5)
 ;           MinSpeed     : Minimum speed to plot (0,37)
 ;           MaxSpeed     : Maximum speed to plot (0,37)
+;           Verbose      ; Be verbose
+;           doColorBar   ; put a colorbar on it.
+;           doAnnotations: and Annotations
+
+; All 'rf_' or '_rf' are Rain Flag quantities.
+;
+; rainflag: boolean 0=don't use flag, 1=use flag
+;
+; rf_action determines whether to skip plotting the
+; data (rf_action=0) or plot it with whatever quantity
+; is given in rf_color (rf_action=1)
+;
+; rf_color is either the color index, if 8-bit env, or
+; the 24 bit color itself with which rain flagged data
+; is plotted, provided rf_action=1.
 ;
 ;
+;           rainflag  :     
+;           rf_action :   
+;           rf_color  : 
+;
+;  Some quantities useful in Map_set/Map_continents.
+;
+;           hiresmap  :   Flag, if set, use hires maps
+;           coasts    :   Draw the coastlines. At the moment, this is
+;                       the only way I know to draw the Great Lakes.
+;
+;  Configuration:
+;
+;           cfgfile   :   Name of CFG file to read, overrides the
+;                       default value, which is 
+;
+;                       1. $HOME/.idlcfg/pv.cfg
+;                       2. $VAP_LIB/pv.cfg if VAP_LIB is defined and 
+;                       3. Nothing.
+;
+;           colortablefile: Fully qualified colortable file. If none,
+;                           the default value is:
+;
+;                           1. Whatever is in the cfgfile, if it
+;                              exists and has a value for 
+;                              colortablefile.
+;                           2. the value of the environmental variable
+;                              PV_COLORTABLE.
+;
+;                           the routine will FAIL if the colortable is
+;                           not specified.
+;
+;  And for alternate color tables.
+;
+;            wind0    : The bottom index in the colortable of the
+;                       colors you want to use to plot the wind
+;                       vectors.
+;
+;            nwind     : The number of color indices to use when
+;                        plotting the wind vectors.
+;
+;  Note Bene: This functionality of passing in colortables and
+;             specifying wind colors is very new and very possibly
+;             *very* buggy! It has NOT been very well tested! I
+;             suspect that it will break the manner in which colors
+;             are assigned to the various ambiguities!
 ;
 ;
 ; OUTPUTS:  If successful, and object of type 'PV'
-;
-;
-;
 ; OPTIONAL OUTPUTS:  
-;
-;
-;
 ; COMMON BLOCKS:  None
-;
-;
 ;
 ; SIDE EFFECTS:  Creation of many subsidiary objects which will hang
 ;                around if PV doesn't take care of them correctly. At
@@ -74,22 +126,25 @@
 ;                check to make sure and do a 'heap_gc' if any objects
 ;                are left overa after the pv object has been destroyed.
 ;
-;
-;
 ; RESTRICTIONS:  
-;
-;
-;
 ; PROCEDURE:  
 ;
+; EXAMPLE:   pv=obj_new('pv',files=files,length=2,thick=2,$
+;                        minspeed=3,maxspeed=25)
 ;
+;  OR!
 ;
-; EXAMPLE:  
+;      psv,pv,file=files,length=2,thick=3,minspeed=3,maxspeed=25.
 ;
 ;
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.24  2000/12/14 22:59:08  vapuser
+; Changed the way rain flagging works, incorportated
+; overplotting, cleaned up object destruction. There's
+; still a leak somewhere, but it's getting better.
+;
 ; Revision 1.23  2000/02/28 18:09:22  vapuser
 ; A little more work on the rain flagging code.
 ;
@@ -169,8 +224,8 @@
 ; so that it'll ignore calls to undefined 'version' methods.
 ;
 ; Revision 1.2  1998/10/01 15:41:26  vapuser
-; Eliminated rcsid member. Added 'version' method that returns rcsid string, which
-; is now local to version method.
+; Eliminated rcsid member. Added 'version' method that returns rcsid 
+; string, which is now local to version method.
 ;
 ; Revision 1.1  1998/09/30 23:38:15  vapuser
 ; Initial revision
@@ -227,7 +282,13 @@ FUNCTION pv::Init, $
 
            rainflag        = rainflag, $
            rf_action     = rf_action, $
-           rf_color      = rf_color
+           rf_color      = rf_color, $
+           hiresmap      = hiresmap, $
+           coasts        = coasts, $
+           cfgfile       = cfgfile, $
+           colortablefile = colortablefile, $
+           wind0          = wind0, $
+           nwind          = nwind
    
 
 
@@ -241,23 +302,25 @@ FUNCTION pv::Init, $
 
 
 
-  read_cfgfile = 0
-  cfgname = 'pv.cfg'
-  cfgpath = deenvvar('$HOME/.idlcfg/')
-  ff = findfile(cfgpath + cfgname,count=nf)
-  IF nf NE 0 THEN BEGIN 
-    read_cfgfile = 1
-  ENDIF ELSE BEGIN 
-    IF getenv('VAP_LIB') NE '' THEN BEGIN 
-      cfgpath = deenvvar('$VAP_LIB')
-      ff = findfile(cfgpath + cfgname,count=nf)      
-      read_cfgfile = (nf NE 0)
-    ENDIF
-  ENDELSE   
+  IF n_elements(cfgfile) EQ 0 THEN BEGIN 
+    read_cfgfile = 0
+    cfgfile = 'pv.cfg'
+    cfgpath = deenvvar('$HOME/.idlcfg/')
+    cfgfile = (findfile(cfgpath + cfgfile,count=nf))[0]
+    IF nf NE 0 THEN BEGIN 
+      read_cfgfile = 1
+    ENDIF ELSE BEGIN 
+      IF getenv('VAP_LIB') NE '' THEN BEGIN 
+        cfgpath = deenvvar('$VAP_LIB')
+        cfgfile = (findfile(cfgpath + cfgfile,count=nf))[0]
+        read_cfgfile = (nf NE 0)
+      ENDIF
+    ENDELSE   
+  ENDIF ELSE read_cfgfile = 1
 
   IF read_cfgfile THEN BEGIN 
-    print,' Reading CFG file ' + cfgname
-    read_cfgfile,cfgname, cfg,path=cfgpath
+    print,' Reading CFG file ' + cfgfile
+    read_cfgfile,cfgfile, cfg
     IF n_elements(cfg) NE 0 THEN BEGIN 
       print,'CFG found! Details follow:'
       help,cfg,/st
@@ -471,11 +534,19 @@ FUNCTION pv::Init, $
    self.Water0    = 1         ; Start of Water indices
    self.Land0     = 7         ; Start of Land Colors in Color table
    self.Cloud0    = 27        ; Start of Cloud Indicies
-   self.Wind0     = 47        ; Start of Wind Indicies
    self.Ambig0    = 92        ; Start of Ambiguity Color Indicies
                               ; (Red is the top of the Wind colors, so
                               ; there is some overlap)
-   self.NWind     = 45        ; Number of Wind Colors.
+
+  ;; Handle the case where the use passes in a colortable!
+   chkcfg,'wind0',wind0,cfg
+   IF n_elements(wind0) NE 0 THEN self.wind0 =  wind0 ELSE $
+     self.Wind0     = 47        ; Start of Wind Indicies
+
+
+   chkcfg,'nwind',nwind,cfg
+   IF n_elements(nwind) NE 0 THEN self.nwind =  nwind ELSE $
+     self.NWind     = 45        ; Number of Wind Colors.
 
   FOR i=1,n_elements(colors)-1 DO colors[i].ColorIndex = self.Ambig0+i-1
 
@@ -504,13 +575,17 @@ FUNCTION pv::Init, $
   self.SpeedHisto      = Obj_New('ObHisto', nBins=200, Min=0, Max=37)  
 
 
-    ; Get Pointer to color table.
-  CT = GetEnv('PV_COLORTABLE')
-  IF strlen(CT) NE 0 THEN $
-    PtrToColorTable = ReadColorTable(CT[0]) $
-  ELSE $
-    PtrToColorTable = ReadColorTable($
-                     '/usr/people/vapuser/Qscat/Resources/Color_Tables/pv.ct.2')
+  chkcfg,'COLORTABLEFILE',colortablefile,cfg  
+  IF n_elements(colortablefile) EQ 0 THEN  BEGIN 
+      ; See if ENV variable is set, otherwise default it.
+    CT = GetEnv('PV_COLORTABLE')
+    IF strlen(CT) NE 0 THEN $
+      colortablefile = CT[0] ELSE $
+      colortablefile = $
+        "/usr/people/vapuser/Qscat/Resources/Color_Tables/pv.ct.2"
+  ENDIF 
+
+  ptrToColorTable = readColorTable(colortablefile)
 
   self.PtrToCt = PtrToColorTable
   CT =  *PtrToColorTable
@@ -526,6 +601,12 @@ FUNCTION pv::Init, $
                            format='(f5.0)', color=n_elements(ct[0,*]) )
 
   self.Oplot =  obj_new('ObPlot',psym=2,/plots)
+
+
+  chkcfg,'HIRESMAP',hiresmap,cfg  
+  IF n_elements(hiresmap) ne 0 THEN self.hiresmap = hiresmap
+  chkcfg,'COASTS',coasts,cfg  
+  IF n_elements(coasts) ne 0 THEN self.coasts = coasts
 
   status = 1
   IF n_elements( files ) NE 0 THEN BEGIN 
@@ -2435,8 +2516,9 @@ PRO pv::CreateMap, Erase = Erase, force=force, $
        self-> ResetPlotObjects,/AlreadyPlotted
        Map_Set, 0,center[0], /Grid,/Label,/Continent,$
         limit=limit,Title=mtitle, $
-        xmargin=xmargin, ymargin=ymargin, color=titlecolor
+        xmargin=xmargin, ymargin=ymargin, color=titlecolor, hires=self.hiresmap
                                 ;        oldLimit = limit
+       IF self.coasts THEN map_continents,/coasts
      ENDIF 
 
      IF self.doAnnotations THEN  BEGIN 
@@ -2459,7 +2541,8 @@ PRO pv::CreateMap, Erase = Erase, force=force, $
      IF Erase OR Force THEN BEGIN 
        self-> ResetPlotObjects,/AlreadyPlotted
        Map_Set, 0,center[0], /Grid,/Label,/Continent,$
-        limit=limit,Title=mtitle, color=titlecolor
+        limit=limit,Title=mtitle, color=titlecolor, hires=self.hiresmap
+       IF self.coasts THEN map_continents,/coasts
      ENDIF 
    ENDELSE 	
 
@@ -2645,6 +2728,12 @@ PRO Pv__define
 
            PtrToCT      : Ptr_New(),$ ; Pointer to 3 by ncolors array 
                                       ; containing the color table
+           hiresmap     : 0L,$ ; flag. If set, use hi res maps.
+           coasts       : 0l,$ ; flag. If set, put in the coastlines.
+                                ; currently, this is the *only* way to
+                                ; get some internal lakes (like the
+                                ; Great Lakes!)
+            
 
   ; ------------- Cloud Overlay Quantities ------------
 
