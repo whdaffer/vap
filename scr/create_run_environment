@@ -7,6 +7,9 @@
 # bestiary of environmental variables be defined.
 #
 # $Log$
+# Revision 1.2  2003/01/30 19:41:55  vapdev
+# bash script error
+#
 # Revision 1.1  2003/01/30 18:04:52  vapdev
 # Moved create_run_environment to scr
 #
@@ -46,7 +49,7 @@ if [ ! -d $VAP_WWW_TOP ]; then
 fi
 
 echo overlay archive
-if [ ! -d $VAP_OVERLAY_ARCHIVE ]; THEN 
+if [ ! -d $VAP_OVERLAY_ARCHIVE ]; then 
     mkdir -p $VAP_OVERLAY_ARCHIVE
 fi
 
@@ -60,5 +63,5 @@ if [ ! -d $VAP_ANIM_ARCHIVE ]; then
     mkdir -p $VAP_ANIM_ARCHIVE
 fi
 
-
+chmod -R go=rx $VAP_WWW_TOP
 
