@@ -100,6 +100,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/17 00:16:24  vapuser
+; Fixed broken dtcompare call
+;
 ; Revision 1.2  1998/10/06 00:21:30  vapuser
 ; added nscat flag
 ;
@@ -194,13 +197,17 @@ FUNCTION getwindfiles, end_time, $
       file_start_times =  windfiletimes.start_time
       file_end_times = windfiletimes.end_time
 
-      idx =  dtcompare( start_time_dt, file_start_times, 'LE') AND   $
-             dtcompare( end_time_dt, file_end_times, 'GE') 
-
-      idx=where(idx,nx)
+      idx1 =  where( file_start_times.julian le end_time_dt.julian,nx)
       IF nx NE 0 THEN BEGIN 
-        retarray = files(idx) 
-        count = nx
+        idx=where( file_end_times[idx1].julian ge start_time_dt.julian,nx ) 
+
+        IF nx NE 0 THEN BEGIN 
+          retarray = files(idx1[idx]) 
+          count = nx
+        ENDIF ELSE BEGIN 
+          retarray = ''
+          count = 0
+        ENDELSE 
       ENDIF ELSE BEGIN 
         retarray = ''
         count = 0
