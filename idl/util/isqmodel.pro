@@ -77,6 +77,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/12 22:27:30  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -92,6 +95,7 @@ FUNCTION IsQmodel, filename
   ; -1 means some other failure
   ; 
   ;
+  rcsid = "$Id$"
   catch, error
   IF error NE 0 THEN BEGIN 
     Message,!Error_State.Msg,/cont
