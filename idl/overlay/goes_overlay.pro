@@ -214,6 +214,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+;
+; Revision 1.13  2000/05/17 16:49:52  vapuser
+; Make the routine continue to the end even if the goes file isn't
+; there or can't be read.
+;
 ; Revision 1.11  2000/05/15 22:58:45  vapuser
 ; Changed from multi-valued 'use_rf' to the new single-valued rainflag.
 ;
@@ -467,7 +472,8 @@ PRO goes_overlay, goesfile, $
       Message,' -- Trying to get information from filename!',/info
       GoesFilenameStruct = ParseGoesFileName( goesfile )
       IF VarType( GoesFilenameStruct ) NE 'STRUCTURE' THEN BEGIN 
-        Message," Trouble parsing filename " + Goesfile + "for info, can't continue!"  ,/info
+        Message," Trouble parsing filename " + Goesfile + $
+          "for info, can't continue!"  ,/info
         status = 0
         return
       ENDIF 
@@ -475,29 +481,30 @@ PRO goes_overlay, goesfile, $
       status = 1
       clouddata = 0
 
-      sat_name = GoesFilenameStruct.SatName + " " + $
+      sat_name = strtrim(GoesFilenameStruct.SatName,2) + " " + $
        strtrim(GoesFilenameStruct.SatNum,2 )
 
       sensornum = GoesFilenameStruct.Sensornum
       sensors = ['VIS','IR2','IR3','IR4']
       sensor    =  sensors[ sensornum-1 ]
-      goes_date = PadAndJustify(GoesFilenameStruct.year, 4, /right ) + $
+      goes_date = strcompress( $
+                  PadAndJustify(GoesFilenameStruct.year, 4, /right ) + $
                   PadAndJustify(GoesFilenameStruct.mm, 2, /right ) + $
                   PadAndJustify(GoesFilenameStruct.dd, 2, /right ) + $
                   'T' + $
                   PadAndJustify(GoesFilenameStruct.hh, 2, /right ) + $
-                  PadAndJustify(GoesFilenameStruct.mm, 2, /right )
+                  PadAndJustify(GoesFilenameStruct.mm, 2, /right ), /remove_all)
 
       limits = GoesfilenameStruct.limits
 
       goes_string =  sat_name + ' ' + sensor + ' ('  + goes_date + ')'
 
-      ofile_tmplt = sat_name + '_' + sensor + '_' + goes_date 
+      ofile_tmplt = strcompress(sat_name + '_' + sensor + '_' + goes_date ,/remove_all)
 
     ENDIF ELSE BEGIN 
 
-      sat_name = 'GOES' + " " + strtrim(hdr.type/10)
-      sensor =  hdr.type-(hdr.type/10)*10
+      sat_name = "GOES " + strtrim(hdr.type/10,2)
+      sensornum =  hdr.type-(hdr.type/10)*10
       sensors = ['VIS','IR2','IR3','IR4']
       sensor    =  sensors[ sensornum-1 ]
 
@@ -506,12 +513,13 @@ PRO goes_overlay, goesfile, $
       hh = (hdr.hhmm)/10
       mm = hdr.hhmm-hh*10
 
-      goes_date = year + date[0] + date[1]+ 'T' + $
-                  PadAndJustify(hh, 2, /right ) + $
-                  PadAndJustify(mm, 2, /right )
+      goes_date = strcompress(year + date[0] + date[1]+ 'T' + $
+                  PadAndJustify(mm, 2, /right ) + $
+                  PadAndJustify(hh, 2, /right ),/remove_all)
+
       goes_string =  sat_name + ' ' + sensor + ' ('  + goes_date + ')'
       
-      ofile_tmplt = sat_name + '_' + sensor + '_' + goes_date 
+      ofile_tmplt = strcompress(sat_name + '_' + sensor + '_' + goes_date ,/remove_all)
     ENDELSE 
 
   ENDIF ELSE BEGIN 
@@ -524,8 +532,8 @@ PRO goes_overlay, goesfile, $
     ENDIF 
     goes_date =  'No_Cloud_Data'
     goes_string =  goes_date
-    ofile_tmplt =  "UNK_UNK_" + goes_date
-    limits = MapLimits
+    ofile_tmplt =  strcompress("UNK_UNK_" + goes_date,/remove_all)
+    limits = 1.0*MapLimits
     clouddata = 0
     status = 1
   ENDELSE 
@@ -661,11 +669,18 @@ PRO goes_overlay, goesfile, $
 
   ENDIF   
 
+
   IF clouddata THEN BEGIN 
     sz = size(cloudmask,/dimensions)
     nlon = 1.0*sz[0]
     nlat = 1.0*sz[1]
+    loninc = (lonrange[1]-lonrange[0])/nlon
+    latinc = (limits[3]-limits[1])/nlat
+    
   ENDIF ELSE BEGIN 
+    nlon =  fix((lonrange[1]-lonrange[0])/loninc+1)
+    nlat =  fix((limits[3]-limits[1])/latinc+1)
+
     IF ps THEN BEGIN 
       loninc = (lonrange[1]-lonrange[0] +1)/(2.*72*xsize)
       latinc = (limits[3]-limits[1] +1)/(2.*72*ysize)
@@ -673,8 +688,7 @@ PRO goes_overlay, goesfile, $
       loninc = (lonrange[1]-lonrange[0] +1)/xsize
       latinc = (limits[3]-limits[1] +1)/ysize
     ENDELSE 
-    nlon =  fix((lonrange[1]-lonrange[0])/loninc+1)
-    nlat =  fix((limits[3]-limits[1])/latinc+1)
+
   ENDELSE 
 
   lonmin = lonrange[0]
@@ -741,9 +755,9 @@ PRO goes_overlay, goesfile, $
       jpeg: ext = '.jpeg'
       ps  : ext = '.ps'
     ENDCASE  
-    OutputFilename = ofileroot + ext
+    OutputFilename = strcompress(ofileroot + ext,/remove_all)
 
-  ENDIF ELSE outputFilename =  outfile
+  ENDIF ELSE outputFilename =  strcompress(outfile,/remove_all)
 
   IF ps THEN device,filename=OutputFilename
 
