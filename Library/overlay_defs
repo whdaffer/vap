@@ -3,6 +3,9 @@
 #
 # Modification History
 # $Log$
+# Revision 1.6  1999/07/27 16:42:42  vapuser
+# Changed times
+#
 # Revision 1.5  1998/12/09 17:55:19  vapuser
 # added GMS5 stuff
 #
@@ -40,13 +43,17 @@
 # 		    Satellite  => "ABCD",        # Satellite Name (GOES, GMS)
 # 		    LonLim     => [minlon,maxlon],# Min/Max Long (lower left, upper right)
 # 		    LatLim     => [minlat,maxlat],# Min/Max Lat (lower left, upper right)
-# 		    SatNum     => x,            # e.g. goes '10', should match x in reg.desc.
-# 		    SensorNum  => y,             # e.g. 4 for ir4, should matcy y in reg.desc.
-# 		    AscTime    => "hh:mm",       # Note 2
-# 		    DescTime   => "HH:MM" },     # Note 2
+# 		    SatNum     => x,     # e.g. goes '10', should match x in reg.desc.
+# 		    SensorNum  => y,     # e.g. 4 for ir4, should matcy y in reg.desc.
+# 		    AscTime    => "hh:mm",  # Note 2
+# 		    DescTime   => "HH:MM" },# Note 2
 # 		  WVCData => {                   
 # 		    NVectors => xx,         # Need this many vector to continue
-# 		    CRDecimate => [x,y],    # Take every x-th row, every y-th col
+# 		    CRDecimate => [x,y],    # Take every y-th row, every x-th col
+#                   Length => w             # The vectors are 'w' long
+#                   Delta => u             # A time window of 'u' hours is put around 
+#                                          # the 'asc/desc' time in the search for 
+#                                          # wind data to over plot. 
 # 		    ExcludeCols => "IDL exclude string"} # Talk to me about this one.
 # 		}
 #
@@ -86,10 +93,12 @@
 		    SatNum     => 10,            # Goes 10
 		    SensorNum  => 4,             # Ir4
 		    AscTime    => "18:00",       # Ascending Time 
-		    DescTime   => "06:00" },     # Descending time
+		    DescTime   => "07:00" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
-		    CRDecimate => [2,3],         # Take every other row, every third col
+		    CRDecimate => [1,1],         # Take all data
+		    Length => 1,                 # Vector Length
+		    Delta => 4,                  # Delta Time
 		    ExcludeCols => ""}           # Exclude none
 		},
 
@@ -103,10 +112,30 @@
 		    SatNum     => 10,            # Goes 10
 		    SensorNum  => 1,             # Visible
 		    AscTime    => "18:00",       # Ascending Time 
-		    DescTime   => "06:00" },     # Descending time
+		    DescTime   => "07:00" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
-		    CRDecimate => [2,3],         # Take every other row, every third col
+		    CRDecimate => [1,1],         # Take all data
+		    Length => 1,                 # Vector Length
+		    Delta => 4,                  # Delta Time
+		    ExcludeCols => ""}           # Exclude none
+		},
+               # GOES 10 Visible, Pacific Hurricane
+		GOES_10_4_PACHURR_1 => {  #<-------------------------------|
+		  Region     => "GOES_10_4_PACHURR_1", # must match this --|
+		  CloudData => {
+		    Satellite  => "GOES",        # Satellite Name
+		    LonLim     => [-180,-100],   # Min/Max Longitude
+		    LatLim     => [0,60],       # Min/Max Latitude 
+		    SatNum     => 10,            # Goes 10
+		    SensorNum  => 4,             # Ir4
+		    AscTime    => "19:00",       # Ascending Time 
+		    DescTime   => "07:00" },     # Descending time
+		  WVCData => {                   
+		    NVectors => 2000,            # Need this many vector to continue
+		    CRDecimate => [2,2],         # Take all data
+		    Length => 2,                 # Vector Length
+		    Delta => 7,                  # Delta Time
 		    ExcludeCols => ""}           # Exclude none
 		},
 
@@ -119,11 +148,13 @@
 		    LatLim     => [25,52],       # Min/Max Latitude 
 		    SatNum     => 8,             # Goes 8
 		    SensorNum  => 4,             # Ir4
-		    AscTime    => "01:00",       # Ascending Time 
-		    DescTime   => "13:00" },     # Descending time
+		    AscTime    => "12:00",       # Ascending Time 
+		    DescTime   => "00:10" },     # Descending time
 		  WVCData => {                   
-		    NVectors => 2000,            # Need this many vector to continue
-		    CRDecimate => [2,3],         # Take every other row, every third col
+		    NVectors => 2000,       # Need this many vector to continue
+		    CRDecimate => [1,1],    # Take every row and col
+		    Length => 1,                 # Vector Length
+		    Delta => 4,                  # Delta Time
 		    ExcludeCols => ""}      # Exclude none
 		},
 
@@ -136,12 +167,33 @@
 		    LatLim     => [25,52],       # Min/Max Latitude 
 		    SatNum     => 8,             # Goes 8
 		    SensorNum  => 1,             # Visible
-		    AscTime    => "01:00",       # Ascending Time 
-		    DescTime   => "13:00" },     # Descending time
+		    AscTime    => "12:00",       # Ascending Time 
+		    DescTime   => "00:10" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
-		    CRDecimate => [2,3],         # Take every other row, every third col
+		    CRDecimate => [1,1],         # Take all data
+		    Length => 1,                 # Vector Length
+		    Delta => 4,                  # Delta Time
 		    ExcludeCols => ""}           # Exclude none
+		},
+
+               # Goes 8, ir4, Atlantic Hurricane
+		GOES_8_4_ATLHURR_1 => {
+		  Region     => "GOES_8_4_ATLHURR_1",
+		  CloudData => {
+		    Satellite  => "GOES",        # Satellite Name
+		    LonLim     => [-100,-30],     # Min/Max Longitude
+		    LatLim     => [0,60],       # Min/Max Latitude 
+		    SatNum     => 8,             # Goes 8
+		    SensorNum  => 4,             # Ir4
+		    AscTime    => "14:00",       # Ascending Time 
+		    DescTime   => "02:00" },     # Descending time
+		  WVCData => {                   
+		    NVectors => 2000,            # Need this many vector to continue
+		    CRDecimate => [2,2],         # Take every other row/col
+		    Length => 2,                 # Vector Length
+		    Delta => 7,                  # Delta Time
+		    ExcludeCols => ""}      # Exclude none
 		},
 
 		# Gms 5, Ir1, West Pacific
@@ -153,11 +205,13 @@
 		    LatLim     => [0,55],       # Min/Max Latitude 
 		    SatNum     => 5,             # Gms 5
 		    SensorNum  => 1,             # Ir1
-		    AscTime    => "01:00",       # Ascending Time 
-		    DescTime   => "13:00" },     # Descending time
+		    AscTime    => "23:00",       # Ascending Time 
+		    DescTime   => "11:30" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
-		    CRDecimate => [2,3],         # Take every 2nd row, every 3rd col
+		    CRDecimate => [1,1],         # Take all data
+		    Length => 1,                 # Vector Length
+		    Delta => 4,                  # Delta Time
 		    ExcludeCols => ""}      # Exclude middle 8 columns.
 		},
 
@@ -170,11 +224,13 @@
 		    LatLim     => [20,47],       # Min/Max Latitude 
 		    SatNum     => 5,             # Gms 5
 		    SensorNum  => 1,             # Ir1
-		    AscTime    => "23:30",       # Ascending Time 
-		    DescTime   => "11:00" },     # Descending time
+		    AscTime    => "23:00",       # Ascending Time 
+		    DescTime   => "11:30" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
-		    CRDecimate => [2,3],         # Take every 2nd row, every 3rd col
+		    CRDecimate => [1,1],         # Take all data
+		    Length => 1,                 # Vector Length
+		    Delta => 4,                  # Delta Time
 		    ExcludeCols => ""}           # Exclude none
 		},
 
@@ -191,7 +247,9 @@
 		    DescTime   => "12:30" },     # Descending time
 		  WVCData => {                   
 		    NVectors => 2000,            # Need this many vector to continue
-		    CRDecimate => [2,3],         # Take every 2nd row, every 3rd col
+		    CRDecimate => [1,1],         # Take all data
+		    Length => 1,                 # Vector Length
+		    Delta => 4,                  # Delta Time
 		    ExcludeCols => ""}           # Exclude none
 		}
 
