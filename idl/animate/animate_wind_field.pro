@@ -77,15 +77,20 @@
 ;                  in the context of the error, so that you can
 ;                  investigate the problem, instead of immediately
 ;                  returning to the main level.
-;          write_gif - writes a gif file for each frame (default)
-;          write_pict - write pict_file
-;          write_ps - write postscript file
-;          write_tiff - writes out a tif file.
+;          gif - writes a gif file for each frame (default)
+;          pict - write pict_file
+;          ps - write postscript file
+;          tiff - writes out a tiff file.
+;          jpeg - writes out a jpeg file
 ;          save_first - will save the first set of images in an IDL
 ;                       save set 'first_frame.save'. Useful for
 ;                       debugging purposes.
 ;          title  - title string to put on the top of the frame
-;          noxinter - obselete, does nothing
+;          noxinter - obselete, does nothing, backwards compatibility
+;          harmonic - Reset the vectors on this harmonic of the
+;                     fundamental (number of frames)
+;          meters_per_sec - flag, report the speed in meters per
+;                           second, not knots
 ;
 ; ABOUT THE METHOD AND SOME OF THE DESCRIPTIONS:
 ;
@@ -218,8 +223,8 @@
 ; UI/VI directly in, rather than first writing it out to a file. 
 ;
 ;
-; OUTPUTS: All output is to the files specified in the 'write_xxxx'
-;          keyword, default=write_gif
+; OUTPUTS: All output is to the files specified in the 'xxxx'
+;          keyword, default=gif
 ;
 ;
 ;
@@ -265,7 +270,7 @@
 ;  vlonpar=[100,280,1.5] ,$ ; lon start/stop/increment of vector field
 ;  vlatpar=[-10,60,1.5]  ,$ ; lat start/stop/increment of vector field
 ;  animpar=[640,480,60]  ,$ ; x size/y size /number of frames in animation
-;  /write_gif               ; write it out as a series of gif files.
+;  /gif               ; write it out as a series of gif files.
 ;
 ;  This command lines says that there is a file named 'wind_file' in directory 
 ;  /path/to/the/interp/wind/file which has an interpolated wind field in
@@ -289,7 +294,7 @@
 ;  vlonpar=[100,280,1.5] ,$ ; lon start/stop/increment of vector field
 ;  vlatpar=[-10,60,1.5]  ,$ ; lat start/stop/increment of vector field
 ;  animpar=[640,480,60]  ,$ ; x size/y size /number of frames in animation
-;  /write_gif               ; write it out as a series of gif files.
+;  /gif               ; write it out as a series of gif files.
 ;
 ; Same as above, but here we're passing the data in via the
 ;  ui/vi/ddims keywords.
@@ -297,6 +302,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.4  1999/04/08 22:01:56  vapuser
+; Replaced Colorbar with ColBar
+;
 ; Revision 1.3  1999/04/08 16:59:14  vapuser
 ; Added call to readcolortable.pro and cleaned up some comments.
 ;
@@ -366,12 +374,13 @@ PRO ANIMATE_WIND_FIELD, files, $ ; fully qualified grid file name(s) (no default
                                             ; (def=[640,480,60])
                         path_inc= path_inc,$ ; scale factor to determine how far
                                              ; along projected path a vector moves
-                        write_gif =  write_gif, $ ; flag to write gif file 
+                        gif =  gif, $ ; flag to write gif file 
                                                   ; (the default)
-                        write_pict= write_pict ,$  ; flag to write pict file
-                        write_ps= write_ps,$      ; flag to write postscript file
-                        write_tiff= write_tiff,$      ; flag to write tiff
+                        pict= pict ,$  ; flag to write pict file
+                        ps= ps,$      ; flag to write postscript file
+                        tiff= tiff,$      ; flag to write tiff
                                                       ; file
+                        jpeg = jpeg, $          ; Write Jpeg
                         debug = debug       ,$  ; for debugging
                         title=title ,$          ; Title for each frame.
                         min_speed=min_speed,$  ; Minimum wind speed
@@ -389,6 +398,9 @@ PRO ANIMATE_WIND_FIELD, files, $ ; fully qualified grid file name(s) (no default
                                            ; Adds an additional 
                                            ; 10% pad onto tvsafe. 
                                            ; Implies tvsafe.
+                        thick = thick, $   ; Thickness of vectors (def=1)
+                        harmonic=harmonic, $; 
+                        meters_per_sec=meters_per_sec, $
                         noxinter= noxinter ; obsolete, does nothing, 
                                 ; it's just here so 
                                 ; a lot of other software doesn't
@@ -430,10 +442,10 @@ COMMON colors, r_curr, g_curr, b_curr, r_orig, g_orig, b_orig
   '                      ; [ xsize, ysize, num frames ]' + lf + $
   '  path_inc= path_inc,$ ; scale factor to determine how far' + lf + $
   '                       ; along projected path a vector moves' + lf + $
-  '  write_gif =  write_gif, $ ; flag to write gif file' + lf + $
-  '  write_pict= write_pict ,$  ; flag to write pict file' + lf + $
-  '  write_ps= write_ps,$      ; flag to write postscript file' + lf + $
-  '  write_tiff= write_tiff,$      ; flag to write postscript file' + lf + $
+  '  gif =  gif, $ ; flag to write gif file' + lf + $
+  '  pict= pict ,$  ; flag to write pict file' + lf + $
+  '  ps= ps,$      ; flag to write postscript file' + lf + $
+  '  tiff= tiff,$      ; flag to write postscript file' + lf + $
   '  debug = debug       ,$  ; for debugging' + lf + $
   '  title=title ,$          ; unimplemented, for future use' + lf + $
   '  min_speed=min_speed,$  ; Minimum wind speed' + lf + $
@@ -462,16 +474,22 @@ ENDIF
 
 interpolate   = KEYWORD_SET( interpolate )
 dologo        = (KEYWORD_SET( nologo ) EQ 0)
-write_pict    = KEYWORD_SET( write_pict )  
-write_gif     = KEYWORD_SET( write_gif )  
-write_ps      = KEYWORD_SET( write_ps )   
-write_tiff    = KEYWORD_SET( write_tiff )  
-IF NOT write_pict AND $
-   NOT write_gif AND $
-   NOT write_ps AND $
-   NOT write_tiff THEN write_gif =  1
+pict    = KEYWORD_SET( pict )  
+gif     = KEYWORD_SET( gif )  
+ps      = KEYWORD_SET( ps )   
+tiff    = KEYWORD_SET( tiff )  
+jpeg    = KEYWORD_SET( jpeg )  
+IF n_elements(harmonic) EQ 0 THEN harmonic = 1;
+IF n_elements(thick) EQ 0 THEN thick = 1
+meters_per_sec =  keyword_set(meters_per_sec)
 
-mps2knots =  1.944 ; converts meters/sec to knots.
+IF NOT pict AND $
+   NOT gif AND $
+   NOT ps AND $
+   NOT tiff AND $
+   NOT jpeg THEN gif =  1
+
+mps2knots =  0.514 ; converts meters/sec to knots.
 
 IF n_elements( min_speed ) EQ 0 THEN min_speed =  1 ; meters/sec
 IF n_elements( max_speed ) EQ 0 THEN max_speed =  40/mps2knots ; meters/sec
@@ -480,10 +498,11 @@ IF n_elements( title ) EQ 0 THEN title =  '' ; meters/sec
 ncolors = 29
 
 CASE 1 OF
-  write_gif: message,' Files will be output in GIF format',/cont
-  write_pict: message,' Files will be output in PICT format',/cont
-  write_ps: message,' Files will be output in PS format',/cont
-  write_tiff: message,' Files will be output in TIFF format',/cont
+  gif: message,' Files will be output in GIF format',/cont
+  pict: message,' Files will be output in PICT format',/cont
+  ps: message,' Files will be output in PS format',/cont
+  tiff: message,' Files will be output in TIFF format',/cont
+  jpeg: Message,' Files will be output in JPEG format',/cont
   ELSE : BEGIN
     message,' One file format MUST be selected',/cont
     return
@@ -532,9 +551,16 @@ IF NOT( keyword_set( vlatpar ) ) THEN BEGIN
   message,' Taking default vlatpar', /cont
   print,vlatpar
 ENDIF 
-IF NOT( keyword_set( animpar ) ) THEN BEGIN 
+IF n_elements( animpar ) NE 3 THEN BEGIN 
   animpar =  [640, 512, 60 ]
   message,' Taking default animpar = [640,512, 60 ] ',/cont
+ENDIF 
+
+nframes =  animpar(2) ; number of frames in the animation.
+IF nframes MOD harmonic NE 0 THEN BEGIN 
+  Message,'Nframes != 0 (Mod Harmonic): Returning',/cont
+  print,'nframes: ', nframes, ' harmonic: ', harmonic
+  return
 ENDIF 
 
 IF keyword_set( tvsafe ) THEN $
@@ -566,6 +592,10 @@ Blue  = reform(CT[2,*])
 r_curr =  red &  g_curr= green &  b_curr= blue
 r_orig =  red &  g_orig= green &  b_orid= blue
 
+windStart = 1
+windEnd = 28
+nwindcolors = windEnd-windStart+1
+
 ; n_colors = n_Elements(red)
 
   ; initialize window /buffer size for 
@@ -585,7 +615,7 @@ tvlct,red,green,blue
 
   ; Read in the land elevation file;
   ; Find the subarray which applies for this run and extract it.
-openr,1,'$VAP_ROOT/animate/land_elevations.bin'
+openr,1,'$VAP_LIB/land_elevations.bin'
 landel =  intarr( 12*360, 12*180 + 1 )
 readu,1, landel
 close,1
@@ -780,8 +810,7 @@ IF read_success THEN BEGIN
   lats_sel1 = reform( (findgen(nyv)*yvinc+yv0) # (fltarr(nxv)+1)  ,nn ) 
   long_sel  = long_sel1
   lats_sel  = lats_sel1
-  nframes =  animpar(2) ; number of frames in the animation.
-  time_mov  = fix( (nframes-1)*randomu( seed,nn ) )
+  time_mov  = fix( ((nframes-1)/harmonic)*randomu( seed,nn ) )
   ;
 
   ;
@@ -836,17 +865,19 @@ IF read_success THEN BEGIN
   n_in_last_seg =  nframes-testend ; then next to last file will
                                        ; have index (nfiles-2)
 
+  n_runup_frames = nframes/harmonic
 
   print,' cutoff = ',cutoff
   print,' nfiles = ',nfiles
   print,' testend = ',testend
   print,' n_in_last_seg = ', n_in_last_seg 
-
+  print,' n_runup_frames: ', n_runup_frames
+  print,' Harmonic: ', harmonic
     ; used later in multiple file processing
   oi1 = -1
   oi2 = -1
 
-  FOR istep = 0l,nframes + 60 -1  DO BEGIN
+  FOR istep = 0l,nframes + n_runup_frames -1  DO BEGIN
     st =  systime(1);
     CALCVECTORFIELD
     
@@ -856,12 +887,12 @@ IF read_success THEN BEGIN
       ; spin up.
 
 
-    IF ( istep-60 GE 0L ) THEN BEGIN 
-      frm =  istep-60
+    IF ( istep-n_runup_frames GE 0L ) THEN BEGIN 
+      frm =  istep-n_runup_frames
       ; print,'   frm=',frm
       last_segment =  frm GT cutoff*(nfiles-2) 
       
-      ; Okay, we've gone through 60 iterations on the original map to
+      ; Okay, we've gone through 'n_runup_frames' iterations on the original map to
       ; spin up the animation to a steady state. Now we start laying
       ; down the frames for the animation.
       IF nfiles GT 1 THEN BEGIN
@@ -1096,42 +1127,53 @@ IF read_success THEN BEGIN
         t2 =  systime(1)
         print,' land mask took ' , t2-t1 ,' seconds '
         land =  where( mask EQ 1, nland )
+
+
+
         ; Set land values to 0
-        IF nland GT 0 THEN continent_im( cc(land), rr(land) ) =  0b
+        IF nland GT 0 THEN BEGIN 
+          continent_im( cc(land), rr(land) ) =  0b
 
-        ; make 2nd array for later machinations. switch values so that
-        ; it's zero on water and 255 in land.
-        continent_im2 =  continent_im XOR 255b
+            ; make 2nd array for later machinations. switch values so that
+            ; it's zero on water and 255 in land.
+          continent_im2 =  continent_im XOR 255b
 
-        ; convert the cc(land), rr(land) to data coords
-        o =  convert_coord( cc(land), rr(land) ,/dev, /to_data )
-        tlandx =  o(0,*) &  tlandy= o(1,*) &  o=0;
-        ; tlandx/y are the data coordinates of all the points in the
-        ; continent_im array that are 'land'. 
+            ; convert the cc(land), rr(land) to data coords
+          o =  convert_coord( cc(land), rr(land) ,/dev, /to_data )
+          tlandx =  o(0,*) &  tlandy= o(1,*) &  o=0;
+            ; tlandx/y are the data coordinates of all the points in the
+            ; continent_im array that are 'land'. 
 
-        xx =  where( tlandx LT 0, nxx )
-        IF nxx NE 0 THEN tlandx(xx) =  tlandx(xx) + 360.
-        ix =  tlandx*12.
-        iy =  (tlandy+90.)*12.
-        continent_im2( cc(land), rr(land) ) =  (landel( ix, iy ) +31) < 50
+          xx =  where( tlandx LT 0, nxx )
+          IF nxx NE 0 THEN tlandx(xx) =  tlandx(xx) + 360.
+          ix =  round(tlandx*12.)
+          iy =  round((tlandy+90.)*12.)
+          continent_im2( cc(land), rr(land) ) =  (landel( ix, iy ) +31) < 50
+        ENDIF ELSE $
+          continent_im2 =  continent_im XOR 255b
 
-       ; put the wind speed contour 
-        contour,min_speed >  ss( min(c):max(c),min(r):max(r)) < max_speed,$
-         lons( min(c):max(c),min(r):max(r))     ,$
-         lats( min(c):max(c),min(r):max(r))     ,$
-         level = findgen( ncolors ),c_colors=bindgen(ncolors),$
-         /overplot,/cell_fill 
+          ; put the wind speed contour 
+        tt = bytscl(min_speed >  ss( min(c):max(c),min(r):max(r)) < max_speed, $
+                    min=min_speed, max=max_speed, top=windEnd)
+        contour,tt,lons( min(c):max(c),min(r):max(r))     ,$
+           lats( min(c):max(c),min(r):max(r)),$
+             level = findgen( nwindcolors ),$
+               c_colors=bindgen(nwindcolors)+windStart,$
+                 /overplot,/cell_fill 
         contour_im =  tvrd()
 
       ENDIF  ; come from 'if first'
 
       IF frm GT 0 THEN BEGIN 
         IF nfiles GT 1 THEN BEGIN 
-          contour,min_speed > ss( min(c):max(c),min(r):max(r)) < max_speed,$
-           lons( min(c):max(c),min(r):max(r))     ,$
-           lats( min(c):max(c),min(r):max(r))     ,$
-           level = findgen(ncolors),c_colors=bindgen(ncolors),$
-           /overplot,/cell_fill 
+          tt = bytscl(min_speed >  ss( min(c):max(c),min(r):max(r)) < max_speed, $
+                      min=min_speed, max=max_speed, top=windEnd)
+            Contour,tt,$
+             lons( min(c):max(c),min(r):max(r))     ,$
+              lats( min(c):max(c),min(r):max(r))     ,$
+                level = findgen(nwindcolors),$
+                   c_colors=bindgen(nwindcolors)+windStart,$
+                     /overplot,/cell_fill 
         ENDIF ELSE tv,contour_im
       ENDIF 
 
@@ -1144,8 +1186,8 @@ IF read_success THEN BEGIN
         tvv_sel   =  vv_sel(xx)
         tlong_sel =  long_sel(xx)
         tlats_sel =  lats_sel(xx)
-        plotvect, tuu_sel, tvv_sel, tlong_sel, tlats_sel, $
-         length=length, color=!d.n_colors-1
+        PLOTVECT, tuu_sel, tvv_sel, tlong_sel, tlats_sel, $
+         length=length, color=!d.n_colors-1,/scale, thick=thick
       ENDIF 
 
         ; Read the screen, 'and' it with the 'continent image' array and
@@ -1187,6 +1229,8 @@ IF read_success THEN BEGIN
 
           y =  coords(1,*)
           y1 =  y(0) &  y2= y1 + (1-y(0))/4.
+          multiplier = mps2knots
+          IF meters_per_sec THEN multiplier = 1.
           COLBAR,bottom=1,ncolors=ncolors,position=[0.25,y1,0.75,y2],$
            Title='Wind Speed (knots)',division=4,min=0,max=max_speed*mps2knots, $
            charsize=0.65,format='(F4.0)'
@@ -1226,33 +1270,51 @@ IF read_success THEN BEGIN
         outim( pad(0):pad(0)+sz(1)-1, pad(1):pad(1)+sz(2)-1) =  im
       ENDIF ELSE outim =  im
 
-      tmp =  strtrim( string( frm+1 ), 2 )
-      frm =  '000'
-      strput, frm, tmp, 3-strlen(tmp)
-      IF write_gif THEN BEGIN 
-        gfile =  'gwind.' + frm  
+      frame = PadAndJustify(frm+1,3,pad='0',/right)
+      IF gif THEN BEGIN 
+        gfile =  'gwind.' + frame  
         write_gif, gfile, outim, red,green,blue
       ENDIF 
-      IF write_pict THEN BEGIN 
-        pfile =  'pwind.' + frm  
+      IF pict THEN BEGIN 
+        pfile =  'pwind.' + frame  
         write_pict, pfile, outim, red,green,blue
       ENDIF 
-      IF write_ps THEN BEGIN 
-        pfile =  'pswind.' + frm  
+      IF ps THEN BEGIN 
+        pfile =  'pswind.' + frame  
         ps, file=pfile,/land
         DEVICE,/color,bits_per_pixel=8
         tv, outim, xsiz=640/0.02, ysiz=480/0.02
         device,/close
         set_plot,'z'
       ENDIF 
-      IF write_tiff THEN BEGIN
-        tfile =  'twind.' + frm
+      IF jpeg THEN BEGIN 
+        im = [ [[red[outim]]], [[green[outim]]],[[blue[outim]]] ]
+        outim = 0
+        jfile = 'jwind.' + frame
+        write_jpeg,jfile,im,quality=100,true=3
+        im = 0
+      ENDIF 
+      IF tiff THEN BEGIN
+          ; Convert from 'bottom to top' 
+          ; ordering to 'top to bottom', just to be sure.
+        outim = reverse(outim,2)
+        IF frame EQ '001' THEN BEGIN 
+          rr =(gg=(bb=bytarr(256)))
+          nn = n_elements(red)
+          rr[0:nn-1] =  red
+          rr[255] = 255b
+          gg[0:nn-1] =  green
+          gg[255] = 255b
+          bb[0:nn-1] =  blue
+          bb[255] = 255b
+        ENDIF 
+        tfile =  'twind.' + frame
         tiff_write, tfile, outim, 1, $
-         red= red, green= green, blue=blue,$
+         red= rr, green= gg, blue=bb,$
          xresol=600,yresol=600
       ENDIF 
 
-    ENDIF ; if istep-60 ge 0
+    ENDIF ; if istep-n_runup_frames ge 0
     ;
 
     ; Now, calculate the next location in each orbit by adding the u componenet
@@ -1266,7 +1328,7 @@ IF read_success THEN BEGIN
     time_mov = time_mov+1
 
 
-    x =  where( time_mov GE nframes, nx )
+    x =  where( time_mov GE nframes/harmonic, nx )
     IF nx NE 0 THEN BEGIN
       long_sel(x) =  long_sel1(x)
       lats_sel(x) =  lats_sel1(x)
@@ -1274,7 +1336,7 @@ IF read_success THEN BEGIN
     ENDIF 
     ;
     ;
-    IF iter GT 60 THEN begin
+    IF iter GT n_runup_frames THEN begin
       et =  systime(1)
       time =  et-st
 ;      print, ' Elapsed time for iteration ',iter, ' is ', time, ' seconds '
@@ -1283,7 +1345,7 @@ IF read_success THEN BEGIN
     iter =  iter+1
 
   ENDFOR ; loop over animation frames
-  A =  tottime/(iter-60.)
+  A =  tottime/(iter-n_runup_frames)
   real_tot_time = et- real_start_time 
   print,' ***** Total time for interior iterations is ', tottime
   print,' ***** Average time for each iteration is ', a
