@@ -90,6 +90,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.13  1999/06/29 20:59:28  vapuser
+; Changed the default input filter
+;
 ; Revision 1.12  1999/01/24 19:59:11  vapuser
 ; Changed to accomidate new linkedlist object.
 ;
@@ -1417,7 +1420,7 @@ END
 
 
 PRO Pv::SelfHelp
-  Xdisplay,'',text=*self.help
+  XdisplayFile,'',text=*self.help
 END
 
 
