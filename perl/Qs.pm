@@ -14,6 +14,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.3  2002/08/07 23:53:36  vapdev
+# Added use strict, and all that this entails
+#
 # Revision 1.2  2002/04/30 20:23:22  vapdev
 # Modified the 'use lib' statement
 #
@@ -25,7 +28,7 @@
 package Qs;
 use strict;
 use vars qw/@ISA @EXPORT $VAP_WINDS $VAP_ROOT $IDLEXE/;
-use subs qw/&getWindFiles &getFileTimes/;
+use subs qw/getWindFiles getFileTimes/;
 use lib $ENV{VAP_SFTWR_TOP};
 use Cwd 'chdir', 'getcwd';
 use Time::Local;
