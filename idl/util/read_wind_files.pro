@@ -102,6 +102,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1998/11/25 22:41:42  vapuser
+; fixed some problems calculating start/end time.
+;
 ; Revision 1.3  1998/10/07 00:12:21  vapuser
 ; Added (Start|End)Time keywords
 ;
@@ -208,10 +211,31 @@ FUNCTION read_wind_files, files, $
      Endtime = StartTime
      FOR f=0,nf-1 DO BEGIN 
        print,'reading ' + files(f)
-       q = obj_new('q2b',file=files(f), $
-                   decimate=decimate, $
-                   crdecimate=crdecimate, $
-                   excludecols=excludecols)
+       tt = deenvvar(files[f])
+       IF Hdf_IsHDF(tt) THEN BEGIN 
+         q = obj_new()
+         attr = hdfgetattr( tt, attr='SHORTNAME')
+         IF VarType(attr) EQ 'STRUCTURE' THEN BEGIN 
+           CASE (*attr.value)[0] OF  
+             'QSCATVAPMODEL': q = obj_new('qmodel',filename=tt)
+             'QSCATL2B'     : q = obj_new('q2b',file=tt, $
+                                          decimate=decimate, $
+                                          crdecimate=crdecimate, $
+                                          excludecols=excludecols)
+             ELSE: BEGIN 
+               Message,"Can't identify type of HDF file ",/cont
+               print,'  Attribute "ShortName" must be either QSCATL2B or QSCATVAPMODEL'
+             END 
+           ENDCASE
+         ENDIF ELSE $
+           Message,"Can't get SHORTNAME attribute from HDF file",/cont
+           
+       ENDIF ELSE BEGIN 
+         q = obj_new('q2b',file=tt, $
+                     decimate=decimate, $
+                     crdecimate=crdecimate, $
+                     excludecols=excludecols)
+       ENDELSE 
        IF obj_valid(q) THEN BEGIN 
          s = q-> GetPlotData(u,v,lon,lat)
          s = q-> Get( StartTime = ST, Endtime=ET)
@@ -269,8 +293,14 @@ FUNCTION read_wind_files, files, $
          Obj_destroy,q
        ENDIF ELSE $
          Message,"Can't Read file " + files(f),/cont
+
      ENDFOR 
    ENDELSE 
    data =  [ [uu], [vv], [llon], [llat] ]
    return, data
 END
+
+
+
+
+
