@@ -106,6 +106,9 @@
 ;       1998/11/20: Stole from Dave, made more 24bit compliant.
 ;
 ; $Log$
+; Revision 1.1  1999/04/08 21:59:19  vapuser
+; Initial revision
+;
 ;
 ;
 ;-
@@ -127,6 +130,7 @@ PRO COLBAR, BOTTOM=bottom, $  ; bottom color index
               TOP=top, $             ; put title on top? if vertical
               RIGHT=right,$          ; put title on Right if vertical
               TRUE=TRUE, $           ; true color visual
+              noannot=noannot,$      ; A strange degenerate case I need.
               TABLE=TABLE            ; Take the Color table from this table,  
                                      ; rather than the table one would get
                                      ; from a 'tvlct' call. (ignored when
@@ -136,12 +140,8 @@ PRO COLBAR, BOTTOM=bottom, $  ; bottom color index
    
 postScriptDevice = (!D.NAME EQ 'PS')
 true = keyword_set(true)
-;IF true AND postScriptDevice THEN BEGIN 
-;  message," Can't use keyword 'TRUE' with postscript output",/cont
-;  return
-;ENDIF 
-  ; Check and define keywords.
-     
+noannot = keyword_set(noannot)
+
 IF N_ELEMENTS(ncolors) EQ 0 THEN BEGIN
 
    ; Most display devices to not use the 256 colors available to
@@ -261,53 +261,109 @@ ENDELSE
     
 IF KEYWORD_SET(vertical) THEN BEGIN
 
-   IF KEYWORD_SET(right) THEN BEGIN
+  IF noannot THEN BEGIN 
 
-      PLOT, [0,1], [min,max], /NODATA, XTICKS=1, YTICKS=divisions, $
-       XSTYLE=1, YSTYLE=9, $
-         POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
-         YTICKFORMAT='(A1)', XTICKFORMAT='(A1)', YTICKLEN=0.1 , $
-         YRANGE=[min, max], YTITLE=title
-     
-      AXIS, YAXIS=1, YRANGE=[min, max], YTICKFORMAT=format, YTICKS=divisions, $
-         YTICKLEN=0.1, YSTYLE=1, COLOR=color, CHARSIZE=charsize
-        
-   ENDIF ELSE BEGIN
-  
-      PLOT, [0,1],[min,max], /NODATA, XTICKS=1, YTICKS=divisions, $
+    IF KEYWORD_SET(right) THEN BEGIN
+
+       PLOT, [0,1], [min,max], /NODATA, XTICKS=1, YTICKS=1, $
         XSTYLE=1, YSTYLE=9, $
-         POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
-         YTICKFORMAT=format, XTICKFORMAT='(A1)', YTICKLEN=0.1 , $
-         YRANGE=[min, max]
-     
-      AXIS, YAXIS=1, YRANGE=[min, max], YTICKFORMAT='(A1)', YTICKS=divisions, $
-         YTICKLEN=0.1, YTITLE=title, YSTYLE=1, COLOR=color, CHARSIZE=charsize
+          POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
+          YTICKFORMAT='', XTICKFORMAT='', YTICKLEN=0.0 , $
+          YRANGE=[min, max], YTITLE=title, xtickv=[0,1],ytickv=[min,max],$
+            xtickname=xtn,ytickname=ytn
 
-   ENDELSE
+       AXIS, YAXIS=1, YRANGE=[min, max], YTICKFORMAT='', YTICKS=1, $
+          YTICKLEN=0.0, YSTYLE=1, COLOR=color, CHARSIZE=charsize
+
+    ENDIF ELSE BEGIN
+
+       PLOT, [0,1],[min,max], /NODATA, XTICKS=1, YTICKS=1, $
+         XSTYLE=1, YSTYLE=9, $
+          POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
+          YTICKFORMAT='', XTICKFORMAT='', YTICKLEN=0.0 , $
+          YRANGE=[min, max],xtickv=[0,1],ytickv=[min,max],$
+            xtickname=xtn,ytickname=ytn
+
+       AXIS, YAXIS=1, YRANGE=[min, max], YTICKFORMAT='', YTICKS=1, $
+          YTICKLEN=0.0, YTITLE=title, YSTYLE=1, COLOR=color, $
+           CHARSIZE=charsize
+
+    ENDELSE
+
+  ENDIF ELSE BEGIN 
+    IF KEYWORD_SET(right) THEN BEGIN
+
+       PLOT, [0,1], [min,max], /NODATA, XTICKS=1, YTICKS=divisions, $
+        XSTYLE=1, YSTYLE=9, $
+          POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
+          YTICKFORMAT='(A1)', XTICKFORMAT='(A1)', YTICKLEN=0.1 , $
+          YRANGE=[min, max], YTITLE=title
+
+       AXIS, YAXIS=1, YRANGE=[min, max], YTICKFORMAT=format, YTICKS=divisions, $
+          YTICKLEN=0.1, YSTYLE=1, COLOR=color, CHARSIZE=charsize
+
+    ENDIF ELSE BEGIN
+
+       PLOT, [0,1],[min,max], /NODATA, XTICKS=1, YTICKS=divisions, $
+         XSTYLE=1, YSTYLE=9, $
+          POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
+          YTICKFORMAT=format, XTICKFORMAT='(A1)', YTICKLEN=0.1 , $
+          YRANGE=[min, max]
+
+       AXIS, YAXIS=1, YRANGE=[min, max], YTICKFORMAT='(A1)', YTICKS=divisions, $
+          YTICKLEN=0.1, YTITLE=title, YSTYLE=1, COLOR=color, CHARSIZE=charsize
+
+    ENDELSE
+  ENDELSE 
      
 ENDIF ELSE BEGIN
+  IF noannot THEN BEGIN 
+    xtn = (ytn=replicate(' ',2))
 
-   IF KEYWORD_SET(top) THEN BEGIN
-      
-      PLOT, [min,max],[0,1], /NODATA, XTICKS=divisions, YTICKS=1, $
-        XSTYLE=9, YSTYLE=1, $
-         POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
-         YTICKFORMAT='(A1)', XTICKFORMAT='(A1)', XTICKLEN=0.1, $
-         XRANGE=[min, max], XTITLE=title
+    IF KEYWORD_SET(top) THEN BEGIN
 
-      AXIS, XTICKS=divisions, XSTYLE=1, COLOR=color, CHARSIZE=charsize, $
-         XTICKFORMAT=format, XTICKLEN=0.1, XRANGE=[min, max], XAXIS=1
-   
-   ENDIF ELSE BEGIN     
+       PLOT, [min,max],[0,1], /NODATA, XTICKS=1, YTICKS=1, $
+         XSTYLE=9, YSTYLE=1, $
+          POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
+          YTICKFORMAT='', XTICKFORMAT='', XTICKLEN=0.1, $
+           xtickv=[min,max],ytickv=[0,1],XRANGE=[min, max], $
+             XTITLE=title,xtickname=xtn,ytickname=ytn
 
-      PLOT, [min,max],[0,1], /NODATA, XTICKS=divisions, YTICKS=1, $
-       XSTYLE=1, YSTYLE=1, $
-         POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
-         YTICKFORMAT='(A1)', XTICKFORMAT=format, XTICKLEN=0.1, $
-         XRANGE=[min, max], TITLE=title
-         
-    ENDELSE
-    
+       AXIS, XTICKS=1, XSTYLE=1, COLOR=color, CHARSIZE=charsize, $
+          XTICKFORMAT='', XTICKLEN=0.1, XRANGE=[min, max], XAXIS=1
+
+    ENDIF ELSE BEGIN     
+
+       PLOT, [min,max],[0,1], /NODATA, XTICKS=1, YTICKS=1, $
+        XSTYLE=1, YSTYLE=1, POSITION=position, COLOR=color, $
+          CHARSIZE=charsize, /NOERASE, YTICKFORMAT='', XTICKFORMAT='', $
+            XTICKLEN=0.0, XRANGE=[min, max], TITLE=title, $
+              xtickv=[min,max],ytickv=[0,1],xtickname=xtn,ytickname=ytn
+
+     ENDELSE
+  ENDIF ELSE BEGIN 
+    IF KEYWORD_SET(top) THEN BEGIN
+
+       PLOT, [min,max],[0,1], /NODATA, XTICKS=divisions, YTICKS=1, $
+         XSTYLE=9, YSTYLE=1, $
+          POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
+          YTICKFORMAT='(A1)', XTICKFORMAT='(A1)', XTICKLEN=0.1, $
+          XRANGE=[min, max], XTITLE=title
+
+       AXIS, XTICKS=divisions, XSTYLE=1, COLOR=color, CHARSIZE=charsize, $
+          XTICKFORMAT=format, XTICKLEN=0.1, XRANGE=[min, max], XAXIS=1
+
+    ENDIF ELSE BEGIN     
+
+       PLOT, [min,max],[0,1], /NODATA, XTICKS=divisions, YTICKS=1, $
+        XSTYLE=1, YSTYLE=1, $
+          POSITION=position, COLOR=color, CHARSIZE=charsize, /NOERASE, $
+          YTICKFORMAT='(A1)', XTICKFORMAT=format, XTICKLEN=0.1, $
+          XRANGE=[min, max], TITLE=title
+
+     ENDELSE
+
+   ENDELSE 
 ENDELSE
 
    ; Restore color variable if changed for PostScript.
