@@ -297,6 +297,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1998/10/17 00:19:40  vapuser
+; Worked on file reading section, incorporated use
+; of 'qmodel' object. Killed some bugs.
+;
 ; Revision 1.1  1998/10/06 00:17:44  vapuser
 ; Initial revision
 ;
@@ -334,13 +338,16 @@ PRO ANIMATE_WIND_FIELD, files, $ ; fully qualified grid file name(s) (no default
                         ddims = ddims,$ ; dimension of grid (3 by 2 array )
                                    ; ( [ [ start_lon, stop_lon, lon_inc ],
                                    ;   [ [ start_lat, stop_lat, lat_inc ] )
-                                   ; (def = [ [0, 359. 2.5],[-90.,90.,2.5]])
+                                ; (def = [ [0, 359. 2.5],[-90.,90.,2.5]])
+                                ; Unneccessary if the file is an HDF file.
                         lonpar = lonpar, $  ; longitude dims of output animation 
                                    ; [ start_lon, stop_lon ]
                                    ; (def=[0.,359]
+                                   ; Unnecessary if HDF file
                         latpar =  latpar, $  ; latitude dims of output animation
                                    ; [ start_lat, stop_lat]
                                    ; (def=[-60.,60])
+                                   ; Unnecessary if HDF file
                         ui     = ui,$ ; Interpolated wind field's U comp
                         vi     = vi,$ ; Interpolated wind fields V comp
                         vlonpar = vlonpar,$ ; long dims of vector field
@@ -538,28 +545,39 @@ first = 1
   ;
   ; Define the color table. On rainy, $NSCAT-VAP = /nscat-vap
   ;
-red =  bytarr(51) &  green=red &  blue=red
-openr,1,'$VAP_ROOT/animate/nscat-vap-animation.ct2', error= err
-readu,1,red,green,blue
-close,1
+;red =  bytarr(51) &  green=red &  blue=red
+;openr,1,'$VAP_LIB/Resources/Color_Tables/nscat-vap-animation.ct2', error= err
+;readu,1,red,green,blue
+;close,1
+
+PtrToColorTable = ReadColorTable( $
+     "$VAP_RESOURCES/Color_Tables/vap-animation.ct")
+IF NOT ptr_valid(ptrToColorTable) THEN BEGIN 
+  Message,"Can't Read Color table",/cont
+  return
+ENDIF 
+CT = *PtrToColorTable &  ptr_free, ptrToColorTable
+Red   = reform(CT[0,*])
+Green = reform(CT[1,*])
+Blue  = reform(CT[2,*])
 r_curr =  red &  g_curr= green &  b_curr= blue
 r_orig =  red &  g_orig= green &  b_orid= blue
 
-;color_bar =  bytarr( 10,30, 15  ) 
-;FOR i=0,29 DO color_bar(*,i,*) =  i
-;color_bar =  reform( color_bar, 300, 15 )
-
-
+; n_colors = n_Elements(red)
 
   ; initialize window /buffer size for 
   ; output file options.
+
 set_plot,'z'
 ap = animpar
   ; subtract 40 from animpar(1) (the y size). this'll get added back
   ; in when we put the logo on.
+
 IF dologo THEN ap(1) = ap(1)-40
+
 IF padframe THEN ap(0:1) =  ap(0:1) - 2*pad
 device,set_resolution=[ap(0),ap(1)]
+
 tvlct,red,green,blue
 
   ; Read in the land elevation file;
