@@ -12,7 +12,7 @@
 ;
 ;
 ;
-; CALLING SEQUENCE:  vector_of_structures = q2b_rnoaa_str(nstruct )
+; CALLING SEQUENCE:  vector_of_structures = q2b_rnoaa_str(nstruct, ncells=ncells )
 ;
 ;
 ; 
@@ -66,6 +66,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/11/05 19:24:33  vapuser
+; Initial revision
+;
 ; Revision 1.1  1998/11/05 18:40:23  vapuser
 ; Initial revision
 ;
@@ -74,7 +77,7 @@
 ;Copyright (c) YYYY, California Institute of Technology
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
-FUNCTION q2b_rnoaa_str, nstruct
+FUNCTION q2b_rnoaa_str, nstruct, ncells=ncells
 
 COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
                       q2b_rnoaa_size, $
@@ -82,27 +85,28 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
                       q2b_rnoaa
        
 
-q2b_rnoaa_nheader_recs = 0l
+q2b_rnoaa_nheader_recs = 1l
 
 rcsid = "$Id$"
+IF n_Elements(ncells) EQ 0 THEN ncells =  76
 IF n_elements( q2b_rnoaa_defined ) eq 0 THEN BEGIN
 
   q2b_rnoaa =  {Q2B_RNOAA, $
         Row_Time    : BYTARR(24),     $
         Rev         : 0,              $
         WVC_Row     : 0,              $
-        WVC_Lat     : INTARR(76),     $
-        WVC_Lon     : INTARR(76),     $
-        wvcqual_flag: INTARR(76),     $
-        model_speed : INTARR(76),     $
-        model_dir   : INTARR(76),     $
-        nambig      : BYTARR(76),     $
-        windspd     : intarr(4,76),   $    
-        winddir     : intarr(4,76),   $    
-        errspd      : intarr(4,76),   $   
-        errdir      : intarr(4,76),   $   
-        mle_like    : intarr(4,76),   $     
-        wvc_sel     : BYTARR(76) } 
+        WVC_Lat     : INTARR(ncells),     $
+        WVC_Lon     : INTARR(ncells),     $
+        wvcqual_flag: INTARR(ncells),     $
+        model_speed : INTARR(ncells),     $
+        model_dir   : INTARR(ncells),     $
+        nambig      : BYTARR(ncells),     $
+        windspd     : intarr(4,ncells),   $    
+        winddir     : intarr(4,ncells),   $    
+        errspd      : intarr(4,ncells),   $   
+        errdir      : intarr(4,ncells),   $   
+        mle_like    : intarr(4,ncells),   $     
+        wvc_sel     : BYTARR(ncells) } 
 
   q2b_rnoaa_defined = 1
 
@@ -110,7 +114,7 @@ ENDIF
 IF n_elements( nstruct ) eq 0 THEN nstruct = 1
 
 IF nstruct le 0 THEN nstruct = 1
-q2b_rnoaa_size = 11960l
+q2b_rnoaa_size = 3980L
 
 RETURN, replicate( q2b_rnoaa , nstruct )
 end
