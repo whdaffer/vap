@@ -20,6 +20,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.13  2000/05/17 20:42:27  vapuser
+# Reworked so that it wouldn't die from lack of cloud data.
+#
 # Revision 1.12  2000/05/15 23:21:52  vapuser
 # Changed some '||'s to '&&' in calls to VapMailErrorMsg. Did some
 # other stuff too, but I can't remember what.
@@ -181,6 +184,9 @@ if ($region) {
   $crdecimate  = $vap_perl::overlay_defs{ $region } { WVCData   }{ CRDecimate  };
   $length      = $vap_perl::overlay_defs{ $region } { WVCData   }{ Length      };
   $delta       = $vap_perl::overlay_defs{ $region } { WVCData   }{ Delta       };
+  $rainflag    = $vap_perl::overlay_defs{ $region } { WVCData   }{ rainflag    };
+  $rf_action   = $vap_perl::overlay_defs{ $region } { WVCData   }{ rf_action   };
+  $rf_color    = $vap_perl::overlay_defs{ $region } { WVCData   }{ rf_color    };
   $excludecols = $vap_perl::overlay_defs{ $region } { WVCData   }{ ExcludeCols };
   
   @lonlim=@$lonlim;
@@ -300,7 +306,10 @@ print "desctime    = $desctime\n";
 print "time        = $time\n" if $time; 
 print "crdecimate  = @$crdecimate\n";  
 print "length      = $length\n";  
-print "delta        = $delta\n" if $delta; 
+print "delta       = $delta\n" if $delta; 
+print "rainflag    = $rainflag\n";
+print "rf_action   = $rf_action\n";
+print "rf_color    = $rf_color\n";
 print "excludecols = $excludecols\n\n";
 print "Taking type = $type\n" if $type;  
 print "Output overlay file will have region name $regionname\n";
@@ -388,25 +397,32 @@ if ($satname =~ /GMS/) {
     $gridded_file="";
       # Don't fail if there isn't a file close enough!
       # But don't bother to FTP all the requisite files either!
+      # Still send the error message, though!
 
-#     vap_perl::VapMailErrorMsg(
-# 	  "cloud_overlay: No Files closer than 2 hours! <$mindir>\n",
-# 			      "GMS5 MINDIFF");
+     vap_perl::VapMailErrorMsg(
+ 	  "cloud_overlay: No Files closer than 2 hours! <$mindir>\n",
+ 			      "GMS5 MINDIFF");
 #       die "No Files closer than 2 hours!<$mindif>\n";
   }  else {
 
+    $T=time;
     Gms5::GetAll($gridded_file) || 
        do { vap_perl::VapMailErrorMsg(
              "cloud_overlay: Can't GetAll for datetime $gridded_file\n", 
 	  	    "GMS5 GRIDDEDFILE") ;
           die "Can't GetAll for datetime $gridded_file\n"; }
     }
+   $T=time-$T;
+   print "GMS5::GetAll took $t seconds \n";
 
 } else {
 
   # Supposedly we can now get and grid the AREA file 
+  $T=time;
   $gridded_file = vap_perl::gag( $satnum, $sensornum, $time, 
 				$minlon, $minlat, $maxlon, $maxlat );
+  $T=time-$T;
+  print "GAG took $T seconds\n";
 
     # New mode. Don't fail if the gridding didn't work. Just continue
     # and let it plot the vectors anyway.
@@ -439,8 +455,9 @@ $exe_str .= ",$delta,wpath = \'$vap_perl::VAP_WINDS\'";
 $exe_str .= ",lockfile=\'$lock_file\',length=$length";
 $exe_str .= ",CRDecimate=[".join(",",@$crdecimate)."]";
 $exe_str .= ",ExcludeCols=\'$excludecols\'";
-$exe_str .= ",rainflag=1,rf_action=1";
+$exe_str .= ",rainflag=$rainflag,rf_action=$rf_action,rf_color=$rf_color";
 $exe_str .= ",mapLimits=$mapLimits";
+$exe_str .= ",/gridlines";
 $exe_str .= ",gmsType=\'$gms5sensornames[$sensornum-1]\'" 
     if ($satname =~ /GMS/);
   
