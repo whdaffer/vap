@@ -36,6 +36,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/11/23 23:35:43  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -56,5 +59,6 @@ FUNCTION basename, filenames
      s = rstrpos(filenames[f],'/')+1
      basenames[f] = strmid(filenames[f],s[0],strlen(filenames[f])-s)
    ENDFOR
+   IF nf EQ 1 THEN basenames = basenames[0]
    return,basenames
 END
