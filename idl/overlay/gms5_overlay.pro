@@ -232,6 +232,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.17  2000/05/17 16:51:09  vapuser
+; Make the routine continue to the end even if the gms5 file isn't
+; there or can't be read.
+;
 ; Revision 1.16  2000/05/15 22:58:54  vapuser
 ; Changed from multi-valued 'use_rf' to the new single-valued rainflag.
 ;
@@ -649,8 +653,9 @@ PRO gms5_overlay, datetime, gmsType, $
       ps:   OutputFilename = ofileroot+'.ps'
       ELSE: Message,"Job security!",/info
     ENDCASE 
+     outputfilename = strcompress(outputfilename,/remove_all)
 
-  ENDIF ELSE outputFilename =  outfile
+  ENDIF ELSE outputFilename =  strcompress(outfile,/remove_all)
 
   IF ps THEN device,filename=OutputFilename
 
