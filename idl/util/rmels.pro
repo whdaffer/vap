@@ -12,7 +12,7 @@
 ;
 ; CALLING SEQUENCE: 
 ;
-;   removed_elements=rmels( array, index_vector [,/nondestructive] ) 
+;   removed_elements=rmels( array, index_vector [,/nondestructive,/verbose] ) 
 ; 
 ; INPUTS:  
 ;
@@ -24,6 +24,7 @@
 ; KEYWORD PARAMETERS:  
 ;
 ;   nondestructive : flag. If set, the input array is not shortened.
+;   verbose: talk alot
 ;
 ; OUTPUTS:  
 ;
@@ -40,12 +41,12 @@
 ; SIDE EFFECTS:   The elements of 'ARRAY' are removed, array is
 ;               correspondingly shortened, and turned into a 1d array.
 ;
-; If the input indices comprise the entire array, and the
-; /nondestructve flag is clear, a message is emitted, but the function
-; continues, removing (and thereby undefining) the input array and
-; returning it in the return argument 'retvals.' As this will probably
-; be confusing, the user is advised to check against this possibility
-; before calling this function.
+; If the input indices comprise the entire array, the input array will
+; be returned. If the /nondestructive flag is set, the input array
+; will become undefined upon exit. If the verbose flag is set, a
+; message will be emitted, but the function will, nevertheless,
+; continue. As this will probably be confusing, the user is advised to
+; check against this possibility before calling this function.
 ;
 ;
 ; RESTRICTIONS:  The indices argument should be either integer or
@@ -60,16 +61,19 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/21 17:11:16  vapuser
+; Initial revision
+;
 ;
 ; William Daffer
 ;Copyright (c) 1999, California Institute of Technology
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
 
-FUNCTION rmels, array, indices, nondestructive=nondestructive
+FUNCTION rmels, array, indices, nondestructive=nondestructive, verbose=verbose
 
   destructive =  keyword_set(nondestructive) EQ 0
-
+  verbose = keyword_set(verbose)
   retvals = !values.f_nan
   IF n_params() LT 2 THEN BEGIN 
     Usage,"removed_elements = rmels( array, indices [,/nondestructive] )"
@@ -92,7 +96,8 @@ FUNCTION rmels, array, indices, nondestructive=nondestructive
 
   IF n_elements(tindices) EQ n_elements(array) THEN BEGIN 
     IF  destructive THEN BEGIN 
-      Message,"All elements are to be removed!"
+      IF verbose THEN $
+         Message,"All elements will be removed!",/cont
       return, temporary( array )
     ENDIF ELSE return, array
   ENDIF 
