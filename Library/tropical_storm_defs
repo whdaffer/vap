@@ -3,19 +3,21 @@
 # Mods:
 #
 # $Log$
+# Revision 1.1  2001/02/26 18:04:33  vapdev
+# Initial revision
+#
 #
 #
 $_storms_host="www.solar.ifa.hawaii.edu";
 $_storms_dir="Tropical/Data";
-local($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime(time()); 
+my ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime(time()); 
 $year += 1900;
 $yr=$year - int($year/100) * 100;
 $_storms_file=sprintf("tropical%02d", $yr);
 $REMOTE_URL="http://$_storms_host/$_storms_dir/$_storms_file";
 $LOCAL_URL=$_storms_file;
 
-$ROOT_DIR = $ENV{'VAP_ROOT'} || die "Can't get VAP_ROOT env var!\n";
-$TS_OVERLAY_DIR=$ENV{'VAP_TS_OVERLAY'} || "$ROOT_DIR/tropical_storms";
+$TS_OVERLAY_DIR=$ENV{'VAP_TS_OVERLAY'} || die "\$ENV{VAP_TS_OVERLAY} is UNDEFINED!\n";
 
 %stormranking=(
 	       '???' => 0,
