@@ -107,6 +107,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.4  1998/11/25 22:39:49  vapuser
+; Squashed some bugs.
+;
 ; Revision 1.3  1998/11/23 21:40:17  vapuser
 ; Corrected a mispelling
 ;
@@ -164,12 +167,12 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
   IF n_Elements(date_time) EQ 0 THEN date_time = TodayAsString(sep='/');
   IF n_elements(time_inc) EQ 0 THEN time_inc = 26
   IF N_Elements(interp_time_inc) EQ 0 THEN interp_time_inc = 2.
-  IF n_elements(Inpterp_Path) EQ 0 THEN Inpterp_Path = '/disk2/vap/animate/'
+  IF n_elements(Interp_Path) EQ 0 THEN Interp_Path = '$VAP_ANIM'
 
   tdate_time = regularizeVapTime(date_time, /max)
 
-  IF rstrpos(Inpterp_Path,'/') NE strlen(Inpterp_Path)-1 THEN $
-     Inpterp_Path = Inpterp_Path + '/'
+  IF rstrpos(Interp_Path,'/') NE strlen(Interp_Path)-1 THEN $
+     Interp_Path = Interp_Path + '/'
   IF n_Elements(Wpath) EQ 0 THEN Wpath = GetEnv('VAP_WINDS')
   IF rstrpos(WPath,'/') NE strlen(WPath)-1 THEN $
      WPath = WPath + '/'
