@@ -3,7 +3,7 @@
 
 #define PHYREC 1024
 #define LPERP PHYREC/32
-#define FILENAME "/usr/people/vapuser/lib/LANDMASK.DAT"
+#define FILENAME "LANDMASK.DAT"
 #define SIGN_OF(x) ((x)<0.0 ? -1 : 1)
 
 FILE *lunfil;
@@ -15,6 +15,18 @@ FILE *lunfil;
      MAY BE DEFINED AS DEGREES DECIMAL OR DEGREES AND MINUTES DECIMAL.
      THE FLAG RETURNED IS SET TO .TRUE. FOR LAND OR .FALSE. FOR WATER.
      THIS ROUTINE CALLS MASK60 TO GET THE DEGREE SQUARE MASK.
+
+     If there's a problem in mask60 will set status=0 and return.
+     This routine will return a -1 to the land_mask.c (which is an
+     IDL linkimage routine). At the moment (Tue Apr 30 15:51:39 2002)
+     the only possible circumstances under which this would occur is
+     either the user doesn't have the required environmental variable
+     VAP_LIBRARY defined or there was an an open failure on the data
+     file $VAP_LIBRARY/LANDMASK.DAT.
+
+     The caller of this routine must check the return status both of
+     'status' and the returned value to see if there's been an error.
+   
 
 		THIS PROGRAM USES A DATA BASE DESIGNED BY:
 
@@ -51,6 +63,9 @@ FILE *lunfil;
  * Modification Log:
  *
  * $Log$
+ * Revision 1.2  1999/04/09 23:05:38  vapuser
+ * Changed location of LANDMASK.DAT file
+ *
  * Revision 1.1  1999/04/09 22:56:57  vapuser
  * Initial revision
  *:
@@ -59,89 +74,107 @@ FILE *lunfil;
  * $Id$
  */
 
-int mask01( float *latd, float *latm, float *lond, float *lonm, char *first)
+int mask01( float *latd, float *latm, float *lond, float *lonm, 
+	    int *first, int *status)
 {
-        unsigned static char mask[3600];
-	signed static char alflag;
-	signed static char flag60;
-	float lat, lon,t;
-	double dummy;
-	int dlat, dlon, latp, lonp;
-	static int plat = -1, plon = -1;
-	static char lndmsk_rcsid[]="$Id$";
-
-	void mask60();
-
-/*
-	CONVERT LAT AND LON TO DEGREES DECIMAL, ADJUST TO NEAREST MINUTE
-	
-*/
-
+  unsigned static char mask[3600];
+  signed static char alflag;
+  signed static char flag60;
+  float lat, lon,t;
+  double dummy;
+  int dlat, dlon, latp, lonp;
+  static int plat = -1, plon = -1;
+  static char lndmsk_rcsid[]="$Id$";
+  
+  void mask60();
+  
+  /* CONVERT LAT AND LON TO DEGREES DECIMAL, ADJUST TO NEAREST MINUTE  */
+  
 #ifdef DEBUG
-	printf("In lndmsk\n");
-	printf("lndmsk: latd,latm,lond,lonm = %f,%f,%f,%f\n",
-	       *latd,*latm,*lond,*lonm);
-#endif
-        if (*first) flag60=127;
-
-	lat = *latd + (*latm/60.0) * SIGN_OF(*latd) + 90.0;
-	lon = *lond + (*lonm/60.0) * SIGN_OF(*lond);
-#ifdef DEBUG
-	printf("lat,lon = %f, %f\n", lat, lon);
+  printf("In lndmsk\n");
+  printf("lndmsk: latd,latm,lond,lonm = %f,%f,%f,%f\n",
+	 *latd,*latm,*lond,*lonm);
 #endif
 
-	if (lon<0.0) lon += 360.0;
-	lat += .00833333333333;
-	lon += .00833333333333;
-/*
-        IF THIS IS IN THE SAME ONE DEGREE SQUARE AS THE LAST ACCESS,
-        DO NOT READ A NEW MASK
-*/
-	dlat = (int)lat;
-	dlon = (int)lon;
-	if (dlon!=plon || dlat!=plat) {
-/*
-  	   GET THE ONE DEGREE MASK
-*/
-	  t=lat-90.0;
-	   mask60( mask, &t, &lon, &flag60 );
-	}
-#ifdef DEBUG
-	printf("after mask60: flag60 = %ld\n", flag60 );
-#endif
 
-/*
-	IF THE ALL LAND OR WATER FLAG IS NOT SET, GET THE SINGLE POINT
-	FROM THE MASK
-*/
-	if (flag60<0) {
-	   latp = modf((double)lat,&dummy)*60.0;
-	   lonp = modf((double)lon,&dummy)*60.0;
-	   alflag = mask[(int)latp*60+(int)lonp];
-	}
-	else {
-	   alflag = flag60;
-	}
-/*
-	SAVE THE PREVIOUS LAT AND LON DEGREES
-*/
-	plat = dlat;
-	plon = dlon;
-/*
-	SET THE LOGICAL VALUE BASED ON THE SETTING OF ALFLAG
-*/
-	if (alflag) {
+  if (*first) flag60=127;
+  
+  lat = *latd + (*latm/60.0) * SIGN_OF(*latd) + 90.0;
+  lon = *lond + (*lonm/60.0) * SIGN_OF(*lond);
+
+
 #ifdef DEBUG
-	printf("mask01: returning 1\n");
+  printf("lat,lon = %f, %f\n", lat, lon);
 #endif
-	   return (1);
-	}
-	else {
+  
+  if (lon<0.0) lon += 360.0;
+  lat += .00833333333333;
+  lon += .00833333333333;
+
+
+  /*
+   * IF THIS IS IN THE SAME ONE DEGREE SQUARE AS THE LAST ACCESS,
+   * DO NOT READ A NEW MASK
+   */
+
+
+  dlat = (int)lat;
+  dlon = (int)lon;
+  if (dlon!=plon || dlat!=plat) 
+    {
+      
+      
+      /* GET THE ONE DEGREE MASK   */
+      
+      t=lat-90.0;
+      mask60( mask, &t, &lon, &status, &flag60 );
+      if (*status != 1)
+	return (-1);
+    }
+  
 #ifdef DEBUG
-	printf("mask01: returning 0\n");
+  printf("after mask60: flag60 = %ld\n", flag60 );
 #endif
-	   return (0);
-	}
+  
+  /*
+   * IF THE ALL LAND OR WATER FLAG IS NOT SET, GET THE SINGLE POINT
+   * FROM THE MASK
+   */
+
+
+  if (flag60<0) 
+    {
+      latp = modf((double)lat,&dummy)*60.0;
+      lonp = modf((double)lon,&dummy)*60.0;
+      alflag = mask[(int)latp*60+(int)lonp];
+    }
+  else 
+    {
+      alflag = flag60;
+    }
+
+
+
+  /* SAVE THE PREVIOUS LAT AND LON DEGREES */
+
+
+  plat = dlat;
+  plon = dlon;
+
+
+  /* SET THE LOGICAL VALUE BASED ON THE SETTING OF ALFLAG */
+
+
+  
+#ifdef DEBUG
+  printf("mask01: returning 0\n");
+#endif
+  
+  if (alflag) 
+    return (1);
+  else 
+    return (0);
+  
 }
 
 /*
@@ -160,6 +193,13 @@ int mask01( float *latd, float *latm, float *lond, float *lonm, char *first)
       THE LONGITUDE MINUTES, THE SECOND IS LATITUDE MINUTES (WITH THE
       COORDINATE SYSTEM SET UP AS 0 - 360 LONGITUDE AND 0 - 180 LATITUDE).
 
+      If there's a failure in opening the database file
+      (LANDMASK.DAT), this routine will set status=0 and return. This
+      will occur in only two circumstances: 1. the user doesn't have
+      the environmental variable VAP_LIBRARY defined or 2, there was a
+      failure in the attempt to open $VAP_LIBRARY/LANDMASK.DAT'
+
+
 		 THIS PROGRAM USES A DATA BASE DESIGNED BY:
 
 	     JAN C. DEPNER                      JAMES A. HAMMACK
@@ -176,6 +216,9 @@ int mask01( float *latd, float *latm, float *lond, float *lonm, char *first)
 		     THE LATITUDE AND LONGITUDE POINT REQUESTED
 	 lat      -  (F) LATITUDE DEGREES OF THE POINT (0 - 180)
 	 lon      -  (F) LONGITUDE DEGREES OF THE POINT (0 - 360)
+	 status   -  (I) =1 if success, 0 otherwise. Used by caller 
+                      to determine whether mask01 should return
+                      immediately to IDL.
 	 alflag   -  (C) ALL LAND/WATER FLAG RETURNED 
 	 
       VARIABLES :
@@ -191,116 +234,163 @@ int mask01( float *latd, float *latm, float *lond, float *lonm, char *first)
 	 paddr    -  (I) PREVIOUS PHYSICAL RECORD ADDRESS.
 */
 
-void mask60(char mask[], float *lat, float *lon, signed char *flag )
+void mask60(char mask[], float *lat, float *lon, int* status, signed char *flag )
 {
 
-	static long rec00, rec01;
-	static int first = 1, plat = -1, plon = -1;
-	int clat, clon;
+  static long rec00, rec01;
+  static int first = 1, plat = -1, plon = -1;
+  int clat, clon;
+  char *dir;
+  int l=len(dir);
+  char filename[256];
 
-	void rdten(), rdone(), allmsk(), bldmsk();
+  void rdten(), rdone(), allmsk(), bldmsk();
+  
+  status=1; /* hope for the best */
 
-/*
-        IF FIRST TIME THROUGH, OPEN FILE AND SET LPERP
-*/
+  /* IF FIRST TIME THROUGH, OPEN FILE AND SET LPERP */
+
+
 #ifdef DEBUG
-	printf("mask60, lat, lon, flag = %f,%f,%d\n", *lat, *lon, *flag);
+  printf("mask60, lat, lon, flag = %f,%f,%d\n", *lat, *lon, *flag);
 #endif
 
-	if (first) {
-	   lunfil = fopen(FILENAME,"r");
-	   if (lunfil == NULL)
-             {
-                perror ("fopen");
-		exit (0);
-             }
-	   first = 0;
+  if (first) 
+    {
+      
+      dir = getenv("VAP_LIBRARY");
+      if (dir == NULL)
+	{
+	  *status=0;
+	  return
 	}
-/*
-	IF LAT >= 90 SET TO ALL WATER AND RETURN
-*/
-	if (*lat >= 90.0) {
-	   *flag = 0;
-#ifdef DEBUG
-	printf("mask60: going into allmsk when lat > 90 n");
-#endif
-
-	   allmsk(flag, mask); 
-	   return;
+      memset(filename,'\0',256);
+      strncpy(filename,dir,l);
+      strncat(filename,"/",1);
+      strncat(filename,"LANDMASK.DAT",256-l-2);
+      lunfil = fopen(filename,"r");
+      if (lunfil == NULL)
+	{
+	  *status=0;
+	  return;
 	}
-/*
-        CALCULATE SOUTHWEST CORNER OF CELL
-*/
-	clat = (int)(*lat+90.0);
-	if (*lon<0.0) {
-	   clon = (int)(*lon+360.0);
+      first = 0;
+    }
+  /*
+    IF LAT >= 90 SET TO ALL WATER AND RETURN
+  */
+  
+  if (*lat >= 90.0) 
+    {
+      *flag = 0;
+#ifdef DEBUG
+      printf("mask60: going into allmsk when lat > 90 n");
+#endif
+      
+      allmsk(flag, mask); 
+      return;
+    }
+
+
+  /*
+    CALCULATE SOUTHWEST CORNER OF CELL
+  */
+
+
+  clat = (int)(*lat+90.0);
+  if (*lon<0.0) 
+    {
+      clon = (int)(*lon+360.0);
+    }
+  else 
+    {
+      clon = ((int) *lon)%360;
+    }
+
+
+  /*
+   * IF THE LAT AND LON ARE NOT IN THE SAME ONE DEGREE SQUARE AS THE
+   * PREVIOUS LAT AND LON, OR ALFLAG = 127 (FIRST CALL FROM MASK01),
+   * PROCESS THE CELL
+  */
+
+
+  if (clon!=plon || clat!=plat || *flag==127) 
+    {
+      *flag = ' ';
+
+      /* READ THE TEN DEGREE SQUARE MAP AND CHECK FOR ALL LAND OR WATER     */
+      
+      rdten(lunfil,&rec01,clat,clon,flag);
+      
+#ifdef DEBUG
+      printf(
+	     "mask60: Just back from rdten,  &flag, *flag (int) *flag= %ld, %ld ,%ld\n", 
+	     flag, *flag, (int) *flag);
+#endif
+      
+      
+      if (*flag>=0) 
+	{
+	  
+	  
+#ifdef DEBUG
+	  printf("mask60: going into allmsk after rdten\n");
+#endif
+	  
+	  allmsk(flag, mask); 
 	}
-	else {
-	   clon = ((int) *lon)%360;
+      else 
+	{
+	  /*
+	    READ THE ONE DEGREE CELL MAP AND CHECK FOR ALL LAND OR WATER
+	  */
+	  
+	  
+#ifdef DEBUG
+	  printf("mask60: going into rdone: \n");
+#endif
+	  
+	  
+	  rdone(lunfil,rec01,&rec00,clat,clon, flag);
+	  
+#ifdef DEBUG
+	  printf(
+		 "mask60: just back from rdone, &flag,*flag, (int) flag= %ld, %ld %ld\n", 
+		 flag, *flag, (int) *flag );
+#endif
+	  
+	  if ( (int) *flag>=0) 
+	    {
+	      
+#ifdef DEBUG
+	      printf("mask60: going into allmsk: after rdone \n");
+#endif
+	      
+	      allmsk(flag, mask); 
+	    }
+	  else 
+	    {
+	      
+#ifdef DEBUG
+	      printf("mask60: going into bldmask: \n");
+#endif
+	      
+	      /*
+		READ THE RUN LENGTH DATA FOR THE ONE DEGREE CELL AND BUILD
+		THE MASK
+	      */
+	      bldmsk(lunfil,rec00,rec01,mask);
+	    }
 	}
-/*
-        IF THE LAT AND LON ARE NOT IN THE SAME ONE DEGREE SQUARE AS THE
-        PREVIOUS LAT AND LON, OR ALFLAG = 127 (FIRST CALL FROM MASK01),
-        PROCESS THE CELL
-*/
-	if (clon!=plon || clat!=plat || *flag==127) {
-	   *flag = ' ';
-/*
- 	   READ THE TEN DEGREE SQUARE MAP AND CHECK FOR ALL LAND OR WATER
-*/
-	   rdten(lunfil,&rec01,clat,clon,flag);
-#ifdef DEBUG
-	printf(
-	"mask60: Just back from rdten,  &flag, *flag (int) *flag= %ld, %ld ,%ld\n", 
-	flag, *flag, (int) *flag);
-#endif
-
-	   if (*flag>=0) {
-#ifdef DEBUG
-	printf("mask60: going into allmsk after rdten\n");
-#endif
-
-	     allmsk(flag, mask); 
-	   }
-	   else {
-/*
-	      READ THE ONE DEGREE CELL MAP AND CHECK FOR ALL LAND OR WATER
-*/
-#ifdef DEBUG
-	     printf("mask60: going into rdone: \n");
-#endif
-
-	      rdone(lunfil,rec01,&rec00,clat,clon, flag);
-#ifdef DEBUG
-	     printf(
-             "mask60: just back from rdone, &flag,*flag, (int) flag= %ld, %ld %ld\n", flag, *flag, (int) *flag );
-#endif
-
-	      if ( (int) *flag>=0) {
-#ifdef DEBUG
-	printf("mask60: going into allmsk: after rdone \n");
-#endif
-
-		allmsk(flag, mask); 
-	      }
-	      else {
-#ifdef DEBUG
-		printf("mask60: going into bldmask: \n");
-#endif
-
-/*
-	         READ THE RUN LENGTH DATA FOR THE ONE DEGREE CELL AND BUILD
-	         THE MASK
-*/
-		 bldmsk(lunfil,rec00,rec01,mask);
-	      }
-	   }
-/*
-	   SAVE THE LAT AND LON DEGREES
-*/
-	   plat = clat;
-	   plon = clon;
-	}
+      
+      /*
+	SAVE THE LAT AND LON DEGREES
+      */
+      
+      plat = clat;
+      plon = clon;
+    }
 }
 
 /*

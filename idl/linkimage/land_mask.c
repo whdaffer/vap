@@ -43,6 +43,9 @@
 * Modification Log:
 *
 * $Log$
+* Revision 1.1  1999/04/09 22:55:49  vapuser
+* Initial revision
+*
 *
 * $Id$
 *
@@ -54,30 +57,35 @@ IDL_VPTR land_mask( int argc, IDL_VPTR argv[], char *argk )
   IDL_VPTR lat, lon, mask,tmp;
   float *lat_d, *lon_d, latd,lond,latm=0.0, lonm = 0.0;
   long *mask_d;
-  char flag=1;
+  int first=1, status=0;
   int i,j,n;
   long mask01(), m;
   static char land_mask_rcsid[]="$Id$";
   if ( argc < 3 ) 
-    IDL_Message( IDL_M_GENERIC, 0, IDL_MSG_LONGJMP, "usage: land_mask, lon, lat, mask" );
+    IDL_Message( IDL_M_GENERIC, IDL_MSG_LONGJMP, 
+		 "usage: land_mask, lon, lat, mask" );
+
   lon = argv[0];
   lat = argv[1];
   mask = argv[2];
   IDL_ENSURE_SIMPLE( lon );
   IDL_ENSURE_SIMPLE( lat );
   IDL_ENSURE_SIMPLE( mask );
-  if (lon->type  != IDL_TYP_FLOAT) {
-    tmp  = IDL_CvtFlt(1,&lon);
-    IDL_VarCopy( tmp, lon );
-  } 
-  if (lat->type  != IDL_TYP_FLOAT) {
-    tmp  = IDL_CvtFlt(1,&lat);
-    IDL_VarCopy( tmp, lat );
-  }
-  if (mask->type != IDL_TYP_LONG ) {
-    tmp = IDL_CvtLng(1,&mask);
-    IDL_VarCopy( tmp, mask );
-  }
+  if (lon->type  != IDL_TYP_FLOAT) 
+    {
+      tmp  = IDL_CvtFlt(1,&lon);
+      IDL_VarCopy( tmp, lon );
+    } 
+  if (lat->type  != IDL_TYP_FLOAT) 
+    {
+      tmp  = IDL_CvtFlt(1,&lat);
+      IDL_VarCopy( tmp, lat );
+    }
+  if (mask->type != IDL_TYP_LONG ) 
+    {
+      tmp = IDL_CvtLng(1,&mask);
+      IDL_VarCopy( tmp, mask );
+    }
 	
   if (lon->flags  & IDL_V_TEMP) printf("lon is temporary\n");
   if (lat->flags  & IDL_V_TEMP) printf("lat is temporary\n");
@@ -87,24 +95,40 @@ IDL_VPTR land_mask( int argc, IDL_VPTR argv[], char *argk )
   lon_d = (float *) lon->value.arr->data;
   mask_d = (long *) mask->value.arr->data;
 
+
 #ifdef DEBUG
   printf(" n_elts = %d\n", lat->value.arr->n_elts);
 #endif
-  for (i=0;i<lat->value.arr->n_elts; i++) {
-    latd = *(lat_d+i);
-    lond = *(lon_d+i);
-#ifdef DEBUG
-    printf(" latd, lond = %f,%f\n", latd, lond );
-#endif
-     m =  mask01( &latd, &latm, &lond, &lonm, &flag );
-#ifdef DEBUG
-     printf(" m = %d\n", m );
-#endif
-    flag=0;
-    mask_d[i] = m;
-   }
 
-    
+
+  for (i=0;i<lat->value.arr->n_elts; i++) 
+    {
+      latd = *(lat_d+i);
+      lond = *(lon_d+i);
+
+
+#ifdef DEBUG
+      printf(" latd, lond = %f,%f\n", latd, lond );
+#endif
+
+
+      m =  mask01( &latd, &latm, &lond, &lonm, &first, &status );
+      if (status != 1 || m<0 ) 
+	{
+	  IDL_Message( IDL_M_NAMED_GENERIC, 
+		       IDL_MSG_LONGJMP, 
+		       " Bad return from mask01, status == %d, m=%d: at i=%d\n",
+		       status, m, i);
+	}
+
+
+#ifdef DEBUG
+      printf(" m = %d\n", m );
+#endif
+
+      first=0;
+      mask_d[i] = m;
+    }
 } /* end land_mask */
 
 
