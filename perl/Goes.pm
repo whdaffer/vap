@@ -9,6 +9,10 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.3  2002/05/07 20:40:36  vapdev
+# Set -w and `use strict' and then fixing bugs. Start trying to standardize
+# the methods used.
+#
 # Revision 1.2  2002/04/30 20:23:22  vapdev
 # Modified the 'use lib' statement
 #
@@ -48,10 +52,10 @@ BEGIN {
 		    '5','ir5'
 		    );
 
-  # AREA files more than 45 minutes from input time 
+  # AREA files more than 1.5 hours  from input time 
   # are ignored.
 
-  $_min_time_diff = 45*60;
+  $_min_time_diff = 1.5*60;
 
 }
 
