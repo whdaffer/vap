@@ -310,6 +310,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.8  2000/01/13 17:43:24  vapuser
+; Changed call to qmodel->get from the old 'procedure' to the newer
+; 'function'.  this is required since there is no procedure
+; anymore. (Why this didn't fail outright I don't understand!?)
+;
 ; Revision 1.7  1999/10/11 17:22:13  vapuser
 ; Added support for reading user 'config files.' Change all internal
 ; calculations using 'speed' to Meters/second, reverting to 'knots' only
@@ -473,7 +478,7 @@ COMMON colors, r_curr, g_curr, b_curr, r_orig, g_orig, b_orig
   '  ps= ps,$      ; flag to write postscript file' + lf + $
   '  tiff= tiff,$      ; flag to write postscript file' + lf + $
   '  debug = debug       ,$  ; for debugging' + lf + $
-  '  title=title ,$          ; unimplemented, for future use' + lf + $
+  '  title=title ,$          ; Title to put at top of frame' + lf + $
   '  min_speed=min_speed,$  ; Minimum wind speed' + lf + $
   '  max_speed=max_speed,$  ; Maximum wind speed' + lf + $
   '  pad=pad,$    ; padding, for tv safe animations [ xpad,ypad] ' + lf + $
@@ -1359,19 +1364,19 @@ IF read_success THEN BEGIN
 
 
           ; Set up Title/min/max speed for color bar.
-          title = 'Wind Speed (m/s)'
+          cbtitle = 'Wind Speed (m/s)'
           mnspeed = min_speed
           mxspeed = max_speed
 
           IF knots THEN BEGIN 
-            title = 'Wind Speed (knots)'
+            cbtitle = 'Wind Speed (knots)'
             mnspeed = min_speed*mps2knots
             mxspeed = max_speed*mps2knots
           ENDIF 
 
           COLBAR,bottom=1,ncolors=ncolors,$
             position=[0.25,y1,0.75,y2],$
-              Title=title,division=4,$
+              Title=cbtitle,division=4,$
                 min=mnspeed, max=mxspeed, $
                   charsize=0.65,format='(F4.0)'
 
