@@ -10,8 +10,35 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.2  2002/05/07 20:40:36  vapdev
+# Set -w and `use strict' and then fixing bugs. Start trying to standardize
+# the methods used.
+#
 # Revision 1.1  2001/02/09 18:49:15  vapuser
 # Initial revision
+#
+# Usage:
+#
+# Methods: 
+#
+#  new:
+#
+#  $goesobj = OGoes->new( SAT    => (10|8),
+#                         SENSOR => ("vis"|"irN"),
+#                         [TIME => yyyy/mm/dd/hh/mm,
+#                          LIMITS => \[minlon, minlat, maxlon, maxlat],
+#                          ABSFLAG => 1 ] );
+#
+#
+#
+#  'TIME' will default to current time (in GMT) if it isn't passed in.
+#  'LIMITS' will default to [0,0,0,0], which to the gridding software
+#           means 'the whole file.'
+#
+#  Set 'ABSFLAG' if you want all time comparisons to be done in
+#  absolute value. Otherwise the comparisons are done such that any
+#  files found have times less than or equal to the input (or
+#  defaulted) time.
 #
 #
 #
@@ -22,22 +49,20 @@ use Cwd 'chdir', 'getcwd';
 use Time::Local;
 use Net::FTP;
 use Carp;
-use vap_util;
+use VapUtil;
 
 
-$OGoes::VERSION = "\$Id";
-
-
+$OGoes::VERSION = "0.9";
 %OGoes::satnum2areanum = (10 => 8,
 			  8 => 9);
 
 %OGoes::areanum2satnum = (8 => 10, 
 			  9 => 8 );
 
-%OGoes::satloc2satnum = (west=>10,
-			 east=>8);
+%OGoes::satloc2satnum = (WEST=>10,
+			 EAST=>8);
 
-%OGoes::sensornum2dir = ('1','vis',
+%OGoes::sensornum2name = ('1','vis',
 			 '2','ir2',
 			 '3','ir3',
 			 '4','ir4',
@@ -45,62 +70,95 @@ $OGoes::VERSION = "\$Id";
 			 );
 
 
-#use vars qw();
+%OGoes::sensorname2num = reverse %OGoes::sensornum2dir
+
+
+
+#----------------------------------------------------------
+#
+#----------------------------------------------------------
+
 
 sub new {
   my $class = shift;
-  my $satdesig = shift || die "Need Satellite designation (east|west) or (10|8)\n";
-  my $sensordesig= shift || die "Need sensor designation ([1,2,3,4,5] or [vis, irN]\n";
-  my $time=shift || systime2idltime(time());
 
-  $VAP_LIB=$ENV{'VAP_LIBRARY'}  || 
-      die "Environmental variable VAP_LIBRARY is UNDEFINED\n";
+  my $self = {@_};
+  $self->{VAP_LIB}=$ENV{'VAP_LIBRARY'}  || 
+      croak "Environmental variable VAP_LIBRARY is UNDEFINED\n";
+
     # Get the Overlay Defaults
-  $overlay_defs_file=$VAP_LIB."/overlay_defs";
-  if (-e "$overlay_defs_file") {
-    local $/=undef;
-    open FILE, "$overlay_defs_file" or die "Can't open $overlay_defs_file: $!\n";
-    
-  eval {require $overlay_defs_file} || die "require $overlay_defs_file FAILED!: $!\n";
+
+
+
+#    $overlay_defs_file="$VAP_LIB/overlay_defs";
+#    if (-e "$overlay_defs_file") {
+#      local $/=undef;
+#      open FILE, "$overlay_defs_file" or croak "Can't open $overlay_defs_file: $!\n";
+#      eval {require $overlay_defs_file} || croak "require $overlay_defs_file FAILED!: $!\n";
+#    }
 
     # Get generic VAP processing Defaults
-  $vap_defs_file=$VAP_LIB."/vap_defs";
-  eval {require $vap_defs_file} || die "require $vap_defs_file FAILED!: $!\n";
+  $self->{VAP_DEFS_FILE} ="$VAP_LIB/vap_defs";
+  eval {require $self->{VAP_DEFS_FILE} } || 
+    croak "require of ".$self->{VAP_DEFS_FILE} ." FAILED!: $!\n";
 
     # Check for interactivity.
-  $_is_batch = !defined($ENV{'TERM'});
+  my $self->{_IS_BATCH} = !defined($ENV{'TERM'});
+  my $self->{_MIN_DIFF} = 1.5*60;
+  $self->{LOCALDIR} = constructLocalDir();
+  $self->{REMOTEDIR} = constructRemoteDir();
+  $self->{SYSTIME} = idltime2systime($time);
+  $self->{SENSORNUM} = $OGOES::sensorname2num{$self->{SENSOR}};
+  $self->{REMOTE_ARCHIVE_INFO} = VapUtil::getgoesarchive();
+  my $limits = $self->{LIMITS} || [0,0,0,0];
+
+  croak "Input Keys SAT and SENSOR are required!\n" 
+    unless (exists($self->{SAT}) && exists($self->{SENSOR}));
+    
+  bless $self, ref($class) || $class;
+  my @tmp=$self->rectifylon(${$limits}[0], ${$limits}[2]);
+  ${$self->{LIMITS}}[0] = $tmp[0];
+  ${$self->{LIMITS}}[2] = $tmp[1];
+  return, $self;
+}
 
 
-  my $self = {SATDESIG => $satdesig,
-	      SENSORDESIG => $sensordesig, 
-	      TIME => $time,
-	      _MIN_TIME_DIFF => 45*60 };
+#----------------------------------------------------------
+#
+#----------------------------------------------------------
 
-  $self->{SATNUM} = getSatNum();
-  $self->{SENSORDIR} = getSensorDir();
-  $self->{LOCALDIR} = constructLocalDir();  
-  $self->{REMOTEDIR} = constructRemoteDir();  
-  $self->{IDLTIME} = $time;
-  $self->{TIME} = idltime2systime($time);
-  
-  bless $self, $class;
+
+sub rectifylon{
+  croak "usage: \@fixedLon = rectifylon(\$minlon, $maxlon)\n";
+  my ($minlon, $maxlon) = @_;
+  while ($minlon>$maxlon) {
+    if ($minlon>180.){
+      $minlon-= 360.;
+    } elsif ($maxlon<0.) {
+      $maxlon += 360.;
+    }
+  } 
+  ($minlon, $maxlon);
 }
 
 
 
 
+#----------------------------------------------------------
+#
+#----------------------------------------------------------
+
 
 sub gag{
   my $self=shift;
-  my $usage="Usage: gag satellite, sensornum, time, minlon, minlat, maxlon, maxlat";
-  die "$usage\n" if $#_ < 1;
-  my $time=$_[2] || systime2idltime(time());
-  my $areafile=getAreaFile($_[0], $_[1], $time );
-  my $minlon = $_[3] || 0;
-  my $minlat = $_[4] || 0;
-  my $maxlon = $_[5] || 0;
-  my $maxlat = $_[6] || 0;
-  my $gridpath = constructGriddingDir($_[0], $_[1]);
+  my $systime=$self->{SYSTIME}
+  my $areafile=getAreaFile();
+  my @limit = @{$self->{LIMITS}};
+  my $minlon = $limit[0];
+  my $minlat = $limit[1];
+  my $maxlon = $limit[2];
+  my $maxlat = $limit[3];
+  my $gridpath = $self->griddingPath();
   my $startdir=getcwd();
   chdir $gridpath || croak "Can't CD to $gridpath\n";
   my $griddedfile = grid( $areafile, $minlon, $minlat, $maxlon, $maxlat );
@@ -108,10 +166,16 @@ sub gag{
   my $griddedfile;
 }
 
+
+#----------------------------------------------------------
+#
+#----------------------------------------------------------
+
+
 sub grid{ 
   my $self=shift;
   my $areafile = shift @_ ||
-      die "Usage: grid areafile [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";;
+      croak "Usage: grid areafile [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";;
   my $minlon = shift @_ || 0 ;
   my $minat  = shift @_ || 0 ;
   my $maxlon = shift @_ || 0 ;
@@ -144,95 +208,213 @@ sub grid{
   my $local_gridded_file;
 }
 
+#----------------------------------------------------------
+# GetAREAFile
+#----------------------------------------------------------
 
-sub getAreaFile{
+sub GetAREAFile{
   my $self = shift;
   my( $satellite,$sensor,$vaptime,$localfile,$localdir,
-	$file,$diff,$mindiff,$time,$test_time, $remoteflag);
-  $satnum = $self->{SATNUM} || getSatNum();
-  $sensornum = $self->{SENSORNUM} || getSensorNum();
-  $idltime   = shift || $self->{IDLTIME}
-
-
-  my ($year,$month,$day,$hour,$min,$sec) = split( "/", $vaptime );
-  my $test_time = timegm( 0, $min, $hour, $day, $month-1, $year-1900 );
-
+      $file,$diff,$mindiff,$time,$test_time, $remoteflag);
   ($file, $time,$mindiff,$remoteflag) = 
-      NearestAreaFile($satnum, $sensor, $test_time);
+    NearestAREAFile();
 
-  if ($mindiff < 45*60 ) {
+  if ($mindiff < $self->{_MIN_DIFF_TIME) {
     if ($remoteflag) {
-      $localfile=fetchAREAFile($file);
+      $localfile=FetchAREAFile($file);
     } else {
-      $localdir=constructLocalDir($satnum, $sensor);
+      $localdir=LocalDir();
       $localfile="$localdir/$file";
     }
   } else {
     my $hh=$mindiff/3600;
-    croak "Nearest AREA file ($file) is $hh hours distant! -- Aborting\n";
+    print "Nearest AREA file ($file) is $hh hours distant! -- Aborting\n";
   }
   $localfile;
 }
 
-sub constructLocalDir{
-  my $self = shift;
-  my $satnum= $self->{SATNUM} || getSatNum();
-  my $sensordir= $self->{SENSORDIR} || getSensorDir();
-  my $dir = ($self->{LOCALDIR} = "$ARCHIVETOP/goes$satnum/$sensordir");
-}
 
-sub constructRemoteDir{
-  my $self=shift;
-  my $satnum= $self->{SATNUM} || getSatNum();
-  my $sensordir= $self->{SENSORDIR} || getSensorDir();
-  $dir = ($self->{REMOTEDIR} = "goes$satnum/$sensordir");
-}
+#----------------------------------------------------------
+# NearestAREAFile
+# Find the AREA file nearest in time to $self->{TIME}
+# Fetch it from Paul's FTP site, if necessary.
+#
+#----------------------------------------------------------
 
-sub constructGriddingDir{
-  my $self=shift;
-  my $satnum= $self->{SATNUM} || getSatNum();
-  my $sensordir= $self->{SENSORDIR} || getSensorDir();
-  $dir = ($self->{GRIDDINGDIR} = "$GRIDDINGTOP/goes$satnum/$sensordir");
-}
 
-sub getSatNum{
+sub NearestAREAFile{
   my $self=shift;
-  my $satnum;
-  my $satellite = $self->{SATDESIG}
-      croak "(param 1) Need Satellite location (west|east) or Satellite number (10|8)\n";
-  if ($satellite =~ /(west|east)/) {
-    $satnum=$satloc2satnum{$satellite}; 
-  } else {
-    $satnum=$satellite;
+
+  my ( $satellite, $sensor, $testtime, $absflag, 
+	$diff, $mindiff, $remoteflag, $localdir );
+  $localdir=LocalDir();
+  $remoteflag=1;
+
+  $mindiff = 1.e10;
+  $filetimes=GetAndParseAINF();
+  while (my ($k, $v) = each %{$filetimes}){
+    $diff = $testtime-$v;
+    $diff = abs($diff) if $absflag;
+
+    if ($diff > 0) {
+      if ($diff < $mindiff) {
+	$mindiff=$diff;
+	$file=$k;
+	$time=$v;
+      }
+    }
   }
-  $self->{SATNUM} = $satnum;
-  $satnum;
+  $remoteflag = 0 if (-e "$localdir/AREA$file");
+  $self->{NEAREST}->{FILE} = $file;
+  $self->{NEAREST}->{TIME} = $time;
+  $self->{NEAREST}->{DIFF} = $mindiff;
+  $self->{NEAREST}->{REMOTE} = $remoteflag;
+  ($file, $time, $mindiff, $remoteflag );
+
 }
 
-sub getSensorDir{
+#----------------------------------------------------------
+#GetAndParseAINF
+#
+# Retrieve and Parse the NOAA AINF file. This file resides on Paul's
+# NOAA FTP site.
+#
+#----------------------------------------------------------
+
+
+sub GetAndParseAINF{
+ ## usage: 1|0 = getParseAINF(satellite_number, sensor_number);
+
   my $self=shift;
-  my $dir;
-  if ($self->{SENSORDESIG} =~ /vis|ir?/) {
-    $self->{SENSORNUM} = (($self->{SENSORDESIG} =~ /vis|ir(\d)/) || 1);
-#     if ($self->{SENSORDESIG} =~ /vis/) {
-#       $self->{SENSORNUM} = 1;
-#       local($dir) = ($self->{SENSORDIR} = $self->{SENSORDESIG}); 
-#     } else {
-#       $self->{SENSORNUM}= ($self->{SENSORDESIG} =~ /ir(\d)/);
-#       local($dir) = ($self->{SENSORDIR} = $self->{SENSORDESIG}); 
-#    }
-  } else {
-    $self->{SENSORNUM} = $self->{SENSORDESIG};
-    $dir = ($self->{SENSORDIR} = $sensornum2dir{ $self->{SENSORNUM} });
+  my (@ainf, $file, $date, $time, $doy, $testfile, $localdir, 
+      @hdr, $yer, $doy, $day, $month, $hour, $min, $timegm, %filetimes);
+
+
+  $self->FetchRemoteAINF();
+    # Now parse the file
+  $self->ParseAINF();
+
+  1;
+}
+
+sub ParseAINF{
+  
+  # opens the input file and parses the records therein. Puts the
+  # info in $self->{AINF} hash.
+  #
+  # There's one special case: the AREAxx00 files have a problem with
+  # the output from the NOAA version of ainf, (don't ask me why) so in
+  # the case of this file we first check the local `area_info' file,
+  # and if the data isn't in there we read the header itself if the
+  # AREA file is here. If the AREA file isn't local we leave markers
+  # in the $self->{AINF} hash to indicate its absence.
+
+  # The $self->{AINF} hash has the AREA file number as the key and the
+  # time of its data (as Unix time) as the value.
+
+  my $self=shift;
+  my $file=$self->{REMOTE_AINF_FILE};
+  open FILE, "<$file" or croak "Can't open $file:$!\n";
+  while (<FILE>){
+    my $timegm=0;
+    chomp;
+    next if /^##.*/;
+    ($filenum,$month, $day, $year,$time,$doy) = 
+  m|^(AREA\d+):\s+Data\s+Taken\s+on\s+(\d+)/(\d+)/(\d+),\s+at\s+(\d+)\s+Hours:.*,\s+DOY\s+=\s+(\d+)|;
+    if ($filenum =~ /AREA??00/){
+
+        ## There are problems with the output from the NOAA version of
+        ## ainf for the xx00 file. Don't know why, but we can't use
+        ## the information in the area info file, we must actually
+        ## open and read the file. If it isn't here, fetch it first.
+      $testfile="$localdir/AREA$filenum";
+      if (-e  $testfile ) {
+	$timegm = $self->ReadXX00File($testfile);
+      } else {
+	print "XX00 File $testfile isn't in our archive -- skipping it!\n";
+      }
+    } else {
+      ($hour,$min) = $time =~ /(\d{2,2})(\d{2,2})/;
+      $timegm=timegm(0,$min,$hour,$day,$month-1,$year-1900);
+    }
+    $self->{AINF}->{$file} = $timegm;
   }
-  $dir
+  1;
+}
+
+#---------------------------------------------------------- 
+# ReadXX00File - Get the data time for an xx00 file. 
+#
+#
+# For some strange reason the noaa versio of `ainf' outputs garbage
+# for files with this name.  First check to see if the information for
+# this AREA file is in the local area_info file. If it is, use that,
+# otherwise open and read the header. We don't get the lat/lon
+# resolution this way, but we don't really use it anyway.
+#
+#----------------------------------------------------------
+
+
+sub ReadXX00File{
+  my ($self, $testfile) = @_;
+  my ($hdr, @hdr, $year, $doy, $day, $month,
+      $hour, $min);
+  my $timegm=0;
+
+  my ($name, $path) = fileparse($testfile);
+  my $exe_string = "grep $name ". $self->LocalDir(). "/area_info";
+
+  if ($string = `$exe_string`) {
+
+   ($filenum,$month, $day, $year,$time,$doy) = $self->ParseAINFLine($string);
+   ($day, $month) = VapUtil::doy2mday_mon($doy, $year);
+   $timegm = timegm(0,$min,$hour,$day,$month-1,$year-1900);
+
+  } else {
+
+    if (open XX00FILE, "<$testfile") {
+      read XX00FILE, $hdr, 64*4;
+      close XX00FILE;
+      @hdr=unpack "L4", $hdr;
+      $year=int ($hdr[3]/1000);
+      $doy=int ($hdr[3]-$year*1000);
+      ($day, $month) = VapUtil::doy2mday_mon($doy, $year);
+      $hour=int ($hdr[4]/100);
+      $min=int ($hdr[4]-$hour*100);
+      $timegm=timegm(0,$min,$hour,$day,$month-1,$year-1900);
+    } else {
+      print "Can't open the XX00 file $testfile -- skipping it!\n";
+    }
+
+  }
+
+  $timegm;
+
 }
 
 
-sub getLocalAINF {
+#----------------------------------------------------------
+# ParseAINFLine - Parse one line from an AINF file
+#----------------------------------------------------------
+
+sub ParseAINFLine{
   my $self=shift;
+  my $line = shift;
+  ($filenum,$month, $day, $year,$time,$doy) = 
+    ($line =~ m|^(AREA\d+):\s+Data\s+Taken\s+on\s+
+                 (\d+)/(\d+)/(\d+),\s+at\s+(\d+)\s+Hours:.*,\s+
+                 DOY\s+=\s+(\d+)|x;
+}
+#----------------------------------------------------------
+# LocalAINF - Read the local AINF file. 
+# Return the data in an array
+#----------------------------------------------------------
+
+
+sub LocalAINF {
+  my $self=shift;
+  $dir = $self->{LOCALDIR}
   my ($dir, $local_ainf);
-  $dir=constructLocalDir(@_);
   $local_ainf="$dir/area_info";
   open AINF, "<$local_ainf" || croak "Can't open $local_ainf\n";
   @lainf = <AINF>;
@@ -240,28 +422,43 @@ sub getLocalAINF {
   @lainf;
 }
 
-sub fetchRemoteAINF {
+#----------------------------------------------------------
+# FetchRemoteAINF - Fetch the local AINF file.
+# Put it in LocalDir
+# Return the name of the file
+#----------------------------------------------------------
+
+
+sub FetchRemoteAINF {
   my $self=shift;
   my ($startdir, $localdir, $local_file, 
       $dir, $remotedir, $remote_file, $host, $user, $pw,
       $remote_ainf);
   $startdir=getcwd();
-  $localdir=constructLocalDir(@_);
+  $localdir=LocalDir();
   $local_file="$localdir/noaa_area_info";
   chdir $localdir || croak "Can't cd to $localdir\n";
 
-  $remotedir=constructRemoteDir(@_);
+  $remotedir=RemoteDir();
   $remote_file="$remotedir/area_info";
-  ($host,$user,$pw) = getgoesarchive();
-  
+
+  my $host = $self->{ARCHIVE_INFO}->{HOST};
+  my $user = $self->{ARCHIVE_INFO}->{USER};
+  my $pw   = $self->{ARCHIVE_INFO}->{PW};
+
   my $ftp = Net::FTP->new( $host ) || croak "  Can't open new connection to $host\n";
   $ftp->login ($user, $pw )     || croak "  Can't login\n";
   $ftp->binary                  || croak "  Can't go to binary\n";
   print "  Getting $remote_file and sending it to $local_file\n";
   $ftp->get($remote_file,$local_file) || croak "  Can't get $remote_file\n";
   $ftp->quit                          || croak "  Can't close ftp connection\n";
-  $local_file;
+  $self->{NOAA_AINF_FILE} = $local_file;
 }
+
+#----------------------------------------------------------
+# 
+#----------------------------------------------------------
+
 
 sub getRemoteAINF{
 
@@ -283,109 +480,12 @@ sub getRemoteAINF{
 }
 
 
-sub getgoesarchive{ 
-  
-  my $self=shift;
-  my ($goes_info_file, @info, $host, $user, $pw);
-
-  $goes_info_file=shift || "/usr/people/vapuser/Qscat/Library/goes_archive";
-  open(ARCHIVE_INFO, "<$goes_info_file") || croak "Can't open $goes_info_file file\n";
-  @info=<ARCHIVE_INFO>;
-  $host=$info[0];
-  chop $host;
-  $user=$info[1];
-  chop $user;
-  $pw=$info[2];
-  chop $pw;
-  # return the info.
-  ($host, $user, $pw);
-}
-  
-sub getParseAINF{
- ## usage: %filetimes=getParseAINF(satellite_number, sensor_number);
-
-  my $self=shift;
-  my (@ainf, $file, $date, $time, $doy, $testfile, $localdir, 
-      @hdr, $yer, $doy, $day, $month, $hour, $min, $timegm, %filetimes);
+#----------------------------------------------------------
+# FetchAREAFile
+#----------------------------------------------------------
 
 
-  @ainf=getRemoteAINF($_[0], $_[1]);
-
-    # Now parse the file
-  for (@ainf){
-    chop;
-    next if /^##.*/;
-    ($file,$date,$time,$doy) = 
-  /^(AREA\d+):\s+Data\s+Taken\s+on\s+(.*),\s+at\s+(\d+)\s+Hours:.*,\s+DOY\s+=\s+(\d+)/;
-    if ($file =~ /AREA??00/){
-
-        ## There are problems with the output from the NOAA version of
-        ## ainf for the xx00 file. Don't know why, but we can't use
-        ## the information in the area info file, we must actually
-        ## open and read the file. If it isn't here, fetch it first.
-      $testfile="$localdir/$file";
-      if (-e  $testfile ) {
-	if (open XX00FILE, "<$testfile"){
-	    read XX00FILE, $hdr, 64*4;
-	    close XX00FILE;
-	    @hdr=unpack "L4", $hdr;
-	    $year=int ($hdr[3]/1000);
-	    $doy=int ($hdr[3]-$year*1000);
-	    ($day, $month) = doy2mday_mon($doy, $year);
-	    $hour=int ($hdr[4]/100);
-	    $min=int ($hdr[4]-$hour*100);	  
-	    $timegm=timegm(0,$min,$hour,$day,$month-1,$year-1900);
-	} else {
-	  carp "Can't open the XX00 file $testfile -- skipping it!\n";
-	  $timegm=0;
-	}
-      } else {
-	carp "XX00 File $testfile isn't in our archive -- skipping it!\n";
-	$timegm=0 ;
-      }
-    } else {
-      ($month,$day,$year) = split "/",$date;
-      ($hour,$min) = $time =~ /(\d{2,2})(\d{2,2})/;
-      $timegm=timegm(0,$min,$hour,$day,$month-1,$year-1900);
-    }
-    $filetimes{$file} = $timegm;
-  }
-  %filetimes;
-}
-
-sub NearestAreaFile{
-  my $self=shift;
-  my ( $satellite, $sensor, $testtime, $absflag, 
-	$diff, $mindiff, $remoteflag, $localdir );
-
-  $satellite = $_[0] || croak "(param 1) Need Satellite location (west|east)\n";
-  $sensor    = $_[1] || croak "(param 2) Need sensor number [1,2,3,4,5] 1=vis, N=irN\n";
-  $testtime  = $_[2] || croak "(param 3) Need testtime (unix time)\n";
-  $absflag   = $_[3] || 0;
-
-  $localdir=constructLocalDir($satellite, $sensor);
-  $remoteflag=1;
-
-  $mindiff = 1.e10;
-  %filetimes=getParseAINF($satellite,$sensor);
-  foreach $k (keys %filetimes){
-    $diff = $testtime-$filetimes{$k};
-    $diff = abs($diff) if $absflag;
-
-    if ($diff > 0) {
-      if ($diff < $mindiff) {
-	$mindiff=$diff;
-	$file=$k;
-	$time=$filetimes{$k};
-      }
-    }
-  }
-  $remoteflag = 0 if (-e "$localdir/$file");
-  ($file, $time, $mindiff, $remoteflag );
-
-}
-
-sub fetchAREAFile{
+sub FetchAREAFile{
 
   my $self=shift;
 
@@ -414,11 +514,102 @@ sub fetchAREAFile{
   $localfile;
 }
 
+#----------------------------------------------------------
+#
+#----------------------------------------------------------
+
 sub setMinDiff{
   my $self=shift
-  my $_min_time_diff=shift || 
-  { carp "Taking default time difference of 45 minutes!\n";
+  my $self->{_MIN_TIME_DIFF} =shift || 
+  { print "Taking default time difference of 45 minutes!\n";
     45;}
 }
+
+
+#----------------------------------------------------------
+# Construct the Local directory
+#----------------------------------------------------------
+
+
+sub LocalDir{
+  my $self = shift;
+  my $satnum= $self->{SAT};
+  my $sensordir= $self->{SENSOR};
+  my $dir = ($self->{LOCALDIR} = "$VapUtil::ARCHIVETOP/goes$satnum/$sensordir");
+}
+
+#----------------------------------------------------------
+# Construct the Remote directory
+#----------------------------------------------------------
+
+
+sub RemoteDir{
+  my $self=shift;
+  my $satnum= $self->{SAT};
+  my $sensordir= $self->{SENSOR};
+  $dir = ($self->{REMOTEDIR} = "goes$satnum/$sensordir");
+}
+
+#----------------------------------------------------------
+# Construct the Path where the gridded files go
+#----------------------------------------------------------
+
+
+sub GriddingPath{
+  my $self=shift;
+  my $satnum= $self->{SAT};
+  my $sensordir= $self->{SENSOR};
+  $dir = ($self->{GRIDDINGDIR} = "$GRIDDINGTOP/goes$satnum/$sensordir");
+}
+
+#----------------------------------------------------------
+#
+#----------------------------------------------------------
+
+
+sub SatNum{
+  my $self=shift;
+  my $satnum;
+  my $satellite = $self->{SATDESIG}
+      croak "(param 1) Need Satellite location (west|east) or Satellite number (10|8)\n";
+  if ($satellite =~ /(west|east)/i) {
+    $satnum=$satloc2satnum{$satellite}; 
+  } else {
+    $satnum=$satellite;
+  }
+  $self->{SATNUM} = $satnum;
+  $satnum;
+}
+
+#----------------------------------------------------------
+#
+#----------------------------------------------------------
+
+
+sub SensorDir{
+  my $self=shift;
+  my $dir;
+  if ($self->{SENSORDESIG} =~ /vis|ir?/) {
+    $self->{SENSORNUM} = (($self->{SENSORDESIG} =~ /vis|ir(\d)/) || 1);
+#     if ($self->{SENSORDESIG} =~ /vis/) {
+#       $self->{SENSORNUM} = 1;
+#       local($dir) = ($self->{SENSORDIR} = $self->{SENSORDESIG}); 
+#     } else {
+#       $self->{SENSORNUM}= ($self->{SENSORDESIG} =~ /ir(\d)/);
+#       local($dir) = ($self->{SENSORDIR} = $self->{SENSORDESIG}); 
+#    }
+  } else {
+    $self->{SENSORNUM} = $self->{SENSORDESIG};
+    $dir = ($self->{SENSORDIR} = $sensornum2name{ $self->{SENSORNUM} });
+  }
+  $dir
+}
+
+
+#----------------------------------------------------------
+#
+#----------------------------------------------------------
+
+
 1;
 
