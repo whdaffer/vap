@@ -60,6 +60,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.4  1999/04/06 18:02:35  vapuser
+; Added gamma keyword (ability to scale logarithmically)
+;
 ; Revision 1.3  1998/11/25 22:37:20  vapuser
 ; Turn minv/maxv into keywords
 ;
@@ -104,8 +107,8 @@ FUNCTION scale, array, minv=minv, maxv=maxv, double=double, gamma=gamma
           scaled_array = array ELSE $
           scaled_array = 1.0*array
       ENDELSE 
-      IF n_Elements(minv) EQ 0 THEN minv = min(array,max=mx)
-      IF n_elements(maxv) EQ 0 THEN maxv = mx
+      IF n_Elements(minv) EQ 0 THEN minv = min(array)
+      IF n_elements(maxv) EQ 0 THEN maxv = max(array)
       scaled_array =  ( (minv> scaled_array < maxv) -minv)/(maxv-minv)
       IF n_elements(gamma) NE 0 THEN scaled_array =  scaled_array^gamma
     END
