@@ -1,0 +1,14 @@
+vap/perl/TODO
+
+Finish work on the cloud_overlay, replacing the obsolescent Gms5.pm 
+with the object oriented OGms5.pm.  Test thoroughly.                    1 day
+
+Test make_animation 							1 day
+
+If possible: put logic in OGms5.pm that determines which grid
+directory to use, that way we don't have to FTP both grid/grida 
+files									??
+
+
+
+
