@@ -265,51 +265,26 @@ PRO goes_overlay, goesfile, $
                     scalevec    = scalevec, $
                     gridlines   = gridlines, $
                     status      = status, $
-                    rainflag      = rainflag, $
+                    rainflag    = rainflag, $
                     rf_action   = rf_action, $
-                    rf_color    = rf_color 
+                    rf_color    = rf_color , $
+                    maplimits   = maplimits
 
 
 ; COMMON goes_overlay_cmn, landel
 
 
   status = 1
-;  genv,/save
-;  tvlct,orig_red,orig_green,orig_blue,/get
-;  loadct,0,/silent
-;  catch, error
-;  IF error NE 0 THEN BEGIN 
-;    Message,!error_state.msg,/cont
-;    catch,/cancel
-;    tvlct,orig_red,orig_green,orig_blue
-;    genv,/restore
-;    status=0
-;    return
-;  END
-
-;  FOR i=0,1 DO BEGIN 
-;    device,get_visual_name= this_visual
-;    this_visual =  strupcase(this_visual)
-;    IF this_visual NE 'DIRECTCOLOR' AND  $
-;       this_visual NE 'TRUECOLOR' THEN BEGIN 
-;      IF i EQ 0 THEN device,true=24 ELSE BEGIN 
-;        Message,'Visual Class MUST be either DIRECTCOLOR or TRUECOLOR',/cont
-;        print,'  You must Exit and restart IDL'
-;        print,'  If you continue getting this error, look at you initilization'
-;        print," files and make sure you're not setting device,pseudo=8"
-;        Message,'ERROR'
-;      ENDELSE
-;    ENDIF 
-;  ENDFOR 
-
-  IF n_elements(goesfile) EQ 0 THEN BEGIN 
-    Message,'Usage: goes_overlay, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec,rainflag=0|1,rf_action=0|1,rf_color=24bitnumber ] ',/cont
-;    tvlct,orig_red,orig_green,orig_blue
-;    genv,/restore
+  savedevice = !d.name
+  IF n_elements(goesfile) EQ 0 AND n_elements(windfiles) EQ 0 THEN BEGIN 
+    Message,'Usage: goes_overlay, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec,rainflag=0|1,rf_action=0|1,rf_color=24bitnumber,mapLimits=mapLimits ] ',/cont
     status = 0
     return
   ENDIF 
-  
+  clouddata = 1
+  winddata = n_elements(windfiles) NE 0 
+  clouddata =  isa(goesfile,/string,/nonempty)
+
   read_cfgfile = 0
   cfgname = cfgname()
   cfgpath = '~/.idlcfg/' 
@@ -428,8 +403,11 @@ PRO goes_overlay, goesfile, $
        '[' + strjoin( strtrim( Default_LandRGB,2)," ") + ']',/cont
       LandRGB = Default_LandRGB
     ENDIF 
-    Color_Convert, LandRGB[0], LandRGB[1], LandRGB[2], LandHue,l,s,/rgb_hls
-  ENDIF 
+    Color_Convert, LandRGB[0], LandRGB[1], LandRGB[2], LandHue,LandLight,LandSat,/rgb_hls
+  ENDIF ELSE BEGIN 
+    LandLight = 0.5
+    LandSat = 1.
+  ENDELSE 
 
   IF n_elements(WaterHue) EQ 0 THEN BEGIN 
     IF n_Elements(WaterRGB) NE 3 THEN BEGIN 
@@ -439,8 +417,11 @@ PRO goes_overlay, goesfile, $
        '[' + strjoin( strtrim( Default_WaterRGB,2)," ") + ']',/cont
       WaterRGB = Default_WaterRGB
     ENDIF 
-    Color_Convert, WaterRGB[0], WaterRGB[1], WaterRGB[2], WaterHue,l,s,/rgb_hls
-  ENDIF 
+    Color_Convert, WaterRGB[0], WaterRGB[1], WaterRGB[2], WaterHue,WaterLight,WaterSat,/rgb_hls
+  ENDIF  ELSE BEGIN 
+    WaterLight = 0.5
+    WaterSat = 1.
+  ENDELSE 
   
   LandHue =  0> LandHue < 360.
   WaterHue =  0> WaterHue < 360.
@@ -477,558 +458,582 @@ PRO goes_overlay, goesfile, $
 
 
   start_time = systime(1)
-  Read_PCGoes,goesfile,limits,GoesData,hdr=hdr, status=status
+  IF clouddata THEN BEGIN 
+    Read_PCGoes,goesfile,limits,GoesData,hdr=hdr, status=status
+ 
+    
+    IF NOT status THEN BEGIN 
+      Message,'Error Reading file: ' + goesfile,/info
+      Message,' -- Trying to get information from filename!',/info
+      GoesFilenameStruct = ParseGoesFileName( goesfile )
+      IF VarType( GoesFilenameStruct ) NE 'STRUCTURE' THEN BEGIN 
+        Message," Trouble parsing filename " + Goesfile + "for info, can't continue!"  ,/info
+        status = 0
+        return
+      ENDIF 
 
-  IF NOT status THEN BEGIN 
-    Message,'ERROR Reading Goesfile ' + goesfile,/cont
-    status = 0
-    return
-  ENDIF 
+      status = 1
+      clouddata = 0
 
-    ; Make sure the longitude range is monotonic
+      sat_name = GoesFilenameStruct.SatName + " " + $
+       strtrim(GoesFilenameStruct.SatNum,2 )
+
+      sensornum = GoesFilenameStruct.Sensornum
+      sensors = ['VIS','IR2','IR3','IR4']
+      sensor    =  sensors[ sensornum-1 ]
+      goes_date = PadAndJustify(GoesFilenameStruct.year, 4, /right ) + $
+                  PadAndJustify(GoesFilenameStruct.mm, 2, /right ) + $
+                  PadAndJustify(GoesFilenameStruct.dd, 2, /right ) + $
+                  'T' + $
+                  PadAndJustify(GoesFilenameStruct.hh, 2, /right ) + $
+                  PadAndJustify(GoesFilenameStruct.mm, 2, /right )
+
+      limits = GoesfilenameStruct.limits
+
+      goes_string =  sat_name + ' ' + sensor + ' ('  + goes_date + ')'
+
+      ofile_tmplt = sat_name + '_' + sensor + '_' + goes_date 
+
+    ENDIF ELSE BEGIN 
+
+      sat_name = 'GOES' + " " + strtrim(hdr.type/10)
+      sensor =  hdr.type-(hdr.type/10)*10
+      sensors = ['VIS','IR2','IR3','IR4']
+      sensor    =  sensors[ sensornum-1 ]
+
+      date = doy2date(hdr.year,hdr.doy)
+      year = strtrim(hdr.year)
+      hh = (hdr.hhmm)/10
+      mm = hdr.hhmm-hh*10
+
+      goes_date = year + date[0] + date[1]+ 'T' + $
+                  PadAndJustify(hh, 2, /right ) + $
+                  PadAndJustify(mm, 2, /right )
+      goes_string =  sat_name + ' ' + sensor + ' ('  + goes_date + ')'
+      
+      ofile_tmplt = sat_name + '_' + sensor + '_' + goes_date 
+    ENDELSE 
+
+  ENDIF ELSE BEGIN 
+
+    Message,"No cloud file, taking data from MapLimits keyword",/info
+    IF n_elements(MapLimits) NE 4 THEN BEGIN 
+      Message,"No MapLimits! Exiting!",/info
+      status = 0
+      return
+    ENDIF 
+    goes_date =  'No_Cloud_Data'
+    goes_string =  goes_date
+    ofile_tmplt =  "UNK_UNK_" + goes_date
+    limits = MapLimits
+    clouddata = 0
+    status = 1
+  ENDELSE 
+
+
+  limits = double(limits)
   lonrange = FixLonRange( [ limits[0],limits[2] ])
   
 
 
-  IF status THEN BEGIN 
-    GoesFilenameStruct = ParseGoesFileName( goesfile )
-    IF VarType( GoesFilenameStruct ) NE 'STRUCTURE' THEN BEGIN 
-      Message," Trouble parsing " + Goesfile ,/cont
-;      tvlct,orig_red,orig_green,orig_blue
-;      genv,/restore
-      status = 0
-      return
-    ENDIF ELSE BEGIN 
-      sat_name = GoesFilenameStruct.SatName + " " + $
-       strtrim(GoesFilenameStruct.SatNum,2 )
-    ENDELSE 
-    sensornum = GoesFilenameStruct.Sensornum
-    sensors = ['VIS','IR2','IR3','IR4']
-    sensor    =  sensors[ sensornum-1 ]
-    goes_date = PadAndJustify(GoesFilenameStruct.year, 4, /right ) + $
-                PadAndJustify(GoesFilenameStruct.mm, 2, /right ) + $
-                PadAndJustify(GoesFilenameStruct.dd, 2, /right ) + $
-                'T' + $
-                PadAndJustify(GoesFilenameStruct.hh, 2, /right ) + $
-                PadAndJustify(GoesFilenameStruct.mm, 2, /right )
-    goes_string =  sat_name + ' ' + sensor + ' ('  + goes_date + ')'
 
+  IF clouddata THEN BEGIN 
     IR =  ( sensornum GT 1 )
-
     IF ir THEN GoesData = 1023-temporary(GoesData)
-    IF N_elements(minpix) EQ 0 THEN minpix = 0
+    cloudmask = scale(temporary(GoesData),minv=0,maxv=1023)*99
 
-    IF getenv('OVERLAY_CT') NE '' THEN BEGIN 
-      ptr = ReadColorTable('$OVERLAY_CT')
+  ENDIF 
+
+  IF N_elements(minpix) EQ 0 THEN minpix = 0
+
+  IF getenv('OVERLAY_CT') NE '' THEN BEGIN 
+    ptr = ReadColorTable('$OVERLAY_CT')
+  ENDIF ELSE BEGIN 
+    ptr = ReadColorTable($
+       '/usr/people/vapuser/Qscat/Resources/Color_Tables/goes_overlay24.ct')
+  ENDELSE 
+  IF NOT Ptr_Valid(ptr) THEN BEGIN 
+    Message,'Error Reading ColorTable!',/cont
+    status = 0
+    return
+  ENDIF 
+  CT = *ptr
+  ptr_free,ptr
+
+  WIND_START = 1
+  N_COLORS = n_elements(ct[0,*])
+  N_WIND_COLORS = n_colors-2
+
+  nn = where(strlen(windfiles) NE 0 , nf)
+  IF nf NE 0 THEN BEGIN 
+    WindFiles = WindFiles[nn]
+    t0 = systime(1)
+    windData = Read_Wind_Files(windFiles,$
+                               CRDecimate=CRDecimate,$
+                               Decimate=Decimate,$
+                               ExcludeCols=ExcludeCols, $
+                               rainflag=rainflag, $
+                               rf_action=rf_action, $
+                               rf_index=rfi)
+    t1 = systime(1)
+    IF verbose THEN print,' Read_wind_Files took: ', t1-t0,$
+      ' Seconds '
+    t0 = t1
+
+    ndims = size(windData,/n_dim)
+    IF ndims NE 2 THEN BEGIN 
+      Message,'Error reading data from windfiles ',/cont
+      print,'Input Windfiles are ', transpose(windFiles)
+      print,'Continuing with overlay without the Wind Data!'
     ENDIF ELSE BEGIN 
-      ptr = ReadColorTable($
-         '/usr/people/vapuser/Qscat/Resources/Color_Tables/goes_overlay24.ct')
-    ENDELSE 
-    IF NOT Ptr_Valid(ptr) THEN BEGIN 
-      Message,'Error Reading ColorTable!',/cont
-;      tvlct,orig_red,orig_green,orig_blue
-;      genv,/restore
-      status = 0
-      return
-    ENDIF 
-    CT = *ptr
-    ptr_free,ptr
-
-    WIND_START = 1
-    N_COLORS = n_elements(ct[0,*])
-    N_WIND_COLORS = n_colors-2
-
-    nn = where(strlen(windfiles) NE 0 , nf)
-    IF nf NE 0 THEN BEGIN 
-      WindFiles = WindFiles[nn]
-      t0 = systime(1)
-      windData = Read_Wind_Files(windFiles,$
-                                 CRDecimate=CRDecimate,$
-                                 Decimate=Decimate,$
-                                 ExcludeCols=ExcludeCols, $
-                                 rainflag=rainflag, $
-                                 rf_action=rf_action, $
-                                 rf_index=rfi)
-      t1 = systime(1)
-      IF verbose THEN print,' Read_wind_Files took: ', t1-t0,$
-        ' Seconds '
-      t0 = t1
-
-      ndims = size(windData,/n_dim)
-      IF ndims NE 2 THEN BEGIN 
-        Message,'Error reading data from windfiles ',/cont
-        print,'Input Windfiles are ', transpose(windFiles)
-        print,'Continuing with overlay without the Wind Data!'
-      ENDIF ELSE BEGIN 
-        u = windData[*,0]
-        v = windData[*,1]
-        lon = windData[*,2]
-        lat = windData[*,3]
+      u = windData[*,0]
+      v = windData[*,1]
+      lon = windData[*,2]
+      lat = windData[*,3]
         
-        good = where( finite(u) AND finite(v), ngood )
-        IF ngood NE 0 THEN BEGIN 
-          IF rf_action EQ 1 AND $
-           rfi[0] NE -1 THEN BEGIN 
-            ii = lonarr(n_elements(u))
-            ii[rfi] = 1
-            rfi =  where( ii[good], nn)&  ii=0
-          ENDIF 
-
-          u = u[good]
-          v = v[good]
-          lon = lon[good]
-          lat = lat[good]
-
-          speed = sqrt( u^2+v^2)
-          good = where( speed NE 0, ngood )
-          IF ngood NE 0 THEN BEGIN 
-            IF ngood NE n_elements(u) THEN BEGIN 
-
-              IF rf_action EQ 1 AND $
-               rfi[0] NE -1 THEN BEGIN 
-                ii = lonarr(n_elements(u))
-                ii[rfi] = 1
-                rfi =  where( ii[good],nn)&  ii=0
-              ENDIF 
-
-              u = u[good]
-              v = v[good]
-              lon = lon[good]
-              lat = lat[good]
-              speed = speed[good]
-
-            ENDIF 
-            good = where( lon GE lonrange[0] AND $
-                          lon LE lonrange[1] AND $
-                          lat GE limits[1] AND $
-                          lat LE limits[3], ngood )
-            IF ngood NE 0 THEN BEGIN 
-              IF rf_action EQ 1 AND $
-               rfi[0] NE -1 THEN BEGIN 
-                ii = lonarr(n_elements(u))
-                ii[rfi] = 1
-                rfi =  where( ii[good],nn)&  ii=0
-              ENDIF 
-              u = u[good]
-              v = v[good]
-              lon = lon[good]
-              lat = lat[good]
-              speed = speed[good]
-
-              veccol = BytScl( speed, min=minspeed, $
-                               max=maxspeed, $
-                               top=N_WIND_COLORS-1) + $
-                                  WIND_START
-              col24 = Rgb2True( veccol, colortable=ct)
-              
-            ENDIF ELSE BEGIN 
-              u = 0
-              v = 0
-              lon = 0
-              lat = 0
-              speed = 0
-              col24 = 0
-            ENDELSE 
-            t0 = systime(1)
-            
-          ENDIF 
+      good = where( finite(u) AND finite(v), ngood )
+      IF ngood NE 0 THEN BEGIN 
+        IF rf_action EQ 1 AND $
+         rfi[0] NE -1 THEN BEGIN 
+          ii = lonarr(n_elements(u))
+          ii[rfi] = 1
+          rfi =  where( ii[good], nn)&  ii=0
         ENDIF 
-      ENDELSE 
 
-    ENDIF   
+        u = u[good]
+        v = v[good]
+        lon = lon[good]
+        lat = lat[good]
 
-    sz = size(GoesData,/dimensions)
+        speed = sqrt( u^2+v^2)
+        good = where( speed NE 0, ngood )
+        IF ngood NE 0 THEN BEGIN 
+          IF ngood NE n_elements(u) THEN BEGIN 
+            IF rf_action EQ 1 AND $
+              rfi[0] NE -1 THEN BEGIN 
+              ii = lonarr(n_elements(u))
+              ii[rfi] = 1
+              rfi =  where( ii[good],nn)&  ii=0
+            ENDIF 
+
+            u = u[good]
+            v = v[good]
+            lon = lon[good]
+            lat = lat[good]
+            speed = speed[good]
+
+          ENDIF 
+          good = where( lon GE lonrange[0] AND $
+                        lon LE lonrange[1] AND $
+                        lat GE limits[1] AND $
+                        lat LE limits[3], ngood )
+          IF ngood NE 0 THEN BEGIN 
+            IF rf_action EQ 1 AND $
+             rfi[0] NE -1 THEN BEGIN 
+              ii = lonarr(n_elements(u))
+              ii[rfi] = 1
+              rfi =  where( ii[good],nn)&  ii=0
+            ENDIF 
+            u = u[good]
+            v = v[good]
+            lon = lon[good]
+            lat = lat[good]
+            speed = speed[good]
+            veccol = BytScl( speed, min=minspeed, $
+                             max=maxspeed, $
+                             top=N_WIND_COLORS-1) + $
+                                WIND_START
+            col24 = Rgb2True( veccol, colortable=ct)
+              
+          ENDIF ELSE BEGIN 
+            u = 0
+            v = 0
+            lon = 0
+            lat = 0
+            speed = 0
+            col24 = 0
+          ENDELSE 
+          t0 = systime(1)
+            
+        ENDIF 
+      ENDIF 
+    ENDELSE 
+
+  ENDIF   
+
+  IF clouddata THEN BEGIN 
+    sz = size(cloudmask,/dimensions)
     nlon = 1.0*sz[0]
     nlat = 1.0*sz[1]
-
-    lonmin = lonrange[0]
-    latmin = limits[1]
-    loninc = (lonrange[1]-lonrange[0])/nlon
-    latinc = (limits[3]-limits[1])/nlat
-    loni = (findgen(nlon)*loninc+lonmin)#(replicate(1.,nlat))
-    lati = replicate(1.,nlon)#(findgen(nlat)*latinc+latmin)
-
-    t0 = systime(1)
-    land = where( runLandMask(loni,lati), nland )
-    t1 = systime(1) 
-    IF verbose THEN print,'Time for Landmask : ',t1-t0, ' Seconds '
-    t0 = t1
-
-;    x = where(loni LT 0, nx )
-;    IF nx NE 0 THEN loni[x] =  loni[x] + 360.
-;    topoIm = landel[ loni*12, (lati+90)*12 ]
-
-    t1 = systime(1) 
-    IF verbose THEN print,'Time for TopoIm : ',t1-t0, ' Seconds '
-    t0 = t1
-
-    loni = 0
-    lati = 0
-
-
+  ENDIF ELSE BEGIN 
     IF ps THEN BEGIN 
-      set_plot,'PS'
-      ps_form = { XSIZE          : xsize   ,$ 
-                  XOFF           : xoffset ,$ 
-                  YSIZE          : ysize   ,$ 
-                  YOFF           : yoffset ,$ 
-                  INCHES         : 1       ,$  
-                  COLOR          : 1       ,$  
-                  BITS_PER_PIXEL : 8       ,$
-                  ENCAPSULATED   : 0       ,$
-                  LANDSCAPE      : 1        }
-      device,_extra=ps_form
-      ; device,font='
+      loninc = (lonrange[1]-lonrange[0] +1)/(2.*72*xsize)
+      latinc = (limits[3]-limits[1] +1)/(2.*72*ysize)
     ENDIF ELSE BEGIN 
-      Message,'Setting Z device',/info
-      set_plot,'z'
-      Message,'Configuring Z device',/info
-      device,set_resolution=[xsize,ysize],z_buff=0
-      finalim = bytarr(xsize,ysize,3)
-      ;window,/free, /pixmap, xsize=xsize, ysize=ysize
-      ;pixmap = !d.window
-      !p.font = 0
-      ;device,font='Helvetica Bold',/tt_font,/font
-      ;device,set_font='-adobe-helvetica-medium-r-normal--14-100-100-100-p-76-iso8859-1'
+      loninc = (lonrange[1]-lonrange[0] +1)/xsize
+      latinc = (limits[3]-limits[1] +1)/ysize
     ENDELSE 
-    Message,'Done Configuring Z device',/info
+    nlon =  fix((lonrange[1]-lonrange[0])/loninc+1)
+    nlat =  fix((limits[3]-limits[1])/latinc+1)
+  ENDELSE 
 
-    loncent = mean(lonrange)
+  lonmin = lonrange[0]
+  latmin = limits[1]
+  loni = (findgen(nlon)*loninc+lonmin)#(replicate(1.,nlat))
+  lati = replicate(1.,nlon)#(findgen(nlat)*latinc+latmin)
+
+  t0 = systime(1)
+  land = where( runLandMask(loni,lati), nland )
+  t1 = systime(1) 
+  IF verbose THEN print,'Time for Landmask : ',t1-t0, ' Seconds '
+  t0 = t1
+
+  t1 = systime(1) 
+  IF verbose THEN print,'Time for TopoIm : ',t1-t0, ' Seconds '
+  t0 = t1
+
+  loni = 0
+  lati = 0
+
+
+  IF ps THEN BEGIN 
+    set_plot,'PS'
+    ps_form = { XSIZE          : xsize   ,$ 
+                XOFF           : xoffset ,$ 
+                YSIZE          : ysize   ,$ 
+                YOFF           : yoffset ,$ 
+                INCHES         : 1       ,$  
+                COLOR          : 1       ,$  
+                BITS_PER_PIXEL : 8       ,$
+                ENCAPSULATED   : 0       ,$
+                LANDSCAPE      : 1        }
+    device,_extra=ps_form
+    ; device,font='
+  ENDIF ELSE BEGIN 
+    Message,'Setting Z device',/info
+    set_plot,'z'
+    Message,'Configuring Z device',/info
+    device,set_resolution=[xsize,ysize],z_buff=0
+    finalim = bytarr(xsize,ysize,3)
+    ;window,/free, /pixmap, xsize=xsize, ysize=ysize
+    ;pixmap = !d.window
+    !p.font = 0
+    ;device,font='Helvetica Bold',/tt_font,/font
+    ;device,set_font='-adobe-helvetica-medium-r-normal--14-100-100-100-p-76-iso8859-1'
+  ENDELSE 
+  Message,'Done Configuring Z device',/info
+
+  loncent = mean(lonrange)
 ;    Map_Set,0,loncent,$
 ;     limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
 ;      Ymargin=[4.,4]
 
 
-    IF n_Elements(outfile) EQ 0 THEN BEGIN 
+  IF n_Elements(outfile) EQ 0 THEN BEGIN 
 
-      t = long([lonrange[0],limits[1],lonrange[1],limits[3]])
-      lim_str =  '%'+ strcompress(StrJoin(t,','),/remove_all) +  '%'
-      dlm =  '_'
+    t = long([lonrange[0],limits[1],lonrange[1],limits[3]])
+    lim_str =  '%'+ strcompress(StrJoin(t,','),/remove_all) +  '%'
 
-      year =  PadAndJustify(hdr.year, 4 )
-      tmp = doy2date(hdr.year,hdr.doy)
-      month = tmp[0]
-      dom = tmp[1]
-      hh = hdr.hhmm/100
-      mm = hdr.hhmm-hh*100
-      hh = PadAndJustify(hh,2,/right)
-      mm = PadAndJustify(mm,2,/right)
+    ofileroot =  ofile_tmplt + lim_str
 
+    CASE 1 OF 
+      gif : ext = '.gif'
+      jpeg: ext = '.jpeg'
+      ps  : ext = '.ps'
+    ENDCASE  
+    OutputFilename = ofileroot + ext
 
-      time_string = year + month + dom + "T" + hh+':'+mm
+  ENDIF ELSE outputFilename =  outfile
 
+  IF ps THEN device,filename=OutputFilename
 
-      ofileroot = strtrim( sat_name, 2 ) +  dlm + $
-       sensor + '_' + time_string
+  Hue = fltarr(nlon,nlat)+WaterHue
 
+  IF nland NE 0 THEN Hue[land] = LandHue
 
-      sp =  strpos( ofileroot,' ' )
-      strput, ofileroot, '_', sp
-      ofileroot =  ofileroot + '-' + lim_str
-      IF keyword_set( file_str ) THEN BEGIN 
-         IF strlen( file_str[0] ) GT 0 THEN BEGIN 
-           s =  str_sep( file_str,' ' )
-           tt =  '_' + s(0)
-           FOR i=1,n_elements(s)-1 DO tt =  tt + '_' + s(i)
-           ofileroot =  ofileroot + tt
-         ENDIF 
-      ENDIF 
+  IF config AND clouddata THEN $
+    CLOUD_OVERLAY_CONFIG, $
+      landwater=hue, $
+        cloudmask=cloudmask, $
+         brightmin=brightmin, $
+          brightmax=brightmax, $
+           satmin=satmin, $
+            satmax=satmax, $
+             lonmin=lonrange[0], $
+              lonmax=lonrange[1], $
+               latmin=limits[1], $
+                 latmax=limits[3]
 
-      CASE 1 OF 
-        gif : ext = '.gif'
-        jpeg: ext = '.jpeg'
-        ps  : ext = '.ps'
-      ENDCASE  
-      OutputFilename = ofileroot + ext
+    ; Re-establish the plotting environs.
+  Map_Set,0,loncent,$
+   limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
+    Ymargin=[4.,4]
 
-    ENDIF ELSE outputFilename =  outfile
+    ; Define the new Brightness/Saturation mappings
+  xx=findgen(100)/99.
 
-    IF ps THEN device,filename=OutputFilename
+  bi = 0> interpol( [0.,1], [BrightMin, BrightMax], xx ) < 1
+  si = 0> interpol( [1.,0], [SatMin,    SatMax],xx ) < 1
 
-    cloudmask = scale( GoesData,minv=0,maxv=1023)*99
-    Hue = fltarr(nlon,nlat)+WaterHue
-    IF nland NE 0 THEN Hue[land] = LandHue
+    ; Use 'cloudmask' to create new Brightness/Saturation values
 
-    IF config THEN $
-      CLOUD_OVERLAY_CONFIG, $
-        landwater=hue, $
-          cloudmask=cloudmask, $
-           brightmin=brightmin, $
-            brightmax=brightmax, $
-             satmin=satmin, $
-              satmax=satmax, $
-               lonmin=lonrange[0], $
-                lonmax=lonrange[1], $
-                 latmin=limits[1], $
-                   latmax=limits[3]
-
-      ; Re-establish the plotting environs.
-    Map_Set,0,loncent,$
-     limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
-      Ymargin=[4.,4]
-   
-      ; Define the new Brightness/Saturation mappings
-    xx=findgen(100)/99.
-
-    bi = 0> interpol( [0.,1], [BrightMin, BrightMax], xx ) < 1
-    si = 0> interpol( [1.,0], [SatMin,    SatMax],xx ) < 1
-
-      ; Use 'cloudmask' to create new Brightness/Saturation values
-
+  IF clouddata THEN BEGIN 
+    
     b2=bi[cloudmask]
     s2=si[temporary(cloudmask)]
     cloudmask = 0
+  ENDIF ELSE BEGIN 
+    b2 = hue*0.+WaterLight
+    b2[land] = LandLight
+    s2 = hue*0. + WaterSat
+    s2[land] = LandSat
+  ENDELSE 
 
-      ; Substitute these new Brightness/Saturation values in for those in
-      ; mapIm and convert back to RGB 
+    ; Substitute these new Brightness/Saturation values in for those in
+    ; mapIm and convert back to RGB 
 
-    Color_Convert, Hue,b2,s2, imr, img, imb, /hls_rgb
-    Hue = 0
-    b2 = 0
-    s2 = 0
-    Im = [ [[temporary(imr)]], [[temporary(img)]], [[temporary(imb)]] ]
+  Color_Convert, Hue,b2,s2, imr, img, imb, /hls_rgb
+  Hue = (b2=(s2=0))
+  Im = [ [[temporary(imr)]], [[temporary(img)]], [[temporary(imb)]] ]
+
+  FOR i=0,2 DO BEGIN 
+    tmpIm = Map_Image( Im[*,*,i], $
+                       xs,ys,xsize,ysize,$
+                       lonmin=lonrange[0],$
+                       latmin=limits[1],$
+                       lonmax=lonrange[1],$
+                       latmax=limits[3],$
+                       scale=scalefac, /compress, /bilinear )
+
+
+    IF i EQ 0 THEN BEGIN 
+      dim = size(tmpIm,/dim)
+      mapIm = bytarr(dim[0], dim[1], 3)
+    ENDIF 
+    mapIm[*,*,i] =  temporary(tmpIm)
+  ENDFOR 
+  im = 0
+
+    ; Tv the final image. Put on grid lines and plot the vectors.
+
+  IF n_elements(title) NE 0 THEN $
+     Title= title + ' ' + goes_string ELSE $
+     Title= goes_string 
+
+    ; Calculate where to put Colorbar
+  sz = size( mapIm[*,*,0],/dim)
+  xyz = Convert_Coord( 0, ys+sz[1]/scalefac,/device,/to_normal)
+
+  y = xyz[1]
+  ycb = [3*y+2, 2*y+3]/5
+
+    ; Lay down the title
+  xyz = Convert_Coord(0,ys,/device,/to_normal)
+  ytitle = xyz[1]/2.
+
+  xyz = Convert_Coord( 0, fix(1.5*!D.Y_CH_Size), /device, /to_normal )
+  ysubtitle = ytitle-xyz[1]
+
+
+
+  nn = n_Elements(u)
+
+  IF ps THEN BEGIN 
+
+    text_color = '000000'xl
+    Tv,mapIm,xs,ys,xsize=xsize,ysize=ysize,true=3 
+    tvlct,orig_red,orig_green,orig_blue,/get
+    tvlct,transpose(ct)
+    IF nn GT 1 THEN $
+      PlotVect,u,v,lon,lat,len=length,$
+       thick=thick,start_index=WIND_START,ncolors=N_WIND_COLORS, $
+         minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec
+
+    IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
+      TVLCT,rf_color AND 'ff'xl,$
+       ishft(rf_color,-8) AND 'ff'xl, $
+       ishft(rf_color,-16) AND 'ff'xl,1
+      PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
+       thick=thick,minspeed=minspeed, maxspeed=maxspeed, $
+       scale=scaleVec,color=1
+    ENDIF 
+    IF gridlines THEN $
+      Map_Set,0,loncent,$
+        limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],$
+         Ymargin=[4.,4], /grid,/label,/noerase
+
+    ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+           position=[0.25,ycb[0], 0.75, ycb[1]], $
+             Title='Wind Speed (m/s)',Min=minspeed, $
+               max=maxspeed,divisions=4, format='(f5.0)', $
+                pscolor=ps, /true, table=ct, charsize=0.75, $
+                  color=text_color
+
+
+    xyouts, 0.5, ytitle, title, align=0.5, $
+     /normal, charsize=1.05, color=text_color
+
+    IF n_Elements(subtitle) NE 0 THEN BEGIN 
+       xyouts, 0.5, ysubtitle, subtitle, align=0.5, $
+          /normal, charsize=1.0, color=text_color
+    ENDIF 
+
+    IF rainflag NE 0 AND rf_action EQ 1 THEN BEGIN 
+      newct = ct
+      newct[*,0] =  [rf_color AND 'ff'xl, $
+                      ishft(rf_color,-8) AND 'ff'xl, $
+                       ishft(rf_color,-16) AND 'ff'xl]
+
+      Colbar,pos=[0.49,0.005,0.51,0.025],bottom=0,ncolors=1,min=0,max=1,$
+           table=newct,/true,/noannot,color=text_color
+      xyouts,0.49,0.005,'Rain ',align=1,/normal,color=text_color
+      xyouts,0.51,0.005,' Flagged',/normal,color=text_color
+
+
+    ENDIF 
+
+      tvlct,orig_red,orig_green,orig_blue
+  ENDIF ELSE BEGIN 
+
+      ; Here we do the gif/jpeg processing. Since the device we're
+      ; using isn't a native 24 bit device, we do it 'plane by
+      ; plane.'
+
+
+      ; Set some constant quantities.
+
+    text_color = 255b
+
+      ; Now loop over each color plane, plotting vectors and putting
+      ; down color bars, titles and such.
 
     FOR i=0,2 DO BEGIN 
-      tmpIm = Map_Image( Im[*,*,i], $
-                         xs,ys,xsize,ysize,$
-                         lonmin=lonrange[0],$
-                         latmin=limits[1],$
-                         lonmax=lonrange[1],$
-                         latmax=limits[3],$
-                         scale=scalefac, /compress, /bilinear )
+      Tv,mapIm[*,*,i],xs,ys
 
-      
-      IF i EQ 0 THEN BEGIN 
-        dim = size(tmpIm,/dim)
-        mapIm = bytarr(dim[0], dim[1], 3)
-      ENDIF 
-      mapIm[*,*,i] =  temporary(tmpIm)
-    ENDFOR 
-    im = 0
+      Map_Set,0,loncent,$
+       limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
+         Ymargin=[4.,4],/noerase
 
-      ; Tv the final image. Put on grid lines and plot the vectors.
-
-    IF n_elements(title) NE 0 THEN $
-       Title= title + ' ' + goes_string ELSE $
-       Title= goes_string 
-
-      ; Calculate where to put Colorbar
-    sz = size( mapIm[*,*,0],/dim)
-    xyz = Convert_Coord( 0, ys+sz[1]/scalefac,/device,/to_normal)
-
-    y = xyz[1]
-    ycb = [3*y+2, 2*y+3]/5
-
-      ; Lay down the title
-    xyz = Convert_Coord(0,ys,/device,/to_normal)
-    ytitle = xyz[1]/2.
-
-    xyz = Convert_Coord( 0, fix(1.5*!D.Y_CH_Size), /device, /to_normal )
-    ysubtitle = ytitle-xyz[1]
+      ; Plot the vectors (if there are any.)
+      IF nn GT 1 THEN BEGIN 
+        CASE i OF 
+          0: col =  col24 AND 'ff'xl
+          1: col =  ishft(col24,-8) AND 'ff'xl
+          2: col =  ishft(col24,-16) AND 'ff'xl
+        ENDCASE 
+        PlotVect, u,v,lon,lat, color=col, len=length, thick=thick, $
+          scale=scaleVec,minspeed=minspeed,maxspeed=maxspeed
+        IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
+          PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
+            thick=thick,minspeed=minspeed, maxspeed=maxspeed, $
+              scale=scaleVec, color=rf_color
+        ENDIF 
+      ENDIF  
 
 
-
-    nn = n_Elements(u)
-
-    IF ps THEN BEGIN 
-
-      text_color = '000000'xl
-      Tv,mapIm,xs,ys,xsize=xsize,ysize=ysize,true=3 
-      tvlct,orig_red,orig_green,orig_blue,/get
-      tvlct,transpose(ct)
-      IF nn GT 1 THEN $
-        PlotVect,u,v,lon,lat,len=length,$
-         thick=thick,start_index=WIND_START,ncolors=N_WIND_COLORS, $
-           minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec
-      
-      IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
-        TVLCT,rf_color AND 'ff'xl,$
-         ishft(rf_color,-8) AND 'ff'xl, $
-         ishft(rf_color,-16) AND 'ff'xl,1
-        PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
-         thick=thick,minspeed=minspeed, maxspeed=maxspeed, $
-         scale=scaleVec,color=1
-      ENDIF 
-      IF gridlines THEN $
-        Map_Set,0,loncent,$
-          limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],$
-           Ymargin=[4.,4], /grid,/label,/noerase
-
+      col = bytarr(3,n_elements(ct[0,*]))
+      col[0,*] =  ct[i,*]
+      ;tvlct,r,g,b,/get
+      ;tvlct,transpose(col)
       ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
              position=[0.25,ycb[0], 0.75, ycb[1]], $
                Title='Wind Speed (m/s)',Min=minspeed, $
                  max=maxspeed,divisions=4, format='(f5.0)', $
-                  pscolor=ps, /true, table=ct, charsize=0.75, $
-                    color=text_color
+                 charsize=0.75,color=255, table=col, /true
+
+      ;tvlct,r,g,b
 
 
       xyouts, 0.5, ytitle, title, align=0.5, $
        /normal, charsize=1.05, color=text_color
 
+
       IF n_Elements(subtitle) NE 0 THEN BEGIN 
-         xyouts, 0.5, ysubtitle, subtitle, align=0.5, $
+          xyouts, 0.5, ysubtitle, subtitle, align=0.5, $
             /normal, charsize=1.0, color=text_color
       ENDIF 
 
+
+
+
       IF rainflag NE 0 AND rf_action EQ 1 THEN BEGIN 
         newct = ct
-        newct[*,0] =  [rf_color AND 'ff'xl, $
-                        ishft(rf_color,-8) AND 'ff'xl, $
-                         ishft(rf_color,-16) AND 'ff'xl]
+        CASE i OF
+          0: newct[0,0] = rf_color AND 'ff'xl
+          1: newct[0,0] = ishft(rf_color,-8) AND 'ff'xl
+          2: newct[0,0] = ishft(rf_color,-16) AND 'ff'xl
+        ENDCASE 
 
+        ;tvlct,r,g,b,/get
+        ;tvlct,transpose(newct)
         Colbar,pos=[0.49,0.005,0.51,0.025],bottom=0,ncolors=1,min=0,max=1,$
-             table=newct,/true,/noannot,color=text_color
+             table=newct,/true,/noannot,color=255
+        ;tvlct,r,g,b
         xyouts,0.49,0.005,'Rain ',align=1,/normal,color=text_color
         xyouts,0.51,0.005,' Flagged',/normal,color=text_color
 
 
       ENDIF 
 
-        tvlct,orig_red,orig_green,orig_blue
-    ENDIF ELSE BEGIN 
 
-        ; Here we do the gif/jpeg processing. Since the device we're
-        ; using isn't a native 24 bit device, we do it 'plane by
-        ; plane.'
-
-
-        ; Set some constant quantities.
-
-      text_color = 255b
-
-        ; Now loop over each color plane, plotting vectors and putting
-        ; down color bars, titles and such.
-
-      FOR i=0,2 DO BEGIN 
-        Tv,mapIm[*,*,i],xs,ys
-
+      IF gridlines THEN $
         Map_Set,0,loncent,$
-         limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
-           Ymargin=[4.,4],/noerase
+          limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],$
+           Ymargin=[4.,4], /grid,/label,/noerase, color=255b
 
-        ; Plot the vectors (if there are any.)
-        IF nn GT 1 THEN BEGIN 
-          CASE i OF 
-            0: col =  col24 AND 'ff'xl
-            1: col =  ishft(col24,-8) AND 'ff'xl
-            2: col =  ishft(col24,-16) AND 'ff'xl
-          ENDCASE 
-          PlotVect, u,v,lon,lat, color=col, len=length, thick=thick, $
-            scale=scaleVec,minspeed=minspeed,maxspeed=maxspeed
-          IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
-            PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
-              thick=thick,minspeed=minspeed, maxspeed=maxspeed, $
-                scale=scaleVec, color=rf_color
-          ENDIF 
-        ENDIF  
+      finalim[*,*,i] =  tvrd()
+    ENDFOR 
+
+    t1 = systime(1)
+    IF verbose THEN print,' Plotvect took: ', t1-t0,' Seconds '
+    t0 = t1
+
+  ENDELSE 
 
 
-        col = bytarr(3,n_elements(ct[0,*]))
-        col[0,*] =  ct[i,*]
-        ;tvlct,r,g,b,/get
-        ;tvlct,transpose(col)
-        ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
-               position=[0.25,ycb[0], 0.75, ycb[1]], $
-                 Title='Wind Speed (m/s)',Min=minspeed, $
-                   max=maxspeed,divisions=4, format='(f5.0)', $
-                   charsize=0.75,color=255, table=col, /true
-
-        ;tvlct,r,g,b
-
-
-        xyouts, 0.5, ytitle, title, align=0.5, $
-         /normal, charsize=1.05, color=text_color
-
-
-        IF n_Elements(subtitle) NE 0 THEN BEGIN 
-            xyouts, 0.5, ysubtitle, subtitle, align=0.5, $
-              /normal, charsize=1.0, color=text_color
-        ENDIF 
-
-
-
-
-        IF rainflag NE 0 AND rf_action EQ 1 THEN BEGIN 
-          newct = ct
-          CASE i OF
-            0: newct[0,0] = rf_color AND 'ff'xl
-            1: newct[0,0] = ishft(rf_color,-8) AND 'ff'xl
-            2: newct[0,0] = ishft(rf_color,-16) AND 'ff'xl
-          ENDCASE 
-
-          ;tvlct,r,g,b,/get
-          ;tvlct,transpose(newct)
-          Colbar,pos=[0.49,0.005,0.51,0.025],bottom=0,ncolors=1,min=0,max=1,$
-               table=newct,/true,/noannot,color=255
-          ;tvlct,r,g,b
-          xyouts,0.49,0.005,'Rain ',align=1,/normal,color=text_color
-          xyouts,0.51,0.005,' Flagged',/normal,color=text_color
-
-
-        ENDIF 
-
-
-        IF gridlines THEN $
-          Map_Set,0,loncent,$
-            limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],$
-             Ymargin=[4.,4], /grid,/label,/noerase, color=255b
-
-        finalim[*,*,i] =  tvrd()
-      ENDFOR 
-
+  CASE 1 OF 
+    gif: BEGIN 
+      ;If output is 'gif' quantize it down to 175 colors.
+      t0 = systime(1)
+      ;finalim = tvrd(true=3)
+      im = color_Quan( finalim, 3, r,g,b, colors=175 )
       t1 = systime(1)
-      IF verbose THEN print,' Plotvect took: ', t1-t0,' Seconds '
+      IF verbose THEN print,' Color_Quan took: ', t1-t0,' Seconds '
       t0 = t1
 
-    ENDELSE 
+      Write_Gif, OutputFilename, im, r,g,b
+      t1 = systime(1)
+      IF arg_present(thumbnail) THEN  BEGIN 
+        dims = size(im,/dimension)
+        thumbnail = OutputFilename + '.TN'
+        thumbnailIm =  congrid( im, dims[0]*0.3, dims[1]*0.3)
+        Write_Gif, thumbnail, temporary(thumbnailIm), r,g,b
+      ENDIF 
+      IF verbose THEN print,' Write_Gif took: ', t1-t0,' Seconds '
+      t0 = t1
+    END
 
+    jpeg: BEGIN 
+      ;finalim = tvrd(true=3)
+      Write_Jpeg, OutputFilename, finalim, $
+             quality=quality, true=3
+      IF arg_present(thumbnail) THEN  BEGIN 
+        dims = size(finalim,/dimen)
+        thumbnailIm = congrid( finalim,  dims[0]*0.3, dims[1]*0.3,dims[2] )
+        thumbnail = OutputFilename + '.TN'
+        Write_Jpeg, thumbnail, temporary(thumbnailIm), $
+         quality=quality, true=3
+      ENDIF 
+    END
 
-    CASE 1 OF 
-      gif: BEGIN 
-        ;If output is 'gif' quantize it down to 175 colors.
-        t0 = systime(1)
-        ;finalim = tvrd(true=3)
-        im = color_Quan( finalim, 3, r,g,b, colors=175 )
-        t1 = systime(1)
-        IF verbose THEN print,' Color_Quan took: ', t1-t0,' Seconds '
-        t0 = t1
+    ps: device,/close
 
-        Write_Gif, OutputFilename, im, r,g,b
-        t1 = systime(1)
-        IF arg_present(thumbnail) THEN  BEGIN 
-          dims = size(im,/dimension)
-          thumbnail = OutputFilename + '.TN'
-          thumbnailIm =  congrid( im, dims[0]*0.3, dims[1]*0.3)
-          Write_Gif, thumbnail, temporary(thumbnailIm), r,g,b
-        ENDIF 
-        IF verbose THEN print,' Write_Gif took: ', t1-t0,' Seconds '
-        t0 = t1
-      END
-
-      jpeg: BEGIN 
-        ;finalim = tvrd(true=3)
-        Write_Jpeg, OutputFilename, finalim, $
-               quality=quality, true=3
-        IF arg_present(thumbnail) THEN  BEGIN 
-          dims = size(finalim,/dimen)
-          thumbnailIm = congrid( finalim,  dims[0]*0.3, dims[1]*0.3,dims[2] )
-          thumbnail = OutputFilename + '.TN'
-          Write_Jpeg, thumbnail, temporary(thumbnailIm), $
-           quality=quality, true=3
-        ENDIF 
-      END
-
-      ps: device,/close
-
-    ENDCASE
-
-  ENDIF ELSE BEGIN 
-    Message,'Error Reading Goesfile ' + goesfile
-  ENDELSE 
+  ENDCASE
   
   end_time = systime(1)
   IF Verbose THEN print,'Total Time: ', (end_time-start_time)/60. ,' Minutes'
   IF Arg_Present(Outfile) THEN Outfile =  OutputFilename
+  set_plot,savedevice
   ;IF NOT ps THEN Wdelete,pixmap
 ;  genv,/restore
 
