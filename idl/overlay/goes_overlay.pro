@@ -1,16 +1,16 @@
 ;+
-; NAME:  GOES_OVERLAY - read in a GOES file (one created by the
-; goes program obtained from Paul Chang ) run it through map_image,
-; put on pretty colors and overlay winds, if there are any.
+; NAME:  GOES_OVERLAY 
 ; $Id$
 ;
-; PURPOSE:  
+; PURPOSE:  Read in a GOES file (one created by the
+; goes program obtained from Paul Chang ) run it through map_image,
+; put on pretty colors and overlay winds, if there are any.
 ;
 ;
-; AUTHOR;
+; AUTHOR: William Daffer
 ;
 ;
-; CATEGORY:  
+; CATEGORY:  Goes image processing
 ;
 ;
 ;
@@ -135,6 +135,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.6  1998/11/13 22:03:16  vapuser
+; Added standard header
+;
 ; Revision 1.5  1998/11/11 20:51:18  vapuser
 ; Took out 'limits' keyword, did other remediation of memory usage.
 ;
@@ -189,7 +192,7 @@ PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
                   getminpix =  getminpix, $ ; returns minpix if it changed
                   minspeed  = minspeed,$   ; minimum wind speed
                   maxspeed  = maxspeed,$   ; max wind speed
-                  thick     = thick ,$     ; thickness of vectors (default=2)
+                  thick     = thick ,$     ; thickness of vectors (default=1)
                   length    = length ,$    ; length of vector (def=2)
                   uu        = uu   ,$      ; (I) u value of vectors
                   vv        = vv   ,$      ; (I) v value
@@ -199,11 +202,17 @@ PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
                   Z         = Z    ,$      ; (IF) work in Z buffer
                   nogrid    = nogrid ,$    ; (IF) Don't put down grid
                   gif       = gif  ,$      ; (IF) write gif file
+                  jpeg      = jpeg,$       ; (IF) write jpeg files (default)
                   ps        = ps   ,$      ; (IF) write postscript file
                   title     = title ,$     ; (I) string to add onto title string
                   file_str  = file_str ,$  ; (I) string to add onto file string
-                  thumbnail = thumbnail,$  ; (IF) if set, will make a 1/4 size
-                                           ; (160x120) thumbnail image.
+                   thumbnail = thumbnail,$ ; (I/O) if present as output 
+                                ; argument, routine will make
+                                ; thumbnail image and put name in this
+                                ; field. It will be 30% X 30% of
+                                ; orginal. Not available if output is
+                                ; Postscript.
+                  
                   watcolor    = watcolor ,$    ; use only this color index
                                            ; for water (allowable
                                            ; range: 1<watcolor<11)
@@ -323,7 +332,7 @@ IF nparams EQ 0 OR n_elements(goesfile) EQ 0 THEN BEGIN
          '   [,bimage, wdata, image, data, $ ' +lf + $
          '   minpix=minpix, minspeed=minspeed, maxspeed=maxspeed, $ ' + lf + $
          '    thick=thick, length=length, Z=Z, gif=gif, ps=ps, $' + lf + $
-         '     title=title, file_str=file_str, $ ' + lf + $
+         '     jpeg=jpeg,title=title, file_str=file_str, $ ' + lf + $
          '      thumbnail=thumbnail, watcolor=watcolor, $ ' + lf + $
          '       windcolor=windcolor, decimate=decimate, $' + lf + $
          '        CRDecimate=CRDecimate, ExcludeCols=ExcludeCols] '
@@ -333,8 +342,9 @@ ENDIF
 
 gif =  keyword_set(gif)
 ps  =  keyword_set(ps)
+jpeg = keyword_set(jpeg)
 l2  =  keyword_set(l2)
-thumbnail =  keyword_set( thumbnail )
+thumbnail =  arg_present( thumbnail )
 ofile = ''
 
 IF ( ( keyword_set(xsize) OR keyword_set(ysize) ) AND ps ) THEN BEGIN 
@@ -383,10 +393,23 @@ IF N_Elements(Decimate) EQ 0 THEN Decimate = 1
 cblables =  strtrim( [ minspeed, maxspeed ], 2 )
 cbtitle = 'Wind Speed (M/S)'
 
-IF gif AND ps THEN BEGIN
-  message," Only one of 'gif' or 'ps' allowed ",/cont
+IF gif AND ps OR $
+   gif AND jpeg OR $
+   jpeg AND ps THEN BEGIN
+  message," Only one of 'gif' or 'ps' or 'jpeg' allowed ",/cont
   return
 ENDIF 
+
+IF NOT gif AND NOT ps AND NOT jpeg THEN jpeg = 1
+
+CASE 1 OF 
+  gif : extension =  'gif'
+  jpeg: extension = 'jpeg'
+  ps  : extension = 'ps'
+ENDCASE
+
+Message,'Output will be as a .' + extension + ' file',/info
+
 
 IF ps THEN BEGIN 
   set_plot,'ps'
@@ -625,19 +648,21 @@ b_orig = blue
 message,' Reading Goes file ' + goesfile,/cont
 
 IF NOT keyword_set( file_str ) THEN file_str =  ''
-IF thumbnail THEN BEGIN
-  ; GOTN = Goes Overlay ThumbNail
-  IF keyword_set( watcolor ) THEN $
-    GOTN, goesfile=goesfile, data=data, limits=limits, $
-       uu=uu, vv=vv,  llon=llon, llat=llat, minpix=minpix, $
-       minspeed=minspeed, maxspeed=maxspeed, date_str= date_str, $
-         file_str= file_str,watcolor=watcolor, $
-         windcolor=input_windcolor  ELSE $
-    GOTN, goesfile=goesfile, data=data, limits=limits, $
-       uu=uu, vv=vv, llon=llon, llat=llat, minpix=minpix, $
-       minspeed=minspeed, maxspeed=maxspeed, date_str= date_str, $
-         file_str= file_str, windcolor=input_windcolor
-ENDIF ELSE BEGIN
+;IF thumbnail THEN BEGIN
+;  ; GOTN = Goes Overlay ThumbNail
+;  IF keyword_set( watcolor ) THEN $
+;    GOTN, goesfile=goesfile, data=data, limits=limits, $
+;       uu=uu, vv=vv,  llon=llon, llat=llat, minpix=minpix, $
+;       minspeed=minspeed, maxspeed=maxspeed, date_str= date_str, $
+;         file_str= file_str,watcolor=watcolor, $
+;         windcolor=input_windcolor  ELSE $
+;    GOTN, goesfile=goesfile, data=data, limits=limits, $
+;       uu=uu, vv=vv, llon=llon, llat=llat, minpix=minpix, $
+;       minspeed=minspeed, maxspeed=maxspeed, date_str= date_str, $
+;         file_str= file_str, windcolor=input_windcolor
+;ENDIF ELSE BEGIN
+
+
   ; read the goes file
   READ_PCGOES, goesfile, limits, data, image, year, jday, $
               time, nlon,nlat, lonsize, latsize, info_string, $
@@ -658,30 +683,15 @@ ENDIF ELSE BEGIN
   tmp =  '000'
   strput, tmp, jday, 3-strlen(jday)
   jday = tmp
-ENDELSE 
+
+;ENDELSE 
+
+
 IF n_elements( data ) EQ 0 THEN BEGIN
   message,' Error reading file ' + goesfile ,/cont
   return
 ENDIF 
 
-  ; Now we know what limits we're using, discard any data that falls
-  ; outside the plot window
-flon = fixlonrange( [limits[0], limits[2] ] )
-good = where( llon GE flon[0] AND llat GE limits[1] AND $
-              llon LE flon[1] AND llat LE limits[3], ngood )
-IF ngood NE 0 THEN BEGIN 
-  uu = uu[good]
-  vv = vv[good]
-  llon = llon[good]
-  llat = llat[good]
-ENDIF ELSE BEGIN 
-    ; Need some data in uu/vv/llon,/./at to keep the other 
-    ; portions of this code happy.
-  uu = uu[0]
-  vv = vv[0]
-  llon = llon[0]
-  llat = llat[0]
-ENDELSE 
 date = doy2date( year, jday )
 
 month =  date[0]
@@ -703,10 +713,14 @@ tvlct,red,green,blue
 
 IF n_elements( landel ) EQ 0 THEN BEGIN 
   ; read the land elevation file if it isn't in the common
-  openr,1,'$VAP_ROOT/animate/land_elevations.bin'
+  openr,landlun,'$VAP_LIB/land_elevations.bin', /get, error=err
+  IF err NE 0 THEN BEGIN 
+    Message,!error_state.msg,/cont
+    return
+  ENDIF 
   landel =  intarr( 12l*360, 12l*180 + 1 )
-  readu,1, landel
-  close,1
+  readu,landlun, landel
+  free_lun,landlun
 ENDIF 
 
 ; get the section of the land el file we need
@@ -910,11 +924,10 @@ IF ps OR gif  OR save THEN BEGIN
     ofileroot =  ofileroot + tt
   ENDIF 
 ENDIF 
-IF ps THEN BEGIN 
-  ofile =  ofileroot + '.ps'
-  message,' Output file = ' + ofile,/cont
-  device, filename = ofile
-ENDIF ELSE IF gif THEN  ofile =  ofileroot + '.gif'
+
+ofile = ofileroot + '.' + extension
+IF ps THEN  device, filename = ofile
+Message,' Output file = ' + ofile,/cont
 
 
 tv,bimage,xs,ys
@@ -937,6 +950,26 @@ y = xyz[1]
   ; over plot the wind vectors, if there are any.
 
 IF plotvect THEN BEGIN 
+
+    ; Now we know what limits we're using, discard any data that falls
+    ; outside the plot window
+  flon = fixlonrange( [limits[0], limits[2] ] )
+  good = where( llon GE flon[0] AND llat GE limits[1] AND $
+                llon LE flon[1] AND llat LE limits[3], ngood )
+  IF ngood NE 0 THEN BEGIN 
+    uu = uu[good]
+    vv = vv[good]
+    llon = llon[good]
+    llat = llat[good]
+  ENDIF ELSE BEGIN 
+      ; Need some data in uu/vv/llon,/./at to keep the other 
+      ; portions of this code happy.
+    uu = uu[0]
+    vv = vv[0]
+    llon = llon[0]
+    llat = llat[0]
+  ENDELSE 
+
   good1 = where( finite(uu) AND finite(vv), ngood1)
   IF ngood1 NE 0 THEN BEGIN 
     xx =  where( llat[good1] LT y, nxx )
@@ -1042,12 +1075,32 @@ y = xyz[1]
 xyouts, 0.5, y/2., title_str, align=0.5, $
     /normal, charsize=1.05, color=text_color
 
-
-IF gif THEN BEGIN 
+CASE extension OF 
+  'gif': BEGIN 
   im =  tvrd()
-  write_gif, ofile, im, red, green, blue
-  message,' Output file = ' + ofile,/cont
-ENDIF 
+    Write_Gif, ofile, im, red, green, blue
+    IF arg_present(thumbnail) THEN BEGIN 
+      dims = size(im,/dim)
+      im = congrid(im,dims[0]*0.3,dims[1]*0.3)
+      thumbnail = ofile+'.TN'
+      Write_Gif,thumbnail,im,red,green,blue
+    ENDIF 
+  END
+  'jpeg': BEGIN 
+    im = tvrd(true=3)
+    Write_Jpeg,ofile,im,true=3, quality=75
+    IF arg_present(thumbnail) THEN BEGIN 
+      dims = size(im,/dim)
+      im = congrid(im,dims[0]*0.3,dims[1]*0.3)
+      thumbnail = ofile+'.TN'
+      Write_Jpeg,thumbnail,im, true=3, quality=75
+    ENDIF 
+  END
+  ps: device,/close
+
+ENDCASE 
+
+message,' Output file = ' + ofile,/cont
 
 IF save THEN BEGIN
   window_size =  [ [!d.x_size], [!d.y_size]]
@@ -1055,8 +1108,6 @@ IF save THEN BEGIN
   filename =  ofileroot + '.save'
   save,bimage,xs,ys,window_size,xsiz,ysiz,device, f=filename
 ENDIF 
-
-IF ps THEN device,/close
 
 GENV,/restore ; restore graphics environment 
 getminpix =  minpix
