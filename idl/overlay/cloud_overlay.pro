@@ -48,7 +48,18 @@
 ;                      gif=gif          ; Make a gif file
 ;                      ps =  ps         ; make a postscript instead of
 ;                                       ; a gif or jpeg
-;                      gms=gms          ; Make a gms overlay file.
+;                      gmsType = gmsType, $     ; GmsType, IF set, treat the 
+;                                       ; 'cloud_file' name as the 
+;                                       ; datetime used in gms5readall 
+;                                       ; (for instance)
+;                      mapLimits = mapLimits,$ ; for use with GMS5 overlays
+;                      min_speed = min_speed, $
+;                      max_speed = max_speed, $
+;                      thick     = thick, $
+;                      use_rf    = use_rf, $
+;                      rf_action = rf_action, $
+;                      rf_color  = rf_color 
+;                      
 ;
 ;
 ;
@@ -84,9 +95,25 @@
 ;                      Default=[1,1] meaning, take every vector.
 ;        ExcludeCols - (I) string, ExcludeCols='0,38:40,75' means
 ;                      exclude columns 0, 38,39,40 and 75
-;        Legnth      - Vector Length
-;        ps          - Make Postscript file instead of gif.
+;        Length      - Vector Length
+;        jpeg        - make a jpeg, the default
+;        ps          - Make Postscript file 
+;        gif         - make a gif
 ;        pid         - used with cronjobs
+;        MapLimits   - [lonmin, latmin, lonmax, latmax] (only for GMS
+;                      overlays.)
+;        min_speed   - the minimum WVC speed
+;        max_speed   - the maximum WVC speed
+;        thick       - the 'thickness' of the arrows.
+;        use_rf      - 0|1|2 depending on whether you want 
+;                      NO flagging (0), MP flagging (1) or NOF
+;                      flagging(2).
+;        rf_action   - What to do with the flagging. If 0, don't plot
+;                      flagged vectors. If 1, plot using rf_color.
+;        rf_color    - The color to plot the vectors, if rf_action=1.
+;
+;     
+;       
 ;
 ;
 ; OUTPUTS: 
@@ -122,6 +149,10 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.9  1999/10/11 17:29:03  vapuser
+; Added jpeg, {min_,max_}speed keywords. Added support for user config
+; files.
+;
 ; Revision 1.8  1999/10/05 17:14:02  vapuser
 ; Changed a 'ne' to 'lt' in nparams() test. Changed default time_inc to
 ; 6 from 3. Made the call to GetWindFiles look forward and backward in
@@ -183,9 +214,12 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                                        ; datetime used in gms5readall 
                                        ; (for instance)
                       mapLimits = mapLimits,$ ; for use with GMS5 overlays
-                      min_speed=min_speed, $
-                      max_speed=max_speed, $
-                      thick=thick
+                      min_speed = min_speed, $
+                      max_speed = max_speed, $
+                      thick     = thick, $
+                      use_rf    = use_rf, $
+                      rf_action = rf_action, $
+                      rf_color  = rf_color 
                       
 
 
@@ -285,6 +319,10 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   chkcfg,'LENGTH',length,cfg
   chkcfg,'thick',thick,cfg
 
+  chkcfg,'USE_RF',use_rf,cfg
+  chkcfg,'RF_ACTION',rf_action,cfg
+  chkcfg,'RF_COLOR',rf_color,cfg
+
   IF N_elements( time_inc ) EQ 0 THEN time_inc = 6
   IF n_elements( wpath ) EQ 0 THEN wpath =  '$VAP_WINDS'
   IF n_elements( overlay_path ) EQ 0 THEN overlay_path =  '$VAP_OVERLAY'
@@ -297,6 +335,10 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   IF n_elements(CRDecimate) NE 2 THEN BEGIN 
     IF n_elements(decimate) EQ 0 THEN CRDecimate = [1,1]
   ENDIF 
+
+  IF n_elements(use_rf) EQ 0 THEN use_rf = 0
+  IF n_elements(rf_action) EQ 0 THEN rf_action = 1
+  IF n_elements(rf_color) EQ 0 THEN rf_color =  0l
 
   cd,current=cur_dir
 
@@ -439,7 +481,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
            minspeed=min_speed, maxspeed=max_speed, xsize=960,ysiz=720, $
             len=length,outfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
-              ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg, thick=thick
+              ExcludeCols=ExcludeCols, ps=ps, gif=gif, jpeg=jpeg, $
+                thick=thick, use_rf=use_rf, rf_action=rf_action, rf_color=rf_color
         ENDELSE 
       END
        'GMS' : BEGIN 
@@ -448,7 +491,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
             len=length,outfile=ofile, thumbnail=thumbnail, $
              Decimate=decimate, CRDecimate=CRDecimate, $
               ExcludeCols=ExcludeCols, ps=ps, jpeg=jpeg, gif=gif, $
-                maplimits=MapLimits, thick=thick
+                maplimits=MapLimits, thick=thick, use_rf=use_rf, $
+                  rf_action=rf_action, rf_color=rf_color
       END
     ENDCASE 
 
