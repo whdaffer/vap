@@ -89,6 +89,12 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.21  1999/11/12 19:51:58  vapuser
+; Deleted the 'selfhelp' method and associated variables,
+; code and methods. Added code to support the new 'DIRTH' selected
+; vectors that appear in the new L2B product. Moved the INIT method
+; to the fore, so that finding it would be easier.
+;
 ; Revision 1.20  1999/10/21 23:02:40  vapuser
 ; Added code to support config files and
 ; cw_pvfinfo.
@@ -197,7 +203,30 @@ FUNCTION pv::Init, $
            MaxSpeed      = MaxSpeed,$       
            Verbose       = Verbose, $
            doColorBar    = doColorBar, $
-           doAnnotations = doAnnotations
+           doAnnotations = doAnnotations, $
+
+                ; All 'rf_' or '_rf' are Rain Flag quantities.
+                ;
+                ; use_rf determines which flag (if any) to use. it may
+                ; be specified as a string or a number. The string is
+                ; the name of the flag without the 'rain_index' part
+                ; from q2b_rnoaa_str with the empty string standing
+                ; for no rain flagging or the numbers 0,1,2 with 0=no
+                ; flagging, 1=use the 'MP' flag and 2= use the 'NOF'
+                ; flag.
+                ;
+                ; rf_action determines whether to skip plotting the
+                ; data (rf_action=0) or plot it with whatever quantity
+                ; is given in rf_color (rf_action=1)
+                ;
+                ; rf_color is either the color index, if 8-bit env, or
+                ; the 24 bit color itself with which rain flagged data
+                ; is plotted, provided rf_action=1.
+                ;
+
+           use_rf        = use_rf, $
+           rf_action     = rf_action, $
+           rf_color      = rf_color
    
 
 
@@ -208,6 +237,7 @@ FUNCTION pv::Init, $
     self-> set, Sensitivity = 1
     return,0
   ENDIF 
+
 
 
   read_cfgfile = 0
@@ -387,6 +417,27 @@ FUNCTION pv::Init, $
 
   junk = where(CRDecimate_by, njj )
   self.Decimate_flag = (njj NE 0)
+
+
+  chkcfg,'USE_RF',use_rf,cfg
+  chkcfg,'RF_ACTION',rf_action,cfg
+  chkcfg,'RF_COLOR',rf_color,cfg
+
+  IF n_elements(use_rf) EQ 0 THEN use_rf =  0
+  IF n_elements(rf_action) EQ 0 THEN  rf_action=0
+  IF n_elements(rf_color) EQ 0 THEN rf_color = 'ffffff'xl < (!d.n_colors-1)
+
+  IF isa(use_rf,/string,/nonempty) THEN BEGIN 
+    use_rf = strupcase(use_rf)
+    CASE use_rf OF 
+      'MP': self.rain_flag = 1;
+      'NOF': self.rain_flag = 2;
+      ELSE: self.rain_flag = 0
+    ENDCASE 
+  ENDIF ELSE self.rain_flag = 0> use_rf < 2
+
+  self.rain_flag_action = rf_action
+  self.rain_flag_color = rf_color
 
 ;   ColorMapping =  { Name: ' ', $
 ;                      ColorTriple: bytarr(3),$
@@ -1009,16 +1060,34 @@ PRO Pv::Resize, x,y
     return
   ENDIF 
 
+  oldxsize = self.tlbxsize
+  oldysize = self.tlbysize
+  
   self-> ResetPlotObjects,/AlreadyPlotted
-  y = y-40
+
+  percent_delta_x = 1.0*x/oldxsize
+  percent_delta_y = 1.0*y/oldysize
+
+  draw_x_size = round(self.xsize*percent_delta_x)
+  draw_y_size = round(self.ysize*percent_delta_y)
+
   Widget_Control, self.tlb, update=0
-  Widget_Control, self.DrawId, draw_Xsize=x, Draw_Ysize=y
+  Widget_Control, self.DrawId, draw_Xsize=draw_x_size, Draw_Ysize=draw_y_size
   Widget_Control, self.tlb, /update
+
+  geom = widget_info(self.tlb,/geom)
+  self.tlbxsize = geom.xsize
+  self.tlbysize = geom.ysize
+
+  geom = widget_info(self.drawId,/geom)
+  self.xsize = geom.xsize
+  self.ysize = geom.ysize
+  
   wset, self.wid
   WDelete, self.pixId
-  self.xsize = x
-  self.ysize = y
-  Window,/Free,/Pixmap, XSize=x, YSize=y
+  Window,/Free,/Pixmap, XSize=self.xsize, YSize=self.ysize
+  
+
   self.ColorBar->Calc
   self-> Draw
   ;self.pixId = !d.Window
@@ -1145,6 +1214,11 @@ FUNCTION Pv::CreateWidget
     ENDELSE 
     self.PixId = !d.Window
     Wset, wid
+    geom = Widget_info( self.tlb,/geometry)
+    self.tlbxsize = geom.xsize
+    self.tlbysize = geom.ysize
+
+
     IF self.visual EQ 'PSEUDOCOLOR' THEN $
       TvLct, transpose(*self.PtrToCT) ELSE loadct,0
     Widget_Control, self.tlb, set_uval=self
@@ -1259,10 +1333,13 @@ PRO Pv::Draw, $
           Message,str,/info
           s = q2b-> Set( Decimate    = self.Decimate_by, $
                          CRDecimate  = self.CRDecimate_by, $
-                         ExcludeCols = self.ExcludeCols)
+                         ExcludeCols = self.ExcludeCols, $
+                         use_rf      = self.rain_flag, $
+                         rf_action   = self.rain_flag_action)
           IF SelectedOnly THEN BEGIN 
             t1 = systime(1)
-            status = q2b-> GetPlotData(u,v,lon,lat,limit=limit,/Silent)
+            status = q2b-> GetPlotData(u,v,lon,lat,limit=limit,/Silent,$
+                                       rf_index=rfi)
             t2 = systime(1)
             print,'  Time to extract ', t2-t1
             IF Status THEN BEGIN 
@@ -1280,6 +1357,15 @@ PRO Pv::Draw, $
                          MaxSpeed=self.MaxSpeed, $
                            Start_index=self.Wind0,$
                             NColors=self.NWind, dots=dots
+                IF self.rain_flag_action EQ 1 AND rfi[0] NE -1 THEN BEGIN 
+                    ; Plot the non-rainflagged vectors as normal. 
+                    ; The overplot the rainflagged vectors
+                    ; using whatever color is in self.rain_flag_color.
+                  PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],$
+                    Length = self.Length, $
+                      thick=self.Thickness, $
+                        Color=self.rain_flag_color,dots=dots
+                ENDIF 
                 tvlct,r,g,b
               ENDIF ELSE BEGIN 
                 PlotVect,u,v,lon,lat,$
@@ -1292,6 +1378,15 @@ PRO Pv::Draw, $
                             NColors=self.NWind, dots=dots,$
                              truecolor=self.visual ne 'PSEUDOCOLOR' , $
                               table=CT
+                IF self.rain_flag_action EQ 1 AND rfi[0] NE -1 THEN BEGIN 
+                    ; Plot the non-rainflagged vectors as normal. 
+                    ; The overplot the rainflagged vectors
+                    ; using whatever color is in self.rain_flag_color.
+                  PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],$
+                    Length = self.Length, $
+                      thick=self.Thickness, $
+                        Color=self.rain_flag_color,dots=dots
+                ENDIF 
               ENDELSE 
               
               po->InRegion,1
@@ -1305,7 +1400,8 @@ PRO Pv::Draw, $
                 ; GetPlotData likes limit as [lon0, lat0, lon1,lat1 ]
               t1 = systime(1)
               status = q2b->GetPLotData(u,v,lon,lat, PlotAmbiguities[p], $
-                                        limit = limit, /Silent  )
+                                        limit = limit, /Silent, $
+                                          rf_index=rfi)
               t2 = systime(1)
               print,'  Time to extract ', t2-t1
               IF status THEN BEGIN 
@@ -1325,6 +1421,15 @@ PRO Pv::Draw, $
                            MaxSpeed=self.MaxSpeed, $
                              Start_index=self.Wind0,$
                               NColors=self.NWind, dots=dots
+                  IF self.rain_flag_action EQ 1 AND rfi[0] NE -1 THEN BEGIN 
+                    ; Plot the non-rainflagged vectors as normal. 
+                    ; The overplot the rainflagged vectors
+                    ; using whatever color is in self.rain_flag_color.
+                    PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],$
+                      Length = self.Length, $
+                        thick=self.Thickness, $
+                          Color=self.rain_flag_color,dots=dots
+                  ENDIF 
                   tvlct,r,g,b
                 ENDIF ELSE BEGIN 
                   PlotVect,u,v,lon,lat,$
@@ -1337,6 +1442,15 @@ PRO Pv::Draw, $
                               NColors=self.NWind, dots=dots,$
                              truecolor=self.visual ne 'PSEUDOCOLOR' , $
                               table=CT
+                  IF self.rain_flag_action EQ 1 AND rfi[0] NE -1 THEN BEGIN 
+                    ; Plot the non-rainflagged vectors as normal. 
+                    ; The overplot the rainflagged vectors
+                    ; using whatever color is in self.rain_flag_color.
+                    PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],$
+                      Length = self.Length, $
+                        thick=self.Thickness, $
+                          Color=self.rain_flag_color,dots=dots
+                  ENDIF 
                 ENDELSE 
                 po->InRegion,1
                 nTotPlots =  nTotPlots + 1
@@ -1452,7 +1566,11 @@ FUNCTION Pv::Read,files
       IF Obj_Valid( q ) THEN BEGIN 
         s =  q-> Set(Decimate = self.decimate_by,$
                      CRDecimate = self.CRdecimate_by, $
-                     ExcludeCols= self.ExcludeCols )
+                     ExcludeCols= self.ExcludeCols, $
+                     use_rf=self.rain_flag, $
+                     rf_action=self.rain_flag_action, $
+                     rf_color=self.rain_flag_color )
+
         s = q-> Get(filename=filename)
         po = Obj_New('PvPlotObject',q,file=filename)
         IF Obj_Valid( po ) THEN BEGIN 
@@ -1541,7 +1659,30 @@ PRO Pv::Set, xsize       = xsize, $
              Subtitle     = Subtitle,$
              doAnnotations=doAnnotations, $
              doColorBar=doColorBar, $
-             oplot=oplot
+             oplot=oplot, $
+
+                ; All 'rf_' or '_rf' are Rain Flag quantities.
+                ;
+                ; use_rf determines which flag (if any) to use. it may
+                ; be specified as a string or a number. The string is
+                ; the name of the flag without the 'rain_index' part
+                ; from q2b_rnoaa_str with the empty string standing
+                ; for no rain flagging or the numbers 0,1,2 with 0=no
+                ; flagging, 1=use the 'MP' flag and 2= use the 'NOF'
+                ; flag.
+                ;
+                ; rf_action determines whether to skip plotting the
+                ; data (rf_action=0) or plot it with whatever quantity
+                ; is given in rf_color (rf_action=1)
+                ;
+                ; rf_color is either the color index, if 8-bit env, or
+                ; the 24 bit color itself with which rain flagged data
+                ; is plotted, provided rf_action=1.
+                ;
+
+             use_rf=use_rf, $
+             rf_action=rf_action, $
+             rf_color=rf_color 
 
 
 
@@ -1549,6 +1690,19 @@ PRO Pv::Set, xsize       = xsize, $
 
   redraw = Keyword_Set(RedrawFlag)
   resize = 0
+
+  IF n_elements(use_rf) NE 0 THEN BEGIN 
+    IF isa(use_rf,/string,/nonempty) THEN BEGIN 
+      use_rf = strupcase(use_rf)
+      CASE use_rf OF 
+        'MP': self.rain_flag = 1;
+        'NOF': self.rain_flag = 2;
+        ELSE: self.rain_flag = 0
+      ENDCASE 
+    ENDIF ELSE self.rain_flag =  use_rf
+  ENDIF 
+  IF n_elements(rf_action) NE 0 THEN self.rain_flag_action = 0> rf_action < 1
+  IF n_elements(rf_color) NE 0 THEN self.rain_flag_color = 0> rf_color < (!d.n_colors-1)
 
   IF N_Elements(xsize) NE 0 THEN BEGIN 
     self.xsize = xsize
@@ -1899,7 +2053,11 @@ PRO Pv::Get, xsize             = xsize, $
              ColorBar          = colorBar, $
              doAnnotations     = doAnnotations, $
              doColorBar        = doColorBar, $
-             oplot             = oplot
+             oplot             = oplot, $
+             use_rf    = use_rf, $
+             rf_action = rf_action, $
+             rf_color  = rf_color, $
+             rain_flag =rain_flag
 
    IF Arg_Present(xsize)             THEN xsize             = self.xsize 
    IF Arg_Present(ysize)             THEN ysize             = self.ysize 
@@ -1942,7 +2100,15 @@ PRO Pv::Get, xsize             = xsize, $
    IF Arg_Present(ColorBar)          THEN ColorBar          = self.ColorBar
    IF Arg_Present(doAnnotations)     THEN doAnnotations     = self.doAnnotations
    IF Arg_Present(doColorBar)        THEN doColorBar        = self.doColorBar
-   IF Arg_Present(oplot)             THEN oplot        = self.oplot
+   IF Arg_Present(oplot)             THEN oplot       = self.oplot
+   IF Arg_Present(rf_action)         THEN rf_action   = self.rain_flag_action
+   IF Arg_Present(rf_color)          THEN rf_color    = self.rain_flag_color
+   IF Arg_Present(use_rf)            THEN BEGIN 
+     tmp = ['No Flagging','Use MP flag', 'Use NOF flag']
+     use_rf = tmp[self.rain_flag]
+   ENDIF 
+   IF Arg_present(rain_flag) THEN rain_flag = self.rain_flag
+
 
 
    IF Arg_Present(CurrentDims)       THEN CurrentDims = $
@@ -2394,6 +2560,8 @@ PRO Pv__define
             xyLabId      : 0L, $ ; Mouse XY location Label Widget ID
             xsize        : 0l ,$
             ysize        : 0l ,$
+            tlbxsize     : 0l, $
+            tlbysize     : 0l, $
             firstClick   : 0l ,$
             xd           : 0l ,$
             yd           : 0l ,$
@@ -2418,6 +2586,11 @@ PRO Pv__define
                                  ; decimate, but on columns and rows.
             Decimate_flag: 0  ,$ ; 1=decimate by col/ro, 0 otherwise.
             ExcludeCols  : '' ,$ ; e.g. '2,3,32:35,74,75'
+            rain_flag    : 0, $ ; do rain flagging and which sort.
+                                ;0=no flagging, 1=MP flagging, 2=NOF flagging
+            rain_flag_action : 0, $ ;0=don't plot, 1=plot using rf_color
+            rain_flag_color  : 0L, $ ; either color index(8bit) 
+                                     ; or color itself(24bit)
             MinSpeed     : 0. ,$ ; Minimum speed to plot
             MaxSpeed     : 0. ,$ ; Maximum   "   "   "
             MinMaxSpeed  : fltarr(2) ,$ ; Store minmax speed for 
