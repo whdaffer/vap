@@ -33,6 +33,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/09 21:36:45  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -97,6 +100,7 @@ END
 ; Setup
 ;============================================
 PRO psform::setup
+  forward_FUNCTION ps_form
   ps = PS_FORM( xsize          = self.xsize, $    
                 ysize          = self.ysize, $    
                 xoff           = self.xoff, $     
