@@ -3,6 +3,9 @@
 #
 # Modification History
 # $Log$
+# Revision 1.9  1999/10/08 16:18:20  vapuser
+# Change all length => 1 to 1.5
+#
 # Revision 1.8  1999/09/22 18:40:57  vapuser
 # Changed delta for hurricane regions from 7 to 5.
 #
@@ -250,7 +253,7 @@
 		    LonLim     => [90,160],     # Min/Max Longitude
 		    LatLim     => [-20,32],       # Min/Max Latitude 
 		    SatNum     => 5,             # Gms 5
-		    SensorNum  => 1.5,             # Ir1
+		    SensorNum  => 1,             # Ir1
 		    AscTime    => "00:30",       # Ascending Time 
 		    DescTime   => "12:30" },     # Descending time
 		  WVCData => {                   
