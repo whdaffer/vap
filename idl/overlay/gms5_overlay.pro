@@ -34,7 +34,10 @@
 ;                    status      = status, $
 ;                    thumbnail   = thumbnail, $
 ;                    config      = config,$
-;                    scale       = scale
+;                    scale       = scale, $
+;                    use_rf      = use_rf, $
+;                    rf_action   = rf_action, $
+;                    rf_color    = rf_color
 ;
 ;
 ;
@@ -148,6 +151,24 @@
 ;     scale       : flag, if set, the vectors will be scaled by their
 ;                   speed, otherwise, they're all the same length.
 ;
+;     Use_RF       : (I), Flag , 0|1|2 depending on whether you want
+;                    NO flagging (0), MP flagging (1) or 
+;                    NOF flagging (2). Default=0, no flagging
+;
+;     FL_Action    : (I), flag, 0|1 depending on whether you want to
+;                    skip plotting rain flagged data (0) or plot it
+;                    with the color given in FL_Color(1), Default = 1,
+;                    use FL_color.
+;
+;     FL_Color     : (I), long integer. The 24 bit color to be used
+;                    when plotting the rain flagged data, provide
+;                    FL_Action=1. The default is black. (Although I
+;                    like '80541e'xl, which is a sort of muddy
+;                    brown. It's index 12 in the pv colortable. Much
+;                    more visible and 'dirty' looking.
+;
+;
+;
 ;
 ; OUTPUTS:  A file, either a .gif, .jpeg (the default) or a .ps file,
 ;          depending on the status of these three flags having either
@@ -213,6 +234,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.10  1999/10/05 17:27:40  vapuser
+; Added 'config' and 'scale' keywords and support code.
+;
 ; Revision 1.9  1999/06/24 21:18:36  vapuser
 ; Added test for good data after gms5ReadAll
 ;
@@ -283,7 +307,10 @@ PRO gms5_overlay, datetime, gmsType, $
                   status      = status, $
                   thumbnail   = thumbnail, $
                   config      = config, $
-                  scaleVec    = scaleVec
+                  scaleVec    = scaleVec, $
+                  use_rf      = use_rf, $
+                  rf_action   = rf_action, $
+                  rf_color    = rf_color
 
 
 
@@ -296,7 +323,7 @@ PRO gms5_overlay, datetime, gmsType, $
   loadct,0,/silent
 
   IF n_Params() EQ 0 THEN BEGIN 
-    Usage, 'gms5_overlay, datetime, windFiles = WindFiles, gmsType = gmsType,windfiles = windfiles, xsize = xsize, ysize = ysize, CRDecimate = CRDecimate, Decimate = Decimate, ExcludeCols = ExcludeCols, verbose = verbose, minpix  = minpix, minspeed  = minspeed, maxspeed  = maxspeed,length  = length,thick = thick, title = title,subtitle = subtitle, outfile = outfile,BrightMin = BrightMin, BrightMax = BrightMax, SatMin = SatMin, SatMax = SatMax, LandHue = LandHue,WaterHue = WaterHue,LandRGB=landRGB, WaterRGB=WaterRGB, gif = gif, ps = ps, scalefac = scalefac, jpeg = jpeg,quality = quality, ScaleVec=ScaleVec'
+    Usage, 'gms5_overlay, datetime, gmsType,windfiles = windfiles, xsize = xsize, ysize = ysize, CRDecimate = CRDecimate, Decimate = Decimate, ExcludeCols = ExcludeCols, verbose = verbose, minpix  = minpix, minspeed  = minspeed, maxspeed  = maxspeed,length  = length,thick = thick, title = title,subtitle = subtitle, outfile = outfile,BrightMin = BrightMin, BrightMax = BrightMax, SatMin = SatMin, SatMax = SatMax, LandHue = LandHue,WaterHue = WaterHue,LandRGB=landRGB, WaterRGB=WaterRGB, gif = gif, ps = ps, scalefac = scalefac, jpeg = jpeg,quality = quality, ScaleVec=ScaleVec'
     tvlct,orig_red,orig_green,orig_blue
     genv,/restore
     status = 0
@@ -464,6 +491,19 @@ PRO gms5_overlay, datetime, gmsType, $
 ;    return
 ;  END
 
+
+
+  chkcfg,'USE_RF',use_rf,cfg
+  chkcfg,'RF_ACTION',rf_action,cfg
+  chkcfg,'RF_COLOR',rf_color,cfg
+
+  IF n_elements(use_rf) EQ 0 THEN use_rf = 0
+  IF n_elements(rf_action) EQ 0 THEN rf_action = 1
+    ; if rf_action=1, plot the rain flagged data as black
+  IF n_elements(rf_color) EQ 0 THEN rf_color =  0l
+
+
+    ;=============== Start the processing =================
 
 
 
@@ -741,7 +781,9 @@ PRO gms5_overlay, datetime, gmsType, $
     windData = Read_Wind_Files(windFiles,$
                                CRDecimate=CRDecimate,$
                                Decimate=Decimate,$
-                               ExcludeCols=ExcludeCols)
+                               ExcludeCols=ExcludeCols, $
+                               use_rf=use_rf, rf_action=rf_action, $
+                               rf_index=rfi)
     tt1 = systime(1)
     IF verbose THEN print,' Read_wind_Files took: ', tt1-tt0,$
       ' Seconds '
@@ -758,19 +800,34 @@ PRO gms5_overlay, datetime, gmsType, $
       lat = windData[*,3]
       good = where( finite(u) AND finite(v), ngood )
       IF ngood NE 0 THEN BEGIN 
+        IF rf_action EQ 1 AND $
+         rfi[0] NE -1 THEN BEGIN 
+          ii = lonarr(n_elements(u))
+          ii[rfi] = 1
+          rfi =  where( ii[good], nn) & ii=0
+        ENDIF 
         u = u[good]
         v = v[good]
         lon = lon[good]
         lat = lat[good]
+
+
         speed = sqrt( u^2+v^2)
         good = where( speed NE 0, ngood )
         IF ngood NE 0 THEN BEGIN 
           IF ngood NE n_elements(u) THEN BEGIN 
+            IF rf_action EQ 1 AND $
+             rfi[0] NE -1 THEN BEGIN 
+              ii = lonarr(n_elements(u))
+              ii[rfi] = 1
+              rfi =  where( ii[good], nn) & ii=0
+            ENDIF 
             u = u[good]
             v = v[good]
             lon = lon[good]
             lat = lat[good]
             speed = speed[good]
+
           ENDIF 
           veccol = BytScl( speed, min=minspeed, $
                            max=maxspeed, $
@@ -795,9 +852,23 @@ PRO gms5_overlay, datetime, gmsType, $
         thick=thick,start_index=WIND_START,$
           ncolors=N_WIND_COLORS, scale=scaleVec, minspeed=minspeed, $
            maxspeed=maxspeed
+      IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
+         TVLCT,ishft(rf_color,-16),ishft(rf_color,-8) AND '0000ff'xl, $
+           rf_color AND '0000ff'xl,1
+         PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
+           thick=thick,minspeed=minspeed, maxspeed=maxspeed, $
+             scale=scaleVec,color=1
+      ENDIF 
       tvlct,orig_red,orig_green,orig_blue
-    ENDIF ELSE $
-      PlotVect, u,v,lon,lat, color=col24, len=length, thick=thick, scale=scaleVec
+    ENDIF ELSE BEGIN 
+      PlotVect, u,v,lon,lat, color=col24, len=length, $
+         thick=thick, scale=scaleVec
+      IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
+        PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
+         thick=thick,minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec,$
+         color=rf_color
+      ENDIF 
+    ENDELSE 
     t1 = systime(1)
     IF verbose THEN print,' Plotvect took: ', t1-t0,' Seconds '
     t0 = t1
