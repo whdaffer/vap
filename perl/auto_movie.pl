@@ -9,18 +9,22 @@
 #   and time is of the form 'yy/mm/dd/hh'
 # 
 # $Log$
+# Revision 1.2  1998/10/02 22:59:56  vapuser
+# Added a require vap_perl
+#
 # Revision 1.1  1998/10/02 22:59:18  vapuser
 # Initial revision
 #
 #
 # 
 #
+# $Id$
 #
 require 5.000;
-require vap_perl;
+use vap_perl;
 use Cwd 'chdir';
 
-$rcsid="$Id$";
+
 
 $newdir = "/usr/people/vapuser/perl";
 push ( @INC, $newdir );
@@ -54,53 +58,39 @@ if ( $test_roi) {
   # kill any IDL sessions currently running
   $pstr = "ps -ef | grep bin.sgi/idl | grep -v grep | grep -v lmgrd";
 
-  open(PS,"$pstr |") || die "Couldn't get idl sessions\n";
-  @p = <PS>;
-  close(PS);
-  if ($#p>-1) {
-    print "Processes running IDL are @p\n";
-    foreach $r (@p) {
-      @tmp=split(" ", $r); 
-      push @pids, $tmp[1];
-    }
-    $cnt = kill -9, @pids;
-    if ($cnt == 0) {
-      die "Couldn't kill IDL sessions";
-    }
-  }
 
   $user=$ENV{'USER'};
     # create idl lock file
   $lock_file="/tmp/".$user.".auto_movie.lock";
   print "lockfile = $lock_file\n";
   open(LOCK,">$lock_file") || die "Couldn't open $lock_file\n";
+  print LOCK "$$\n" ;
   close(LOCK);
     # create temporary IDL pro file
-  $tmp_pro = "/tmp/tmp_auto_movie.pro";
-  open( TMP_PRO,">$tmp_pro") || die "Couldn't open $tmp_pro\n";
+  $idl_tmp_file = "/tmp/tmp_auto_movie.pro";
+  open( IDL_TMP_FILE,">$idl_tmp_file") || die "Couldn't open $idl_tmp_file\n";
     # write code to tmp file
   if ($date_time) {
     $exe_str = "auto_movie,\'$date_time\',roi=\'$roi\'\n";
   } else {
     $exe_str = "auto_movie,roi=\'$roi\'\n";
   }
-  print TMP_PRO $exe_str;
-  print TMP_PRO "exit\n";
-  close( TMP_PRO );
+  $exe_str .= ",pid=$$\n";
+  print IDL_TMP_FILE $exe_str;
+  print IDL_TMP_FILE "exit\n";
+  close( IDL_TMP_FILE );
   
     # Call IDL with tmp file as argument
-  @args = ("/usr/local/rsi/idl_4/bin/idl", "/tmp/tmp_auto_movie.pro");
-
+  $exe_str=$vap_perl::IDLEXE." ".$idl_tmp_file;
     # check to see if the IDL run was okay.
   $r = system( @args );
-  $r /= 256;
-  if ($r != 0) {
-      die "Error in IDL\n";
+ if ($r != 0) {
+    die " Error in IDL\n";
   }
-
+  unlink "$idl_tmp_file" || die "Couldn't unlink $idl_tmp_file\n";
     # rename tmp file, just to be safe.
-  $newname = $tmp_pro.".old";
-  rename( $tmp_pro, $newname) || print "Couldn't rename $tmp_pro\n";
+  $newname = $idl_tmp_file.".old";
+  rename( $idl_tmp_file, $newname) || print "Couldn't rename $idl_tmp_file to $newname\n";
 
   open ( LOCK, "<$lock_file") || die "Couldn't open $lock_file after IDL \n";
   @idlout = <LOCK>;
@@ -108,7 +98,7 @@ if ( $test_roi) {
 
   unlink($lock_file) || print "Couldn't delete $lock_file \n";
 
-  # see if there are any lines in the idl output file with the work ERROR in them.
+  # see if there are any lines in the idl output file with the word ERROR in them.
   # exit if there are.
   local(@grepout)=();
   @grepout=grep (/ERROR/, @idlout );
