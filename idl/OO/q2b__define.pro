@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.9  1998/10/26 22:08:38  vapuser
+  ; Added Rq2bdata structure stuff, updated comments.
+  ;
   ; Revision 1.8  1998/10/23 22:21:53  vapuser
   ; Added 'arg_present' to ::GetAll,
   ; Incorporate DeEnvVar to protect RSIs HDF_... code from itself.
@@ -209,7 +212,7 @@ FUNCTION Q2B::Init, $
   self.type = 'UNKOWN'
   IF N_Elements(filename) NE 0 THEN BEGIN 
     IF N_Elements(type) NE 0 THEN self.type = StrupCase(type)
-    self.filename = DeEnvVar(filename)
+    self.filename = filename
     status = self->Read(self.filename)
   ENDIF ELSE BEGIN 
     IF N_Elements( data_struct ) NE 0 THEN BEGIN 
@@ -1333,11 +1336,11 @@ END
 
   ; ==========================================
   ;
-  ; Q2b::GetExtent. Calculates the extent of swath for easier determination
-  ; of whether a particular region has data in it. It does the by
-  ; first checking if the EQX (equator Crossing) structure has
-  ; non-empty date/time strings. If this is true, it calculates the
-  ; theoretical swath using QSwathExtent. Otherwise, it computes
+  ; Q2b::GetExtent. Calculates the extent of swath for easier
+  ; determination of whether a particular region has data in it. It
+  ; does the by first checking if the EQX (equator Crossing) structure
+  ; has non-empty date/time strings. If this is true, it calculates
+  ; the theoretical swath using QSwathExtent. Otherwise, it computes
   ; something using the actual data. In any case, it puts either the
   ; result or a NULL pointer into 'self.extent'
   ;
@@ -1362,38 +1365,46 @@ PRO Q2B::GetExtent
          ; data.
         data = *(self.data)
         ncells = self.ncells
-        lat = data.lat[ncells/2:ncells/2+1,*]
-        lon = data.lon[ncells/2:ncells/2+1,*]
-        xx = where( lat AND lon, nxx )
-        IF nxx NE 0 THEN BEGIN 
-          latmin = min(abs(lat(xx)),ilatmin)
-          IF latmin LE 0.25 THEN BEGIN 
-            extent = QSwathExtent(lon[xx[ilatmin]])
-            IF Finite(extent[0]) THEN $ 
-              self.extent = Ptr_New( extent,/no_copy ) ELSE $
-              self.extent = Ptr_New()
+        nrecs =  n_elements( data.lat[0,*] )
+        
+        lat = data.lat[ncells/2:ncells/2+1,findgen(nrecs/2)*2]
+        lon = data.lon[ncells/2:ncells/2+1,findgen(nrecs/2)*2]
+        findSmallLat = where( abs( lat ) LT 1, nfindSmallLat )
+        IF nfindSmallLat NE 0 THEN BEGIN 
+
+          unpack_where, lat, findSmallLat, col, row
+          drow =  diffarr( row )
+          
+            ; Optimally, the 'small Lat' should fall into two
+            ; areas, one on the ascending side and one on the
+            ; descending side. If there are two, the first will be
+            ; the ascending one. If only one, it may be either.
+          
+          extent = QSwathExtent(lon[xx[ilatmin]])
+          IF Finite(extent[0]) THEN $ 
+            self.extent = Ptr_New( extent,/no_copy ) ELSE $
+            self.extent = Ptr_New()
+        ENDIF ELSE BEGIN 
+         ; We don't have a equator crossing, determine the extent
+         ; directly from the data
+          good = where( data.lon[2,*] NE 0. AND $
+                        data.lon[self.ncells/2,*] NE 0. AND $
+                        data.lon[self.ncells-3,*] AND 0. AND $
+                        data.lat[2,*] NE 0. AND $
+                        data.lat[self.ncells/2,*] NE 0. AND $
+                        data.lat[self.ncells-3,*] AND 0., ngood )
+          IF ngood GE self.nrecs/10 THEN BEGIN 
+            extent =  [ $
+                       [[ data.lon[ [2, ncells/2, self.ncells-3],good]]],$
+                       [[ data.lat[ [2, ncells/2, self.ncells-3],good]]] $
+                      ]
+            IF ptr_valid( self.extent ) THEN ptr_free, self.extent
+            self.extent = ptr_new( extent,/no_copy )
           ENDIF ELSE BEGIN 
-           ; We don't have a equator crossing, determine the extent
-           ; directly from the data
-            good = where( data.lon[2,*] NE 0. AND $
-                          data.lon[self.ncells/2,*] NE 0. AND $
-                          data.lon[self.ncells-3,*] AND 0. AND $
-                          data.lat[2,*] NE 0. AND $
-                          data.lat[self.ncells/2,*] NE 0. AND $
-                          data.lat[self.ncells-3,*] AND 0., ngood )
-            IF ngood GE self.nrecs/10 THEN BEGIN 
-              extent =  [ $
-                         [[ data.lon[ [2, ncells/2, self.ncells-3],good]]],$
-                         [[ data.lat[ [2, ncells/2, self.ncells-3],good]]] $
-                        ]
-              IF ptr_valid( self.extent ) THEN ptr_free, self.extent
-              self.extent = ptr_new( extent,/no_copy )
-            ENDIF ELSE BEGIN 
-              IF ptr_valid( self.extent ) THEN ptr_free, self.extent
-              self.extent = ptr_new()
-            ENDELSE 
+            IF ptr_valid( self.extent ) THEN ptr_free, self.extent
+            self.extent = ptr_new()
           ENDELSE 
-        ENDIF ELSE self.extent = ptr_new()
+        ENDELSE 
      ENDELSE 
    ENDELSE 
 END
@@ -1622,5 +1633,3 @@ PRO q2b__define
 
 
 END
-
-
