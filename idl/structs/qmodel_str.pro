@@ -1,5 +1,6 @@
 ;+
 ; NAME:  qmodel_str.pro
+; $Id$
 ; PURPOSE:  Defines the 'qmodel' structure
 ;
 ;
@@ -68,6 +69,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/01 17:59:17  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -85,11 +89,13 @@ IF N_Elements( nlat ) EQ 0 THEN nlat = 121
 IF n_elements( qmodel_defined ) eq 0 THEN BEGIN
 
   qmodel =  { QMODELDATA,$
-              U      : fltarr(nlon, nlat ),$
-              V      : fltarr(nlon, nlat ),$
-              lon    : fltarr(nlon, nlat ),$
-              lat    : fltarr(nlon, nlat ),$
-              Region : fltarr(4)           } ;[ lonmin, latmin, lonmax, latmax ]
+              CreationTime : '',$
+              StartTime    : '',$
+              EndTime      : '',$
+              LonPar       : fltarr(3),$
+              LatPar       : fltarr(3)
+              U      : fltarr(nlon, nlat ), $
+              V      : fltarr(nlon, nlat )  }
 
   qmodel_defined = 1
   qmodel_size = n_Tags( qmodel, /length )
