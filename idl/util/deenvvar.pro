@@ -62,6 +62,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/05 17:10:50  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
@@ -71,26 +74,33 @@ FUNCTION DeEnvVar, path
    ; replace environmental variables with their expansion
    rcsid = "$Id$"
    IF n_elements(path) EQ 0 THEN return,''
-   tpath = path
-   tmp = str_sep(tpath,'/')
-   fullpath = '/'
-   FOR i=0,n_elements(tmp)-1 DO BEGIN 
-     envpos = strpos(tmp[i],'$')
-     env = getenv(strmid(tmp[i],envpos+1,strlen(tmp[i])-(envpos+1)))
-     IF env ne '' THEN BEGIN 
-       partial_path = DeEnvVar(env)
-       fullpath = fullpath+partial_path
-     ENDIF ELSE BEGIN
-       fullpath = fullpath+tmp[i] 
-     ENDELSE 
-     IF strpos(fullpath,'/') NE strlen(fullpath)-1 THEN fullpath = fullpath+'/'
-
+   np = n_elements(path)
+   IF np EQ 1 THEN fullpath = '' ELSE fullpath = strarr(np)
+   FOR p=0,np-1 DO BEGIN 
+     tpath = path[p]
+     tmp = str_sep(tpath,'/')
+     FOR i=0,n_elements(tmp)-1 DO BEGIN 
+       envpos = strpos(tmp[i],'$')
+       env = getenv(strmid(tmp[i],envpos+1,strlen(tmp[i])-(envpos+1)))
+       IF env ne '' THEN BEGIN 
+         partial_path = DeEnvVar(env)
+         fullpath[p] = fullpath[p]+partial_path
+       ENDIF ELSE BEGIN
+         fullpath[p] = fullpath[p]+tmp[i] 
+       ENDELSE 
+       IF strpos(fullpath[p],'/') NE strlen(fullpath[p])-1 THEN $
+          fullpath[p] = fullpath[p]+'/'
+       IF strmid(fullpath[p],0,1) NE '/' AND $
+          strmid(fullpath[p],0,1) NE '.' THEN $
+         fullpath[p] =  '/' + fullpath[p]
+     ENDFOR 
+     done = 0
+     s = strpos( fullpath[p], '//')
+     WHILE s NE -1 DO BEGIN 
+       fullpath[p] = strmid(fullpath[p],0,s+1) + $
+          strmid( fullpath[p],s+2,strlen(fullpath[p])-s-1)
+       s = strpos( fullpath[p], '//')
+     ENDWHILE 
    ENDFOR 
-   done = 0
-   s = strpos( fullpath, '//')
-   WHILE s NE -1 DO BEGIN 
-     fullpath = strmid(fullpath,0,s+1) + strmid( fullpath,s+2,strlen(fullpath)-s-1)
-     s = strpos( fullpath, '//')
-   ENDWHILE 
    return, fullpath
 END
