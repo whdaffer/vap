@@ -1,6 +1,6 @@
-#!/usr/bin/perl5  
+#!/usr/bin/perl5  -d
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <98/09/01 09:49:23 vapuser>
+# Time-stamp: <98/09/03 10:48:48 vapuser>
 # $Id$
 #
 # Modification History:
@@ -11,6 +11,7 @@
 package vap_perl;
 
 use Cwd 'chdir';
+use Time::Local;
 
 
 %sat_num= ('8','9' , # AREA08* are goes 9 files !
@@ -57,6 +58,7 @@ sub auto_movie_defs {
   }
   @desigs;
 }
+
 sub doy2mday_mon{
   $doy=shift;
   $year=shift;
@@ -293,7 +295,10 @@ sub date_index{
   close OUT;
   1;
 }
+
+
 sub fix_time{
+
   $sec=shift;
   $min=shift;
   $hour=shift;
@@ -315,131 +320,211 @@ sub fix_time{
   @ret;
 }
 
+sub make_yyyymmdd {
+  $year=shift;
+  $month=shift;
+  $mday=shift;
+  if ($month < 10) {
+    $month = "0".$month;
+  }
+  if ($mday < 10) {
+    $mday = "0".$mday;
+  }
+  $yyyymmdd=$year.$month.$mday;
+  $yyyymmdd;
+
+}
+
+sub make_hhmmss{
+    $hh=$_[0];
+    if ($hh<10){
+	$hh="0".$hh;
+    }
+    $mm=$_[1] || "00";
+    $ss=$_[2] || "00";
+    $hhmmss=$hh.":".$mm.":".$ss;
+}
+
 sub gag {
-  # Usage: gag [a | d ]
+  # Usage: gridded_file=gag(goesnum, sensornum, time, minlon, minlat, maxlon, maxlat);
   #
-  # gag=GetAndGrid : gets the Goes9 ir4 file closest to 7 and 20 and
-  # grids it, putting the output in /disk2/vap/overlay.
+
+  # gag=GetAndGrid : gets the Goes file for the indicated goes
+  # satellite ( '9' or '10') and indicated sensor number (1=vis,
+  # 2=ir2, 3=ir3, 4=ir4) which is closest to time indicated by 'time'.
+  # It Grids the file and places the output in the corresponding
+  # subdirectory of $VAP_GOES_GRIDDED_TOPDIR (defaulting to
+  # /disk2/vap/goes/gridded_files/ if that environmental variable is
+  # undefined) according to the requested file, e.g. gag 10 1 xxx will
+  # put the output in $VAP_GOES_GRIDDED_TOPDIR/goes10/vis.  
+
+  # Time is specified as yyyymmddThh:mm:ss with each unspecified
+  # quantity defaulting to the current time.
+  # e.g. 0404T03 is 4 of April 1998 at 3 oclock.
+  # 
   #
-  # a = ascending, will get file close to 07:00 GMT (the default)
-  #
-  # d = descending, will get file close to 20:00 GMT
-  #
-  #
-  # This perl script parses the file 'noaa_area_info' in the goes9 ir4 directory
-  # in our mirror of the noaa goes site and returns the name of the file
-  # closest to the 7:00 GMT (if arg 1 = a) or the one closest to 20:00 (if arg 1 = d)
-  #
-  #
-  
-  $start_dir=Cwd::cwd();
-  require Net::FTP;
-  #$host="orbit25i.nesdis.noaa.gov";
-  #$user="mspencer";
-  #$pw="goes&nscat";
+
+  ($sec,$min,$hour,$mday,$mon,$year,$junk)=localtime(time);
+  $yyyymmdd = make_yyyymmdd($year+1900,$mon+1,$mday);
+  $hhmmss = make_hhmmss($hour,$min,$sec);
+  $now = $yyyymmdd."T".$hhmmss;
+
+  $satnum    = shift || "10";
+  $sensornum = shift || "4";
+  $time      = shift || $now;
+
+  $minlon    = shift || 0;
+  $minlat    = shift || 0;
+  $maxlon    = shift || 0;
+  $maxlat    = shift || 0;
+
+  local($start_dir) = Cwd::cwd(); 
 
   ($host,$user,$pw) = vap_perl'getgoesarchive();
   die "Can't get goes Archive info\n" unless defined $pw;
 
 
+    # given the satellite, returns x of AREAx
+    # Goes 10 files have the name goes8, goes 8 have names AREA9
+    # $sat_num{10} = 8;
+   %sat_num= ( '10','8', 
+ 	      '8','9',  
+ 	     );
 
-#   %sat_num= ( '8','9' , # AREA8* are goes 9 files !
-# 	      '9','8' , # AREA9* are goes 8 files !
-# 	     );
-#   %sensor_dir = ('1','vis',
-# 	  '2','ir2',
-# 	  '3','ir3',
-# 	  '4','ir4',
-# 	  '5','ir5'
-# 	  );
+   %sensor_dir = (
+          '1','vis',
+ 	  '2','ir2',
+ 	  '3','ir3',
+ 	  '4','ir4',
+ 	  '5','ir5'
+ 	  );
 
-  # AM or PM?
-  $type=shift;
-  if ($type =~ /^a.*/i) {
-    $time=7/24.;
+  $goes_type="goes".$satnum." ".$sensor_dir{$sensornum};
+
+    # Get ENV variables
+  $ARCHIVETOP=$ENV{'VAP_GOES_TOPDIR'} || "/disk2/vap/goes";
+  $GRIDDINGTOP=$ENV{'VAP_GOES_GRIDDED_TOPDIR'} || "/disk2/vap/goes/gridded_files";
+
+  
+    # Get Current Local Time
+  ($lsec,$lmin,$lhour,$lmday,$lmon, $lyear,$lwday,$lyday,$lisdst) = localtime($^T); 
+    # Get Current Greenwich Mean Time
+  ($gsec,$gmin,$ghour,$gmday,$gmon, $gyear,$gwday,$gyday,$gisdst) = gmtime($^T); 
+    # Construct the input time.
+  @time_parts=split "T", $time;
+
+  if ($#time_parts == 0) {
+    $yearmonthday = make_yyyymmdd( $lyear+1900, $lmon+1, $lmday );
+    @hhmmss=split /:/, $time_parts[0];
   } else {
-    $time=20/24.;
+    $yearmonthday=$time_parts[0];
+    @hhmmss= split /:/, $time_parts[1];
   }
-  $file_test_time = $time + 2.5/24.;
   
-  # Open 'info' file
-  open(INFO, "</disk2/vap/goes/goes10/ir4/noaa_area_info") || 
-      die "Couldn't open noaa_area_info file \n";
-  @info = <INFO>;
-  close(INFO);
-  
-  # Get Current time
-  ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = gmtime(time); 
-  $yday += 1;
-  if ($hour/24. < $file_test_time ) {
-    print " Too early to try for todays file, check for yesterdays file\n";
-    $yday -= 1;
-  }
+    # Construct the 'test_time', i.e. the time against which the file's time 
+    # will be compared. 
 
-  # Construct test time and file test times.
-  $test_time = $yday + $time;
-  foreach $rec (@info) {
+  $tyear=substr($yearmonthday,0,4)-1900;
+  $tmon=substr($yearmonthday,4,2)-1;
+  $tmday=substr($yearmonthday,6,2);
+
+  $tyday=date2doy( $tyear, $tmon, $tmday );
+  $thour=$hhmmss[0] || $lhour;
+  $tmin =$hhmmss[1] || $lmin;
+ 
+  $junk=sprintf("%04d%02d%02dT%02d:%02d:%02d",
+             $tyear+1900,$tmon,$tmday,$thour,$tmin,$tsec);
+  print "Looking for a $goes_type file from around local time $junk\n";
+
+    # Convert to secs since the test time to GMT
+  $test_time = timelocal( 0, $tmin, $thour, $tmday, $tmon, $tyear );
+  die "Can't convert test time $tyear/$tmon/$tmday $thour\n" 
+      if $test_time == -1;
+
+
+  ($sec1,$min1,$hour1,$mday1,$mon1,$year1)=gmtime($test_time);
+  $equivalent_gmt_time=sprintf("%04d%02d%02dT%02d:%02d:%02d",
+         $year1+1900,$mon1+1,$mday1,$hour1,$min1,$sec1);
+  print "  Which will be about GMT $equivalent_gmt_time\n";
+
+
+    # Construct file test times. The times in the 
+    # area info file are already in GMT.);
+
+    # NB, this loop is reading the 'noaa_area_info' file.
+    # Construct the filename for the noaa_area_info file.
+  $noaa_area_info_filename=$ARCHIVETOP."/goes".$satnum."/";
+  $noaa_area_info_filename.=$sensor_dir{$sensornum}."/noaa_area_info";
+    # Open 'info' file
+  open(NOAA_AREA_INFO, "<$noaa_area_info_filename") || 
+      die "Couldn't open noaa_area_info $noaa_area_info_filename file \n";
+  @noaa_area_info = <NOAA_AREA_INFO>;
+  close(NOAA_AREA_INFO);
+
+  $min_diff=1e20;
+  foreach $rec (@noaa_area_info) {
     next if $rec =~ /^##/;
-    @tmp=split(" ", $rec);
-    push( @filename, substr( $tmp[0], 0, 8 ) );
-    push( @doy, $tmp[18] );
-    $hour = substr( $tmp[6], 0, 2 )/24.; 
-    push( @hour, $hour );
-  }
-  for ($i=0;$i<=$#doy;$i++){
-    push( @test, $doy[$i] + $hour[$i]);
-  }
 
-  # Find index of Goes file closest to our time.
-  $below=0;
-  for ($i=0;$i<=$#test;$i++){
-    $x = $test[$i];
-    if ( $x <= $test_time ) {
-      $below=1;
-      if ($x == $test_time ) {
-	$index=$i;
-	last;
+    @tmp=split(" ", $rec);
+    $filename=substr( $tmp[0], 0, 8 );
+    $hour = substr( $tmp[6], 0, 2 ); 
+    $min = substr( $tmp[6], 2,2 );
+    @tmp2=split('/',$tmp[4] );
+    if ($#tmp2 < 2) {
+      print "  Corrupted data/time for $filename\n";
+        # Somehow, this field (mm/dd/yyyy) in the area_info file has
+        # been corrupted, so we're going to read the file itself.
+      $local_path=$ARCHIVETOP."/goes".$satnum."/".$sensor_dir{$sensornum}."/";
+      $ttmp=$local_path.$filename;
+      if (open( AREAFILE, "<$ttmp" )){
+	read AREAFILE, $hdr, 64*4;
+	close AREAFILE;
+	@hdr=unpack "L4", $hdr;
+	$year=int ($hdr[3]/1000);
+	$doy=int ($hdr[3]-$year*1000);
+	($mday, $mon) = doy2mday_mon($doy, $year);
+	$hour=int ($hdr[4]/100);
+        $min=int ($hdr[4]-$hour*100);
+      } else {
+	print "  and it isn't here! Skipping this file\n";
+	print "   (NB, May be the file we want, but can't tell)\n";
       }
     } else {
-      if ($below == 1) {
-	$index=$i-1;
-	last;
-      }
-      $below=0;
+      $mon=$tmp2[0]-1;
+      $mday=$tmp2[1];
+      $year=$tmp2[2]-1900;
     }
-  }
-  $matching_test_time = $test[$index];
-  $matching_hour = $hour[$index];
-  $matching_doy = $doy[$index];
-  if ($matching_doy < 10) {
-    $matching_doy = "00".$matching_doy;
-  }
-  if ($matching_doy >= 10 && 
-      $matching_doy < 100  ) {
-    $matching_doy = "0".$matching_doy;
-  }
+    $file_time=timegm(0,$min,$hour,$mday,$mon,$year);
+    $diff=abs( $file_time-$test_time);
+    if ($diff < $min_diff) {
+	$area_file=$filename;
+	$area_file_time=$file_time; 
+        ($sec1,$min1,$hour1,$mday1,$mon1,$year1)=gmtime( $area_file_time );
+        $area_file_time_string =
+           sprintf("%04d%02d%02dT%02d:%02d:%02d",$
+              $year1+1900,$mon1+1,$mday1,$hour1,$min1,$sec1);
+	$min_diff=$diff;
+    }
 
-  # Construct Area Filename
-  $area_file = $filename[$index];
-  if ($area_file =~ /^A/) {
-    ;
-  } else {
-    $area_file="AREA".$area_file
   }
+  $diffhrs=$min_diff/3600.;
+  print "min_diff=$min_diff, diffhrs=$diffhrs\n";
+  die "Closest File ($area_file) is over $diffhrs hours distant!\n" if $diffhrs>2.;
 
-  print "AREA file for this run = $area_file\n";
-  print "Checking to see whether it's already here\n";
+  print "  AREA file for this run = $area_file\n";
+
+  print "    Whose Time is $area_file_time_string\n";
+  print "  Checking to see whether it's already here\n";
 
   $off=4;
 
   $tmp=substr( $area_file,$off,2 );
-  $sat=substr( $area_file, $off, 1 );
-  $sen=substr( $area_file, $off+1, 1);
-  $filenum = substr( $area_file, $off+2, 2);
+  $sat=substr( $area_file, $off, 2 );
+  $sen=substr( $area_file, $off+2, 1);
+  $filenum = substr( $area_file, $off+3, 2);
 
   # Construct path and file name on remote server.
-  $remote_path = "goes".$sat_num{$sat}."/".$sensor_dir{$sen}."/";
-  $remote_file = $remote_path.$area_file;
+  $remote_path = "goes".$satnum."/".$sensor_dir{$sensornum}."/";
 
   if ( $remote_path =~ m#^g# ) {
     $tmp = "/".$remote_path ;
@@ -447,12 +532,20 @@ sub gag {
     $tmp = $remote_path;
   }
 
-  # Construct the local path and filename
-  $local_path="/disk2/vap/goes".$tmp;
-  $local_file=$local_path.$area_file;
-  $test2 = $matching_test_time - 1.;
-  if (-e $local_file) {
-    # run ainf to get latest info about archive
+    # Construct the path and filename for the AREA file 
+    # on this (haifung) machine.
+    # While we're at it, might as well produce the path 
+    # to the gridding files.
+  $local_path=$ARCHIVETOP.$tmp;
+  $gridding_path=$GRIDDINGTOP.$tmp;
+  $local_area_file=$local_path.$area_file;
+  $test2 = 1.e20;
+  if (-e $local_area_file) {
+ 
+        # the file exists on this machine. Make sure the local area_info
+        # file is up to date by running mkai in the target
+        # directory. See if the area file there is the same one.
+
     $cwd=$ENV{'PWD'};
     chdir $local_path || die "Couldn't cd to $local_path to run mkai\n";
     $exe_str = "/usr/people/vapuser/bin/mkai ";
@@ -461,149 +554,137 @@ sub gag {
 	  getpwnam( "vapuser") ;
       if ($uid && $gid ) {
 	chown $uid,$gid, 'area_info' || 
-	    print "Couldn't change owner,group of area_info\n";
+	    print "  Couldn't change owner,group of area_info\n";
       } else {
-	print " Failure in getpwnam, Changing permissions to rwxrwxrwx, root owned\n";
+	print "    Failure in getpwnam, Changing permissions to rwxrwxrwx, root owned\n";
 	chmod 0777, $local_file;
       }
     }
 
     $r=system( $exe_str )/256;
     if ($r != 0) {
-      print "Some kind of error in mkai\n";
+      print "   Some kind of error in mkai\n";
     }
     chdir $cwd || die "Couldn't cd back to $cwd\n";
-    # check to see if it's the from the same time
+
+
+        # read the local area_info file, see if the area file we have
+        # is from the same time.
+
     $local_ainf = $local_path."/area_info";
     open ( INF, "<$local_ainf") || die "Couldn't open $local_ainf\n";
     @ainf=<INF>;
     close (INF);
+
     foreach $r (@ainf) {
       next if $r =~ /^##/;
       @tmp=split(" ", $r);
       next if substr($tmp[0],0,8) !~ /$area_file/;
-      $doy = $tmp[18];
-      $hour = substr( $tmp[6], 0, 2 )/24.; 
-      $test=$doy + $hour;
-      $test2 = $test-$matching_test_time;
-      if ($test2 < 0.) {
-	$test2 *= -1;
-      }
+
+      @tmp=split(" ", $r);
+
+      $hour = substr( $tmp[6], 0, 2 ); 
+
+      @tmp2=split('/',$tmp[4] );
+
+      $mon=$tmp2[0]-1;
+      $mday=$tmp2[1];
+      $year=$tmp2[2]-1900;
+      $local_area_file_time=timegm(0,0,$hour,$mday,$mon,$year);      
+      $test2 = abs($local_area_file_time == $file_times[$closest]);
       last;
     }
   }  
 
 
-  #
-  # -- construct the command line to rgoes 
-  #
-
-
-  $verbose=0;
-  %sensor_num = ( 'vis', '0',
-		  'ir2', '1',
-		  'ir3', '2',
-		  'ir4', '3',
-		 );
-  @sensor_name = ( 'vis','ir2','ir3','ir4');
-
-  %satellite_num=('8','9', # AREA9* are GOES 8 files !!!
-		  '9','8',     # AREA8* are GOES 9 files!!!
-		  );
-  $archive_root = $ENV{'VAP_ROOT'}."/goes"; # top of archive tree
-  $scriptdir = "/disk2/vap/overlay/daily/";
-  $sat=9;
-  $sensor=ir4;
-  $limits=" 25 65 -175 -115";
-  
-  $lim_str="%185,25,245,65%";
-  
-  $filename=$area_file;
-  $path="/disk2/vap/goes/goes9/ir4/";
-  $root=$archive_root;
-
-
-  # Retrieve the AREA file.
   if ( $test2 >= 1/24. ) {
-    print "Retrieving $area_file from the NOAA archive \n";
-    $ftp = Net::FTP->new( $host ) || die "Can't open new \n";
-    $ftp->login ($user, $pw ) || die "Can't login\n";
-    $ftp->binary || die "Can't go to binary\n";
-    $ftp->get($remote_file,$local_file) ||  die "Can't get file\n";
-    $ftp->quit || die "Can't close\n";
+
+      # either we don't have this area file, or it isn't the right one.
+      # go to the archive are retrieve it.
+
+    print "   Not here! Retrieving $area_file from the NOAA archive \n";
+#     $ftp = Net::FTP->new( $host ) || die "  Can't open new \n";
+#     $ftp->login ($user, $pw ) || die "  Can't login\n";
+#     $ftp->binary || die "  Can't go to binary\n";
+#     $ftp->get($remote_area_file,$local_area_file) ||  die "  Can't get file\n";
+#     $ftp->quit || die "  Can't close\n";
+#     print "  Done retrieving file!\n";
+
+    $file=getgoesfile( $area_file);
+
+    die "Error retrieving $area_file\n" if (!file);
+      
+        # If we're running this as root, change owner/group and
+        # permissions
 
     $user=$ENV{'USER'};
     if ($user =~ /root/){
       ($name,$passwd,$uid,$gid,$quota,$comment,$gcos,$dir,$shell) = 
 	  getpwnam( "vapuser") ;
+        # Change uid/gid to vapuser
       if ($uid && $gid ) {
 	chown $uid,$gid, $local_file || 
-	    print "Couldn't change owner,group of $file\n";
+	    print "  Couldn't change owner,group of $file\n";
       } else {
-	print " Failure in getpwnam, Changing permissions to rwxr-xr-x, root owned\n";
+	print "  Failure in getpwnam, Changing permissions to rwxr-xr-x, root owned\n";
 	chmod 0755, $local_file;
       }
     }
+
   } else {
+      
+      print "  $area_file already exists in our archive\n";
+      print "  Checking to see if a grid file exists also\n";
+      $iminlon=int $minlon;
+      $iminlat=int $minlat;
+      $imaxlon=int $maxlon;
+      $imaxlat=int $maxlat;
+      if ($iminlon==0 && $iminlat==0 && $imaxlon==0 && $imaxlat==0) {
+	  if ($satnum == 10) {
+	      $iminlon=160;
+	      $iminlax=0;
+	      $imaxlon=-70;
+	      $imaxlat=70;
+	  } elsif ($satnum == 8) {
+	      # Don't know what then limits are on Goes 8 files.
+	  } else {
+	      #Job security
+	  }
+      }
+      $goes_type=$satnum.$sensornum;
+      $tyear=$year+1900;
+      $tmonth=$month+1;
+      $grid_file_name=sprintf( "GOES%03d-%04d%02d%02d%02d-%%%04d,%03d,%04d,%03d%%.dat", 
+			      $goes_type, $tyear, $tmonth, $mday, $hour, 
+			      $iminlon, $iminlat, $imaxlon, $imaxlat );
+      
+      
+      $local_gridded_file=$gridding_path.$grid_file_name;
 
-    print "$area_file already exists in our archive\n";
-    print "Checking to see if a grid file exists also\n";
-    # construct the name of the file that should exist in the 
-    # overlay directory
-    $hour=$matching_hour*24.;
-    if ($hour < 10 ) {
-      $hour = "0".$hour;
-    }
-    $hour .= "*";
-    $last4 =substr( $area_file, 4,4);
-    ($sec,$min,$junk,$mday,$mon, $year,$wday,$yday,$isdst) = localtime(time); 
-    $grid_file = "GOES94_".$year.$matching_doy.$hour."-".$last4."-".$lim_str.".dat";
-    $test_grid_file = "/disk2/vap/overlay/daily/".$grid_file;
-    print " Testing for presence of a grid file matching file glob $test_grid_file\n";
-    open( TEST, " ls $test_grid_file |");
-    @in = <TEST>;
-    close TEST;
-    $test = $in[0] eq "";
 
-    if ( $test != 1) {
-      $tmp = $in[0];
-      chop $tmp;
-      @tmp = split( "/",$tmp );
-      $grid_file = $tmp[$#tmp];
-      print "$grid_file already exists, I'll return this file instead\n";
-      # Not he prettiest way to code this, I'll think of something later.
-      return $grid_file;
-    }
-
+      # construct the name of the gridded file.
+      print "   Testing for presence of a grid file matching file glob\n   $local_gridded_file\n";
+      if (-e $local_gridded_file) {
+	  print "  $grid_file already exists, I'll return this file instead\n";
+	  # Not he prettiest way to code this, I'll think of something later.
+	  return $local_gridded_file;
+      } else {
+	  print "  Not there, have to grid it ourselves\n";
+	  
+      }
   }
 
-  # ----------------------------------------------------
-  # Create script to run the 'goes' gridding program 
-  # and execute that script.
-  # ----------------------------------------------------
 
-  chdir $scriptdir || die "Couldn't change directory to $scriptdir\n";
-
-
-  $script = $scriptdir."rgoes";
-  $goestype = '94';
-  $time = $time*24;
-  $script = $script."-".$goestype."-".$time."-".$lim_str.".scr";
-
-  open (SCRIPT, ">$script");
-  print SCRIPT "$path\n";
-  print SCRIPT "$filename\n";
-  print SCRIPT "$limits";
-  close (SCRIPT);
-
-  $log = $script.".log";
-  $exe_string = "/usr/people/vapuser/bin/run_goes  $script  $log";
-  $retval = system( $exe_string )/256;
-  $gridfile = &pgl( $log );
-  $skip_rename=0;
-  chdir $start_dir  || die "Couldn't go back to initial dir $start_dir\n";
-  $gridfile;
-
+    #-------------------------------------------------------
+    #
+    # CD to the directory where we put the gridded files.
+    # Then run the gridding program.
+    #
+    #-------------------------------------------------------
+  $local_gridded_file=grid_goes( $gridding_path, $area_file, 
+				$minlon, $minlat, $maxlon, $maxlat );
+  die "Error Gridding area file $area_file\n" if !$local_gridded_file;
+  $local_gridded_file;
 
 } # End GAG
 
@@ -758,6 +839,9 @@ sub add_one_day{
 }
 
 sub getgoesarchive{ 
+
+  local($start_dir) = Cwd::cwd(); 
+
   $goes_info_file=shift || "/usr/people/vapuser/Qscat/Library/goes_archive";
   open(ARCHIVE_INFO, "<$goes_info_file") || die "Can't open $goes_info_file file\n";
   @info=<ARCHIVE_INFO>;
@@ -772,6 +856,9 @@ sub getgoesarchive{
 }
 
 sub parsegoesfilename {
+
+  local($start_dir) = Cwd::cwd(); 
+
   $goesfile=shift || die "Can't get goes file name\n";
   
   # old format (stranded, for now)
@@ -806,5 +893,121 @@ sub leapyear{
   }
   $leap_year;
 }
+
+sub local2gmtime{
+    # Assumes the input array is suitable for passing to timelocal, 
+    # which has the prototype
+    # 
+    # $time = timelocal($sec,$min,$hours,$mday,$mon,$year);
+
+
+    # Find the offset between local time and GM time.
+  ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime(time); 
+  $ltime = timelocal($sec,$min,$hour,$mday,$mon, $year);
+  $gtime = timegm($sec,$min,$hour,$mday,$mon, $year);
+  $diff= $gtime-$ltime;
+  
+  
+  $time = timegm( @_ ) -$diff;
+  return $time;
+
+}
+
+sub getgoesfile{
+
+  require Net::FTP;
+  local($start_dir) = Cwd::cwd(); 
+  ($host,$user,$pw) = getgoesarchive();
+  die "Can't get goes Archive info\n" unless defined $pw;
+
+  %sat_num= ( '8', '10', # AREA8* are goes 10 files !
+	     '9',  '8',   # AREA9* are goes 8 files !
+	     );
+  
+  %sensor_dir = ('1','vis',
+		 '2','ir2',
+		 '3','ir3',
+		 '4','ir4',
+		 '5','ir5'
+		 );
+  
+  $area_file=shift;
+  if ($area_file =~ /^A/) {
+    ;
+  } else {
+    $area_file="AREA".$area_file
+      }
+  $off=4;
+  $tmp=substr( $area_file,$off,2 );
+  $sat=substr( $area_file, $off, 1 );
+  $sen=substr( $area_file, $off+1, 1);
+  $filenum = substr( $area_file, $off+2, 2);
+
+  $remote_path = "goes".$sat_num{$sat}."/".$sensor_dir{$sen}."/";
+  $remote_file = $remote_path.$area_file;
+  
+  print "remote_path = $remote_path\n";
+  print "remote_file = $remote_file\n";
+  $local_path = shift;
+  if (!$local_path) {
+    if ( $remote_path =~ m#^g# ) {
+	$tmp = "/".$remote_path ;
+      } else {
+	$tmp = $remote_path;
+      }
+    print "tmp = $tmp\n";
+    $local_path=$ARCHIVETOP.$tmp;
+  }
+  $local_file=$local_path.$area_file;
+
+  
+  $ftp = Net::FTP->new( $host ) || die "  Can't open new \n";
+  $ftp->login ($user, $pw )     || die "  Can't login\n";
+  $ftp->binary                  || die "  Can't go to binary\n";
+  print "  Getting $remote_file and sending it to $local_file\n";
+  $ftp->get($remote_file,$local_file) || die "  Can't get file\n";
+  $ftp->quit                          || die "  Can't close\n";
+  $local_file;
+  
+}
+
+sub grid_goes {
+
+  local($start_dir) = Cwd::cwd(); 
+
+  $grid_path = shift @_ || 
+      die "Usage grid_goes path area_file [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";
+  $area_file = shift @_ ||
+      die "Usage grid_goes path area_file [ minlon [ minlat [ maxlon [ maxlat ]]]]\n";;
+  $minlon = shift @_ || 0;
+  $minat  = shift @_ || 0 ;
+  $maxlon = shift @_ || 0 ;
+  $maxat  = shift @_ || 0 ;
+
+  chdir $grid_path || die "   Can't CD to $grid_path\n";
+  print "  Preparing to grid area file $area_file\n";
+
+  if (minlon != 0 || minlat != 0 || maxlon != 0 || maxlat != 0) {
+    $minlon2=$minlon;
+    $maxlon2=$maxlon;
+    $minlon2 -= 360 if ($minlon >= 180);
+    $maxlon2 -= 360 if ($maxlon >= 180);
+    $exe_string=sprintf( "grid_goes -f %s -l %04d,%03d,%04d,%03d", 
+	    $local_area_file, $minlon2, $minlat, $maxlon2, $maxlat );
+  } else {
+      $exe_string="grid_goes -f $area_file";
+  }
+  open ( GRIDDING_PROCESS, "$exe_string |" );
+  @gridding_output = <GRIDDING_PROCESS>;
+  @errors=grep(/^ *ERROR.*/, @gridding_output);
+  close GRIDDING_PROCESS;
+  die "  Bad return from goes gridding software\n" if ($#errors gt -1);
+  print "  Done Gridding!\n";
+  $local_gridded_file=$grid_path.$gridding_output[0];
+  chop $local_gridded_file;
+  chdir $start_dir  || print "  Couldn't go back to initial dir $start_dir\n";
+  $local_gridded_file;
+}
 1;
+
 
