@@ -21,39 +21,18 @@
 ;
 ; CALLING SEQUENCE: 
 ;
-;       CLOUD_OVERLAY, cloud_file,
-;                      date_time,     $ ; time of GOES data used in overlay
-;                                       ; (def=current time - 3 hours)
-;                                       ; ((yy)yy/mm/dd/hh) If the year field 
-;                                       ; is 2 characters, then 1900 will be
-;                                       ; added to it.
-;                      time_inc,      $ ; select wind files this number 
-;                                       ; of hours +/- time given 
-;                                       ; in date_time. def=6
-;                      wpath = wpath, $ ; path to wind files (def=$VAP_DATA_TOP)
-;                      overlay_path = overlay_path,$ ; path to output 
-;                                                    ; overlay file
-;                                                    ; def = $VAP_OPS_OVERLAY
-;                      decimate=decimate,$ ; (I), scalar, decimate=n
-;                                          ; means take every n-th vector
-;                      CRDecimate=CRDecimate,$ ; (I), 2-vector,
-;                                              ; CRDecimate=[p,q
-;                                              ; means take every p-th
-;                                              ; column of every q-th row
-;                      ExcludeCols=ExcludeCols,$ ; (I) string,
-;                                             ; excludeCols='0,38:40,75'
-;                                             ; means exclude columns 
-;                                             ; 0, 38,39,40 and 75.
-;                      Length=Length    ; Vector Length
-;                      jpeg=jepg        ; Make a jpeg file
-;                      gif=gif          ; Make a gif file
-;                      ps =  ps         ; make a postscript instead of
-;                                       ; a gif or jpeg
-;                      gmsType = gmsType, $     ; GmsType, IF set, treat the 
-;                                       ; 'cloud_file' name as the 
-;                                       ; datetime used in gms5readall 
-;                                       ; (for instance)
-;                      mapLimits = mapLimits,$ ; for use with GMS5 overlays
+;       CLOUD_OVERLAY, cloud_file, wfilter[, date_time, time_inc,
+;                      wpath = wpath, $
+;                      overlay_path = overlay_path,$
+;                      decimate=decimate,$
+;                      CRDecimate=CRDecimate,$
+;                      ExcludeCols=ExcludeCols,$
+;                      Length=Length,$
+;                      jpeg=jepg,$
+;                      gif=gif,$
+;                      ps =  ps,$
+;                      gmsType = gmsType, $ 
+;                      mapLimits = mapLimits,$ 
 ;                      min_speed = min_speed, $
 ;                      max_speed = max_speed, $
 ;                      thick     = thick, $
@@ -63,7 +42,7 @@
 ;                      oplot     = oplot, $
 ;                      keepaspect = keepaspect, $
 ;                      gridlines  = gridlines, $
-;                      help        = help
+;                      help        = help ]
 ;                      
 ;
 ;
@@ -72,16 +51,20 @@
 ; INPUTS: 
 ;
 ;        Cloud_file - A gridded file (i.e. one created by the compiled
-;                     program 'grid_goes')
-;        date_time  - The date/ time around which to retrieve
-;                     wind files overplotted on the cloud data.
-;                     default=current_time-3hours
+;                     program 'grid_goes') (required)
+;
+;        wfilter -    Filter to use in searching for wind data (required)
+;
 ;
 ;
 ; OPTIONAL INPUTS: 
 ;
+;        date_time  - The date/ time around which to retrieve
+;                     wind files overplotted on the cloud data.
+;                     default=current_time - time_inc/2
+;
 ;        time_inc   - Select wind files within this time of
-;                     'date_time' default=+/- 6 hours
+;                     'date_time': default=+/- 6 hours
 ;
 ;
 ;	
@@ -207,6 +190,9 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.20  2002/05/03 01:09:24  vapdev
+; Changed various overlay routines to use new vapdev/vaprun env variables.
+;
 ; Revision 1.19  2001/12/08 00:02:36  vapdev
 ; Getting rid of obsolete RSI routines and fixing ENV vars
 ;
@@ -283,9 +269,12 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
                                 ; If keyword GMS is set, this string
                                 ; is the 'datetime' used in all the
                                 ; 'gms5...pro' routines. See, for
-                                ; instance, gms5readall.pro.
+                                ; instance, gms5readall.pro. (required)
+                      wfilter,       $ ; filter to use in searching
+                                       ; for wind files (required)
                       date_time,     $ ; time used in searching for wind files.
-                                       ; (format = yyyy/mm/dd/hh) 
+                                       ; (format = yyyy/mm/dd/hh/mm) 
+                                       ; default=current_time - time_inc/2
                       time_inc,      $ ; select wind files this number 
                                        ; of hours +/- time given 
                                        ; in date_time. def=6
@@ -329,6 +318,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
   catch, error_status
   IF error_status NE 0 THEN BEGIN
+    catch,/cancel
     IF auto_cloud_overlay THEN $
      IF exist(llun) THEN BEGIN 
        printf, llun, 'ERROR: ' + !err_string
@@ -339,14 +329,15 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   ENDIF 
 
   IF n_params() LT  2  OR keyword_set(help) THEN BEGIN 
-    message,' Both paramters (CLOUD_FILE & DATE_TIME) are required ',/cont
-    Usage, "CLOUD_OVERLAY, cloud_file, date_time[,time_inc,wpath=wpath,overlay_path=overlay_path,decimate=decimate,CRDecimate=CRDecimate,ExcludeCols=ExcludeCols,Length=Length,/jpeg|/gif|/ps,gmsType=gmsType,mapLimits=mapLimits,min_speed=min_speed,max_speed=max_speed,thick=thick,rainflag=rainflag,rf_action=0|1,rf_color=rf_color,oplot=oplot,keepaspect=keepaspect, gridlines=gridlines, /help]"
+    message,' Both paramters (CLOUD_FILE & WIND_FILE_FILTER) are required ',/cont
+    Usage, "CLOUD_OVERLAY, cloud_file, wfilter [,date_time,time_inc,wpath=wpath,overlay_path=overlay_path,decimate=decimate,CRDecimate=CRDecimate,ExcludeCols=ExcludeCols,Length=Length,/jpeg|/gif|/ps,gmsType=gmsType,mapLimits=mapLimits,min_speed=min_speed,max_speed=max_speed,thick=thick,rainflag=rainflag,rf_action=0|1,rf_color=rf_color,oplot=oplot,keepaspect=keepaspect, gridlines=gridlines, /help]"
     return
   ENDIF 
 
+  IF size(wfilter,/type) NE size("",/type) THEN message,'Wfilter must be a string!'
+  IF strlen(wfilter) EQ 0 THEN message,'wfilter must be a *NON-EMPTY STRING!'
+
   cloud_file = strcompress(cloud_file,/remove_all)
-
-
   auto_cloud_overlay = n_elements(lockfile)  NE 0 ; flag for cronjob runs.
   keepaspect = keyword_set(keepaspect)
   gridlines = keyword_set(gridlines)
@@ -473,6 +464,12 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   message,str,/info
   IF auto_cloud_overlay THEN $
     printf,llun, "INFO: " + str
+
+  str =  ' Wind Filter ' + wfilter
+  message,str,/info
+  IF auto_cloud_overlay THEN $
+    printf,llun, "INFO: " + str
+
   str =  ' Putting output in       ' + overlay_path
   Message,str ,/info
   IF auto_cloud_overlay THEN $
@@ -529,7 +526,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     printf,llun,"INFO: " + str
 
   wf = GetWindFiles( date_time, delta=time_inc, $
-                     path= wpath, filter='Q*', /twoway)
+                     path= wpath, filter=wfilter, /twoway)
   nn = where(strlen(wf) NE 0, nf)
   IF nf NE 0 THEN wf = wf[nn]
 
