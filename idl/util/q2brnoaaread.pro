@@ -77,6 +77,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  2000/02/23 21:26:12  vapuser
+; General cleanup. Added rain_flag code
+;
 ; Revision 1.4  1999/10/05 17:24:24  vapuser
 ; Fixed some unsigned INT bugs. Increased use of 'verbose' flag. Return
 ; nambig and wvc_sel. return rowtime. General optimization.
@@ -193,7 +196,7 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
     q2b.row =  rnoaa.wvc_row
     q2b.nambig = rnoaa.nambig
     q2b.sel = rnoaa.wvc_sel
-
+    q2b.qual =  rnoaa.wvcqual_flag
     q2b.mu = mu
     q2b.mv = mv
     
