@@ -100,6 +100,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/06 00:21:30  vapuser
+; added nscat flag
+;
 ; Revision 1.1  1998/10/02 23:20:40  vapuser
 ; Initial revision
 ;
@@ -168,8 +171,9 @@ FUNCTION getwindfiles, end_time, $
     path = '/disk3/winds'
   ENDIF 
    
-  IF n_elements(filter) EQ 0 THEN filter =  'Q*'
-  IF nscat THEN filter = 'N*'
+  IF n_elements(filter) EQ 0 THEN BEGIN 
+    IF nscat THEN filter = 'N*' ELSE filter =  'Q*'
+  ENDIF 
     ;-----------------------------------------
     ;
     ; Begin processing
@@ -190,8 +194,8 @@ FUNCTION getwindfiles, end_time, $
       file_start_times =  windfiletimes.start_time
       file_end_times = windfiletimes.end_time
 
-      idx =  dtcompare( start_time_dt, file_start_times, 'GE') OR  $
-             dtcompare( end_time_dt, file_end_times, 'LE') 
+      idx =  dtcompare( start_time_dt, file_start_times, 'LE') AND   $
+             dtcompare( end_time_dt, file_end_times, 'GE') 
 
       idx=where(idx,nx)
       IF nx NE 0 THEN BEGIN 
