@@ -13,10 +13,18 @@
 ;
 ; CALLING SEQUENCE:  
 ;
+;          q2b=q2brnoaaread(file [,ncells=ncells,$
+;                          header=header,$
+;                          raw=raw,starttime=starttime,$
+;                          endtime=endtime,verbose=verbose)
+;
+;
+;
 ;
 ; 
 ; INPUTS:  
 ;
+;     filename - name of file to read
 ;
 ;
 ; OPTIONAL INPUTS:  
@@ -25,6 +33,13 @@
 ;	
 ; KEYWORD PARAMETERS:  
 ;
+;         ncells: number of cells in crosstrack direction (if
+;                 different from 76)
+;         header: returns the header
+;         raw:    returns the data as q2b_rnoaa_str instead of q2b_str.
+;         StartTime: returns data range start time (unused as yet)
+;         EndTime: Ditto, end time (unused as yet)
+;         Verbose: will emit lots of messages (unused as yet)
 ;
 ;
 ; OUTPUTS:  
@@ -62,6 +77,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/11/10 00:46:04  vapuser
+; More work...
+;
 ; Revision 1.1  1998/11/05 19:25:25  vapuser
 ; Initial revision
 ;
@@ -74,6 +92,7 @@
 FUNCTION q2bRnoaaRead, filename, $
                        ncells=ncells, $
                        header=header ,$
+                       raw=raw, $
                        StartTime=Starttime, $
                        EndTime=EndTime, $
                        Verbose=Verbose
@@ -106,10 +125,18 @@ COMMON q2b_rnoaa_cmn, q2b_rnoaa_nheader_recs, $
 
     ff = fstat(lun)
     nrecs = ff.size/q2b_rnoaa_size-q2b_rnoaa_nheader_recs
-    point_lun, lun, q2b_rnoaa_size*q2b_rnoaa_nheader_recs
     rnoaa = q2b_rnoaa_str(nrecs, ncells=ncells)
-    readu,lun,rnoaa
+
+    IF Arg_Present( header ) THEN BEGIN 
+      header = bytarr(q2b_rnoaa_size,q2b_rnoaa_nheader_recs)
+      readu, lun, header, rnoaa
+    ENDIF ELSE BEGIN 
+      point_lun, lun, q2b_rnoaa_size*q2b_rnoaa_nheader_recs
+      readu,lun,rnoaa
+    ENDELSE 
     free_lun, lun
+
+    IF keyword_set(raw) THEN return, rnoaa
 
     t2 = systime(1)
     print,'Time to read Noaa file', t2-t1
