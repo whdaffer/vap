@@ -32,6 +32,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.1  2001/02/09 18:47:08  vapuser
+# Initial revision
+#
 #
 #
 #
@@ -53,7 +56,6 @@ use Time::Local;
     
 
 BEGIN {
-cyclone.msfc.nasa.gov/Weather
   $startdir=Cwd::getcwd();
   $user=$ENV{'USER'};
   $local_host="$ENV{'HOST'}.jpl.nasa.gov";
