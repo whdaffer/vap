@@ -33,6 +33,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  1999/10/05 16:21:02  vapuser
+; Corrected a typo (bit_ vs. bits_)
+;
 ; Revision 1.2  1999/06/15 15:36:37  vapuser
 ; Added a call to forward_function to define ps_form
 ;
@@ -204,6 +207,17 @@ PRO psform::Get, $
                                   Bits_Per_Pixel: self.bits_per_pixel }
    
 
+END
+
+
+;============================================
+; ExtraStruct
+;   Return a structure suitable for use in 
+;   call to device,_extra=foo
+;============================================
+FUNCTION psform::ExtraStruct
+  self-> get,ps = ps
+  return,ps
 END
 
 ;============================================
