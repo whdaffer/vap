@@ -74,6 +74,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  1998/10/28 23:37:51  vapuser
+; Adde verbose keyword and some print statements.
+;
 ; Revision 1.5  1998/10/23 22:19:24  vapuser
 ; Use DeEnvVar to protect HDF_... code from itself.
 ;
@@ -120,7 +123,7 @@ FUNCTION q2bhdfread, filename, $
     return, -1
   ENDIF 
 
-  tfilename = DeEnvVar(filename)
+  tfilename = DeEnvVar(filename,/isfile)
   IF hdf_ishdf(tfilename) NE 0 THEN BEGIN 
     lf =  string(10b)
     fileid = hdf_sd_start(tfilename,/read) 
