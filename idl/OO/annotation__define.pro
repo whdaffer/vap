@@ -17,7 +17,12 @@
 ;                       Xtitle=Xtitle, $
 ;                       Ytitle=Ytitle, $
 ;                       Ztitle=Ztitle, $
-;                       SubTitle=SubTitle
+;                       SubTitle=SubTitle, $
+;                       charsize=charsize, $
+;                       charthick=charthick,$
+;                       xmargin=xmargin, $
+;                       ymargin=ymargin, $
+;                       zmargin=zmargin)
 ;
 ;
 ;
@@ -30,13 +35,17 @@
 ;
 ;
 ;	
-; KEYWORD PARAMETERS:  All Keywords are strings.
+; KEYWORD PARAMETERS:  
 ;
 ;             MainTitle : The Main Title
 ;              Xtitle   : The title FOR the X axis
 ;              Ytitle   : The title for the Y axis
 ;              Ztitle   : The title for the Z axis
 ;              SubTitle : The Sub-title
+;              Charsize : float scalar. The character size in character units
+;                         (default=1.0)
+;              charThick : int scalar. The Character Thickness (!p.charthick)
+;              x/y/zmargin: int 2-vectors. The margins (default=!{X,Y,Z}.margin)
 ;
 ;
 ;
@@ -71,6 +80,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1999/04/09 15:47:43  vapuser
+; worked on version method
+;
 ; Revision 1.2  1998/10/01 17:53:32  vapuser
 ; Modified 'version' method so that it will report
 ; the versions of member classes. Put in some error handling
@@ -93,26 +105,44 @@ FUNCTION Annotation::Init,$
               Xtitle=Xtitle, $
               Ytitle=Ytitle, $
               Ztitle=Ztitle, $
-              SubTitle=SubTitle
+              SubTitle=SubTitle, $
+              CharSize=charSize, $
+              CharThick=CharThick,$
+              Xmargin=Xmargin,$
+              Ymargin=Ymargin,$
+              Zmargin=Zmargin
+              
 
    IF n_Elements(MainTitle) NE 0 THEN $
      IF VarType(MainTitle) EQ 'STRING' THEN self.MainTitle = MainTitle
 
    IF n_Elements(XTitle) NE 0 THEN $
-     IF VarType(XTitle) EQ 'STRING' THEN self.XTitle = XTitle
+     IF VarType(XTitle)  EQ 'STRING' THEN self.XTitle = XTitle
 
    IF n_Elements(YTitle) NE 0 THEN $
-     IF VarType(YTitle) EQ 'STRING' THEN self.YTitle = YTitle
+     IF VarType(YTitle)  EQ 'STRING' THEN self.YTitle = YTitle
 
    IF n_Elements(ZTitle) NE 0 THEN $
-     IF VarType(ZTitle) EQ 'STRING' THEN self.ZTitle = ZTitle
+     IF VarType(ZTitle)  EQ 'STRING' THEN self.ZTitle = ZTitle
      
    IF n_Elements(SubTitle) NE 0 THEN $
-     IF VarType(SubTitle) EQ 'STRING' THEN self.SubTitle = SubTitle
+     IF VarType(SubTitle)  EQ 'STRING' THEN self.SubTitle = SubTitle
+   
+   IF n_elements(charsize)  EQ 0 THEN charsize = 1.0
+   IF n_elements(charthick) EQ 0 THEN charthick = 1.0
+
+   IF n_elements(xmargin) NE 2 THEN xmargin = !x.margin
+   IF n_elements(ymargin) NE 2 THEN ymargin = !y.margin
+   IF n_elements(zmargin) NE 2 THEN zmargin = !z.margin
+
+   self.charsize = charsize
+   self.charthick = charthick
+   self.xmargin = xmargin
+   self.ymargin = ymargin
+   self.zmargin = zmargin
 
   return,1
 END
-
 
 ;============================================
 ; Cleanup
@@ -131,7 +161,12 @@ PRO Annotation::Set, $
               Xtitle=Xtitle, $
               Ytitle=Ytitle, $
               Ztitle=Ztitle, $
-              SubTitle=SubTitle
+              SubTitle=SubTitle, $
+              CharSize=charSize, $
+              CharThick=CharThick,$
+              Xmargin=Xmargin,$
+              Ymargin=Ymargin,$
+              Zmargin=Zmargin
 
    IF n_Elements(MainTitle) NE 0 THEN $
      IF VarType(MainTitle) EQ 'STRING' THEN self.MainTitle = MainTitle
@@ -148,6 +183,12 @@ PRO Annotation::Set, $
    IF n_Elements(SubTitle) NE 0 THEN $
      IF VarType(SubTitle) EQ 'STRING' THEN self.SubTitle = SubTitle
 
+   IF n_elements(charsize) NE 0 THEN self.charsize = charsize
+   IF n_elements(charthick) NE 0 THEN self.charthick = charthick
+   IF n_elements(xmargin) EQ 2 THEN self.xmargin = xmargin
+   IF n_elements(ymargin) EQ 2 THEN self.ymargin = ymargin
+   IF n_elements(zmargin) EQ 2 THEN self.zmargin = zmargin
+
 END
 
 
@@ -160,94 +201,27 @@ PRO Annotation::Get, $
               Xtitle=Xtitle, $
               Ytitle=Ytitle, $
               Ztitle=Ztitle, $
-              SubTitle=SubTitle
+              SubTitle=SubTitle, $
+              CharSize=charSize, $
+              CharThick=CharThick,$
+              Xmargin=Xmargin,$
+              Ymargin=Ymargin,$
+              Zmargin=Zmargin
 
               MainTitle = self.MainTitle
               Xtitle    = self.Xtitle
               Ytitle    = self.Ytitle
               SubTitle  = self.SubTitle
+              charsize  = self.charsize
+              charThick = self.charThick
+              xmargin   = self.xmargin
+              ymargin   = self.ymargin
+              zmargin   = self.zmargin
 END
 
-
-
 ;============================================
-; Version
+; 
 ;============================================
-
-FUNCTION Annotation::Version
-
-     ; Version number for this class
-
-   rcsid = "$Id$"
-
-     ; Find version number for member objects.
-   s=execute( 'tags=tag_names({' + 'ANNOTATION' + '})' ) 
-   n_tags = n_elements(Tags)
-   i = 0
-   WHILE i LE n_tags-1 DO BEGIN 
-
-     catch, error
-     IF error NE 0 THEN BEGIN 
-         ; Ignore 'undefined method' errors
-       IF strpos( strupcase(!Error_state.Msg), $
-                  "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
-         error = 0
-         i = i+1
-       ENDIF ELSE return,''
-     ENDIF 
-     
-     IF VarType( self.(i) ) EQ 'OBJECT' THEN BEGIN 
-       IF Obj_Valid( self.(i)) THEN BEGIN 
-         V =  Call_Method( "VERSION", self.(i) )
-         nv = N_Elements(V)
-         IF exist(member_versions) THEN $
-            member_versions =  [ member_versions, v ] ELSE $
-            member_versions =  v
-       ENDIF 
-     ENDIF 
-     i =  i+1
-   ENDWHILE 
-
-     ; find version number for superclasses.
-   super = Obj_Class(self,/Super,count=cnt)
-        
-   IF cnt NE 0 THEN BEGIN 
-     WHILE i LE cnt-1 DO BEGIN 
-       catch, error
-       IF error NE 0 THEN BEGIN 
-           ; Ignore 'undefined method' errors
-         IF strpos( strupcase(!Error_state.Msg), $
-                    "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
-           error = 0
-           i = i+1
-         ENDIF ELSE BEGIN 
-           Message,!error_state.msg,/cont
-           return,''
-         ENDELSE 
-       ENDIF 
-
-       V  = call_method("VERSION",super[i])
-
-       IF exist( super_versions ) THEN $
-         super_versions =  [super_versions, v ] ELSE $
-         super_versions =  v 
-       i = i+1
-
-     ENDWHILE 
-   ENDIF
-
-   versions =  rcsid
-
-   IF exist(super_versions) THEN $
-      versions =  [versions, super_versions]
-
-   IF exist( member_versions ) THEN $
-      versions =  [versions, member_versions ] 
-
-   Catch,/cancel
-  return,versions(uniq(versions,sort(versions)))
-END
-
 ;============================================
 ; Definition Routine
 ;============================================
@@ -258,7 +232,12 @@ PRO Annotation__define
          Xtitle    : '' ,$
          Ytitle    : '' ,$
          Ztitle    : '' ,$
-         Subtitle  : '' }
+         Subtitle  : '' ,$
+         CharSize  : 1.0, $
+         CharThick : 1.0, $
+         Xmargin   : [0,0],$
+         Ymargin   : [0,0], $
+         Zmargin   : [0,0] }
 END
 
 
