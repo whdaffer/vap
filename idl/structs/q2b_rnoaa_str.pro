@@ -1,5 +1,6 @@
 ;+
 ; NAME:  q2b_rnoaa_str 
+; $Id$
 ; PURPOSE:  Returns (and defines, if not already defined) a structure
 ;           for use with q2b_rnoaa data. This is the Reduced Noaa Near
 ;           Real time data made by Scott Dunbar's Noaa NRT processor.
@@ -12,7 +13,8 @@
 ;
 ;
 ;
-; CALLING SEQUENCE:  vector_of_structures = q2b_rnoaa_str(nstruct, ncells=ncells )
+; CALLING SEQUENCE:  
+;      vector_of_structures = q2b_rnoaa_str(nstruct, ncells=ncells )
 ;
 ;
 ; 
@@ -41,7 +43,11 @@
 ;
 ; COMMON BLOCKS:  
 ;
-;     q2b_rnoaa_cmn: containing q2b_rnoaa_cmn, q2b_rnoaa_defined, q2b_rnoaa_size, q2b_rnoaa
+;     q2b_rnoaa_cmn: containing 
+;                    q2b_rnoaa_cmn, 
+;                    q2b_rnoaa_defined, 
+;                    q2b_rnoaa_size,  and 
+;                    q2b_rnoaa
 ;
 ;
 ;
@@ -66,6 +72,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/11/10 00:46:40  vapuser
+; ncells keyword, make nheader_recs=1
+;
 ; Revision 1.1  1998/11/05 19:24:33  vapuser
 ; Initial revision
 ;
@@ -74,7 +83,7 @@
 ;
 ;
 ;Jet Propulsion Laboratory
-;Copyright (c) YYYY, California Institute of Technology
+;Copyright (c) 1998, California Institute of Technology
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
 FUNCTION q2b_rnoaa_str, nstruct, ncells=ncells
