@@ -82,6 +82,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  2001/02/02 19:07:11  vapuser
+; Added the missing `hdf_sd_end' which was causing
+; any HDF reading programs to fail after reading
+; ~30 files.
+;
 ; Revision 1.2  1998/10/21 15:53:40  vapuser
 ; Added test for shortname=QSCATL2B
 ;
@@ -135,7 +140,8 @@ FUNCTION IsQ2B, filename
       name = strupcase(name)
       IF name EQ 'SHORTNAME' THEN BEGIN 
         found = 1
-        tmp = str_sep( data, lf )
+        ;tmp = str_sep( data, lf )
+        tmp = strsplit( data, lf, /extract )
         tmp = tmp(where(strlen(tmp)))
         data =  tmp(n_elements(tmp)-1)
         shortname =  strupcase(data)

@@ -4,7 +4,7 @@ PRO read_landel_ct, red,green,blue
     message,!err_string,/cont
     return
   ENDIF 
-  spawn,'wc -l  $VAP_ROOT/land_elevations.ct',nlines
+  spawn,'wc -l  $VAP_LIBRARY/land_elevations.ct',nlines
   nlines = nlines(0)
   tmp = bytarr(3,nlines)
   readf,rlun,tmp

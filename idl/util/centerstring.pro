@@ -49,6 +49,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 21:11:12  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) William Daffer, 1999
 ;-
@@ -79,7 +82,7 @@ FUNCTION centerstring, string, borderchar=borderchar, maxlen=maxlen, back=back
     IF t LT maxstrlen THEN BEGIN 
       tmpstring = string
       t = strlen(string)
-      REPEAT t = rstrpos( tmpstring, ' ', t) UNTIL t LT maxstrlen
+      REPEAT t = strpos( tmpstring, ' ', t,/reverse_search) UNTIL t LT maxstrlen
       this_string =  strmid(string,0,t )
       next_string =  strmid( string, t, strlen(string)-t)
       npad = (maxstrlen - strlen(this_string))/2

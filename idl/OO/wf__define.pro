@@ -24,9 +24,11 @@ END
 PRO wf::Set, $
       filename = filename
   IF n_params() EQ 0 THEN return
-  s = rstrpos( filename,'/' ) + 1
+  ;s = rstrpos( filename,'/' ) + 1
+  s = strpos(filename,'/',/reverse_search)+1
   basename =  strmid( filename, s, strlen(filename)-s)
-  tmp = str_sep( filename, '.' );
+  ;tmp = str_sep( filename, '.' );
+  tmp = strsplit(filename,'.',/extract)
   IF n_elements(tmp) eq 3 THEN BEGIN 
     self.filename = filename
     yyyymmdd = strmid(tmp[0],1,8 );

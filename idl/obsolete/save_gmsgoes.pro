@@ -66,7 +66,7 @@
 ;
 
   ; read the land elevation file if it isn't in the common
-  openr,1,'$VAP_ROOT/animate/land_elevations.bin'
+  openr,1,'$VAP_LIBRARY/land_elevations.bin'
   landel =  intarr( 12l*360, 12l*180 + 1 )
   readu,1, landel
   close,1

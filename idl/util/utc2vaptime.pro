@@ -62,6 +62,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/05 23:49:16  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -80,9 +83,9 @@ FUNCTION utc2vaptime, utc
   vaptime = strarr(n1)
   s = '/'
   FOR i=0,n1-1 DO BEGIN 
-    tmp  = str_sep( utc[i], 'T' )
-    tmp2 = str_sep( tmp[0], '-')
-    tmp3 = str_sep( tmp[1], ':')
+    tmp  = strsplit( utc[i], 'T' ,/extract)
+    tmp2 = strsplit( tmp[0], '-',/extract)
+    tmp3 = strsplit( tmp[1], ':',/extract)
     year = tmp2[0]
     doy = fix(tmp2[1])
     date = doy2date( fix(year),doy)

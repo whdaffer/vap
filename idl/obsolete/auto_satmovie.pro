@@ -40,6 +40,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:14:14  vapuser
+; Imported sources
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -382,7 +385,7 @@ ENDIF ELSE BEGIN
     iy = (tlat(land)+90)*12. 
 
 
-    openr,1,'$VAP_ROOT/animate/land_elevations.bin'
+    openr,1,'$VAP_LIBRARY/land_elevations.bin'
     landel =  intarr( 12*360, 12*180 + 1 ) 
     readu,1, landel 
     close,1 

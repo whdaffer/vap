@@ -6,7 +6,8 @@
 FUNCTION cloudoverlay::Init, AreaFile, limits = limits
   status = 0
   IF n_params() EQ 1 THEN BEGIN 
-    r = rstrpos(AreaFile,'/')+1
+    ;r = rstrpos(AreaFile,'/')+1
+    r = strpos(AreaFile,'/',/reverse_search)+1
     self.AreaFile = strmid(AreaFile, r, strlen(AreaFile)-r)
     self.AreaFilePath = strmid( AreaFile,0, r )
     

@@ -52,6 +52,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/04/09 00:01:51  vapuser
+; Added call to 'basename', fixed a filename
+; parsing bug.
+;
 ; Revision 1.1  1999/04/06 18:39:54  vapuser
 ; Initial revision
 ;
@@ -96,7 +100,7 @@ PRO makedep, sourcefile, dependencies
 
   basename = basename(sourcefile)
   IF strpos(basename,'.') NE -1 THEN $
-    tt = str_sep(basename,'.') ELSE tt = basename
+    tt = strsplit(basename,'.',/extract) ELSE tt = basename
     outfile = tt[0] + '.dep'
   openw, lun, outfile,/get,error=err
   IF err NE 0 THEN BEGIN 
@@ -108,7 +112,7 @@ PRO makedep, sourcefile, dependencies
   retdep = strarr(nd)
   ii = 0
   FOR i=0,nd-1 DO BEGIN 
-    tt = str_sep(tdep[i],' ')
+    tt = strsplit(tdep[i],' ',/extract)
     IF n_elements(tt) EQ 2 THEN BEGIN 
       retdep[ii] = tdep[i]
       ii = ii+1

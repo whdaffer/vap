@@ -70,6 +70,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  2001/02/02 19:22:51  vapuser
+; Code so user can cut off the latitude range of the input
+; interpolated field, if they so desire.
+;
 ; Revision 1.1  1999/10/06 22:58:03  vapuser
 ; Initial revision
 ;
@@ -165,7 +169,7 @@ nframes = animpar[2]
   ;
 
 PtrToColorTable = ReadColorTable( $
-     "$VAP_RESOURCES/Color_Tables/vap-animation.ct")
+     "$VAP_COLORTABLES/vap-animation.ct")
 IF NOT ptr_valid(ptrToColorTable) THEN BEGIN 
   Message,"Can't Read Color table",/cont
   return
@@ -236,7 +240,7 @@ contour_im=tvrd()
 
 device, set_resolution=[animpar[0], animpar[1] ]
 
-openr,lun,'$VAP_LIB/land_elevations.bin',/get,error=err
+openr,lun,'$VAP_LIBRARY/land_elevations.bin',/get,error=err
 IF err NE 0 THEN BEGIN 
   Message,!error_state.msg,/cont
   return

@@ -62,6 +62,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/11/20 20:11:41  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -84,7 +87,7 @@ FUNCTION ParseGoesFileName, filename
     Message,'Filename must be of type STRING',/cont
   ENDIF ELSE BEGIN 
       ; Strip off leading path, if any
-    junk = rstrpos( filename,'/')
+    junk = strpos( filename,'/',/reverse_search)
     IF junk NE -1 THEN $
       basename = strmid(filename,junk+1,strlen(filename)-junk-1) ELSE $
       basename = filename

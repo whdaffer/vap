@@ -33,6 +33,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 23:01:29  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -75,9 +78,9 @@ PRO wendy2hdf, file
     IF nx NE 0 THEN v(x) =  !values.f_nan
 
     
-    slash = rstrpos(file,'/')+1
+    slash = strpos(file,'/',/reverse_search)+1
     base = strmid(file,slash,strlen(file)-slash)
-    tmp = str_sep(base,'.') ; assumes file has extension
+    tmp = strsplit(base,'.',/extract) ; assumes file has extension
     time = tmp[0]
     
     year = '19' + strmid(base,0,2)

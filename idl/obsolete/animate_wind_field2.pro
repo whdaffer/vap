@@ -323,6 +323,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:14:14  vapuser
+; Imported sources
+;
 ; Revision 1.9  2000/02/28 19:19:22  vapuser
 ; Fixed a problem with the Title.
 ;
@@ -346,7 +349,7 @@
 ; their uniqueness.  Added the 'harmonic' and 'meters_per_second'.
 ; Corrected some misuses of keyword_set() and bad meters_per_second
 ; to knots conversion. Changed location of land_elevations.bin to
-; VAP_LIB. General maintenance.
+; VAP_LIBRARY. General maintenance.
 ;
 ; Revision 1.4  1999/04/08 22:01:56  vapuser
 ; Replaced Colorbar with ColBar
@@ -534,8 +537,8 @@ ENDIF ELSE nf = 1
 IF nf NE 0 THEN BEGIN 
   read_cfgfile = 1
 ENDIF ELSE BEGIN 
-  IF getenv('VAP_LIB') NE '' THEN BEGIN 
-    cfgpath = deenvvar('$VAP_LIB')
+  IF getenv('VAP_LIBRARY') NE '' THEN BEGIN 
+    cfgpath = deenvvar('$VAP_LIBRARY')
     ff = findfile(cfgpath + cfgname,count=nf)      
     read_cfgfile = (nf NE 0)
   ENDIF
@@ -740,18 +743,11 @@ ENDIF ELSE BEGIN
 ENDELSE 
 
 
-  ;
+
 first = 1
-  ;
-  ; Define the color table. On rainy, $NSCAT-VAP = /nscat-vap
-  ;
-;red =  bytarr(51) &  green=red &  blue=red
-;openr,1,'$VAP_LIB/Resources/Color_Tables/nscat-vap-animation.ct2', error= err
-;readu,1,red,green,blue
-;close,1
 
 PtrToColorTable = ReadColorTable( $
-     "$VAP_RESOURCES/Color_Tables/vap-animation.ct")
+     "$VAP_COLORTABLES/vap-animation.ct")
 IF NOT ptr_valid(ptrToColorTable) THEN BEGIN 
   Message,"Can't Read Color table",/cont
   return

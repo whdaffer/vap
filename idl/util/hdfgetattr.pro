@@ -92,6 +92,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/29 22:33:26  vapuser
+; Added some code to handle the Level processors strange attributes
+;
 ; Revision 1.1  1998/10/22 21:33:23  vapuser
 ; Initial revision
 ;
@@ -145,7 +148,7 @@ FUNCTION hdfgetattr, filename, attribute=attribute, printall=printall
         hdf_sd_attrinfo,fileid,ai,name=name,type=type,count=count,data=data
         IF printall THEN BEGIN 
           IF VarType( data ) EQ 'STRING' THEN BEGIN 
-            tmp = str_sep( data, lf )
+            tmp = strstrsplit( data, lf,/extract )
             tmp = tmp(where(strlen(tmp)))
             data =  tmp(n_elements(tmp)-1)
             name =  name + " : "
@@ -156,7 +159,7 @@ FUNCTION hdfgetattr, filename, attribute=attribute, printall=printall
           IF strupcase(attribute) EQ strupcase(name) THEN BEGIN 
             retstruct.name = name
             IF VarType(data) EQ 'STRING' THEN BEGIN 
-              data = str_sep(data,lf)
+              data = strsplit(data,lf,/extract)
               IF strupcase(data[0]) EQ 'CHAR' THEN BEGIN 
                 data =  data[2:n_elements(data)-1]
                 x = where(strlen(data))
@@ -168,7 +171,7 @@ FUNCTION hdfgetattr, filename, attribute=attribute, printall=printall
         ENDIF ELSE BEGIN 
           retstruct(ai).name = name
           IF VarType(data) EQ 'STRING' THEN BEGIN 
-            data = str_sep(data,lf)
+            data = strsplit(data,lf,/extract)
             IF strupcase(data[0]) EQ 'CHAR' THEN BEGIN 
               data =  data[2:n_elements(data)-1]
                 x = where(strlen(data))

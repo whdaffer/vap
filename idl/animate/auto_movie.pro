@@ -44,7 +44,7 @@
 ;                          Interest is used to get run time
 ;                          information from a file named
 ;                          auto_movie_defs.dat, which currently
-;                          resides in $VAP_LIB. 
+;                          resides in $VAP_LIBRARY. 
 ;                
 ;                alonpar : [min,max] lon of movie (vlonpar =
 ;                          [lonpar-10,lonpar+10, alonpar(2)] )
@@ -119,6 +119,9 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.14  2001/02/21 01:04:46  vapuser
+; Took out 'path=' in call to read_cfgfile
+;
 ; Revision 1.13  2001/02/02 19:01:06  vapuser
 ; Fixed a mps/knots conversion, put some output of
 ; timing info to the log, changed the log directory to $VAP_ROOT/logs
@@ -279,8 +282,8 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   IF nf NE 0 THEN BEGIN 
     read_cfgfile = 1
   ENDIF ELSE BEGIN 
-    IF getenv('VAP_LIB') NE '' THEN BEGIN 
-      cfgpath = deenvvar('$VAP_LIB')
+    IF getenv('VAP_LIBRARY') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIBRARY')
       ff = findfile(cfgpath + cfgname,count=nf)      
       read_cfgfile = (nf NE 0)
     ENDIF

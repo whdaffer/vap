@@ -290,6 +290,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.18  2001/02/21 01:03:33  vapuser
+; Took out 'path=' in call to read_cfgfile
+;
 ; Revision 1.17  2001/02/02 19:06:07  vapuser
 ; Added keepaspect, gridlines and oplot keywords and
 ; associated code (alot of it for `oplot')
@@ -392,8 +395,8 @@ PRO goes_overlay, goesfile, $
   IF nf NE 0 THEN BEGIN 
     read_cfgfile = 1
   ENDIF ELSE BEGIN 
-    IF getenv('VAP_LIB') NE '' THEN BEGIN 
-      cfgpath = deenvvar('$VAP_LIB')
+    IF getenv('VAP_LIBRARY') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIBRARY')
       ff = findfile(cfgpath + cfgname,count=nf)      
       read_cfgfile = (nf NE 0)
     ENDIF
@@ -706,8 +709,7 @@ PRO goes_overlay, goesfile, $
   IF getenv('OVERLAY_CT') NE '' THEN BEGIN 
     ptr = ReadColorTable('$OVERLAY_CT')
   ENDIF ELSE BEGIN 
-    ptr = ReadColorTable($
-       '/usr/people/vapuser/Qscat/Resources/Color_Tables/goes_overlay24.ct')
+    ptr = ReadColorTable('$VAP_COLORTABLES/goes_overlay24.ct')
   ENDELSE 
   IF NOT Ptr_Valid(ptr) THEN BEGIN 
     Message,'Error Reading ColorTable!',/cont

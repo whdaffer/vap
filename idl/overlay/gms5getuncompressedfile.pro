@@ -59,6 +59,10 @@
 ; MODIFICATION LOG:
 ;
 ; $Log$
+; Revision 1.2  1999/04/02 20:11:06  vapuser
+; Corrected call to rstrpos, which, unlike strpos, doesn't accept
+; vector arguments. Strange!
+;
 ; Revision 1.1  1999/04/02 17:59:54  vapuser
 ; Initial revision
 ;
@@ -90,7 +94,7 @@ FUNCTION Gms5GetUncompressedFile, possibles
   nf = n_elements(possibles)
   test = lonarr(nf)
   FOR f=0l,nf-1 DO $
-    test[f] = rstrpos( possibles[f], '.Z') 
+    test[f] = strpos( possibles[f], '.Z',/reverse_search) 
 
   x = where( test EQ -1, nx )
   IF nx NE 0 THEN BEGIN 
@@ -98,7 +102,7 @@ FUNCTION Gms5GetUncompressedFile, possibles
   ENDIF ELSE BEGIN 
     testfile = possibles[0]
     spawn, 'gunzip ' + testfile, return_val
-    tmp = str_sep( testfile, '.' )
+    tmp = strsplit( testfile, '.' ,/extract)
     testfile = strjoin( [tmp[0], tmp[1]], '.')
     file = (findfile(testfile, count=cnt))[0]
   ENDELSE 

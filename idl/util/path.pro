@@ -39,7 +39,7 @@ FUNCTION path, filename
   nf = n_elements(filename)
   path = strarr(nf)
   FOR f=0,nf-1 DO BEGIN 
-    t = rstrpos(filename[f],'/')+1
+    t = strpos(filename[f],'/',/reverse_search)+1
     IF t EQ 0 THEN path[f] = './' ELSE $
       path[f] = strmid( filename[f], 0, t )
   ENDFOR 

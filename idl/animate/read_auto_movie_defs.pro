@@ -1,7 +1,7 @@
 ;+
 ; NAME: Read_Auto_Movie_Defs  
 ; $Id$
-; PURPOSE: Reads the file $VAP_LIB/auto_movie_defs.dat
+; PURPOSE: Reads the file $VAP_LIBRARY/auto_movie_defs.dat
 ;
 ;
 ; AUTHOR; William Daffer
@@ -83,6 +83,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1999/10/05 17:25:16  vapuser
+; Worked on header
+;
 ; Revision 1.2  1998/10/17 00:27:29  vapuser
 ; By addding extensive comments to the movie defs file, I
 ; introduced a bug into this one, which this change fixes.
@@ -106,7 +109,7 @@ FUNCTION read_auto_movie_defs, desig
    rcsid = "$Id$"
   IF n_elements( desig ) EQ 0 THEN desig = 'nepac'
   desig =  strupcase(desig)
-  OPENR, rlun,'$VAP_LIB/auto_movie_defs.dat',/get_lun, error=err
+  OPENR, rlun,'$VAP_LIBRARY/auto_movie_defs.dat',/get_lun, error=err
   found =  0
   IF err eq 0 THEN BEGIN 
     rec =  ''

@@ -61,6 +61,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  2001/12/05 00:23:17  vapuser
+; default the second field
+;
 ; Revision 1.1  1998/10/08 16:57:25  vapuser
 ; Initial revision
 ;
@@ -77,7 +80,7 @@ FUNCTION vaptime2idldt, vaptimes
      nn = n_Elements(vaptimes)
      idldt = replicate( {IDLDT}, nn )
      FOR i=0,nn-1 DO BEGIN 
-       tmp   = Str_Sep( vaptimes(i), '/' )
+       tmp   = strsplit( vaptimes(i), '/' ,/extract)
        year  = fix(tmp[0])
        month = fix(tmp[1])
        day   = fix(tmp[2])

@@ -275,6 +275,11 @@
 ; 
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.23  2001/02/21 22:11:15  vapuser
+; Beefed up the documentation header so that it will be easier to use
+; with whddoc_library. Added a state variable, ambig, so that the user
+; can return ambiguities other than `selected' by default
+;
 ; Revision 1.22  2000/12/14 23:04:34  vapuser
 ; changed the semantics of the rain flag stuff.
 ; Incorporated the new MGDR quantities.
@@ -1325,7 +1330,7 @@ FUNCTION Q2b::Read, filename
       IF VarType(retstruct) EQ 'STRUCTURE' THEN BEGIN 
         self.StartTime =  retstruct.DataStartTime
         self.EndTime =  retstruct.DataEndTime
-        tmp = strtrim(str_sep(retstruct.EquatorCrossingtime,'T'),2)
+        tmp = strtrim(strsplit(retstruct.EquatorCrossingtime,'T',/extract),2)
         self.eqx.date =  tmp[0]
         self.eqx.time =  tmp[1]
         self.eqx.lon = float(retstruct.equatorcrossinglongitude)
@@ -1362,7 +1367,7 @@ FUNCTION Q2b::Read, filename
           IF VarType(retstruct) EQ 'STRUCTURE' THEN BEGIN 
             self.StartTime =  retstruct.DataStartTime
             self.EndTime =  retstruct.DataEndTime
-            tmp = strtrim(str_sep(retstruct.EquatorCrossingtime,'T'),2)
+            tmp = strtrim(strsplit(retstruct.EquatorCrossingtime,'T',/extract),2)
             self.eqx.date =  tmp[0]
             self.eqx.time =  tmp[1]
             self.eqx.lon = float(retstruct.equatorcrossinglongitude)
@@ -1791,7 +1796,7 @@ PRO Q2B::SetExcludeCols, Cols
    IF N_Params() EQ 1 THEN BEGIN 
      Cols = strcompress(string(cols),/remove_all)
      IF strlen(cols) NE 0 THEN BEGIN 
-       tmp = str_sep(cols,',');
+       tmp = strsplit(cols,',',/extract);
        nn = n_elements(tmp)
        FOR i=0,nn-1 DO BEGIN 
 
@@ -1799,7 +1804,7 @@ PRO Q2B::SetExcludeCols, Cols
          IF junk EQ -1 THEN BEGIN 
            NewCols = fix(tmp[i])
          ENDIF ELSE BEGIN 
-           tmp2 = str_sep( tmp[i], ':' )
+           tmp2 = strsplit( tmp[i], ':',/extract )
            x0 = fix(tmp2[0])
            x1 = fix(tmp2[1])
 

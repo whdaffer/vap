@@ -38,6 +38,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 21:14:00  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1999, William Daffer
 ; No Warranties!
@@ -49,14 +52,14 @@ FUNCTION directory, filename
     return,''
   ENDIF
   IF NOT isa(filename,/string,/nonempty) THEN BEGIN 
-    Message,'Filename must be non-empty string!",/cont
+    Message,"Filename must be non-empty string!",/cont
     return,''
   ENDIF 
 
   nf = n_elements(filename)
   dir =  strarr(nf)
   FOR f=0,nf-1 DO BEGIN 
-    s = rstrpos(filename[f],'/')
+    s = strpos(filename[f],'/',/reverse_search)
     CASE s OF 
       -1: dir[f]=filename[f] + '/'
       strlen(filename[f])-1: dir[f] = filename[f]

@@ -115,6 +115,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.7  2001/02/02 19:21:21  vapuser
+; Change use_rf to rainflag. Fixed some small bugs
+;
 ; Revision 1.6  2000/02/28 18:06:44  vapuser
 ; Added rain flag code. Spruced up documentation.
 ;
@@ -271,18 +274,18 @@ FUNCTION read_wind_files, files, $
          s = q-> GetPlotData(u,v,lon,lat, rf_index=rf_index)
          s = q-> Get( StartTime = ST, Endtime=ET)
          IF strlen(st) NE 0 THEN BEGIN 
-           tmp = str_sep(st,'/')
+           tmp = strsplit(st,'/',/extract)
            IF fix(tmp[0]) NE 0 THEN BEGIN 
-             tmp2 = str_sep(startTime,'/')
+             tmp2 = strsplit(startTime,'/',/extract)
              IF fix(tmp2[0]) NE 0 THEN $
                StartTime = Min( [StartTime, st]) ELSE $
                StartTime = st
            ENDIF 
          ENDIF 
          IF strlen(et) NE 0 THEN BEGIN 
-           tmp = str_sep(et,'/')
+           tmp = strsplit(et,'/',/extract)
            IF fix(tmp[0]) NE 0 THEN BEGIN 
-             tmp2 = str_sep(EndTime,'/')
+             tmp2 = strsplit(EndTime,'/',/extract)
              IF fix(tmp2[0]) NE 0 THEN $
                EndTime = Max( [EndTime, et]) ELSE $
                EndTime = et

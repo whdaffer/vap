@@ -63,19 +63,19 @@ FUNCTION Ccsds2idldt, ccsds, check=check
 
   IF keyword_set(check) THEN BEGIN 
     FOR i=0L,nn-1 DO BEGIN 
-      tmp = str_sep( strtrim( strcompress(ccsds[i]),2), 'T')
+      tmp = strsplit( strtrim( strcompress(ccsds[i]),2), 'T',/extract)
       IF n_elements(tmp) NE 2 THEN BEGIN 
         Message,"Bad Ccsds, no 'T'",/cont
         Message,"Format is yyyy-dddThh:mm:ss.cccZ",/cont
         return,0
       ENDIF 
-      tmp1 = str_sep(tmp[0],'-')
+      tmp1 = strsplit(tmp[0],'-',/extract)
       IF n_elements(tmp1) NE 2 THEN BEGIN 
         Message,"Bad Ccsds, first part doesn't look like 'yyyy-ddd'",/cont
         Message,"Format is yyyy-dddThh:mm:ss.ccc",/cont
         return,0
       ENDIF 
-      tmp2 = str_sep(tmp[1],':')
+      tmp2 = strsplit(tmp[1],':',/extract)
       IF n_Elements(tmp2) NE 3 THEN BEGIN 
         Message,"Bad Ccsds, second part doesn't look like 'hh:mm:ss.ccc'",$
           /cont

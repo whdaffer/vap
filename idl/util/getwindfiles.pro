@@ -107,6 +107,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.7  1999/10/06 16:00:07  vapuser
+; Call 'vfindfile' instead of 'findfile' to handle findfile's problems
+; with too many files in one directory.
+;
 ; Revision 1.6  1999/10/05 17:18:52  vapuser
 ; Changed delta(hours) to delta_hours.
 ;
@@ -161,7 +165,7 @@ FUNCTION getwindfiles, end_time, $
   IF n_elements(end_time) EQ 0 THEN BEGIN 
     end_time = today();
   ENDIF ELSE BEGIN 
-    tmp = str_sep( end_time, '/');
+    tmp = strsplit( end_time, '/',/extract);
     IF n_Elements(tmp) LT 3 THEN BEGIN 
       Message,'End_time must have at least yyyy/mm/dd',/cont
       return,retarray
@@ -178,7 +182,7 @@ FUNCTION getwindfiles, end_time, $
   IF n_elements(start_time) EQ 0 THEN BEGIN 
     start_time_dt =  dt_subtract( end_time_dt, hour=delta_hours, min=delta_mins)
   ENDIF ELSE BEGIN 
-    tmp = str_sep( start_time, '/')
+    tmp = strsplit( start_time, '/',/extract)
     yyyy  = fix(tmp[0]) 
     IF yyyy LE 99 THEN yyyy =  yyyy+1900
     month = fix(tmp[1])
@@ -199,7 +203,7 @@ FUNCTION getwindfiles, end_time, $
   ENDIF 
 
   path = deenvvar(path)
-  IF rstrpos(path,'/') NE strlen(path)-1 THEN path = path + '/'
+  IF strpos(path,'/',/reverse_search) NE strlen(path)-1 THEN path = path + '/'
    
   IF n_elements(filter) EQ 0 THEN BEGIN 
     IF nscat THEN filter = 'N*' ELSE filter =  'Q*'

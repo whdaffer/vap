@@ -6,7 +6,7 @@ FUNCTION read_evol_movie_defs, desig
 
 IF n_elements( desig ) EQ 0 THEN desig = 'nepac'
 desig =  strupcase(desig)
-OPENR, rlun,'$VAP_ROOT/evolution_movie_defs.dat',/get_lun, error=err
+OPENR, rlun,'$VAP_LIBRARY/evolution_movie_defs.dat',/get_lun, error=err
 found =  0
 IF err eq 0 THEN BEGIN 
   rec =  ''

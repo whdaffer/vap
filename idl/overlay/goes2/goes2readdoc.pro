@@ -38,35 +38,35 @@ FUNCTION  goes2readdoc, datetime, region
   rec = ''
   readf, lun, rec
   readf, lun, rec
-  t = str_sep(rec,'=')
+  t = strsplit(rec,'=',/extract)
   goesdoc.spacecraftid =  fix(t[1])
     
   readf, lun, rec
-  t = str_sep(rec,'=')
+  t = strsplit(rec,'=',/extract)
   goesdoc.SensorProcId =  fix(t[1])
   
  
   FOR i=0,3 DO BEGIN 
     readf, lun, rec
-    t = str_sep(rec,'=')
+    t = strsplit(rec,'=',/extract)
     goesdoc.iscan[i] =  byte(fix(strtrim(t[1],2)))
   ENDFOR    
 
   FOR i=0,5 DO BEGIN 
     readf,lun,rec
-    t = str_sep(rec,'=')
+    t = strsplit(rec,'=',/extract)
     goesdoc.spsTime[i] = fix(t[1])
   ENDFOR 
 
   FOR i=0,5 DO BEGIN 
     readf,lun,rec
-    t = str_sep(rec,'=')
+    t = strsplit(rec,'=',/extract)
     goesdoc.headerTime[i] = fix(t[1])
   ENDFOR 
 
   FOR i=0,5 DO BEGIN 
     readf,lun,rec
-    t = str_sep(rec,'=')
+    t = strsplit(rec,'=',/extract)
     goesdoc.trailerTime[i] = fix(t[1])
   ENDFOR 
 
@@ -74,8 +74,8 @@ FUNCTION  goes2readdoc, datetime, region
   REPEAT BEGIN 
     readf, lun, rec
     rec = strcompress(strtrim(rec,2))
-    t = str_sep(rec,'=')
-    t1 = str_sep(strtrim(t[0],2),' ')
+    t = strsplit(rec,'=',/extract)
+    t1 = strsplit(strtrim(t[0],2,/extract),' ')
     
     field = strupcase(t1[n_elements(t1)-1])
     x = where(tags EQ field, nx )
@@ -97,15 +97,15 @@ FUNCTION  goes2readdoc, datetime, region
 
   FOR i=0,5 DO BEGIN 
     readf,lun,rec
-    t = str_sep(rec,'=')
+    t = strsplit(rec,'=',/extract)
     goesdoc.epochTime[i] = fix(t[1])
   ENDFOR 
 
   REPEAT BEGIN 
     readf, lun, rec
     rec = strcompress(strtrim(rec,2))
-    t = str_sep(rec,'=')
-    t1 = str_sep(strtrim(t[0],2),' ')
+    t = strsplit(rec,'=',/extract)
+    t1 = strsplit(strtrim(t[0],2,/extract),' ')
     
     field = t1[n_elements(t1)-1]
     index = fix(strmid(field,1,strlen(field)-1))

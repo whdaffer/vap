@@ -46,7 +46,7 @@ FUNCTION extension, filename, extsep=extsep
   nf = n_elements(filename)
   extension = strarr(nf)
   FOR f=0,nf-1 DO BEGIN 
-    t = rstrpos(filename[f],extsep)+1
+    t = strpos(filename[f],extsep,/reverse_search)+1
     IF t EQ -1 THEN extension[f] = '' ELSE $
      extension[f] = strmid( filename[f], t, strlen(filename[f])-t)
   ENDFOR 

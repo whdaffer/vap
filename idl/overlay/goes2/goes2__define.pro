@@ -28,6 +28,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:17:40  vapuser
+; Imported sources
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -493,7 +496,7 @@ PRO goes2::ReportError, string, routine
   IF n_params() LT 1 THEN string = 'Unspecified Error'
   IF n_params() LT 2 THEN BEGIN 
     help,calls=calls
-    routine = strcompress(( str_sep( calls[1], '<' ) )[0],/remove_all)
+    routine = strcompress( (strsplit( calls[1], '<' ,/extract) )[0],/remove_all)
   ENDIF 
   str =   routine + ':' + string
   Message,str,/noname

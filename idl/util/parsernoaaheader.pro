@@ -48,6 +48,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.5  1999/11/11 23:05:51  vapuser
+; Replace 'nulls' with 'spaces'
+;
 ; Revision 1.4  1999/08/31 22:58:05  vapuser
 ; Fixed a problem with terminal ';'
 ;
@@ -82,12 +85,12 @@ FUNCTION parsernoaaheader, header
   IF nx NE 0 THEN header[x] =  32b ; replace nulls with spaces
   FOR nn=0l,nrecs-1 DO BEGIN 
     rec = string(header[*,nn])
-    tmp = str_sep( rec, lf )
+    tmp = strsplit( rec, lf,/extract )
     ntags =  n_elements(tmp)
     tags = strarr(ntags)
     values = tags
     FOR ii=0,ntags-1 DO BEGIN 
-      tmp2 = str_sep(strcompress(tmp[ii],/remove_all),'=')
+      tmp2 = strsplit(strcompress(tmp[ii],/remove_all),'=',/extract)
       tag =  strupcase(strcompress(tmp2[0],/remove_all))
       value =  strupcase(strtrim( tmp2[1],2 ))
       s = strpos(value,';')

@@ -193,6 +193,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:14:14  vapuser
+; Imported sources
+;
 ; Revision 1.11  1999/10/11 17:25:23  vapuser
 ; Added code to support user/system 'config file.'
 ;
@@ -315,8 +318,8 @@ PRO goes_overlay24, goesfile, $
   IF nf NE 0 THEN BEGIN 
     read_cfgfile = 1
   ENDIF ELSE BEGIN 
-    IF getenv('VAP_LIB') NE '' THEN BEGIN 
-      cfgpath = deenvvar('$VAP_LIB')
+    IF getenv('VAP_LIBRARY') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIBRARY')
       ff = findfile(cfgpath + cfgname,count=nf)      
       read_cfgfile = (nf NE 0)
     ENDIF

@@ -130,6 +130,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  2001/02/07 19:15:23  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 2000, California Institute of Technology
@@ -299,8 +302,7 @@ PRO makeetanim, date_time, $;(I/O) yy/mm/dd/hh End time
   device,set_resolution=[1024,512]
   !x.margin = [0,0]
   !y.margin = [0,0]
-  PTC = ReadColorTable( $
-     "$VAP_RESOURCES/Color_Tables/vap-animation.ct")  
+  PTC = ReadColorTable("$VAP_COLORTABLES/vap-animation.ct")  
   ct = *ptc &  ptr_free, ptc
   
   Red   = reform(CT[0,*])

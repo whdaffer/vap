@@ -248,6 +248,9 @@ END
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:19:30  vapuser
+; Imported sources
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -477,7 +480,7 @@ PRO evolmov, files, nframes, filetimes, object=object, $
 
           ; Read in the land elevation file;
           ; Find the subarray which applies for this run and extract it.
-        openr,lun,'$VAP_LIB/land_elevations.bin',/get,error=err
+        openr,lun,'$VAP_LIBRARY/land_elevations.bin',/get,error=err
         IF err NE 0 THEN BEGIN 
           Message,!error_state.msg,/cont
           return

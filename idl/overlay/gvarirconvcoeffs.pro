@@ -25,7 +25,7 @@ FUNCTION GvarIRConvCoeffs, channel
     readf, lun, rec
     rec = strcompress(strtrim(rec,2))
     IF strpos(rec,';') EQ -1 THEN BEGIN 
-      tmp = str_sep(rec,' ')
+      tmp = strsplit(rec,' ',/extract)
       IF tmp[0] EQ channel THEN BEGIN 
         found = 1
         gain = float(tmp[1])

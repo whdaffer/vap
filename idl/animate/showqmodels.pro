@@ -89,6 +89,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  2001/02/07 20:23:50  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 2000, California Institute of Technology
@@ -296,7 +299,7 @@ PRO showqmodels, GROUP=Group, $
   lonrange   = n_elements(lonrange)   NE 2 ? [0.,360] : lonrange
   latrange   = n_elements(latrange)   NE 2 ? [-90.,90.] : latrange
 
-  path = n_elements(path) EQ 0 ? deenvvar('$VAP_ANIM') : path
+  path = n_elements(path) EQ 0 ? deenvvar('$VAP_OPS_ANIM') : path
   filter =  n_elements(filter) EQ 0? "QIF*.hdf": filter
 
   plotvect = keyword_set(plotvect)

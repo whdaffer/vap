@@ -38,6 +38,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/21 17:46:59  vapuser
+; Initial revision
+;
 ;
 ; William Daffer
 ;Copyright (c) 1999
@@ -59,7 +62,7 @@ FUNCTION rootname, files
   nn = n_elements(basenames)
 
   FOR i=0,nn-1 DO BEGIN 
-    s =  rstrpos( basenames[i], '.' )    
+    s =  strpos( basenames[i], '.' ,/reverse_search)    
     basenames[i] =  (b = strmid(basenames[i],0,s) )
   ENDFOR 
   return, basenames

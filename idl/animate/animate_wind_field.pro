@@ -321,6 +321,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.12  2001/02/21 01:04:55  vapuser
+; Took out 'path=' in call to read_cfgfile
+;
 ; Revision 1.11  2001/02/02 18:47:57  vapuser
 ; Changed most array references to use '[]' This accounts from most of
 ; the changes. Also fixed a bug with east/west longitudes.
@@ -348,7 +351,7 @@
 ; their uniqueness.  Added the 'harmonic' and 'meters_per_second'.
 ; Corrected some misuses of keyword_set() and bad meters_per_second
 ; to knots conversion. Changed location of land_elevations.bin to
-; VAP_LIB. General maintenance.
+; VAP_LIBRARY. General maintenance.
 ;
 ; Revision 1.4  1999/04/08 22:01:56  vapuser
 ; Replaced Colorbar with ColBar
@@ -529,8 +532,8 @@ ff = findfile(cfgpath + cfgname,count=nf)
 IF nf NE 0 THEN BEGIN 
   read_cfgfile = 1
 ENDIF ELSE BEGIN 
-  IF getenv('VAP_LIB') NE '' THEN BEGIN 
-    cfgpath = deenvvar('$VAP_LIB')
+  IF getenv('VAP_LIBRARY') NE '' THEN BEGIN 
+    cfgpath = deenvvar('$VAP_LIBRARY')
     ff = findfile(cfgpath + cfgname,count=nf)      
     read_cfgfile = (nf NE 0)
   ENDIF
@@ -738,12 +741,12 @@ first = 1
   ; Define the color table. On rainy, $NSCAT-VAP = /nscat-vap
   ;
 ;red =  bytarr(51) &  green=red &  blue=red
-;openr,1,'$VAP_LIB/Resources/Color_Tables/nscat-vap-animation.ct2', error= err
+;openr,1,'$VAP_LIBRARY/Resources/Color_Tables/nscat-vap-animation.ct2', error= err
 ;readu,1,red,green,blue
 ;close,1
 
 PtrToColorTable = ReadColorTable( $
-     "$VAP_RESOURCES/Color_Tables/vap-animation.ct")
+     "$VAP_COLORTABLES/vap-animation.ct")
 IF NOT ptr_valid(ptrToColorTable) THEN BEGIN 
   Message,"Can't Read Color table",/cont
   return
@@ -778,7 +781,7 @@ tvlct,red,green,blue
 
   ; Read in the land elevation file;
   ; Find the subarray which applies for this run and extract it.
-openr,1,'$VAP_LIB/land_elevations.bin'
+openr,1,'$VAP_LIBRARY/land_elevations.bin'
 landel =  intarr( 12*360, 12*180 + 1 )
 readu,1, landel
 close,1

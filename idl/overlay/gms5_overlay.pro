@@ -308,6 +308,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.22  2001/02/21 01:03:49  vapuser
+; Took out 'path=' in call to read_cfgfile
+;
 ; Revision 1.21  2001/02/02 19:26:11  vapuser
 ; Put in `gridlines' and 'keepaspect.' Did a little work (ptitle) on the
 ; oplot mechanism.
@@ -650,8 +653,8 @@ PRO gms5_overlay, datetime, gmsType, $
   IF nf NE 0 THEN BEGIN 
     read_cfgfile = 1
   ENDIF ELSE BEGIN 
-    IF getenv('VAP_LIB') NE '' THEN BEGIN 
-      cfgpath = deenvvar('$VAP_LIB')
+    IF getenv('VAP_LIBRARY') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIBRARY')
       ff = findfile(cfgpath + cfgname,count=nf)      
       read_cfgfile = (nf NE 0)
     ENDIF
@@ -730,8 +733,7 @@ PRO gms5_overlay, datetime, gmsType, $
   IF getenv('OVERLAY_CT') NE '' THEN BEGIN 
     ptr = ReadColorTable('$OVERLAY_CT')
   ENDIF ELSE BEGIN 
-    ptr = ReadColorTable($
-       '$VAP_COLOR_TABLES/goes_overlay24.ct')
+    ptr = ReadColorTable('$VAP_COLORTABLES/goes_overlay24.ct')
   ENDELSE 
   IF NOT Ptr_Valid(ptr) THEN BEGIN 
     Message,'Error Reading ColorTable!',/cont

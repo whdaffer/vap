@@ -36,6 +36,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/07 21:57:04  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998,William Daffer
 ;-
@@ -48,14 +51,14 @@ FUNCTION expandColList, cols
     IF VarType(cols) EQ 'STRING' THEN BEGIN 
       Cols = strcompress(string(cols),/remove_all)
       IF strlen(cols) NE 0 THEN BEGIN 
-        tmp = str_sep(cols,',')   ;
+        tmp = strsplit(cols,',',/extract)   ;
         nn = n_elements(tmp)
         FOR i=0,nn-1 DO BEGIN 
           junk = strpos( tmp[i], ':')
           IF junk EQ -1 THEN BEGIN 
             NewCols = fix(tmp[i])
           ENDIF ELSE BEGIN 
-            tmp2 = str_sep( tmp[i], ':' )
+            tmp2 = strsplit( tmp[i], ':' ,/extract)
             x0 = fix(tmp2[0])
             x1 = fix(tmp2[1])
             newCols = indgen( x1-x0 +1 )+x0

@@ -31,6 +31,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 22:50:57  vapuser
+; Initial revision
+;
 ;-
 
 ;FUNCTION addext_events, event
@@ -143,7 +146,8 @@ PRO PV_HARDCOPY_Events, Event
     'BASENAME': BEGIN 
       Widget_Control,(*info).BasenameId, Get_Value=basename
       fullfilename = pvhc_update_filelabel((*info).LabelId, path,basename,ext)
-      p = rstrpos( fullfilename, '/')+1
+      ;p = rstrpos( fullfilename, '/')+1
+      p = strpos(fullfilename, '/',/reverse_search)+1
       filename = strmid( fullfilename, p, strlen(fullfilename)-p)
       self-> Set,HCFile = filename
     END
@@ -160,7 +164,8 @@ PRO PV_HARDCOPY_Events, Event
       psInfo-> set,parent = (*info).Tlb
       psInfo->setup
       psInfo-> Get, filename = filename
-      junk = rstrpos( filename, '/' )+1
+      ;junk = rstrpos( filename, '/' )+1
+      junk = strpos(filename,'/',/reverse_search)+1
       IF junk EQ 0 THEN BEGIN 
         path = './'
         file = strmid( filename, 0, ext )

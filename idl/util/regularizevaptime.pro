@@ -68,6 +68,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/10/17 00:26:33  vapuser
+; Initial revision
+;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
@@ -93,7 +96,7 @@ FUNCTION RegularizeVapTime, vaptimes, Min=Min, MAX=MAX
     regularizedVapTime = strarr(nn) ELSE $
     regularizedVapTime = ''
   FOR i=0,nn-1 DO BEGIN 
-    tmp = str_sep(vaptimes[i],'/')
+    tmp = strsplit(vaptimes[i],'/',/extract)
     nt = n_Elements(tmp)
     CASE nt OF 
       3: BEGIN 

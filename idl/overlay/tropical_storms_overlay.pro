@@ -189,6 +189,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  2001/02/21 01:04:26  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -280,8 +283,8 @@ PRO tropical_storms_overlay, cloud_file,     $ ; full name of grid file
   IF nf NE 0 THEN BEGIN 
     read_cfgfile = 1
   ENDIF ELSE BEGIN 
-    IF getenv('VAP_LIB') NE '' THEN BEGIN 
-      cfgpath = deenvvar('$VAP_LIB')
+    IF getenv('VAP_LIBRARY') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIBRARY')
       ff = findfile(cfgpath + cfgname,count=nf)      
       read_cfgfile = (nf NE 0)
     ENDIF
@@ -344,8 +347,8 @@ PRO tropical_storms_overlay, cloud_file,     $ ; full name of grid file
 ;  IF n_elements(date_time) EQ 0 THEN $
 ;    date_time =  idldt2vaptime( dt_subtract( today(), hour=time_inc) )
 
-  IF n_elements( wpath ) EQ 0 THEN wpath =  '$VAP_WINDS'
-  IF n_elements( overlay_path ) EQ 0 THEN overlay_path =  '$VAP_TS_OVERLAY'
+  IF n_elements( wpath ) EQ 0 THEN wpath =  '$VAP_DATA_TOP'
+  IF n_elements( overlay_path ) EQ 0 THEN overlay_path =  '$VAP_OPS_TS_OVERLAY'
 
   IF n_elements( min_speed ) EQ 0 THEN min_speed = 2
   IF n_elements( max_speed ) EQ 0 THEN max_speed = 25

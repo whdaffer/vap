@@ -46,6 +46,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  2001/10/23 16:09:27  vapuser
+; Added /show, made a little more robust for the case of no breakpoints.
+;
 ; Revision 1.2  1999/04/09 00:00:41  vapuser
 ; Added 'all' keyword
 ;
@@ -82,7 +85,7 @@ PRO DB, bp, bp1, bp2, bp3, bp4, bp5, bp6, bp7, all=all,show=show
     output = output[3:n_elements(output)-1]
     FOR i=0,nbp-1 DO BEGIN 
       tmp = strtrim(strcompress(output[i]),2)
-      tmp = str_sep(tmp,' ')
+      tmp = strsplit(tmp,' ',/extract)
       bp[i] = fix(tmp[0])
     ENDFOR 
   ENDIF ELSE BEGIN 

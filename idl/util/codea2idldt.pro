@@ -36,6 +36,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/07/03 21:47:37  daffer
+; Corrected call to var_to_dt
+;
 ; Revision 1.1  1999/04/07 16:14:14  vapuser
 ; Initial revision
 ;
@@ -68,19 +71,19 @@ FUNCTION CodeA2idldt, codea, check=check
 
   IF keyword_set(check) THEN BEGIN 
     FOR i=0L,nn-1 DO BEGIN 
-      tmp = str_sep( strtrim( strcompress(codea[i]),2), 'T')
+      tmp = strsplit( strtrim( strcompress(codea[i]),2), 'T',/extract)
       IF n_elements(tmp) NE 2 THEN BEGIN 
         Message,"Bad CodeA, no 'T'",/cont
         Message,"Format is yyyy-mm-ddThh:mm:ss.cccZ",/cont
         return,0
       ENDIF 
-      tmp1 = str_sep(tmp[0],'-')
+      tmp1 = strsplit(tmp[0],'-',/extract)
       IF n_elements(tmp1) NE 3 THEN BEGIN 
         Message,"Bad CodeA, first part doesn't look like 'yyyy-mm-dd'",/cont
         Message,"Format is yyyy-mm-ddThh:mm:ss.cccZ",/cont
         return,0
       ENDIF 
-      tmp2 = str_sep(tmp[1],':')
+      tmp2 = strsplit(tmp[1],':',/extract)
       IF n_Elements(tmp2) NE 3 THEN BEGIN 
         Message,"Bad CodeA, second part doesn't look like 'hh:mm:ss.cccZ'",$
           /cont

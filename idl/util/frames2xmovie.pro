@@ -35,6 +35,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.4  2000/12/14 23:08:59  vapuser
+; Added ability to read .png files.
+;
 ; Revision 1.3  2000/01/11 20:43:07  vapuser
 ; Added a call to tvlct, hoping to be able to get multiple colorbars in
 ; one animation. Alas, cw_animate isn't smart enough. I'll have to write
@@ -92,8 +95,8 @@ PRO frames2xmovie, files, gif=gif, title=title, png=png
   IF png THEN type = 'PNG'
   
   IF NOT exist(type) THEN BEGIN 
-    junk = rstrpos(files[0],'/')+1
-    tmp = str_sep(strmid( files[0], junk, strlen(files[0])-junk ),'.')
+    junk = strpos(files[0],'/',/reverse_search)+1
+    tmp = strsplit(strmid( files[0], junk, strlen(files[0])-junk ),'.',/extract)
     type =  strupcase(tmp[1])
   ENDIF 
 

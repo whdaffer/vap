@@ -39,6 +39,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:14:14  vapuser
+; Imported sources
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -50,7 +53,7 @@ IF n_elements( desig ) EQ 0 THEN desig =  'npac'
 desig =  strupcase( desig )
 
 
-openr, rlun, '$VAP_LIB/satmovie_defs.dat',/get,error=err
+openr, rlun, '$VAP_LIBRARY/satmovie_defs.dat',/get,error=err
 IF err EQ 0 THEN BEGIN
   rec =  ''
   test =  'BEGIN ' + DESIG

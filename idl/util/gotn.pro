@@ -32,6 +32,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/08 23:08:41  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -110,7 +113,7 @@ IF keyword_set( watcolor ) THEN BEGIN
 ENDIF 
 
 sensors =  [ 'Visible','IR2','IR3','IR4','IR5']
-tmp       =  str_sep( goesfile, '/' )
+tmp       =  strsplit( goesfile, '/' ,/extract)
 base_name =  tmp(n_elements(tmp)-1)
 sensornum =  strmid( base_name, 5,1)
 sensor    =  sensors( sensornum-1 )
@@ -255,7 +258,7 @@ IF keyword_set( goesfile ) THEN BEGIN
                time, nlon,nlat, lonsize, latsize, info_string
   IF year EQ 0 THEN BEGIN
       spawn,'date', ret_str
-      tmp =  str_sep( ret_str(0), ' ' )
+      tmp =  strsplit( ret_str(0), ' ' ,/extract)
       year =  tmp( n_elements(tmp)-1 )
   ENDIF 
 
@@ -435,7 +438,7 @@ dlm =  '_'
 ofileroot =  ofileroot + '-' + lim_str
 IF keyword_set( file_str ) AND $
    strlen( file_str(0) ) GT 0 THEN BEGIN 
-  s =  str_sep( file_str,' ' )
+  s =  strsplit( file_str,' ' ,/extract)
   tt =  '_' + s(0)
   FOR i=1,n_elements(s)-1 DO tt =  tt + '_' + s(i)
   ofileroot =  ofileroot + tt

@@ -29,7 +29,7 @@ FUNCTION Goes10Constants, channel, detector
       readf, lun, rec
       rec = strupcase( strcompress( strtrim(rec,2)))
       IF strpos(rec,';') eq -1 THEN BEGIN 
-        tmp = str_sep(rec,' ')
+        tmp = strsplit(rec,' ',/extract)
         IF tmp[0] EQ channel AND tmp[1] EQ detector THEN BEGIN 
           found = 1
           constants = float(tmp[2:4])

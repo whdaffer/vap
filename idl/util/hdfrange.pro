@@ -33,7 +33,7 @@ FUNCTION hdfrange, file, doy=doy
       ENDIF 
 
       start_date = (*(beginningdate.value))[0]
-      tmp =  str_sep(start_date, '-')
+      tmp =  strsplit(start_date, '-',/extract)
       year = tmp[0]
       start_doy = tmp[1]
       date = doy2date(fix(tmp[0]),fix(tmp[1]))
@@ -64,7 +64,7 @@ FUNCTION hdfrange, file, doy=doy
       ENDIF 
 
       start_date = (*(endingdate.value))[0]
-      tmp =  str_sep(start_date, '-')
+      tmp =  str(start_date, '-',/extract)
       year = tmp[0]
       end_doy = tmp[1]
       date = doy2date(fix(tmp[0]),fix(tmp[1]))

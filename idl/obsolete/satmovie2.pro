@@ -48,40 +48,40 @@ CASE roi OF
     limit=[-3,-245.,60,-165.,-2,-87.,-60,-165]     
     latcent = 20
     loncent = -165
-    IF n_elements( anim_path ) EQ 0 THEN anim_path =  '$VAP_ANIM/satmovie/npac/'
-    IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_ANIM/satmovie/npac/'
+    IF n_elements( anim_path ) EQ 0 THEN anim_path =  '$VAP_OPS_ANIM/satmovie/npac/'
+    IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_OPS_ANIM/satmovie/npac/'
     IF n_elements( min_vect ) ne 0 THEN minvect = min_vect ELSE minvect = ????
   END 
   'SPAC' : BEGIN 
     limit=[-3,-245.,60,-165.,-2,-87.,-60,-165]     
     latcent = -20
     loncent = -165
-    IF n_elements( anim_path ) EQ 0 THEN anim_path =  '$VAP_ANIM/satmovie/spac/'
-    IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_ANIM/satmovie/spac/'
+    IF n_elements( anim_path ) EQ 0 THEN anim_path =  '$VAP_OPS_ANIM/satmovie/spac/'
+    IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_OPS_ANIM/satmovie/spac/'
     IF n_elements( min_vect ) ne 0 THEN minvect = min_vect ELSE minvect = ????
   END 
   'NATL' : BEGIN 
     limit=[0,-125,60,-45,0,35,-60,-45]
     latcent = 20
     loncent = -45
-    IF n_elements( anim_path ) EQ 0 THEN anim_path =  '$VAP_ANIM/satmovie/natl/'
-    IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_ANIM/satmovie/natl/'
+    IF n_elements( anim_path ) EQ 0 THEN anim_path =  '$VAP_OPS_ANIM/satmovie/natl/'
+    IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_OPS_ANIM/satmovie/natl/'
     IF n_elements( min_vect ) ne 0 THEN minvect = min_vect ELSE minvect = ????
   END 
   'SATL' : BEGIN 
     limit=[0,-125,60,-45,0,35,-60,-45]
     latcent = -20
     loncent = -45
-    IF n_elements( anim_path ) EQ 0 THEN anim_path =  '$VAP_ANIM/satmovie/satl/'
-    IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_ANIM/satmovie/satl/'
+    IF n_elements( anim_path ) EQ 0 THEN anim_path =  '$VAP_OPS_ANIM/satmovie/satl/'
+    IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_OPS_ANIM/satmovie/satl/'
     IF n_elements( min_vect ) ne 0 THEN minvect = min_vect ELSE minvect = ????
   END 
   'IND': BEGIN 
     limit=[0,0,60,85,0,170,-60,85]
     latcent = -20
     loncent = 85
-    IF n_elements( anim_path ) EQ 0 THEN anim_path =  '$VAP_ANIM/satmovie/ind/'
-    IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_ANIM/satmovie/ind/'
+    IF n_elements( anim_path ) EQ 0 THEN anim_path =  '$VAP_OPS_ANIM/satmovie/ind/'
+    IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_OPS_ANIM/satmovie/ind/'
     IF n_elements( min_vect ) ne 0 THEN minvect = min_vect ELSE minvect = ????
   END 
   ELSE : BEGIN 

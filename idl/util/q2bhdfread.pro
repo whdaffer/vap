@@ -62,6 +62,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.13  2001/02/02 19:14:45  vapuser
+; Added rain_flag to output structure.
+; Return .sel field which had been omitted.
+;
 ; Revision 1.12  1999/11/12 19:56:23  vapuser
 ; Added code to support new DIRTH selected vectors in the
 ; new L2B data product. (per Bryan's request)
@@ -147,7 +151,7 @@ FUNCTION q2bhdfread, filename, $
         name = strupcase(name)
         ; print,'Working on ', name
         IF VarType(data) EQ 'STRING' THEN BEGIN 
-          tmp = str_sep( data, lf )
+          tmp = strsplit( data, lf,/extract )
           tmp = tmp(where(strlen(tmp)))
           data =  tmp(n_elements(tmp)-1)
         ENDIF 
@@ -169,27 +173,27 @@ FUNCTION q2bhdfread, filename, $
       IF exist( StartDate ) AND exist( StartTime) THEN BEGIN 
           ; Date has yyyy-DDD format
           ; Time has hh:mm:ss.ccc format
-        tmp = str_sep(StartDate,'-')
+        tmp = strsplit(StartDate,'-',/extract)
         StartYear = tmp[0]
         StartDoy = fix(tmp[1])
         date = doy2date( fix(StartYear),StartDoy)
         Month = date[0]
         day = date[1]
         StartDate = StartYear+'/'+Month+'/'+day
-        tmp = str_sep(strcompress(StartTime,/remove_all),':')
+        tmp = strsplit(strcompress(StartTime,/remove_all),':',/extract)
         StartDate = StartDate+'/'+tmp[0]+'/'+tmp[1]
         StartTime = temporary(StartDate)
       ENDIF ELSE StartTime = '0000/00/00/00/00'
 
       IF exist( EndDate ) AND exist( EndTime) THEN BEGIN 
-        tmp = str_sep(EndDate,'-')
+        tmp = strsplit(EndDate,'-',/extract)
         EndYear = tmp[0]
         EndDoy = fix(tmp[1])
         date = doy2date( fix(EndYear),EndDoy)
         Month = date[0]
         day = date[1]
         EndDate = EndYear+'/'+Month+'/'+day
-        tmp = str_sep(strcompress(EndTime,/remove_all),':')
+        tmp = strsplit(strcompress(EndTime,/remove_all),':',/extract)
         EndDate = EndDate+'/'+tmp[0]+'/'+tmp[1]
         EndTime = temporary(enddate)
       ENDIF ELSE EndTime = '0000/00/00/00/00'

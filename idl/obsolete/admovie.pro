@@ -1,7 +1,7 @@
 ;+
 ; NAME: ADMOVIE
 ;
-; Time-stamp: <98/10/20 13:43:58 vapuser>
+; Time-stamp: <2001-12-07 11:08:11 vapdev>
 ; MODIFICATION HISTORY: 
 ;
 ; Tue Mar 18 13:45:03 1997, Vap User
@@ -51,11 +51,11 @@
 ; KEYWORD PARAMETERS: ROI - Region of Interest (def=nepac) 
 ;
 ;                     INTERP_PATH - path to output interpolated data
-;                     (def = $VAP_ANIM/a if type = 'a',
-;                       $VAP_ANIM/d if type = 'd')
+;                     (def = $VAP_OPS_ANIM/a if type = 'a',
+;                       $VAP_OPS_ANIM/d if type = 'd')
 ;
 ;                     ANIM_PATH - path to do animation in
-;                                (def=$VAP_ANIM/a|d/daily)
+;                                (def=$VAP_OPS_ANIM/a|d/daily)
 ;
 ;                     WPATH - path to wind files (def='$VAP_WINDS/')
 ;
@@ -142,7 +142,7 @@ IF cronjob THEN BEGIN
 ENDIF 
 
 
-IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_ANIM/' + $
+IF n_elements( interp_path ) EQ 0 THEN interp_path =  '$VAP_OPS_ANIM/' + $
  strlowcase(roi) + '/' + $
  type + '/'
 IF n_elements( anim_path ) EQ 0 THEN anim_path =  interp_path 

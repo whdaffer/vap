@@ -35,6 +35,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  2000/11/01 18:22:34  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 2000, California Institute of Technology
@@ -46,7 +49,7 @@ FUNCTION checkVaptime, vaptime
   IF n_Params() EQ 1 THEN BEGIN 
     IF isa(vaptime,/string,/nonempty) THEN BEGIN 
         ; A vaptime is a string of the form yyyy/mm/dd/hh/mm[/ss]
-      tmp = str_sep(vaptime,'/')
+      tmp = strsplit(vaptime,'/',/extract)
       IF n_elements(tmp) GE 5 THEN BEGIN 
         ss = strlen(tmp)
         ss0 = ss[0]

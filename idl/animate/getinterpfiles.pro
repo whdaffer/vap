@@ -52,7 +52,7 @@
 ;     interp_time_inc : (I) Number of hours to go backward from date_time
 ;                       to search for interpolated wind field files (def=2)
 ;     interp_path     : (I) string, path in which to search for interpolated wind
-;                       field files (Def=$VAP_ANIM)
+;                       field files (Def=$VAP_OPS_ANIM)
 ;     wpath           : (I), string, Path in which to search for wind files
 ;                       (Def=$VAP_WINDS)
 ;     decimate        : (I) scalar, decimate=n means take  every n-th vector
@@ -111,6 +111,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.8  2000/03/08 21:50:52  vapuser
+; Added some error checking code
+;
 ; Revision 1.7  2000/02/14 21:17:27  vapuser
 ; Changed 'findfile' to 'spawn' with a 'find'
 ;
@@ -183,13 +186,13 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
   IF n_Elements(date_time) EQ 0 THEN date_time = TodayAsString(sep='/');
   IF n_elements(time_inc) EQ 0 THEN time_inc = 14.
   IF N_Elements(interp_time_inc) EQ 0 THEN interp_time_inc = 2.
-  IF n_elements(Interp_Path) EQ 0 THEN Interp_Path = '$VAP_ANIM'
+  IF n_elements(Interp_Path) EQ 0 THEN Interp_Path = '$VAP_OPS_ANIM'
 
   tdate_time = regularizeVapTime(date_time, /max)
 
   IF rstrpos(Interp_Path,'/') NE strlen(Interp_Path)-1 THEN $
      Interp_Path = Interp_Path + '/'
-  IF n_Elements(Wpath) EQ 0 THEN Wpath = GetEnv('VAP_WINDS')
+  IF n_Elements(Wpath) EQ 0 THEN Wpath = GetEnv('VAP_DATA_TOP')
   IF rstrpos(WPath,'/') NE strlen(WPath)-1 THEN $
      WPath = WPath + '/'
 

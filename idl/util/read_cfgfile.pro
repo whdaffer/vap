@@ -74,6 +74,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  2001/02/20 20:24:23  vapuser
+; Took out path. Now the user must pass in fully qualified
+; file name.
+;
 ; Revision 1.3  2001/02/20 20:22:19  vapuser
 ; Took out path. Now the user must pass in fully qualified
 ; file name.
@@ -123,7 +127,7 @@ PRO read_cfgfile, filename, retstruct
     rec =  strtrim(strcompress( rec ),2)
 
     IF strpos(rec,';') ne 0  AND strlen(rec) GT 0 THEN BEGIN 
-      tmp = str_sep(rec,'=')
+      tmp = strsplit(rec,'=',/extract)
       tag = strcompress(tmp[0],/remove_all)
       value = strcompress( tmp[1],/remove_all)
       s = execute( 'v = ' + value )

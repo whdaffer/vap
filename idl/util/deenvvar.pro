@@ -65,6 +65,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  1999/06/15 15:41:12  vapuser
+; Took care of a scalar/array confusion
+;
 ; Revision 1.5  1998/11/02 16:34:37  vapuser
 ; Missed an Endelse
 ;
@@ -103,7 +106,7 @@ FUNCTION DeEnvVar, path, isFile=isFile
        tpath = path[p]
        IF getchar(tpath,/first) NE '/' THEN relative = 1 ELSE relative = 0
        
-       tmp = str_sep(tpath,'/')
+       tmp = strsplit(tpath,'/',/extract)
        FOR i=0,n_elements(tmp)-1 DO BEGIN 
          envpos = strpos(tmp[i],'$')
          IF envpos NE -1 THEN BEGIN 

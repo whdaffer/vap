@@ -32,6 +32,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1999/10/06 23:15:04  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -166,10 +169,12 @@ end
 ;============================================
 FUNCTION  eatime::L1ATime2FTS,L1ATime
   l1at = strtrim(l1atime,2)
-  tt = str_sep(l1at,' ')
+  ;tt = str_sep(l1at,' ')
+  tt = strsplit(l1at,' ',/extract)
   year = fix(strmid(TT[0],0,4))
   doy = fix(strmid(tt[0],5,3))
-  tt = str_sep(tt[1],':')
+  ;tt = str_sep(tt[1],':')
+  tt = strtrim(tt[1],':',/extract)
   hour = fix(tt[0])
   minute = fix(tt[1])
   second = fix(tt[2])

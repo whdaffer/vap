@@ -140,6 +140,16 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.25  2001/02/20 23:56:53  vapuser
+; Added hiresmap, coasts keywords to get some better
+; Map_set/Map_continents behavior, e.g. the Great Lakes can be
+; drawn. Added some chkcfg code as well as the cfgfile keyword and added
+; a colortablefile keyword so that someone can override that as well.
+; Also added keywords wind0 and nwind, to handle passed in color tables.
+;
+; This last functionality is *alpha* only and may very well break!! The
+; user is advised to keep with the colortable I provide them.
+;
 ; Revision 1.24  2000/12/14 22:59:08  vapuser
 ; Changed the way rain flagging works, incorportated
 ; overplotting, cleaned up object destruction. There's
@@ -310,8 +320,8 @@ FUNCTION pv::Init, $
     IF nf NE 0 THEN BEGIN 
       read_cfgfile = 1
     ENDIF ELSE BEGIN 
-      IF getenv('VAP_LIB') NE '' THEN BEGIN 
-        cfgpath = deenvvar('$VAP_LIB')
+      IF getenv('VAP_LIBRARY') NE '' THEN BEGIN 
+        cfgpath = deenvvar('$VAP_LIBRARY')
         cfgfile = (findfile(cfgpath + cfgfile,count=nf))[0]
         read_cfgfile = (nf NE 0)
       ENDIF
@@ -410,7 +420,7 @@ FUNCTION pv::Init, $
       Message,'OutputPath must be of type STRING',/cont
       OutputPath = './' 
     ENDIF 
-    IF rstrpos( OutputPath,'/') LT strlen(OutputPath)-1 THEN $
+    IF strpos( OutputPath,'/',/reverse_search) LT strlen(OutputPath)-1 THEN $
       OutputPath = OutputPath + '/'
   ENDELSE 
 
@@ -579,10 +589,7 @@ FUNCTION pv::Init, $
   IF n_elements(colortablefile) EQ 0 THEN  BEGIN 
       ; See if ENV variable is set, otherwise default it.
     CT = GetEnv('PV_COLORTABLE')
-    IF strlen(CT) NE 0 THEN $
-      colortablefile = CT[0] ELSE $
-      colortablefile = $
-        "/usr/people/vapuser/Qscat/Resources/Color_Tables/pv.ct.2"
+    colortablefile = CT[0] 
   ENDIF 
 
   ptrToColorTable = readColorTable(colortablefile)
@@ -946,7 +953,7 @@ PRO Pv::WidgetWrite
           po =  *(CurrentPlotDataPtr)
           po-> get, Data = q2b, SelectedOnly=SelectedOnly
           s = q2b-> Get(Filename=filename)
-          junk = rstrpos(filename,'/')+1
+          junk = strpos(filename,'/',/reverse_search)+1
           basename = strmid( filename, junk, strlen(filename)-junk)
           self->WriteToStatusBar, "Writing (Extracting from " + basename + ")"
 ;          Widget_Control, self.StatusId, $
@@ -1431,7 +1438,7 @@ PRO Pv::Draw, $
           ENDIF 
 
           s = q2b-> Get( Filename=filename)
-          junk = rstrpos(filename,'/')+1
+          junk = strpos(filename,'/',/reverse_search)+1
           basename = strmid( filename, junk, strlen(filename)-junk)
           str = "Drawing (Extracting from " + basename + ")"
           self->WriteToStatusBar, str
@@ -1659,7 +1666,7 @@ FUNCTION Pv::Read,files
     FOR f=0,nf-1 DO BEGIN 
       print,'Attempting to read ', files[f]
       IF Widget_Info( self.StatusId, /valid ) THEN BEGIN 
-        junk = rstrpos(files[f],'/')+1
+        junk = strpos(files[f],'/',/reverse_search)+1
         basename = strmid( files[f], junk[0], strlen(files[f])-junk[0] )
         self-> WriteToStatusBar,'Reading file ' +  basename + $
          ' (' + strtrim(f+1,2) + ' of ' + nfiles_string + ')'
@@ -2037,7 +2044,7 @@ PRO Pv::Set, xsize       = xsize, $
   IF n_elements(OutputFile) NE 0 THEN self.OutputFile = OutputFile
   IF n_elements(OutputPath) NE 0 THEN BEGIN 
     self.OutputPath = DeEnvVar(OutputPath)
-    IF rstrpos(self.outputPath,'/') NE $
+    IF strpos(self.outputPath,'/',/reverse_search) NE $
      strlen(self.OutputPath)-1 THEN $
      self.OutputPath =  self.OutputPath + '/'
     psfilename = self.OutputPath+self.HCFile+'.ps'

@@ -32,6 +32,9 @@
 ; MODIFICATION LOG:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 21:12:04  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1999, William Daffer
 ;-
@@ -47,7 +50,7 @@ FUNCTION CodeA2DtPlus, codea
   FOR c=0,nn-1 DO BEGIN 
     idldt = codeA2idldt(codea[c])
     dtplus[c].idldt = idldt[0]
-    tmp = str_sep(codea[c],'.')
+    tmp = strsplit(codea[c],'.',/extract)
     usec = fix(strmid(tmp[1],0,3))
     dtplus[c].usec = usec
   ENDFOR 

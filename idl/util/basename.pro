@@ -41,6 +41,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  1999/06/01 18:47:39  vapuser
+; Added 'extsep' keyword to separate off the last extension from the filename.
+;
 ; Revision 1.2  1999/04/07 19:16:10  vapuser
 ; Return scalar output for scalar input
 ;
@@ -64,12 +67,12 @@ FUNCTION basename, filenames, extsep=extsep
    nf = n_elements(filenames)
    basenames = strarr(nf)
    FOR f=0l,nf-1 DO BEGIN 
-     s = rstrpos(filenames[f],'/')+1
+     s = strpos(filenames[f],'/',/reverse_search)+1
      IF n_elements(extsep) EQ 0 THEN BEGIN 
        basenames[f] = strmid(filenames[f],s[0],strlen(filenames[f])-s)
      ENDIF ELSE BEGIN 
        tmp = strmid(filenames[f],s[0],strlen(filenames[f])-s)
-       t = rstrpos( tmp, extsep )
+       t = strpos( tmp, extsep,/reverse_search )
        basenames[f] =  strmid(tmp,0,t)
      ENDELSE 
    ENDFOR

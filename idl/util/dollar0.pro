@@ -43,6 +43,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/07 17:15:25  vapuser
+; Initial revision
+;
 ;
 ;
 ;Copyright (c) 1999, William Daffer
@@ -58,7 +61,7 @@ FUNCTION dollar0,level
     return,''
   ENDIF 
   output = strcompress(output[x[level]])
-  tmp = str_sep(output,' ')
+  tmp = strsplit(output,' ',/extract)
   output = tmp[1]
   return,output
 END

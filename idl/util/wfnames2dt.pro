@@ -63,6 +63,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  1999/09/22 18:02:53  vapuser
+; Fixed a bug with files that cross day boundaries.
+;
 ; Revision 1.3  1998/10/22 21:31:39  vapuser
 ; Put in call to wfdt_str.pro
 ;
@@ -113,9 +116,9 @@ FUNCTION wfnames2dt, windfiles, nscat=nscat
   ENDIF 
   FOR f=0,nf-1 DO BEGIN 
     file = windfiles[f]
-    s = rstrpos( file,'/') + 1
+    s = strpos( file,'/',/reverse_search) + 1
     file = strmid( file, s, strlen( file )-s )
-    tmp = str_sep( file, '.' )
+    tmp = strsplit( file, '.' ,/extract)
     IF n_elements(tmp) eq 3 THEN BEGIN 
       basetime = strmid( tmp[0], strlen(tmp[0])-baselen+1, baselen-1 )
       start_hour = fix(strmid( tmp[1], 1, 2 ))

@@ -206,6 +206,9 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.18  2001/02/21 01:02:54  vapuser
+; Took out 'path=' in call to read_cfgfile
+;
 ; Revision 1.17  2001/02/02 19:02:00  vapuser
 ; Added keepaspect and gridlines keywords
 ;
@@ -352,8 +355,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
   IF nf NE 0 THEN BEGIN 
     read_cfgfile = 1
   ENDIF ELSE BEGIN 
-    IF getenv('VAP_LIB') NE '' THEN BEGIN 
-      cfgpath = deenvvar('$VAP_LIB')
+    IF getenv('VAP_LIBRARY') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIBRARY')
       ff = findfile(cfgpath + cfgname,count=nf)      
       read_cfgfile = (nf NE 0)
     ENDIF
@@ -414,8 +417,8 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
   
   IF N_elements( time_inc ) EQ 0 THEN time_inc = 6
-  IF n_elements( wpath ) EQ 0 THEN wpath =  '$VAP_WINDS'
-  IF n_elements( overlay_path ) EQ 0 THEN overlay_path =  '$VAP_OVERLAY'
+  IF n_elements( wpath ) EQ 0 THEN wpath =  '$VAP_DATA_TOP'
+  IF n_elements( overlay_path ) EQ 0 THEN overlay_path =  '$VAP_OPS_OVERLAY'
 
   IF n_elements( min_speed ) EQ 0 THEN min_speed = 2
   IF n_elements( max_speed ) EQ 0 THEN max_speed = 25
@@ -432,7 +435,7 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
 
 
-  print,'$VAP_ROOT=',getenv('VAP_ROOT')
+  print,'$VAP_OPS_TOP=',getenv('VAP_OPS_TOP')
   overlay_path = DeEnvVar(overlay_path)
   print,' overlay_path = ',overlay_path
 
