@@ -33,6 +33,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1999/06/23 18:12:42  vapuser
+; Now only works with the 24 bit implementations of
+; the overlay programs.
+;
 ; Revision 1.2  1998/11/04 19:40:12  vapuser
 ; Put in code to handle non IR data.
 ;
@@ -59,7 +63,7 @@ PRO CLOUD_OVERLAY_CONFIG_Event, Event
       return
     END
   
-    'DISMISS': BEGIN
+    'ACCEPT': BEGIN
       widget_control, (*info).BrightMinId, get_Value=brightmin
       widget_control, (*info).BrightMaxId, get_Value=brightmax
       widget_control, (*info).SatMinId, get_Value=satmin
@@ -84,7 +88,7 @@ PRO CLOUD_OVERLAY_CONFIG_Event, Event
 
     END 
 
-    'APPLY': BEGIN 
+    'TRY': BEGIN 
 
       widget_control, (*info).BrightMinId, get_Value=brightmin
       widget_control, (*info).BrightMaxId, get_Value=brightmax
@@ -151,10 +155,12 @@ PRO cloud_overlay_config_drawimage, info
       Im = [ [[temporary(imr)]], [[temporary(img)]], [[temporary(imb)]] ]
 
       Wset, (*info).OverlayDraw
-      Map_set, /grid,/lab,/cont,limi=[(*info).latmin,$
-                                      (*info).lonmin,$
-                                      (*info).latmax,$
-                                      (*info).lonmax]
+      loncent = mean([(*info).lonmin,(*info).lonmax])
+      Map_set, 0, loncent, $
+          /grid,/lab,/cont,limi=[(*info).latmin,$
+                                  (*info).lonmin,$
+                                  (*info).latmax,$
+                                  (*info).lonmax]
 
       FOR i=0,2 DO BEGIN 
         tmpIm = Map_Image( Im[*,*,i], $
@@ -198,7 +204,7 @@ PRO cloud_overlay_config, LandWaterIm = LandWaterIm, $
 
   IF n_elements(lonmin)*n_elements(latmin)*$
      n_elements(lonmax)*n_elements(latmax) EQ 0 THEN BEGIN 
-    Message,"One of LONMIN,LONMAX,LATMIN,LATMAX is undefined. All are required',/cont
+    Message,"One of LONMIN,LONMAX,LATMIN,LATMAX is undefined. All are required",/cont
     return
   ENDIF 
 
@@ -306,13 +312,13 @@ PRO cloud_overlay_config, LandWaterIm = LandWaterIm, $
       MAP=1, $
       UVALUE='BASE12')
 
-  ApplyId = WIDGET_BUTTON( BASE12, $
-      UVALUE='APPLY', $
-      VALUE='Apply')
+  TryId = WIDGET_BUTTON( BASE12, $
+      UVALUE='TRY', $
+      VALUE='Try it!')
 
-  DismissId = WIDGET_BUTTON( BASE12, $
-      UVALUE='DISMISS', $
-      VALUE='Dismiss')
+  AcceptId = WIDGET_BUTTON( BASE12, $
+      UVALUE='ACCEPT', $
+      VALUE='Accept')
 
   CancelId = WIDGET_BUTTON( BASE12, $
       UVALUE='CANCEL', $
@@ -340,7 +346,7 @@ PRO cloud_overlay_config, LandWaterIm = LandWaterIm, $
      tlandwaterIm = rebin(landwaterIm,newx,newy)
   ENDIF ELSE BEGIN 
     tcloudmask = congrid(cloudmask,newx,newy)
-    tlandwaterim = congrid(cloudmask,newx,newy)
+    tlandwaterim = congrid(landwaterIm,newx,newy)
   ENDELSE 
   info = ptr_new( { tlb:         base1, $
                     histoId:     histoid, $
@@ -349,8 +355,8 @@ PRO cloud_overlay_config, LandWaterIm = LandWaterIm, $
                     BrightMaxId: BrightMaxId, $
                     SatMinid:    SatMinid, $
                     SatMaxId:    SatMaxId, $
-                    ApplyId:     ApplyId, $
-                    DismissId:   DismissId, $
+                    TryId:     TryId, $
+                    AcceptId:   AcceptId, $
                     CancelId:    CancelId, $
                     Cancelflag:  0l, $
                     HistoDraw:   HistoDraw, $
