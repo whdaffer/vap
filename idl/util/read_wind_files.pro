@@ -11,12 +11,16 @@
 ;
 ;
 ;
-; CALLING SEQUENCE:  data = read_wind_files( files, 
-;                                           Decimate    = Decimate, $
-;                                           CRDecimate  = CRDecimate, $
-;                                           ExcludeCols = ExcludeCols, $
-;                                           Help        = Help, $
-;                                           Nscat       = Nscat
+; CALLING SEQUENCE:  
+;
+; data = read_wind_files( files, 
+;                         Decimate    = Decimate, $
+;                         CRDecimate  = CRDecimate, $
+;                         ExcludeCols = ExcludeCols, $
+;                         StartTime   = StartTime, $
+;                         EndTime     = EndTime, $                                       
+;                         Help        = Help, $
+;                         Nscat       = Nscat
 ;
 ;
 ; 
@@ -98,6 +102,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/06 00:17:09  vapuser
+; Added Start/End Time.
+;
 ; Revision 1.1  1998/09/30 17:39:49  vapuser
 ; Initial revision
 ;
@@ -202,10 +209,9 @@ FUNCTION read_wind_files, files, $
                    decimate=decimate, $
                    crdecimate=crdecimate, $
                    excludecols=excludecols)
-                  Mint=Mint, Maxt=Maxt)
        IF obj_valid(q) THEN BEGIN 
          s = q-> GetPlotData(u,v,lon,lat)
-         s = q-> Get, StartTime = ST, Endtime=ET
+         s = q-> Get( StartTime = ST, Endtime=ET)
          IF strlen(st) NE 0 THEN BEGIN 
            tmp = str_sep(st,'/')
            IF fix(tmp[0]) NE 0 THEN $
