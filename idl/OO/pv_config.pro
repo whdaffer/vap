@@ -31,6 +31,11 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.9  1999/10/21 22:47:40  vapuser
+; Added pv_finfo stuff (support for
+; turning plotting on/off or deleting single
+; files from data list.
+;
 ; Revision 1.8  1999/10/11 17:30:15  vapuser
 ; Added '_whichtoplot' stub.
 ;
@@ -964,6 +969,7 @@ PRO PV_CONFIG_Events, Event
       Widget_Control, (*info).ThirdColorId,    Get_Value = ThirdColor 
       Widget_Control, (*info).FourthColorId,   Get_Value = FourthColor
       Widget_Control, (*info).Model1ColorId,   Get_Value = Model1Color
+      Widget_Control, (*info).DIRTHColorId,   Get_Value = DirthColor
       Widget_Control, (*info).AmbigId,         Get_Value = NewAmbiguities
       Widget_Control, (*info).DecimateCwButId, Get_Value = DecimateCwButVal
       Widget_Control, (*info).ExcludeColsId,   Get_Value = NewExcludeCols
@@ -1021,7 +1027,7 @@ PRO PV_CONFIG_Events, Event
       ENDIF 
         ; Annotation Stuff
       colorNames = [ SelectedColor, FirstColor,SecondColor,ThirdColor,$
-                     FourthColor,Model1Color]
+                     FourthColor,Model1Color,DIRTHColor]
       self-> Get, AmbigColors = AmbigColors, $
                    Ambiguities=Ambiguities,$
                      AmbigColorNames=AmbigColorNames
@@ -1481,7 +1487,8 @@ PRO pv_config, GROUP=Group
     'Second', $
     'Third', $
     'Fourth', $
-    'Model1']
+    'Model1',$
+    'Dirth']
 
   AmbigId = CW_BGROUP( AmbigSelectId, Ambiguities, $
       Row=2, $
@@ -1516,6 +1523,8 @@ PRO pv_config, GROUP=Group
                               Value=AmbigColorNames[4] )
   Model1ColorId   = Cw_ButWL( ColorBaseId, 'Model1 ', Colors, $
                               Value=AmbigColorNames[5])
+  DIRTHColorId   = Cw_ButWL( ColorBaseId,  'Dirth ', Colors, $
+                              Value=AmbigColorNames[6])
  
 
 ;-------------------------------------------------------------------
@@ -1835,10 +1844,11 @@ PRO pv_config, GROUP=Group
                     ThirdColorId      : ThirdColorId ,$     
                     FourthColorId     : FourthColorId,$     
                     Model1ColorId     : Model1ColorId,$     
+                    DIRTHColorId      : DIRTHColorId,$     
                     ApplyId           : ApplyId,$            
                     DismissId         : DismissId,$          
                     CancelId          : CancelId ,$          
-                    AmbigArray        : [1,0,0,0,0,0], $       
+                    AmbigArray        : [1,0,0,0,0,0,0], $       
 ; ------------------- Annotation Base ------------------------------
                     annotYNId         : annotYNId, $
                     MainTitleId       : MainTitleId,$

@@ -62,6 +62,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.11  1999/08/23 17:44:52  vapuser
+; Now reads VD wvc_row_time.
+;
 ; Revision 1.10  1999/08/12 16:33:17  vapuser
 ; Fixed short int  problem in directions, added some
 ; keywords and such.
@@ -366,14 +369,48 @@ FUNCTION q2bhdfread, filename, $
       mdir =  float(mdir*cal.cal + cal.offset)
 
 
-      hdf_sd_end,fileid
+      DIRTHFOUND = 0
+      r1 = hdf_sd_nametoindex(fileid, 'wind_speed_selection')
+      r2 = hdf_sd_nametoindex(fileid, 'wind_dir_selection')
+
+      IF r1 GT 0 AND r2 GT 0 THEN BEGIN 
+        DIRTHFOUND = 1
+        r = hdf_sd_select( fileid, r1 )
+        hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
+        hdf_sd_getdata,r, dirth_speed
+        hdf_sd_endaccess,r
+        dirth_speed =  float(dirth_speed*cal.cal + cal.offset)
+
+        t2 = systime(1)
+        IF Verbose THEN $
+          print,'Time to extract wvc_speed_selection: ', t2-t1
+        t1 = systime(1)
 
 
+        r = hdf_sd_select( fileid, r2 )
+        hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
+        hdf_sd_getdata,r, dirth_dir
+        hdf_sd_endaccess,r
+        x = where( dirth_dir LT 0, nx )
+        IF nx NE 0 THEN BEGIN 
+          dirth_dir = long(dirth_dir)
+          dirth_dir[x] =  dirth_dir[x] + 2L^16-1
+        ENDIF 
+        dirth_dir =  float(dirth_dir*cal.cal + cal.offset)
+
+        t2 = systime(1)
+        IF Verbose THEN $
+          print,'Time to extract wvc_dir_selection: ', t2-t1
+        t1 = systime(1)
+      ENDIF 
+
+      HDF_SD_END, fileid
 
       t2 = systime(1)
       IF Verbose THEN $
         print, 'Time to Extract data from HDF file ',t2-t1
       t1 = t2
+
       NSCAT_GETUV, dir,speed,u,v
       t2 = systime(1)
       IF Verbose THEN $
@@ -384,7 +421,6 @@ FUNCTION q2bhdfread, filename, $
       t2 = systime(1)
       IF Verbose THEN $
         print,'Time in NSCAT_GETUV ',t2-t1
-
 
 
       speed = 0
@@ -405,12 +441,27 @@ FUNCTION q2bhdfread, filename, $
       su(bad_sel) =  0.
       sv(bad_sel) =  0.
 
+      IF DIRTHFOUND THEN BEGIN 
+        NSCAT_GETUV, dirth_dir,dirth_speed,su2,sv2
+        t2 = systime(1)
+        IF Verbose THEN $
+         print,'Time in NSCAT_GETUV ',t2-t1
+      ENDIF ELSE BEGIN 
+        su2 = su
+        sv2 = sv
+      ENDELSE 
+
+
+
+
       retstruct.su =  temporary(su)
       retstruct.sv =  temporary(sv)
       retstruct.u = temporary(u)
       retstruct.v = temporary(v)
       retstruct.mu = temporary(mu)
       retstruct.mv = temporary(mv)
+      retstruct.su2 = temporary(su2)
+      retstruct.sv2 = temporary(sv2)
 
       IF exist(rowtime) THEN $
         retstruct.rowtime = temporary(rowtime)

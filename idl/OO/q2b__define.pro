@@ -86,6 +86,10 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.17  1999/10/21 23:05:01  vapuser
+  ; Added 'infostruct' to GET, to support cw_pvfinfo code
+  ; in pv and pv_config.
+  ;
   ; Revision 1.16  1999/10/05 16:42:52  vapuser
   ; Added code to capture the Equator times/Longitude. Commented out
   ; some of the code in qswathextent.
@@ -1269,20 +1273,30 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
          lat =  (*self.data).lat
 
          IF N_Elements(ambig) eq 0 THEN ambig = 0
-         IF ambig EQ 0 THEN BEGIN 
-             ; The 'selected' ambiguity has been specifically requested.
-           u   = (*self.data).su 
-           v   = (*self.data).sv 
-         ENDIF ELSE BEGIN 
-           IF ambig LT 5 THEN BEGIN 
-             u   = reform((*self.data).u[ambig-1,*])
-             v   = reform((*self.data).v[ambig-1,*])
-           ENDIF ELSE BEGIN 
-             ; Ambiguity = 5 means use model field.
+         CASE ambig OF 
+           0:BEGIN 
+             ; The 'selected' ambiguity has been specifically
+             ; requested.
+             u   = (*self.data).su 
+             v   = (*self.data).sv 
+           END
+           5:BEGIN 
+               ; Ambiguity = 5 means use model field.
              u = (*self.data).mu
              v = (*self.data).mv
-           ENDELSE 
-         ENDELSE 
+           END 
+           6:BEGIN 
+             ; Ambig=6 means use 'Dirth' vectors.
+             u   = (*self.data).su2 
+             v   = (*self.data).sv2 
+           END 
+           ELSE: BEGIN 
+               ; one of the other ambiguities has been 
+               ; specified.
+             u   = reform((*self.data).u[ambig-1,*])
+             v   = reform((*self.data).v[ambig-1,*])
+           END
+         ENDCASE 
        ENDELSE ; Come from if name eq 'RQ2BDATA'
 
        IF n_elements( limit ) NE 0 THEN BEGIN 
