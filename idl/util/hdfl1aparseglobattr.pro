@@ -1,5 +1,5 @@
 ;+
-; NAME:  hdfL1AParseGlobalAttr
+; NAME:  hdfl1aparseglobattr
 ; $Id$
 ; PURPOSE:  Parse a global attribute read from an L1A file
 ;
@@ -7,7 +7,7 @@
 ;
 ; CATEGORY:  HDF utility (l1A file type)
 ;
-; CALLING SEQUENCE:  parse_attribute=hdfl1aparseglobalattr(attribute)
+; CALLING SEQUENCE:  parse_attribute=hdfl1aparseglobattr(attribute)
 ; 
 ; INPUTS:  
 ;
@@ -41,6 +41,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/06/11 20:58:23  vapuser
+; Added some more string processing
+;
 ; Revision 1.1  1999/06/11 20:48:02  vapuser
 ; Initial revision
 ;
@@ -50,7 +53,7 @@
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
 
-FUNCTION HdfL1AParseGlobalAttr, globalAttr
+FUNCTION HdfL1aParseGlobAttr, globalAttr
 
   IF n_params() Lt 1 THEN BEGIN 
     Usage,"data=HdfL1AParseGlobAttry(globalAttribute)"
