@@ -8,6 +8,9 @@ package OTS;
 # Modification Log:
 #
 # $Log$
+# Revision 1.8  2003/01/28 19:02:49  vapdev
+# Ongoing work
+#
 # Revision 1.7  2003/01/25 00:38:08  vapdev
 # Continuing work
 #
@@ -272,7 +275,7 @@ sub getTropicalStormsDatafile {
       # local file is less than 3 hours old.
 
       # Look for the last ACT time in the local file. If it is more
-      # than three hours away from the current time, re-fetch the
+      # than 7 hours away from the current time, re-fetch the
       # remote file.
 
       if (open FILE,"<$localfile") {
@@ -296,7 +299,8 @@ sub getTropicalStormsDatafile {
 	} else {
 	  my $testtime=systime2decyear($^T);
 	  my $diff=($testtime-$lasttime)*365*24;
-	  $fetch=1 if ($diff > 3 );
+	  # The reports are about every 6 hours.
+	  $fetch=1 if ($diff > 7 );
 	}
       } else { $fetch=1;}
     } else {$fetch=1;}
