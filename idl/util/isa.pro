@@ -63,6 +63,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  1999/03/04 18:51:53  vapuser
+; Added name= keyword for structure tests.
+;
 ; Revision 1.2  1999/03/04 00:28:00  vapuser
 ; Added 'nonempty' keyword for strings
 ;
@@ -103,7 +106,7 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
   catch, error
   IF error NE 0 THEN BEGIN 
     catch,/cancel
-    Message,!error_state.mst,/cont
+    Message,!error_state.msg,/cont
     return,-1
   ENDIF 
 
