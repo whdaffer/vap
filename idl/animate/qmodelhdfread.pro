@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/12 22:21:13  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -184,8 +187,8 @@ FUNCTION qmodelhdfread, filename
       qmodel.u      = Ptr_New( u,/no_copy )
       qmodel.v      = Ptr_New( v, /no_copy)
       region = qmodel.hdr.region
-      loninc =  (region[2]-region[0])/nlon
-      latinc =  (region[3]-region[1])/nlat
+      loninc =  (region[2]-region[0]+1)/nlon
+      latinc =  (region[3]-region[1]+1)/nlat
       qmodel.lon =  Ptr_New((findgen(nlon)*loninc+region[0])#replicate(1,nlat), /no_Copy)
       qmodel.lat =  Ptr_New(replicate(1,nlon)#(findgen(nlat)*latinc+region[1]), /no_Copy)
     ENDIF ELSE Message,"Can't open " + filename,/cont
