@@ -20,6 +20,9 @@
 # MODIFIATION HISTORY
 #
 # $Log$
+# Revision 1.11  2000/02/11 16:47:10  vapuser
+# Added calls to vap_perl::VarMailErrorMsg
+#
 #
 # Revision 1.10  1999/09/22 20:25:36  vapuser
 # Added 'length' and 'delta' processing
@@ -151,7 +154,7 @@ if (!$result){
 die $usage if $help;
 
 # Set the IDL starup file to get '24 bit true' color
-$ENV{'IDL_STARTUP'}="/disk4/vapuser/idl-startup-true24";
+#$ENV{'IDL_STARTUP'}="/disk4/vapuser/idl-startup-true24";
 
 if ($region) {
   # Get the defaults for overlays.
@@ -159,7 +162,7 @@ if ($region) {
     $msg="cloud_overlay: Region $region doesn't exist in OVERLAY DEFAULTS Table!\n";
     $msg.="Execute 'cloud_overlay_regions' to find valid regions\n";
   vap_perl::VapMailErrorMsg( $msg,
-		"UNKNOWN REGION") || 
+		"UNKNOWN REGION") && 
 		  die "Region $region doesn't exist in OVERLAY DEFAULTS Table!\n"} 
   if !defined($vap_perl::overlay_defs{ $region }{ Region } );
 
@@ -308,10 +311,10 @@ do {
 			       "UNKNOWN SATNAME");
   die "$satname not in allowed list\n"; } unless $satname =~ /(GOES|GMS)/;
 do {vap_perl::VapMailErrorMsg( "cloud_overaly: $satnum not in allowed list (8,10)\n", 
-			"UNKNOWN SATNUM") ||
+			"UNKNOWN SATNUM") &&
      die "$satnum not in allowed list (8,10)\n" } unless $satnum =~ /(5|8|10)/;
 do {vap_perl::VapMailErrorMsg( "cloud_overaly: $sensornum not in allowed range (1-4)\n", 
-			"UNKNOWN SENSORNUM") ||
+			"UNKNOWN SENSORNUM") &&
      die "$sensornum not in allowed range (1-4)\n"}  unless $sensornum =~ /(1|2|3|4)/;
 if (abs($lonlim[0]) > 360 || abs($lonlim[1]) > 360){ 
   vap_perl::VapMailErrorMsg("cloud_overlay: Out of range Long Lims\n  (@lonlim)\n", 
@@ -341,7 +344,7 @@ $user=$ENV{'USER'};
 $lock_file="/tmp/".$user.".cloud_overlay.lock";
 open (LOCK,">$lock_file") || 
 { vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't open $lock_file\n", 
-			 "OPENERR <LOCKFILE>") || 
+			 "OPENERR <LOCKFILE>") && 
 			     die "Couldn't open $lock_file\n"};
 print LOCK "$$\n";
 close (LOCK);
@@ -356,7 +359,7 @@ if ($satname =~ /GMS/) {
  Gms5::GetAllFileLists() || 
      {vap_perl::VapMailErrorMsg(
 	"cloud_overlay:Can't Get all Gms5 archives listings!\n",
-			    "GMS5 GETALLFILELISTS") || 
+			    "GMS5 GETALLFILELISTS") && 
 	  die "Can't Get all Gms5 archives listings!\n"};
   @gms5sensornames=('ir1','ir2','ir3','vis');
   @isec=Gms5::GetIntersection($gms5sensornames[$sensornum-1]);
@@ -409,7 +412,7 @@ print "CDing to $vap_perl::VAP_OVERLAY\n";
 chdir $vap_perl::VAP_OVERLAY || 
     {vap_perl::VapMailErrorMsg(
      "cloud_overlay: Can't chdir to overlay dir $vap_perl::VAP_OVERLAY\n",
-	  "BAD CD TO OVERLAY DIR") || 
+	  "BAD CD TO OVERLAY DIR") && 
 	 die "Can't chdir to overlay dir $vap_perl::VAP_OVERLAY\n"};
 
 $idl_tmp_file="idl_called_by_perl.pro";
@@ -417,7 +420,7 @@ print "Writing IDL tmp file $idl_tmp_file\n";
 open(IDLFILE,">$idl_tmp_file") || 
     {vap_perl::VapMailErrorMsg(
 	   "Cloud_overlay: Couldn't open $idl_tmp_file\n",
-	      "BAD IDL TMPFILE OPEN") || 
+	      "BAD IDL TMPFILE OPEN") && 
 		  die "Couldn't open $idl_tmp_file\n"};
 
 
@@ -426,6 +429,7 @@ $exe_str .= ",$delta,wpath = \'$vap_perl::VAP_WINDS\'";
 $exe_str .= ",pid=$$,length=$length";
 $exe_str .= ",CRDecimate=[".join(",",@$crdecimate)."]";
 $exe_str .= ",ExcludeCols=\'$excludecols\'";
+$exe_str .= ",rainflag=1,rf_action=1";
 
 
 
@@ -435,7 +439,7 @@ $exe_str .= ",mapLimits=$mapLimits,gmsType=\'$gms5sensornames[$sensornum-1]\'"
 print IDLFILE "$exe_str\nexit\n" || 
    {vap_perl::VapMailErrorMsg(
        "cloud_overlay: Can't write to idl tmp file $idl_tmp_file\n",
-       "BAD WRITE TO IDL TMPFILE") || 
+       "BAD WRITE TO IDL TMPFILE") && 
 	   die "Can't write to idl tmp file $idl_tmp_file\n"};
 #  print IDLFILE "exit\n" || 
 #      die "Can't write to idl tmp file $idl_tmp_file\n";
@@ -455,7 +459,7 @@ if ($r != 0){
 open ( LOCK, "<$lock_file") || 
   {vap_perl::VapMailErrorMsg(
 	"cloud_overlay: Couldn't open $lock_file after IDL \n",
-	      "ERROR OPEN LOCKFILE") || 
+	      "ERROR OPEN LOCKFILE") && 
 		  die "Couldn't open $lock_file after IDL \n"};
 @idlout = <LOCK>;
 close (LOCK);
@@ -476,9 +480,9 @@ foreach $r (@idlout) {
 unlink $idl_tmp_file || 
     {vap_perl::VapMailErrorMsg(
 	       "cloud_overlay: Couldn't unlink $idl_tmp_file\n",
-	     "TMPFILE UNLINK ERROR") || 
+	     "TMPFILE UNLINK ERROR") && 
 	  die "Couldn't unlink $idl_tmp_file\n"};
-unlink $lock_file  || print "Couldn't delete $lock_file \n";
+unlink $lock_file  ||  print "Couldn't delete $lock_file \n";
 
   # goes_overlay gives the output gif file a name based on the input
   # grid file name get that name and rename the file to the standard
@@ -487,7 +491,7 @@ unlink $lock_file  || print "Couldn't delete $lock_file \n";
 open (PICTURENAME,"</tmp/auto_cloud_overlay_output_file") || 
  {vap_perl::VapMailErrorMsg(
      "cloud_overlay: Can't open /tmp/auto_cloud_overlay_output_file\n",
-       "AUTO CLOUD OVERLAY OUTPUT FILE OPEN ERROR") || 
+       "AUTO CLOUD OVERLAY OUTPUT FILE OPEN ERROR") && 
 	   die "Can't open /tmp/auto_cloud_overlay_output_file\n"};
 @picturefile=<PICTURENAME>;
 close(PICTURENAME);
@@ -518,7 +522,7 @@ print "Renaming $picture to $file\n";
 copy($picture,$file) ||
   {vap_perl::VapMailErrorMsg(
 	"cloud_overlay: Couldn't rename $picture to $file, error = $!\n",
-	      "PICTURE COPY ERROR") || 
+	      "PICTURE COPY ERROR") && 
        die "Couldn't rename $picture to $file, error = $!\n"};
 unlink $picture;
 chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
@@ -552,7 +556,7 @@ print "Renaming $thumbnail to $file\n";
 copy($thumbnail,$file) ||
   {vap_perl::VapMailErrorMsg(
 	    "cloud_overlay: Couldn't rename $thumbnail to $file, error = $!\n",
-	     "THUMBNAIL COPY ERROR") || 
+	     "THUMBNAIL COPY ERROR") && 
        die "Couldn't rename $thumbnail to $file, error = $!\n"};
 unlink $thumbnail;
 chmod 0755, $file || print  "Couldn't chmod $file to a+r\n";
@@ -573,7 +577,7 @@ symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
   # go to where the index.html is
 chdir $vap_perl::VAP_WWW_TOP || 
    {vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't go to $VAP_WWW_TOPDIR\n",
-		      "CD ERROR WWW TOP DIR") || 
+		      "CD ERROR WWW TOP DIR") && 
 	die "Couldn't CD to $VAP_WWW_TOPDIR\n"};
 print "11\n";
 
@@ -584,7 +588,7 @@ vap_perl::date_index();
   # make sure it's readible.
 chmod 0644, "index.html" ||  
     {vap_perl::VapMailErrorMsg("cloud_overlay: Couldn't chmod index.html to 0644\n",
-			       "INDEX.HTML CHMOD ERROR") || 
+			       "INDEX.HTML CHMOD ERROR") && 
 	 die "Couldn't chmod index.html to 0644\n"};
 $tottime=time-$^T;
 
