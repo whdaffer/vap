@@ -56,6 +56,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  1999/01/22 22:20:14  vapuser
+; Changed *( to (* in 'RemoveCurrent'
+;
 ; Revision 1.5  1998/10/28 23:29:41  vapuser
 ; Add WhichNode method
 ;
@@ -509,7 +512,7 @@ PRO LinkedList::DeleteCurrent
     current = self.current
     data_ptr =  (*current).data
     data = *data_ptr
-    IF Obj_Valid(data[0]) THEN Obj_Destroy,data
+    IF VarType(data[0]) EQ 'OBJECT' THEN Obj_Destroy,data
     Ptr_Free, data_ptr
 
     IF ptr_valid( (*self.current).prev ) THEN BEGIN 
