@@ -119,6 +119,11 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.12  2000/02/23 21:57:37  vapuser
+; Moved around some error reporting code, changed where the
+; lock file gets check/opened. Included the ROI in the names
+; of files.
+;
 ; Revision 1.11  2000/02/14 17:23:17  vapuser
 ; Write out .mov file to /tmp/auto_movie_mov_filename so that
 ; auto_movie.pl can read it in.
@@ -238,12 +243,14 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 
 
   Forward_Function GetInterpFiles
+  message,'Start Time: ' + systime(),/info
   lf = string(10b)
   CD,current=cur_dir
 
   rcsid = "$Id$"
 
-  mps2knots = 0.514 ; takes meters/sec to knots
+  ;mps2knots = 0.51479 ; takes meters/sec to knots
+  mps2knots = 1./0.51479 ; takes meters/sec to knots
 
   user = getenv('USER')
   dateit =  NOT keyword_set( nodate )
@@ -305,11 +312,12 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   auto_movie_cronjob = 0
   IF n_Elements(pid) NE 0 THEN BEGIN 
     lockfile = 'auto_movie_' + lroi + '.lock'
+    tmpfilesdir =  getenv('VAP_ROOT') + '/tmpfiles'
     auto_movie_cronjob = ( CheckForLock( pid, lockfile, $
-                                     user, dir='/tmp') EQ 1)
+                                     user, dir=tmpfilesdir) EQ 1)
   ENDIF 
   IF auto_movie_cronjob THEN $
-     lockfile = '/tmp/' + user + '.' + lockfile
+     lockfile = tmpfilesdir + '/' + user + '.' + lockfile
 
   IF auto_movie_cronjob THEN BEGIN 
     openw, llun, lockfile, /get, error= err
@@ -595,11 +603,11 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
       ; There is already an interpolated file to use.
 
     CD,anim_path
-    IF knots THEN BEGIN 
-      minspeed = minspeed/mps2knots
-      maxspeed = maxspeed/mps2knots
-    ENDIF 
-
+;    IF knots THEN BEGIN 
+;      minspeed = minspeed/mps2knots
+;      maxspeed = maxspeed/mps2knots
+;    ENDIF
+ 
     lonpar =  alonpar[0:1]
     latpar =  alatpar[0:1]
     tmp =  (lonpar(0:1) + [-10,10])
@@ -656,7 +664,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
       ENDIF 
     ENDREP UNTIL done OR (i EQ nn-1)
     IF good AND auto_movie_cronjob THEN BEGIN 
-      openw,lun,'/tmp/auto_movie_mov_filename_'+lroi,/get,error=err
+      openw,lun,tmpfilesdir + '/auto_movie_mov_filename_'+lroi,/get,error=err
       IF err THEN BEGIN 
         printf,llun,'ERROR: ' + !error_state.msg
         free_lun, llun
@@ -667,6 +675,8 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     free_lun, llun
 ;  ENDELSE 
    CD,cur_dir
+   message,'End Time: ' + systime(),/info
+   Message,'Done!',/info
  
 END
 
