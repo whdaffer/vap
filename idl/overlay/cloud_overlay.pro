@@ -115,6 +115,10 @@
 ; Modification History:
 ;
 ; $Log$
+; Revision 1.4  1998/10/17 00:15:10  vapuser
+; Added CRDecimate, ExcludeCols, decimate keywords.
+; Killed a few bugs
+;
 ; Revision 1.3  1998/10/06 00:21:57  vapuser
 ; Added DeEnvVar
 ;
@@ -289,6 +293,11 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
     return 
   ENDIF ELSE BEGIN
 
+      ; Get the visual name, it determines which 
+      ; version of goes_overlay to call.
+    Device,Get_Visual_Name= visual
+    visual = strupcase(visual)
+    
 
     str = 'INFO: Found ' + strtrim(nf,2) + ' wind files'
     Message,str,/info
@@ -304,12 +313,19 @@ PRO cloud_overlay, cloud_file,     $ ; full name of grid file
 
     CASE grid_type OF 
       'GOES': BEGIN 
-        GOES_OVERLAY, cloud_file, wfiles=wf, $
-          minspeed=2, maxspeed=20, thick=2, $
-          len=2,getoutfile=ofile, $
-          Decimate=decimate, CRDecimate=CRDecimate, $
-          ExcludeCols=ExcludeCols, ps=ps, gif=gif,/z
-         
+        IF visual EQ 'PSEUDOCOLOR' THEN BEGIN 
+          GOES_OVERLAY, cloud_file, wfiles=wf, $
+           minspeed=2, maxspeed=20, thick=2, $
+            len=2,getoutfile=ofile, $
+             Decimate=decimate, CRDecimate=CRDecimate, $
+              ExcludeCols=ExcludeCols, ps=ps, gif=gif,/z
+        ENDIF ELSE BEGIN 
+          GOES_OVERLAY24,cloud_file,windFiles=wf,$
+           minspeed=2, maxspeed=20, thick=2, $
+            len=2,outfile=ofile, $
+             Decimate=decimate, CRDecimate=CRDecimate, $
+              ExcludeCols=ExcludeCols, ps=ps, gif=gif
+        ENDELSE 
       END
        'GMS' : BEGIN 
          str = 'ERROR: GMS not implemented yet'
