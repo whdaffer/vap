@@ -48,6 +48,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  1999/06/29 20:33:14  vapuser
+; Changed STARTTIME to DATASTARTTIME.
+; Similarly for 'endtime'.
+;
 ; Revision 1.2  1999/06/29 20:26:11  vapuser
 ; Handle the 'SPARE_METADATA_ELEMENT' that will appear
 ; in the Rnoaa files.
@@ -78,9 +82,12 @@ FUNCTION parsernoaaheader, header
     tags = strarr(ntags)
     values = tags
     FOR ii=0,ntags-1 DO BEGIN 
-      tmp2 = str_sep(tmp[ii],'=')
+      tmp2 = str_sep(strcompress(tmp[ii],/remove_all),'=')
       tag =  strupcase(strcompress(tmp2[0],/remove_all))
       value =  strupcase(strtrim( tmp2[1],2 ))
+      s = strpos(value,';')
+      IF s NE -1 THEN $
+        value = strmid(value,0,s)
       IF tag NE 'SPARE_METADATA_ELEMENT' THEN BEGIN 
         IF nn EQ 0 AND ii EQ 0 THEN $
           retstruct =  create_struct( tag, value ) ELSE $
