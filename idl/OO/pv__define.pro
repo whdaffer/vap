@@ -1,5 +1,6 @@
 ;+
 ; NAME:  pv__define
+; $Id$ 
 ; PURPOSE:  Defines the PV (PlotVector) Object
 ;
 ;
@@ -89,6 +90,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.22  2000/02/23 21:58:26  vapuser
+; Added rain flag code.
+;
 ; Revision 1.21  1999/11/12 19:51:58  vapuser
 ; Deleted the 'selfhelp' method and associated variables,
 ; code and methods. Added code to support the new 'DIRTH' selected
@@ -1361,13 +1365,24 @@ PRO Pv::Draw, $
                     ; Plot the non-rainflagged vectors as normal. 
                     ; The overplot the rainflagged vectors
                     ; using whatever color is in self.rain_flag_color.
+                    ; Since vector plotting to the postscript device
+                    ; is 8-bit, we load the rainf flag color  into the
+                    ; color table at location 1 (assume it's a 24 bit number)
+                  rf_color = self.rain_flag_color
+                  TVLCT,rf_color AND 'ff'xl,$
+                        ishft(rf_color,-8) AND 'ff'xl, $
+                          ishft(rf_color,-16) AND 'ff'xl,1
                   PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],$
                     Length = self.Length, $
                       thick=self.Thickness, $
-                        Color=self.rain_flag_color,dots=dots
+                        Color=1,dots=dots
                 ENDIF 
                 tvlct,r,g,b
               ENDIF ELSE BEGIN 
+                    ; This will handle either pseudocolor (whether
+                    ; postscript or not) or truecolor but not
+                    ; postscript.
+
                 PlotVect,u,v,lon,lat,$
                   Length = self.Length, $
                     thick=self.Thickness, $
@@ -1385,7 +1400,9 @@ PRO Pv::Draw, $
                   PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],$
                     Length = self.Length, $
                       thick=self.Thickness, $
-                        Color=self.rain_flag_color,dots=dots
+                        Color=self.rain_flag_color,dots=dots, $
+                             truecolor=self.visual ne 'PSEUDOCOLOR' , $
+                              table=CT
                 ENDIF 
               ENDELSE 
               
@@ -1425,10 +1442,17 @@ PRO Pv::Draw, $
                     ; Plot the non-rainflagged vectors as normal. 
                     ; The overplot the rainflagged vectors
                     ; using whatever color is in self.rain_flag_color.
+                    ; Since vector plotting to the postscript device
+                    ; is 8-bit, we load the rainf flag color  into the
+                    ; color table at location 1 (assume it's a 24 bit number)
+                  rf_color = self.rain_flag_color
+                  TVLCT,rf_color AND 'ff'xl,$
+                        ishft(rf_color,-8) AND 'ff'xl, $
+                          ishft(rf_color,-16) AND 'ff'xl,1
                     PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],$
                       Length = self.Length, $
                         thick=self.Thickness, $
-                          Color=self.rain_flag_color,dots=dots
+                          Color=1,dots=dots
                   ENDIF 
                   tvlct,r,g,b
                 ENDIF ELSE BEGIN 
@@ -1449,7 +1473,9 @@ PRO Pv::Draw, $
                     PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],$
                       Length = self.Length, $
                         thick=self.Thickness, $
-                          Color=self.rain_flag_color,dots=dots
+                          Color=self.rain_flag_color,dots=dots, $
+                             truecolor=self.visual ne 'PSEUDOCOLOR' , $
+                              table=CT
                   ENDIF 
                 ENDELSE 
                 po->InRegion,1
