@@ -1,0 +1,63 @@
+# $Id$
+#
+# Mods:
+#
+# $Log $
+
+#
+my ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime(time()); 
+$year += 1900;
+$yr=$year - int($year/100) * 100;
+$storms_file=sprintf("tropical%02d", $yr);
+
+my $ts_overlay_dir=$ENV{'VAP_TS_OVERLAY'} || 
+  croak "\$ENV{VAP_TS_OVERLAY} is UNDEFINED!\n";
+
+# STORMRANKING maps number to description
+
+
+# SATELLITE_REGIONS defines the regions which each satellite sees.
+# Then we can quickly determine which satellite to use given the
+# storm's location.
+
+
+# SAT2SAT converts satellite region specs to the actual names of the
+# Satellites Eventually all the code will just refer to GoesEast,
+# GoesWest and GMS5, but we have to deal with some legacy code in the
+# mean time.
+
+$tsoo_defs = {STORMS_HOST => "www.solar.ifa.hawaii.edu",
+	      STORMS_DIR=>"Tropical/Data",
+	      STORMS_FILE=>"storms_file",
+	      LOCAL_URL=>$storms_file,
+	      TS_OVERLAY_DIR=> $ts_overlay_dir,
+	      SATELLITE_REGIONS => {
+				    GMS5      => { Region => [70,-60,190,60] },
+				    GOESWESTN => { Region => [180,0,270,60] },
+				    GOESEASTN => { Region => [260,-10,360,60]}
+				   },
+
+	      SAT2SAT => {
+			  GOESEASTN=>"Goes8", 
+			  GOESWESTN=>"Goes10",
+			  GMS5 => "GMS5" 
+			 },
+	      SATELLITES => qw<GOESEAST GOESWEST GMS5>,
+	      STORMRANKING => {
+			       '???' => 0,
+			       DEP => 1,
+			       STO => 2,
+			       CYC => 3,
+			       HUR => 3,
+			       TYP => 3}
+	     };
+
+$tsoo_defs->{REMOTE_URL} = "http://".
+	      join "/",($tsoo_defs->{STORMS_HOST}, 
+			$tsoo_defs->{STORMS_DIR}, 
+			$tsoo_defs->{STORMS_FILE} );
+
+
+
+1;
+
