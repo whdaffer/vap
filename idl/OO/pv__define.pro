@@ -90,6 +90,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.12  1999/01/24 19:59:11  vapuser
+; Changed to accomidate new linkedlist object.
+;
 ; Revision 1.11  1998/11/20 20:02:01  vapuser
 ; Accomidate 24bit color
 ;
@@ -803,10 +806,10 @@ FUNCTION pv::Init, $
       InputPath = '/disk3/qscat_winds' 
     ENDIF 
   ENDELSE 
-  IF N_Elements(InputFilter) EQ 0 THEN InputFilter = '*.DAT *.hdf' ELSE BEGIN 
+  IF N_Elements(InputFilter) EQ 0 THEN InputFilter = 'QS*S*E* *.hdf' ELSE BEGIN 
     IF VarType(InputFilter) NE 'STRING' THEN BEGIN 
       Message,'InputFilter must be of type STRING',/cont
-      InputFilter = '*.DAT *.hdf' 
+      InputFilter = 'QS*S*E* *.hdf' 
     ENDIF 
   ENDELSE 
   IF N_Elements(OutputPath)  EQ 0 THEN OutputPath = '/disk5/qscat' ELSE BEGIN 
