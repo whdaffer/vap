@@ -1,13 +1,6 @@
 ;+
-;
 ; $Id$
 ; NAME:  AUTO_MOVIE
-;
-; Time-stamp: <99/02/04 13:32:14 vapuser>
-;
-;		
-; 
-;
 ;
 ; PURPOSE: automatically creates a quicktime movie of the requested
 ;          region of data. Regions, along with other info,  are
@@ -41,7 +34,7 @@
 ;                   99, 1900 is added to it. 
 ;       time_inc - (I) start_time = date_time-time_inc. Defines the 
 ;                  'start time' of the range inside of which the
-;                  routine will look for wind files. Default=26.
+;                  routine will look for wind files. Default=14.
 ;
 ;	
 ; KEYWORD PARAMETERS:  
@@ -70,8 +63,8 @@
 ;                nodate      : flag: if set, DON'T put a date string on the
 ;                              movie file.
 ;                animpar     : [xsize,ysize,nframes]
-;                write_gif   : write gif files
-;                write_pict  : write pict files
+;                gif   : write gif files
+;                pict  : write pict files
 ;                nomovie     : if 1, don't make movie, just individual
 ;                              frames
 ;                decimate    : scalar, decimate=n means take every
@@ -105,31 +98,22 @@
 ;
 ; OPTIONAL OUTPUTS:  
 ;
-;
-;
 ; COMMON BLOCKS:  
-;
-;
 ;
 ; SIDE EFFECTS:  
 ;
-;
-;
 ; RESTRICTIONS:  
-;
-;
 ;
 ; PROCEDURE:  
 ;
-;
-;
 ; EXAMPLE:  
-;
-;
 ;
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.7  1999/02/04 21:32:26  vapuser
+; Added a message about the interpolated field.
+;
 ; Revision 1.6  1999/01/24 20:13:00  vapuser
 ; Robustified calling dmconvert.
 ;
@@ -157,7 +141,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
                                 ; will be added to it. Default=current
                                 ; time )
                 time_inc,  $ ; (I) select wind files this number of hours 
-                             ; back in time. default = 26
+                             ; back in time. default = 14.
                 roi         =  roi, $ ; (I) one of 'nepac', 'nwpac', 
                                       ; 'npac' or 'nwatl', the 
                                       ; 'region of interest'
@@ -185,15 +169,15 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
                                             ; file and output movie file.
                 animpar     = animpar,$     ; [xsize,ysize,nframes] for 
                                             ; animation
-                write_gif   = write_gif,$   ; (I) flag. If set, output 
+                gif   = gif,$   ; (I) flag. If set, output 
                                             ; frames as gif files
-                write_pict  = write_pict,$  ; (I) flag. If set, output 
+                pict  = pict,$  ; (I) flag. If set, output 
                                             ; frames as pict files 
                                             ; (will set nomovie flag)
                 nomovie     = nomovie, $    ; (I) flag. If set, do NOT make 
                                             ; movie file
                                             ; NB, will automatically be 
-                                            ; set if write_pict is 
+                                            ; set if pict is 
                 decimate    = Decimate, $   ; (I), scalar, Decimate=n means 
                                             ; take every n-th vector.
                 CRDecimate  = CRDecimate, $ ; (I), 2-vector. 
@@ -237,6 +221,9 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   IF n_Elements(pid) NE 0 THEN $
   auto_movie_cronjob = ( CheckForLock( pid, 'auto_movie.lock', $
                                      user, dir='/tmp') EQ 1)
+  IF auto_movie_cronjob THEN $
+     lockfile = '/tmp/' + user + '.' + 'auto_movie.lock'
+
   catch, error_status
   IF error_status NE 0 THEN BEGIN
     IF auto_movie_cronjob THEN BEGIN 
@@ -255,11 +242,11 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
    ENDIF 
   ENDIF 
 
-  write_gif = keyword_set(write_gif)
-  write_pict = keyword_set(write_pict)
+  gif = keyword_set(gif)
+  pict = keyword_set(pict)
 
-  IF write_gif AND write_pict THEN BEGIN 
-    str =  " ERROR: Only one of 'write_gif' or 'write_pict' may be set" 
+  IF gif AND pict THEN BEGIN 
+    str =  " ERROR: Only one of 'gif' or 'pict' may be set" 
     IF auto_movie_cronjob THEN BEGIN 
       printf, llun, str
       free_lun,llun
@@ -268,18 +255,18 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     return
   ENDIF
 
-  IF NOT (write_gif OR write_pict) THEN write_gif = 1
-  IF write_pict THEN nomovie = 1
+  IF NOT (gif OR pict) THEN gif = 1
+  IF pict THEN nomovie = 1
 
   CD,current=cur_dir
 
 
-  IF N_elements( time_inc ) EQ 0 THEN time_inc =  26
+  IF N_elements( time_inc ) EQ 0 THEN time_inc =  14.
 
   IF n_elements( roi ) NE 0 THEN BEGIN 
     roistr =  READ_AUTO_MOVIE_DEFS( roi )
     IF strpos( roistr.desig, 'ERROR' ) NE -1 THEN BEGIN 
-      str =  "Error reading defaults for roi " + roi + " error = " + $
+      str =  "ERROR: reading defaults for roi " + roi + " error = " + $
        roistr.desig
       IF auto_movie_cronjob THEN BEGIN 
         printf,llun, str
@@ -303,7 +290,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   IF n_elements( CRDecimate )  NE 2 THEN CRDecimate  = roistr.CRDecimate
   IF n_elements( ExcludeCols ) EQ 0 THEN ExcludeCols = roistr.ExcludeCols
 
-  IF n_elements( animpar )     EQ 0 THEN animpar = [320,240,60]
+  IF n_elements( animpar )     EQ 0 THEN animpar = roistr.anim_par ; [320,240,60]
 
 
   roi =  strupcase(roi)
@@ -311,7 +298,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 
 
   ; Get the current GMT doy and hour
-  TodayAsString = TodayAsString(separator='/')
+  TodayAsString = TodayAsString(separator='/',/gmt)
   
   IF n_elements( date_time ) EQ 0 THEN BEGIN 
     ; Get the current GMT doy and hour
@@ -332,7 +319,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
    
   filter = 'Q*'
   IF nscat THEN filter = 'N*'
-    ; Check to see whether there is an interpolated field within 12
+    ; Check to see whether there is an interpolated field within 2
     ; hours of the input time. If there is, read it, else , get the
     ; files and make one.
   Interp_file = GetInterpFiles( date_time, time_inc = Time_inc, $
@@ -342,17 +329,17 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
                                  ExcludeCols=ExcludeCols, min_nvect=min_nvect,$
                                  filetimes = filetimes, count = nif )
   IF nif EQ 0 THEN BEGIN 
-    str =  "Error in GetInterpFiles, " + lf + $
+    str =  "ERROR: in GetInterpFiles, " + lf + $
         " either can't find interp files or can't make them"
     IF auto_movie_cronjob THEN BEGIN 
-      print,llun, str
+      printf,llun, str
       free_lun, llun
     ENDIF 
     Message,str,/cont
     return
   ENDIF 
-  
-  Message,' File containing interpolated field: ' + Interp_file ,/cont
+  interp_file = interp_file[0]
+  Message,' Using interpolated field in file: ' + Interp_file ,/cont
 
   anim_date_str =  dt2timestr( filetimes[0],sep='')
 
@@ -482,7 +469,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 ;       min_speed=1,  $             ; meters/sec, will be converted to knots 
 ;       max_speed=40/mps2knots, $   ; in animate_wind_field (max_speed=40 knots)
 ;       title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
-;       write_gif=write_gif, write_pict=write_pict
+;       gif=gif, pict=pict
 
 ;    ENDIF ELSE BEGIN
 ;      str =  "ERROR: Not enough vectors in area: have " + strtrim( nx, 2 ) + $
@@ -498,7 +485,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
       ; There is already an interpolated file to use.
 
     CD,anim_path
-    mps2knots = 1.9444 ; takes meters/sec to knots
+    mps2knots = 0.514 ; takes meters/sec to knots
 
     lonpar =  roistr.alonpar
     latpar =  roistr.alatpar
@@ -518,7 +505,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
      min_speed=1,  $             ; meters/sec, will be converted to knots 
      max_speed=40/mps2knots, $   ; in animate_wind_field (max_speed=40 knots)
      title= strtrim( time_inc,2 ) + ' hrs prior to ' + anim_date_str ,$
-     write_gif=write_gif, write_pict=write_pict
+     gif=gif, pict=pict
 
 
 
