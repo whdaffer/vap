@@ -66,6 +66,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.5  1999/03/16 18:42:44  vapuser
+; Added a 'status' keyword. Changed to only return 0 or 1, error reports in
+; status keyword, 1=no error, 0=error.
+;
 ; Revision 1.4  1999/03/16 18:16:46  vapuser
 ; changed misspelling (.mst instead of .msg)
 ;
@@ -132,7 +136,7 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
   CASE 1 OF 
      keyword_set(byte) : test =  vartype( variable ) EQ 'BYTE'
      keyword_set(short) : test = vartype( variable ) EQ  'INTEGER'
-     keyword_set(long) : test = vartype( variable ) EQ  'LONG'
+     keyword_set(long) : test = vartype( variable ) EQ  'LONGWORD'
      keyword_set(float) : test = vartype( variable ) EQ 'FLOAT'
      keyword_set(double) : test = vartype( variable ) EQ 'DOUBLE'
      keyword_set(complex) : test = vartype( variable ) EQ 'COMPLEX_FLOAT'
@@ -159,7 +163,7 @@ usage_msg = 'true_false=isa(variable, "followed by one of " ,/byte, /integer, /l
      keyword_set(TYPE_INTEGER) : $
         test = vartype(variable) EQ 'BYTE'    OR $
                vartype(variable) EQ 'INTEGER' OR  $
-               vartype(variable) EQ 'LONG'
+               vartype(variable) EQ 'LONGWORD'
      keyword_set(TYPE_FLOAT) : $
          test = vartype(variable) EQ 'FLOAT' OR $
                 vartype(variable) EQ 'DOUBLE'
