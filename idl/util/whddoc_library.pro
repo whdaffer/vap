@@ -37,12 +37,15 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  2001/02/02 21:41:32  vapuser
+; Initial revision
+;
 ;
 ; Copyright (c) 1999, William Daffer
 ; No Warranties
 ;-
 
-PRO whddoc_library, name
+PRO whddoc_library, name,force=force
   IF n_params() LT 1 THEN BEGIN 
     Usage,'whddoc_library, routine_name'
     ok = dialog_message("Usage: whddoc_library, routine_name")
@@ -57,7 +60,7 @@ PRO whddoc_library, name
   ENDIF 
 
   headerfile = "/tmp/" + name + ".doc"
-  IF NOT fexist(headerfile) THEN $
+  IF NOT fexist(headerfile) OR keyword_set(force) THEN $
     doc_library, name, print="cat > " + headerfile,/multi
 
   xdisplayfile,headerfile, height=40,title=name,width=90
