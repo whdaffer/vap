@@ -1,17 +1,13 @@
 #!/usr/bin/perl5  
 # 
-# Time-stamp: <98/09/01 09:48:05 vapuser>
+# Time-stamp: <98/09/03 11:44:09 vapuser>
 # $Id$
 # auto_goes_overlay.pl - perl script to automatically create goes overlay plots
 #
 
 
-print "1\n";
-$newdir = "/usr/people/vapuser/perl";
-push ( @INC, $newdir );
-
 require vap_perl;
-require "pwd.pl";
+use Cwd 'chdir';
 
 
 # turn off buffering so that the system flushes 
@@ -48,9 +44,6 @@ open (LOCK,">$lock_file") || die "Couldn't open $lock_file \n";
 close (LOCK);
 
 print "3\n";
-
-# Init pwd.pl code
-&initpwd;
 
 # Determine the type of overlay to make, ascending or descending.
 # def = ascending
@@ -105,7 +98,7 @@ print "4\n";
 $overlay_dir=$ENV{'VAP_OVERLAY'}."/daily/";
 
 # chdir to the overlay dir
-&chdir( $overlay_dir ) || die "Couldn't go to overlay dir $overlay_dir\n";
+chdir $overlay_dir  || die "Couldn't go to overlay dir $overlay_dir\n";
 
 # kill any IDL sessions currently running
 $pstr = "ps -ef | grep bin.sgi/idl | grep -v grep | grep -v lmgrd";
@@ -234,7 +227,7 @@ print "Linking $wwwfile to $file\n";
 symlink( $file, $wwwfile ) || print "Couldn't link $wwwfile to $file \n";
 
 # go to where the index.html is
-&chdir ("/disk2/vap/www/htdocs" ) || die "Couldn't go to htdocs\n";
+chdir "/disk2/vap/www/htdocs" || die "Couldn't go to htdocs\n";
 print "11\n";
 # update the dates in that file
 print "Updating index.html\n";
