@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/06 00:00:54  vapuser
+; Added some Version stuff.
+;
 ; Revision 1.1  1998/10/01 17:50:57  vapuser
 ; Initial revision
 ;
@@ -92,8 +95,7 @@ FUNCTION qmodel::Init, U, V, $
   no_copy = keyword_set(no_copy)
   Catch, Error
   IF Error NE 0 THEN BEGIN 
-    Catch,/Cancel
-    ok = Dialog_Message(!Error_State.msg)
+    ; ok = Dialog_Message(!Error_State.msg)
     Message,!error_state.msg,/cont
     return,0
   ENDIF 
@@ -104,16 +106,16 @@ FUNCTION qmodel::Init, U, V, $
         s = size(u)
         nlon = s[1]
         nlat = s[2]
-        qmodel = qmodel_str(nlon,nlat)
+        qmodel = qmodel_str()
         IF vartype( qmodel ) EQ 'STRUCTURE' THEN BEGIN 
-          qmodel.u = u
-          qmodel.v = v
+          qmodel.u = Ptr_New(u )
+          qmodel.v = Ptr_New(v )
           qmodel.nlon = nlon
           qmodel.nlat = nlat
           loninc =  (region[2]-region[0])/nlon
           latinc =  (region[3]-region[1])/nlat
-          qmodel.lon =  (findgen(nlon)*loninc+region[0])#replicate(1,nlat)
-          qmodel.lon =  replicate(1,nlon) # (findgen(nlat)*latinc+region[1])
+          qmodel.lon = Ptr_New((findgen(nlon)*loninc+region[0])#replicate(1,nlat),/no_copy)
+          qmodel.lon = Ptr_New(replicate(1,nlon)#(findgen(nlat)*latinc+region[1]),/no_cop)
           qmodel.region = region
           status = 1
         ENDIF ELSE $
@@ -149,6 +151,11 @@ END
 ;============================================
 
 PRO qmodel::Cleanup
+   data =  (*self.data)
+   Ptr_Free, data.U
+   Ptr_Free, data.V
+   Ptr_Free, data.Lon
+   Ptr_Free, data.Lat
    self-> Q2b::Cleanup
 END
 
@@ -160,17 +167,48 @@ FUNCTION Qmodel::Read, filename
    IF n_elements(filename) ne 0 THEN BEGIN 
      IF VarType( filename ) EQ  'STRING' THEN BEGIN 
        IF hdf_isHdf(filename) THEN BEGIN 
-         qmodel =  qmodelhdfread(filename)
+         IF IsQmodel(filename) THEN BEGIN 
+           qmodel =  QmodelHdfRead(filename)
          IF vartype( qmodel ) EQ 'STRUCTURE' THEN BEGIN 
-           IF Ptr_Valid( self.data ) THEN $
-            Ptr_Free, self.data 
-           self.data = Ptr_New( qmodel )
-           status = 1
-         ENDIF 
-       ENDIF ELSE $
-         Message,filename + ' Must be HDF file, at the moment',/cont
+             IF Ptr_Valid( self.data ) THEN $
+               Ptr_Free, self.data 
+             self.data = Ptr_New( qmodel )
+             status = 1
+           ENDIF 
+         ENDIF ELSE BEGIN 
+           Message,"file " + filename + " must be a QMODEL HDF file",/cont
+           status = 0
+         ENDELSE 
+       ENDIF ELSE BEGIN 
+         q = qmodel_str()
+         hdr = q.hdr
+         openr,lun, filename, error=err,/get
+         IF err EQ 0 THEN BEGIN 
+           readu, lun, hdr
+           ShortName = string( hdr.shortname )
+           CASE ShortName OF 
+             'QSCATVAPMODEL': BEGIN 
+               u = fltarr( hdr.nlon, hdr.nlat )
+               v = u
+               readu, lun, u,v
+               free_lun, lon
+               q.U =  Ptr_New(U,/no_copy)
+               q.V =  Ptr_New(V,/no_copy)
+               self.data =  Ptr_New(Q,/no_copy)
+             END
+             ELSE: BEGIN 
+               Message,filename + $
+                 ": Can't recognize format, ID = " + id,/cont
+               status = 0
+             END
+           ENDCASE 
+         ENDIF ELSE BEGIN 
+           Message,!error_state.msg,/cont
+           status = 0
+         ENDELSE 
+       ENDELSE 
      ENDIF ELSE Message,'filename must be STRING',/cont
-   ENDIF ELSE Message,'Usage qmodel->read,filename',/cont
+   ENDIF ELSE Message,'Usage s=qmodel->read(filename)',/cont
    return, status
 END
 
@@ -214,10 +252,10 @@ FUNCTION qmodel::GetPLotData, u,v,lon,lat,ambiguity, $
 
   status = 0
   IF ptr_valid( self.data ) THEN BEGIN 
-    u   = (*self.data).u
-    v   = (*self.data).v
-    lon = (*self.data).lon
-    lat = (*self.data).lat
+    u   = *(*self.data).u
+    v   = *(*self.data).v
+    lon = *(*self.data).lon
+    lat = *(*self.data).lat
     IF n_elements(limit) EQ 4 THEN BEGIN 
       x = where( lon Ge limit[0] AND lon LE limit[2] AND $
                  lat Ge limit[1] AND lat LE limit[3], nx )
@@ -253,7 +291,7 @@ FUNCTION Qmodel::Version
      ; Version number for this class
 
    rcsid = "$Id$"
-   versions = Q2b::Version()
+   versions = qmodel-> Q2b::Version()
    versions = [rcsid, versions]
    return, versions(uniq(versions,sort(versions)))
 
