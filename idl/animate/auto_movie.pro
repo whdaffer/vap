@@ -127,6 +127,10 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.18  2002/08/12 22:55:10  vapdev
+; Add jpeg/outbase keywords and required code.
+; Default output to jpeg. took out some commented out code.
+;
 ; Revision 1.17  2002/08/09 23:40:33  vapdev
 ; Added lockfile keyword and modified how
 ; to find and use the lockfile.
@@ -214,6 +218,12 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
                                             ; alatpar(2)] )
                 wpath       = wpath, $   ; (I) path to wind files 
                                          ; (def=$VAP_DATA_TOP)
+                windfilter =  windfilter, $ ; (I). File glob filter used to retrieve 
+                                ; wind files for interpolating, of the
+                                ; sort used by getwindfiles(), to which
+                                ; it will be passed. Default =
+                                ; '{QS,SW}*', i.e. take both QuikSCAT
+                                ; and SeaWinds data
                 interp_path = interp_path , $; (I) path to output 
                                              ; interp file 
                                              ; (def=$VAP_OPS_ANIM)
@@ -287,6 +297,13 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   Forward_Function GetInterpFiles
   message,'Start Time: ' + systime(),/info
   lf = string(10b)
+
+  tmpfilesdir =  getenv('VAP_OPS_TMPFILES')
+  IF strlen(tmpfilesdir) EQ 0 THEN BEGIN 
+    Message,'Env Variable VAP_OPS_TMPFILES is undefined! Exiting!',/cont
+    return
+  ENDIF 
+
   CD,current=cur_dir
 
   rcsid = "$Id$"
@@ -361,7 +378,6 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   IF n_elements(lockfile) EQ 0 THEN BEGIN 
     IF n_Elements(pid) NE 0 THEN BEGIN 
       lockfile = 'auto_movie_' + lroi + '.lock'
-      tmpfilesdir =  getenv('VAP_OPS_TMPFILES')
       auto_movie_cronjob = ( CheckForLock( pid, lockfile, $
                                        user, dir=tmpfilesdir) EQ 1)
     ENDIF 
@@ -403,6 +419,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 
 
   chkcfg,'wpath',wpath,cfg
+  chkcfg,'windfilter',windfilter,cfg
   chkcfg,'alonpar',alonpar,cfg
   chkcfg,'alatpar',alatpar,cfg
   chkcfg,'alonpar',alonpar,cfg
@@ -442,9 +459,11 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 
   IF n_elements(length) EQ 0 THEN length = 3
   IF n_elements(thick) EQ 0 THEN thick = 1
+  IF n_elements(windfilter) EQ 0 THEN windfilter = '{QS,SW}*'
   IF n_elements(outbase) EQ 0 THEN outbase =  'wind'
 
   message,'wpath      = ' + wpath,/info
+  message,'windfilter    = ' + windfilter,/info
   message,'alonpar    = ' + string(alonpar,form='(3(f7.2,:,","))'),/info
   message,'alatpar    = ' + string(alatpar,form='(3(f7.2,:,","))'),/info
   message,'interp_path= ' + interp_path ,/info
@@ -485,17 +504,16 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
     ENDIF ELSE date_time = tdate_time
   ENDELSE 
    
-  filter = 'Q*'
-  IF nscat THEN filter = 'N*'
     ; Check to see whether there is an interpolated field within 2
     ; hours of the input time. If there is, read it, else , get the
     ; files and make one.
   Interp_file = GetInterpFiles( date_time, time_inc = Time_inc, $
-                                 interp_path = interp_path, $
-                                 Wpath=Wpath, $
-                                 decimate=decimate, CRDecimate=CRDecimate, $
-                                 ExcludeCols=ExcludeCols, min_nvect=min_nvect,$
-                                 filetimes = filetimes, count = nif )
+                                interp_path = interp_path, $
+                                Wpath=Wpath, $
+                                windfilter=windfilter, $
+                                decimate=decimate, CRDecimate=CRDecimate, $
+                                ExcludeCols=ExcludeCols, min_nvect=min_nvect,$
+                                filetimes = filetimes, count = nif )
   IF nif EQ 0 THEN BEGIN 
     str =  "ERROR: in GetInterpFiles, " + lf + $
         " either can't find interp files or can't make them"
