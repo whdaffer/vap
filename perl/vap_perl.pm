@@ -1,18 +1,48 @@
-#!/usr/bin/perl5  -d
+#!/usr/bin/perl5  
 # Vap.pl - Package of perl code  the vap uses
-# Time-stamp: <98/09/03 10:48:48 vapuser>
+# Time-stamp: <98/10/20 09:04:24 vapuser>
 # $Id$
 #
 # Modification History:
 #
-#  24-Jul-1998: Changed place where we get GOES files. (from 14 to 25)
+# $Log$
 #
 #
 package vap_perl;
 
+require Exporter;
+@ISA = qw(Exporter);
+@EXPORT=qw( $VAP_LIB $VAP_ROOT $VAP_WINDS $VAP_ANIM 
+	   $VAP_OVERLAY $VAP_WWW_TOP $ARCHIVETOP 
+	   $GRIDDINGTOP $IDLEXE $VAP_OVERLAY_ARCHIVE 
+	   $VAP_WWW_TOP auto_movie_defs doy2mday_mon 
+	   date2doy date_string  make_yyyymmdd gag grid_goes 
+	   getgoesfile fixlonrange vaptime2systime systime2vaptime 
+	   ParseWindFileNames GetWindFiles GetNow DeltaTime 
+	   ParseVapTime vaptime2idltime );
+
 use Cwd 'chdir';
 use Time::Local;
+BEGIN {
+    # Get ENV variables
 
+  $VAP_LIB=$ENV{'VAP_LIB'}                  || "/usr/people/vapuser/Qscat/Library";
+  $VAP_ROOT   = $ENV{'VAP_ROOT'}            || "/disk2/vap";
+  $VAP_WINDS  = $ENV{'VAP_WINDS'}           ||  "/disk3/qscat_winds";
+  $VAP_ANIM   = $ENV{'VAP_ANIM'}            || $VAP_ROOT."/anim";
+  $VAP_OVERLAY = $ENV{'VAP_OVERLAY'}        || $VAP_ROOT."/overlay";
+  $VAP_WWW_TOP = $ENV{'VAP_WWW_TOP'}        || $VAP_ROOT."/www/htdocs";
+  $ARCHIVETOP  = $ENV{'VAP_GOES_TOPDIR'}    || $VAP_ROOT."/goes";
+  $GRIDDINGTOP = $ENV{'VAP_GOES_GRIDDED_TOPDIR'} || 
+      $ARCHIVETOP."gridded_files";
+  $IDLEXE="/disk3/rsi/idl_5.1/bin/idl";
+  $VAP_OVERLAY_ARCHIVE = $ENV{'VAP_OVERLAY_ARCHIVE'} ||
+      $VAP_WWW_TOP."/images/overlay_archive";
+
+    # Get the Overlay Defaults
+  $overlay_defs_file=$VAP_LIB."/overlay_defs";
+  require $overlay_defs_file;
+}
 
 %sat_num= ('8','9' , # AREA08* are goes 9 files !
 	   '9','8' , # AREA09* are goes 8 files !
@@ -33,7 +63,7 @@ sub auto_movie_defs {
   # interest we may decide to do.
   
   # get defaults filename, default to $VAP_ROOT/auto_movie_defs.dat
-  $root = $ENV{'VAP_ROOT'};
+  $root = $VAP_ROOT;
   $defs_file= shift || $root."/auto_movie_defs.dat" ;
 
   # open the file 
@@ -93,7 +123,7 @@ sub date2doy{
     $i++;
   }
   $doy += $dom;
-  $leap=vap_perl'leapyear($year);
+  $leap=vap_perl::leapyear($year);
   if ($month>2) {
     $doy += $leap;
   }
@@ -148,39 +178,34 @@ sub date_index{
   # 
   # No arguments are required. It know's what it needs to do.
 
-  local($start_dir)=Cwd::cwd();
+  local( $start_dir)=Cwd::cwd();
   local( %file_size ) = ();
   local( %file_date ) = ();
 
   $umask = umask;
-#  print "Current umask = $umask\n";
-#  print "Setting umask to 023 \n";
+  print "Current umask = $umask\n";
+  print "Setting umask to 023 \n";
 
   umask( 023 ) || die "Couldn't reset umask to 023\n";
   $umask = umask;
-#  print "New umask = $umask\n";
+  print "New umask = $umask\n";
   $tmp = oct(023);
-#  print "Should equal $tmp\n";
+  print "Should equal $tmp\n";
 
   @months=("Jan","Feb","Mar","Apr","May","Jun","Jul",
 	   "Aug","Sep","Oct","Nov","Dec");
   @days=("Sun","Mon","Tue","Wed","Thu","Fri","Sat");
 
-  $root=$ENV{'VAP_ROOT'};
-  if ($root eq "" ) {
-    die "VAP_ROOT isn't defined\n";
-  }
-
-  $VAPIM = $root."/www/htdocs/images/";
-  $DOCROOT=$root."/www/htdocs/";
+  $VAPIM = $vap_perl::VAP_WWW_TOP."/images/";
+  $DOCROOT=$vap_perl::VAP_WWW_TOP;
   
   @wwwfiles = ('daily_nepac.mov',
 	       'daily_nwpac.mov',
 	       'daily_npac.mov',
 	       'daily_nwatl.mov',
 	       'daily_indian.mov',
-	       'pac_overlay_a.gif',
-	       'pac_overlay_d.gif'
+	       'GOES104NEPAC1.gif',
+	       'GOES84NWATL1.gif'
 	       );
 
   @wwwnames = ('nepac_anim',
@@ -189,17 +214,18 @@ sub date_index{
 	       'nwatl_anim',
 	       'indian_anim',
 	       'npac_evol_anim',
-	       'pgoa',
-	       'pgod');
+	       'goes104nepac1',
+	       'goes84nwatl1');
 
   %wwwhash=('nepac_anim'     => 'daily_nepac.mov',
 	    'nwpac_anim'     => 'daily_nwpac.mov',
 	    'npac_anim'      => 'daily_npac.mov', 
 	    'nwatl_anim'     => 'daily_nwatl.mov',
-	    'indian_anim'       => 'daily_indian.mov',
+	    'indian_anim'    => 'daily_indian.mov',
 	    'npac_evol_anim' => 'daily_npac_evol.mov',
-	    'pgoa'           => 'pac_overlay_a.gif',
-	    'pgod'           => 'pac_overlay_d.gif');
+	    'goes104nepac1'  => 'GOES104NEPAC1.gif',
+	    'goes84nwatl1'   => 'GOES84NWATL1.gif',
+);
 
   chdir $DOCROOT || die "Couldn't chdir to $DOCROOT";
 
@@ -207,25 +233,23 @@ sub date_index{
   while( ($key,$value) = each %wwwhash ) {
     $file = $VAPIM.$value;
     if (-e $file) { 
-      $tmp = (stat($file))[7] || die "Couldn't stat $file\n";
-      $tmp = int($tmp*1.e-3);
-      $file_size{$key}= $tmp."Kb";
 
       ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
-       $atime,$mtime,$ctime,$junk)=stat($file);
+       $atime,$mtime,$ctime,$junk)=stat($file) || die "Couldn't stat $file\n";;
 
+      ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+       $atime,$mtime,$ctime,$junk)=stat($file) if !$nlink;
+      
+      $file_size{$key}= $tmp = sprintf( "%d Kb", int( $size*1.e-3+0.5) );
       # convert  mod time
       ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime($mtime); 
       $day=$days[$wday];
       $month=$months[$mon];
-      @tt=&fix_time( $sec,$min, $hour, $year );
-      $sec=$tt[0];
-      $min=$tt[1];
-      $hour=$tt[2];
-      $year=$tt[3];
+      $year += 1900;
 
       # construct the file date 
-      $file_date{$key} = "$day $month $mday $hour:$min:$sec $year PST";
+      $file_date{$key} = sprintf( "%3s %3s %02d %02d:%02d:%02d %04d PST",
+				 $day, $month, $mday, $hour,$min,$sec, $year);
 
     } else {
       $file_size{$key} = "???Kb";
@@ -241,15 +265,8 @@ sub date_index{
   
   $day=$days[$wday];
   $month=$months[$mon];
-  @tt=&fix_time( $sec,$min, $hour, $year );
-  $sec=$tt[0];
-  $min=$tt[1];
-  $hour=$tt[2];
-  $year=$tt[3];
-  
-  $mod_date_str = "$day $month $mday $hour:$min:$sec $year PST";
-  $test_str = "<DAY MMM DD HH:MM:SS YYYY>";
-  $lends = length($test_str);
+  $mod_date_str = sprintf( "%03s %3s %02d %02d:%02d:%02d %04d PST",
+			  $day, $month, $mday, $hour,$min,$sec, $year);
 
   open(IN ,"index.html.blank");
   @in=<IN>;
@@ -261,9 +278,10 @@ sub date_index{
   for ($i=0;$i<=$#in;$i++) {
     $rec=$in[$i];
     if ($rec !~ /^\s*<!--\s*<!--/) {
-      if ($rec =~ /(anim|size|pgoa|pgod|hhmts)/) {
+      if ($rec =~ /(anim|size|goes104nepac1|goes84nwatl1|hhmts)/) {
 #       print "Found something, rec = $rec\n";
 	if ($rec =~ /hhmts start/) {
+	    # Handle the 'Last Modified' at the end of the page 
 	  print OUT $rec;
 	  print OUT "Last Modified: $mod_date_str\n";
 	  $i += 2;
@@ -280,7 +298,7 @@ sub date_index{
 	      } elsif ($rec =~ /.*$k start/ ) {
 #	      print "file mod time \n";
 		print OUT $rec;
-		print OUT "Created $file_date{$k} </br></br>\n";
+		print OUT "Created: $file_date{$k} </br></br>\n";
 		$i += 2;
 		last;
 	      } 
@@ -335,14 +353,11 @@ sub make_yyyymmdd {
 
 }
 
-sub make_hhmmss{
+sub make_hhmm{
     $hh=$_[0];
-    if ($hh<10){
-	$hh="0".$hh;
-    }
-    $mm=$_[1] || "00";
-    $ss=$_[2] || "00";
-    $hhmmss=$hh.":".$mm.":".$ss;
+    $mm=$_[1] || 0;
+    $hhmm=sprintf("%02d:%02d",$hh,$mm);
+    $hhmm;
 }
 
 sub gag {
@@ -358,16 +373,16 @@ sub gag {
   # undefined) according to the requested file, e.g. gag 10 1 xxx will
   # put the output in $VAP_GOES_GRIDDED_TOPDIR/goes10/vis.  
 
-  # Time is specified as yyyymmddThh:mm:ss with each unspecified
-  # quantity defaulting to the current time.
-  # e.g. 0404T03 is 4 of April 1998 at 3 oclock.
+  # Time is specified as yyyymmddThh:mm with each unspecified
+  # quantity defaulting to the current GMT time.
+  # e.g. 0404T03 is 4 of April 1998 at 3 oclock (GMT).
   # 
   #
 
-  ($sec,$min,$hour,$mday,$mon,$year,$junk)=localtime(time);
+  ($sec,$min,$hour,$mday,$mon,$year,$junk)=gmtime(time);
   $yyyymmdd = make_yyyymmdd($year+1900,$mon+1,$mday);
-  $hhmmss = make_hhmmss($hour,$min,$sec);
-  $now = $yyyymmdd."T".$hhmmss;
+  $hhmm = make_hhmm($hour,$min);
+  $now = $yyyymmdd."T".$hhmm;
 
   $satnum    = shift || "10";
   $sensornum = shift || "4";
@@ -380,7 +395,7 @@ sub gag {
 
   local($start_dir) = Cwd::cwd(); 
 
-  ($host,$user,$pw) = vap_perl'getgoesarchive();
+  ($host,$user,$pw) = getgoesarchive();
   die "Can't get goes Archive info\n" unless defined $pw;
 
 
@@ -406,22 +421,20 @@ sub gag {
   $GRIDDINGTOP=$ENV{'VAP_GOES_GRIDDED_TOPDIR'} || "/disk2/vap/goes/gridded_files";
 
   
-    # Get Current Local Time
-  ($lsec,$lmin,$lhour,$lmday,$lmon, $lyear,$lwday,$lyday,$lisdst) = localtime($^T); 
     # Get Current Greenwich Mean Time
   ($gsec,$gmin,$ghour,$gmday,$gmon, $gyear,$gwday,$gyday,$gisdst) = gmtime($^T); 
     # Construct the input time.
   @time_parts=split "T", $time;
 
   if ($#time_parts == 0) {
-    $yearmonthday = make_yyyymmdd( $lyear+1900, $lmon+1, $lmday );
-    @hhmmss=split /:/, $time_parts[0];
+    $yearmonthday = make_yyyymmdd( $gyear+1900, $gmon+1, $gmday );
+    @hhmm= split /:/, $time_parts[0];
   } else {
     $yearmonthday=$time_parts[0];
-    @hhmmss= split /:/, $time_parts[1];
+    @hhmm = split /:/, $time_parts[1];
   }
-  
-    # Construct the 'test_time', i.e. the time against which the file's time 
+
+    # Construct the 'test_time', i.e. the time against which the area file's time 
     # will be compared. 
 
   $tyear=substr($yearmonthday,0,4)-1900;
@@ -429,24 +442,17 @@ sub gag {
   $tmday=substr($yearmonthday,6,2);
 
   $tyday=date2doy( $tyear, $tmon, $tmday );
-  $thour=$hhmmss[0] || $lhour;
-  $tmin =$hhmmss[1] || $lmin;
+  $thour=$hhmm[0] || $ghour;
+  $tmin =$hhmm[1] || $gmin;
  
-  $junk=sprintf("%04d%02d%02dT%02d:%02d:%02d",
-             $tyear+1900,$tmon,$tmday,$thour,$tmin,$tsec);
-  print "Looking for a $goes_type file from around local time $junk\n";
+  $junk=sprintf("%04d%02d%02dT%02d:%02d",
+             $tyear+1900,$tmon+1,$tmday,$thour,$tmin);
+  print "Looking for a $goes_type file from around GM time $junk\n";
 
-    # Convert to secs since the test time to GMT
-  $test_time = timelocal( 0, $tmin, $thour, $tmday, $tmon, $tyear );
+    # Convert the test time to GMT
+  $test_time = timegm( 0, $tmin, $thour, $tmday, $tmon, $tyear );
   die "Can't convert test time $tyear/$tmon/$tmday $thour\n" 
       if $test_time == -1;
-
-
-  ($sec1,$min1,$hour1,$mday1,$mon1,$year1)=gmtime($test_time);
-  $equivalent_gmt_time=sprintf("%04d%02d%02dT%02d:%02d:%02d",
-         $year1+1900,$mon1+1,$mday1,$hour1,$min1,$sec1);
-  print "  Which will be about GMT $equivalent_gmt_time\n";
-
 
     # Construct file test times. The times in the 
     # area info file are already in GMT.);
@@ -548,6 +554,8 @@ sub gag {
 
     $cwd=$ENV{'PWD'};
     chdir $local_path || die "Couldn't cd to $local_path to run mkai\n";
+    $t=getcwd;
+    print "No in $t\n";
     $exe_str = "/usr/people/vapuser/bin/mkai ";
     if ($user =~ /root/){
       ($name,$passwd,$uid,$gid,$quota,$comment,$gcos,$dir,$shell) = 
@@ -561,12 +569,13 @@ sub gag {
       }
     }
 
+    print "Running mkai with exe string $exe_str\n";
     $r=system( $exe_str )/256;
     if ($r != 0) {
       print "   Some kind of error in mkai\n";
     }
     chdir $cwd || die "Couldn't cd back to $cwd\n";
-
+    print "Done running mkai\n";
 
         # read the local area_info file, see if the area file we have
         # is from the same time.
@@ -683,6 +692,7 @@ sub gag {
     #-------------------------------------------------------
   $local_gridded_file=grid_goes( $gridding_path, $area_file, 
 				$minlon, $minlat, $maxlon, $maxlat );
+  print "local gridded_file = $local_gridded_file\n";
   die "Error Gridding area file $area_file\n" if !$local_gridded_file;
   $local_gridded_file;
 
@@ -850,7 +860,7 @@ sub getgoesarchive{
   $user=$info[1];
   chop $user;
   $pw=$info[2];
-
+  chop $pw;
   # return the info.
   ($host, $user, $pw);
 }
@@ -894,24 +904,6 @@ sub leapyear{
   $leap_year;
 }
 
-sub local2gmtime{
-    # Assumes the input array is suitable for passing to timelocal, 
-    # which has the prototype
-    # 
-    # $time = timelocal($sec,$min,$hours,$mday,$mon,$year);
-
-
-    # Find the offset between local time and GM time.
-  ($sec,$min,$hour,$mday,$mon, $year,$wday,$yday,$isdst) = localtime(time); 
-  $ltime = timelocal($sec,$min,$hour,$mday,$mon, $year);
-  $gtime = timegm($sec,$min,$hour,$mday,$mon, $year);
-  $diff= $gtime-$ltime;
-  
-  
-  $time = timegm( @_ ) -$diff;
-  return $time;
-
-}
 
 sub getgoesfile{
 
@@ -987,27 +979,196 @@ sub grid_goes {
   chdir $grid_path || die "   Can't CD to $grid_path\n";
   print "  Preparing to grid area file $area_file\n";
 
-  if (minlon != 0 || minlat != 0 || maxlon != 0 || maxlat != 0) {
+  if ($minlon != 0 || $minlat != 0 || $maxlon != 0 || $maxlat != 0) {
     $minlon2=$minlon;
     $maxlon2=$maxlon;
     $minlon2 -= 360 if ($minlon >= 180);
     $maxlon2 -= 360 if ($maxlon >= 180);
     $exe_string=sprintf( "grid_goes -f %s -l %04d,%03d,%04d,%03d", 
-	    $local_area_file, $minlon2, $minlat, $maxlon2, $maxlat );
+	    $area_file, $minlon2, $minlat, $maxlon2, $maxlat );
   } else {
       $exe_string="grid_goes -f $area_file";
   }
+  print "About to open gridding processes with exe string\n";
+  print "$exe_string\n";
   open ( GRIDDING_PROCESS, "$exe_string |" );
   @gridding_output = <GRIDDING_PROCESS>;
+  print join "\n", @gridding_output;
   @errors=grep(/^ *ERROR.*/, @gridding_output);
   close GRIDDING_PROCESS;
   die "  Bad return from goes gridding software\n" if ($#errors gt -1);
   print "  Done Gridding!\n";
-  $local_gridded_file=$grid_path.$gridding_output[0];
+  $local_gridded_file=$grid_path.$gridding_output[$#gridding_output];
   chop $local_gridded_file;
   chdir $start_dir  || print "  Couldn't go back to initial dir $start_dir\n";
   $local_gridded_file;
 }
+
+sub fixlonrange{
+  $minlon=shift @_;
+  $maxlon=shift @_;
+  while ($minlon>$maxlon) {
+    if ($minlon>180.){
+      $minlon-= 360.;
+    } elsif ($maxlon<0.) {
+      $maxlon += 360.;
+    }
+  } 
+  ($minlon, $maxlon);
+}
+
+sub prepend_yyyymmdd{
+  ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T);
+  $tmp_hhmm=sprintf("%02d:$02d",$hour,$min);
+  $hhmm=shift @_ || $tmp_hhmm;
+  
+  $time=sprintf("%04d%02d%02dT%s",
+		$year+1900,$mon+1,$mday,$hhmm);
+  $time;
+  
+}
+
+sub vaptime2systime{
+  # converts a string of the format yyyymmddThhmmss to 
+  # gmt seconds since 1-jan-1970 00:00:00
+  ($sec,$min,$hour,$mday,$mon,$year)=gmtime($^T);
+  $time=shift @_;
+  @time_parts=split(/T/,$time);
+  if ($#time_parts == 0) {
+    @hhmm=split( /:/, $time );
+    $time=sprintf( "%02d:%02d", int( $hhmm[0] ), $min ) if ($#hhmm == 0);
+    # only the hour:mins segment is there.
+    $time=prepend_yyyymmdd( $time );
+  }
+    # Now we're sure to have something of the form yyyymmddThhmm.
+    # So, split it up again.
+  @time_parts=split(/T/,$time);
+  $year=substr( $time_parts[0], 0, 4 );
+  $mon=substr( $time_parts[0], 4,2 );
+  $mday=substr( $time_parts[0], 6, 2 );
+  ($hh,$mm)=split(/:/,$time_parts[1]);
+ 
+  $secs=timegm( 0, $min, $hour, $mday, $mon-1, $year-1900 );
+  $secs;
+}
+
+
+sub systime2vaptime{
+      # Converts seconds to yyyymmddThhmm
+      # 
+    ($sec,$min,$hour,$mday,$mon,$year)=gmtime($_[0]);
+    $time=sprintf("%04d%02d%02dT%02d:%02d",
+		$year+1900,$mon+1,$mday,$hour,$min);
+    $time;
+}
+
+sub ParseWindFileNames{
+    # Takes filenames of the form Qyyyymmdd.Shhmm.Ehhmm and returns
+    # a two references to the start time and end time of the files.
+    # Each of these times is in 'vaptime' format, i.e. yyyymmddThh:mm
+
+  foreach $file (@_) {
+    ($base,$start,$end) = split( '.',$file);
+    next if !$start;
+    $yyyymmdd = substr($base,length($base)-8,8);
+    $start = substr( $start, 1,4);
+    $end = substr( $end, 1, 4 );
+    $start = $yyyymmdd."T".$start;
+    $end = $yyyymmdd."T".$end;
+    $start_time = vaptime2systime($start);
+    $end_time = vaptime2systime($end);
+      # Add a day to the end time if it's less than start time.
+    $end_time +=  86400 if ($start_time>$end_time);
+    $start = systime2vaptime( $start_time);
+    $end = systime2vaptime( $end_time);
+    push @files, $file;
+    push @start_time, $start;
+    push @end_time, $end;
+  }
+
+  @retarray = \(@files, @start_time, @end_time);
+  @retarray;
+}
+
+sub GetWindFiles{
+
+    # Gets the wind files that have any data between the input start
+    # and stop time. Times are in 'vaptime' format yyyymmddThh:mm
+    # Since we're usually interested in finding the files in some
+    # interval preceeding some particular time (e.g. the previous 24 hours)
+    # the first passed parameter is the 'end time' of the time period
+    # and the second, optional, parameter, the begining, defaulting to
+    # 24 hours. If there are no parameters, the end time defaults to now.
+
+  $end_time= shift @_ || GetNow() ;
+  $start_time = shift @_ || DeltaTime( $end_time, -24 );
+  opendir WINDDIR, $VAP_WINDS || die "Couldn't open $VAP_WINDS\n";
+  @allfiles=readdir WINDDIR;
+  @windfiles=grep( /^Q*\.*.\*/, @allfiles );
+  die "grep didn't find any wind files \n" if !$windfiles;
+
+  @junk=ParseWindFileNames(@windfiles);
+  @windfiles   = \$junk[0];
+  @file_starts = \$junk[1];
+  @file_ends   = \$junk[2];
+
+  $start_time_sys=vaptime2systime(start_time);
+  $end_time_sys=vaptime2systime(end_time);
+
+  for ($i=0 ; $i<=$#windfiles ; $i++ ){
+    $test_start_time=vaptime2systime( $file_starts[$i] );
+    $test_end_time=vaptime2systime( $file_ends[$i] );
+
+    if ($test_start_time >= start_time_sys ||
+	$test_end_time <= end_time_sys ) {
+      push @ret_file_array, $windfiles[$i];
+    }
+  }
+
+  @ret_file_array;
+  
+
+}
+
+sub GetNow {
+  @now=systime2vaptime( gmtime(time) );
+  @now;
+}
+
+sub DeltaTime{
+
+    # take a base time and add a delta to it. 
+    # base time (arg 1) is in 'vaptime' format (yyyymmddThhmm)
+    # delta time is in hours
+    # if you want hours and minutes, make hours a 'float.'
+
+  $basetime = shift @_ || die "Basetime (arg 1) undefined\n";
+  $delta = shift @_ || die "delta (arg2) undefined\n";
+
+  $base_time = vaptime2systime($basetime) + $delta*3600.;
+  $new_time = systime2vaptime(int($base_time));
+  $new_time;
+
+}
+
+sub ParseVapTime{
+  $vaptime=shift;
+  
+  @time_parts=split('T',$vaptime);
+  $year=substr($time_parts[0],0,4);
+  $month=substr($time_parts[0],4,2);
+  $day=substr($time_parts[0],6,2);
+  @tmp=split(":",$time_parts[1]);
+  $hh=$tmp[0];
+  $mm=$tmp[1];
+  ($mm,$hh,$day,$month,$year);
+
+}
+
+
+sub vaptime2idltime{
+  @parsed_time=ParseVapTime( $_[0] );
+  $idltime=join('/',reverse @parsed_time);
+  $idltime
+}
 1;
-
-
