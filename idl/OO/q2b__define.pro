@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.21  2000/03/01 19:33:26  vapuser
+  ; fixed a small problem with rain flagging
+  ;
   ; Revision 1.20  2000/02/23 21:59:15  vapuser
   ; Added code to handle the rain flags.
   ;
@@ -232,13 +235,7 @@ FUNCTION Q2B::Init, $
 
                 ; All 'rf_' or '_rf' are Rain Flag quantities.
                 ;
-                ; use_rf determines which flag (if any) to use. it may
-                ; be specified as a string or a number. The string is
-                ; the name of the flag without the 'rain_flag' part
-                ; from q2b_rnoaa_str with the empty string standing
-                ; for no rain flagging or the numbers 0,1,2 with 0=no
-                ; flagging, 1=use the 'MP' flag and 2= use the 'NOF'
-                ; flag.
+                ; rainflag: boolean. 0=don't use flag, 1=use flat.
                 ;
                 ; rf_action determines whether to skip plotting the
                 ; data (rf_action=0) or plot it with whatever quantity
@@ -249,7 +246,7 @@ FUNCTION Q2B::Init, $
                 ; is plotted, provided rf_action=1.
                 ;
 
-               use_rf    = use_rf, $ ; ''|'MP'|'NOF' or 0|1|2
+               rainflag    = rainflag, $ ; 
                rf_action = rf_action, $ ; 0|1
                rf_color  = rf_color     ; color_index(8bit)|color(24bit)
                
@@ -272,19 +269,11 @@ FUNCTION Q2B::Init, $
 
 
 
-  IF n_elements(use_rf) EQ 0 THEN use_rf =  0
+  IF n_elements(rainflag) EQ 0 THEN rainflag =  0
   IF n_elements(rf_action) EQ 0 THEN  rf_action=0
   IF n_elements(rf_color) EQ 0 THEN rf_color = 'ffffff'xl
 
-  IF isa(use_rf,/string,/nonempty) THEN BEGIN 
-    use_rf = strupcase(use_rf)
-    CASE use_rf OF 
-      'MP': self.rain_flag = 1;
-      'NOF': self.rain_flag = 2;
-      ELSE: self.rain_flag = 0
-    ENDCASE 
-  ENDIF ELSE self.rain_flag =  use_rf
-
+  self.rain_flag = rainflag
   self.rain_flag_action = rf_action
   self.rain_flag_color = rf_color
   
@@ -590,14 +579,7 @@ FUNCTION q2b::Set, $
 
                 ; All 'rf_' or '_rf' are Rain Flag quantities.
                 ;
-                ; use_rf determines which flag (if any) to use. it may
-                ; be specified as a string or a number. The string is
-                ; the name of the flag without the 'rain_flag' part
-                ; from q2b_rnoaa_str with the empty string standing
-                ; for no rain flagging or the numbers 0,1,2 with 0=no
-                ; flagging, 1=use the 'MP' flag and 2= use the 'NOF'
-                ; flag.
-                ;
+                ; rainflag: boolean, 0=don't use flag, 1=use flag
                 ; rf_action determines whether to skip plotting the
                 ; data (rf_action=0) or plot it with whatever quantity
                 ; is given in rf_color (rf_action=1)
@@ -607,7 +589,7 @@ FUNCTION q2b::Set, $
                 ; is plotted, provided rf_action=1.
                 ;
 
-               use_rf    = use_rf, $ ; ''|'MP'|'NOF' or 0|1|2
+               rainflag    = rainflag, $ ; ''|'MP'|'NOF' or 0|1|2
                rf_action = rf_action, $ ; 0|1
                rf_color  = rf_color     ; color_index(8bit)|color(24bit)
                
@@ -617,16 +599,7 @@ FUNCTION q2b::Set, $
   recalc_extent = 0
   status = 1
 
-  IF n_elements(use_rf) NE 0 THEN BEGIN 
-    IF isa(use_rf,/string,/nonempty) THEN BEGIN 
-      use_rf = strupcase(use_rf)
-      CASE use_rf OF 
-        'MP': self.rain_flag = 1;
-        'NOF': self.rain_flag = 2;
-        ELSE: self.rain_flag = 0
-      ENDCASE 
-    ENDIF ELSE self.rain_flag =  use_rf
-  ENDIF 
+  IF n_elements(rainflag) NE 0 THEN self.rain_flag = rainflag
   IF n_elements(rf_action) NE 0 THEN self.rain_flag_action = 0> rf_action < 1
   IF n_elements(rf_color) NE 0 THEN self.rain_flag_color = 0> rf_color < !d.n_colors-1
 
@@ -1027,7 +1000,7 @@ FUNCTION q2b::Get, $
                lon      = lon     , $
                lat      = lat     , $
                sel      = sel     , $
-               sel2     = sel2    , $
+;               sel2     = sel2    , $
                nambig   = nambig  , $
                qual     = qual    , $
                row      = row     , $
@@ -1036,6 +1009,15 @@ FUNCTION q2b::Get, $
                mv       = mv      , $
                su       = su      , $
                sv       = sv      , $
+               mle      = mle     , $
+               smle     = smle    , $
+               rflag    = rflag   , $
+               tb_h     = tb_h, $
+               tb_v     = tb_v, $
+               num_tb   = num_tb, $
+               tb_rainrate = tb_rainrate, $
+               tb_atten = tb_atten, $
+               rowtime  = rowtime, $
                eqx      = eqx     , $
                filename = filename, $
                type     = type    , $
@@ -1047,7 +1029,7 @@ FUNCTION q2b::Get, $
                data     = data,$
                StartTime = StartTime, $
                EndTime   = EndTime , $
-               use_rf    = use_rf, $
+               rainflag    = rainflag, $
                rf_action = rf_action, $
                rf_color  = rf_color, $
                infostruct = infostruct
@@ -1067,10 +1049,8 @@ FUNCTION q2b::Get, $
   IF Arg_Present(EndTime)      THEN EndTime     = self.EndTime  
   IF Arg_Present(rf_action)    THEN rf_action   = self.rain_flag_action
   IF Arg_Present(rf_color)     THEN rf_color    = self.rain_flag_color
-  IF Arg_Present(use_rf)       THEN BEGIN 
-    tmp = ['No Flagging','Use MP flag', 'Use NOF flag']
-    use_rf = tmp[self.rain_flag]
-  ENDIF 
+  IF Arg_Present(rainflag)     THEN rainflag    = self.rain_flag
+
 
   IF Arg_Present(infostruct) THEN BEGIN 
     infostruct = { Start_Time: self.starttime, $
@@ -1085,7 +1065,7 @@ FUNCTION q2b::Get, $
     IF Arg_Present(lon)      THEN lon       = (*self.data).lon     
     IF Arg_Present(lat)      THEN lat       = (*self.data).lat     
     IF Arg_Present(sel)      THEN sel       = (*self.data).sel     
-    IF Arg_Present(sel2)     THEN sel2      = (*self.data).sel2    
+;    IF Arg_Present(sel2)     THEN sel2      = (*self.data).sel2    
     IF Arg_Present(nambig)   THEN nambig    = (*self.data).nambig  
     IF Arg_Present(qual)     THEN qual      = (*self.data).qual    
     IF Arg_Present(row)      THEN row       = (*self.data).row     
@@ -1094,23 +1074,44 @@ FUNCTION q2b::Get, $
     IF Arg_Present(mv)       THEN mv        = (*self.data).mv      
     IF Arg_Present(su)       THEN su        = (*self.data).su      
     IF Arg_Present(sv)       THEN sv        = (*self.data).sv      
+    IF Arg_Present(mle)      THEN mle       = (*self.data).mle      
+    IF Arg_Present(smle)     THEN smle      = (*self.data).smle      
+    IF Arg_Present(rflag)    THEN rflag     = (*self.data).rain_flag      
+    IF Arg_Present(tb_h)     THEN tb_h      = (*self.data).tb_h
+    IF Arg_Present(tb_v)     THEN tb_v      = (*self.data).tb_v
+    IF Arg_Present(num_tb)   THEN num_tb    = (*self.data).num_tb
+    IF Arg_Present(rowtime) THEN rowtime    = (*self.data).rowtime
+    IF Arg_Present(tb_rainrate) THEN tb_rainrate =  (*self.data).tb_rainrate
+    IF Arg_Present(tb_atten)     THEN tb_atten   =  (*self.data).tb_atten
     status = 1
   ENDIF ELSE BEGIN 
+
     Message,'Data Ptr NOT valid, use Q2B::ConfigDataPtr to configure',/cont
-    IF Arg_Present(u)        OR $
-     Arg_Present(v)        OR $
-     Arg_Present(lon)      OR $
-     Arg_Present(lat)      OR $
-     Arg_Present(sel)      OR $
-     Arg_Present(sel2)     OR $
-     Arg_Present(nambig)   OR $
-     Arg_Present(qual)     OR $
-     Arg_Present(row)      OR $
-     Arg_Present(idx)      OR $
-     Arg_Present(mu)       OR $
-     Arg_Present(mv)       OR $
-     Arg_Present(su)       OR $
-     Arg_Present(sv)       THEN status = 0
+
+    IF Arg_Present(u)         OR $
+     Arg_Present(v)           OR $
+     Arg_Present(lon)         OR $
+     Arg_Present(lat)         OR $
+     Arg_Present(sel)         OR $
+;     Arg_Present(sel2)        OR $
+     Arg_Present(nambig)      OR $
+     Arg_Present(qual)        OR $
+     Arg_Present(row)         OR $
+     Arg_Present(idx)         OR $
+     Arg_Present(mu)          OR $
+     Arg_Present(mv)          OR $
+     Arg_Present(su)          OR $
+     Arg_Present(sv)          OR $
+     Arg_Present(mle)         OR $
+     Arg_Present(smle)        OR $
+     Arg_Present(rflag)       OR $
+     Arg_Present(tb_h)        OR $
+     Arg_Present(tb_v)        OR $
+     Arg_Present(num_tb)      OR $
+     Arg_Present(rowtime)     OR $
+     Arg_Present(tb_rainrate) OR $
+     Arg_Present(tb_atten)   THEN status = 0
+
   ENDELSE 
 
 
@@ -1295,7 +1296,7 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
 
    crdecimate = self.crdecimate
    decimate = self.decimate
-   use_rf = self.rain_flag
+
    rf_action = self.rain_flag_action
 
    junk = where( self.crdecimate, njunk )
@@ -1376,11 +1377,7 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
          lat =  (*self.data).lat
 
          IF N_Elements(ambig) eq 0 THEN ambig = 0
-         IF self.rain_flag NE 0 THEN BEGIN 
-           IF self.rain_flag EQ 1 THEN $
-             rf = (*self.data).mp_rain_flag ELSE $
-             rf = (*self.data).nof_rain_flag
-         ENDIF
+         IF self.rain_flag NE 0 THEN rf = (*self.data).rain_flag 
 
          CASE ambig OF 
            0:BEGIN 
@@ -1493,7 +1490,7 @@ FUNCTION q2b::GetPlotData,u,v,lon,lat, ambig, $
 
        rf_index = -1l;
        IF self.rain_flag NE 0 THEN BEGIN 
-         rf_index = where(rf EQ 2, nrf)
+         rf_index = where(rf, nrf)
          IF nrf NE 0 THEN BEGIN 
            IF self.rain_flag_action EQ 0 THEN BEGIN 
              u[rf_index] = !values.f_nan
