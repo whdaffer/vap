@@ -83,6 +83,10 @@
 ;                              ExcludeCols are ignored.
 ;                Pid         : Pid to expect to find in lock file, for
 ;                              cronjob operation.
+;                lockfile    : Name of lockfile. If this 
+;                              keyword isn't present but PID is, 
+;                              the routine will create the name of the lockfile 
+;                              and look for that file.
 ;                Interp_file : The interpfile to use.
 ;                knots       : Report speed in knots. Also, expect
 ;                              min/max speed to be in knot instead of
@@ -119,6 +123,11 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.16  2002/05/03 01:06:25  vapdev
+; Changes environmental variables to reflect new vapdev/vaprun env variables.
+; Also made sure that all the various env variable routines were being
+; called correctly.
+;
 ; Revision 1.15  2001/12/08 00:02:35  vapdev
 ; Getting rid of obsolete RSI routines and fixing ENV vars
 ;
@@ -243,6 +252,10 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
                                             ; NSCAT data
                 Pid         = Pid  , $      ; (I) scalar. PID to expect in 
                                             ; lock file.
+                lockfile =  lockfile , $    ; Name of lockfile. If this 
+                                            ; keyword isn't present but PID is, 
+                                            ; the routine will create a name and 
+                                            ; look for that.
                 interp_file= interp_file,$ ; (I) string. Fully Qualified 
                                 ; name of interpolated wind file
                 knots     = knots, $ ; Report speed in knots, not meters/sec
@@ -322,14 +335,21 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
 
   lroi = strlowcase(roi)
   auto_movie_cronjob = 0
-  IF n_Elements(pid) NE 0 THEN BEGIN 
-    lockfile = 'auto_movie_' + lroi + '.lock'
-    tmpfilesdir =  getenv('VAP_OPS_TMPFILES')
-    auto_movie_cronjob = ( CheckForLock( pid, lockfile, $
-                                     user, dir=tmpfilesdir) EQ 1)
-  ENDIF 
-  IF auto_movie_cronjob THEN $
-     lockfile = tmpfilesdir + '/' + user + '.' + lockfile
+
+  ; Check to see if the lockfile name has been passed in and use that
+  ; name if it has, otherwise construct the name as of old and check
+  ; for that lockfile.
+
+  IF n_elements(lockfile) EQ 0 THEN BEGIN 
+    IF n_Elements(pid) NE 0 THEN BEGIN 
+      lockfile = 'auto_movie_' + lroi + '.lock'
+      tmpfilesdir =  getenv('VAP_OPS_TMPFILES')
+      auto_movie_cronjob = ( CheckForLock( pid, lockfile, $
+                                       user, dir=tmpfilesdir) EQ 1)
+    ENDIF 
+    IF auto_movie_cronjob THEN $
+       lockfile = tmpfilesdir + '/' + user + '.' + lockfile
+  ENDIF ELSE auto_movie_cronjob = 1;
 
   IF auto_movie_cronjob THEN BEGIN 
     openw, llun, lockfile, /get, error= err
