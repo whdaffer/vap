@@ -60,6 +60,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1999/07/14 22:55:26  vapuser
+; Added call to mpickfile, simplified code.
+;
 ; Revision 1.2  1998/11/03 22:29:06  vapuser
 ; Changed some comments
 ;
@@ -82,7 +85,12 @@ FUNCTION ReadColorTable, filename
     IF filename EQ  '' THEN return,ptr_new()
   ENDIF 
 
-  IF NOT isa(filename,/string,/nonempty) THEN BEGIN 
+  IF arg_present(filename) THEN BEGIN 
+    filename = mpickfile(path='/usr/people/vapuser/Qscat/Resources/Color_Tables')
+    IF filename EQ  '' THEN return,ptr_new()
+  ENDIF 
+
+  IF NOT isa(filename,/string, /nonempty) THEN BEGIN 
     Message,'Filename must be non-empty string',/cont
     return, ptr_new()
   ENDIF 
