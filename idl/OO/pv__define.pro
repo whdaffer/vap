@@ -90,6 +90,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.8  1998/10/26 22:09:37  vapuser
+; In process of changing Datalist to list of PvPlotObjects. Not done yet.
+;
 ; Revision 1.7  1998/10/23 22:18:46  vapuser
 ; Incoporated DeEnvVar to handle HDF_... inability to parse
 ; environmental variables. Handled a problem with SpeedHisto object
@@ -143,6 +146,9 @@ PRO pv_events, event
     'PLOTOPTIONS'    : self->PlotOptions      
     'CONFIGHARDCOPY' : self->HardCopy
     'CLOUDOVERLAY'   : self->Overlay
+    'RESETSENS'      : self-> Set, Sensitivity = 1
+    'REDRAW'         : self->draw,/force
+    'QUIT2'          : self->Quit, event.top  
     ELSE:
   ENDCASE
   Widget_Control, event.top, set_uval=self, bad_id=bad
@@ -291,8 +297,6 @@ PRO Pv_Motion_Events, event
       Dims-> Get,Lon = oldLonrange, Lat=OldLatRange
       limits2 = [ OldLonRange[0], OldLatRange[0],$
                   OldLonRange[1], OldLatRange[1]]
-      IF NOT CompletelyWithin( limits1, limits2 ) $
-        THEN self-> ResetPlotObjects,/All
       NewDims = Obj_New('MapDims',xx,yy,/fix )
       self-> Set,Dimensions = NewDims
       str =  'new dimensions: lon ' + $
@@ -362,7 +366,6 @@ PRO Pv::WidgetRead
                      Get_Path=NewPath, Get_Filter=NewFilter)
   cnt = n_elements( files )
   IF cnt EQ 1 AND strlen(files(0)) EQ 0 THEN cnt = 0
-  files = DeEnvVar(files)
   self.InputPath = DeEnvVar(NewPath)
   self.InputFilter = NewFilter
   IF cnt NE 0 THEN BEGIN 
@@ -382,12 +385,11 @@ PRO Pv::WidgetWrite
 ;    print,'Pv::WidgetWrite'
   Catch, Error
   IF Error NE 0 THEN BEGIN 
-    Catch,/Cancel
-;      ok = Dialog_Message(!Error_State.msg)
-;      Message,!error_state.msg,/cont
-    ok = Dialog_Message(!err_string)
-    Message,!err_string,/cont
-    self-> ChangeSensitivity, On =  SaveSensitivity
+    ok = Dialog_Message(!Error_State.msg)
+    Message,!error_state.msg,/cont
+    IF exist( SaveSensitivity) THEN $
+       self-> set, Sensitivity = saveSensitivity ELSE $
+       self-> set, Sensitivity = 1
     return 
   ENDIF 
   saveSensitivity = self.Sensitivity
@@ -572,24 +574,23 @@ END
 PRO Pv::Resize, x,y
   Catch, error
   IF error NE 0 THEN BEGIN 
-    Catch,/cancel
-;    ok =  Dialog_Message( !error_state.msg )
-;    Message,!error_state.msg,/cont
-    ok =  Dialog_Message( !err_string )
-    Message,!err_string,/cont
-
+    ok =  Dialog_Message( !error_state.msg )
+    Message,!error_state.msg,/cont
+    self-> set, Sensitivity = 1
     return
   ENDIF 
 
+  self-> ResetPlotObjects,/AlreadyPlotted
+  y = y-40
   Widget_Control, self.DrawId, draw_Xsize=x, Draw_Ysize=y
   wset, self.wid
-  self-> Draw
   WDelete, self.pixId
   self.xsize = x
   self.ysize = y
   Window,/Free,/Pixmap, XSize=x, YSize=y
-  self.pixId = !d.Window
-  self-> CopyToPixmap
+  self-> Draw
+  ;self.pixId = !d.Window
+  ;self-> CopyToPixmap
 END
 
 
@@ -726,12 +727,9 @@ FUNCTION pv::Init, $
 
   Catch, Error
   IF Error NE 0 THEN BEGIN 
-    Catch,/Cancel
-;    ok = Dialog_Message(!Error_State.msg)
-;    Message,!error_state.msg,/cont
-    ok = Dialog_Message(!err_string)
-    Message,!err_string,/cont
-    ; Obj_Destroy,self
+    ok = Dialog_Message(!Error_State.msg)
+    Message,!error_state.msg,/cont
+    self-> set, Sensitivity = 1
     return,0
   ENDIF 
 
@@ -914,6 +912,23 @@ FUNCTION pv::Init, $
     ; 'Speed' Histogram object
   self.SpeedHisto      = Obj_New('ObHisto', nBins=200, Min=0, Max=37)  
 
+
+    ; Get Pointer to color table.
+  CT = GetEnv('PV_COLORTABLE')
+  IF strlen(CT) NE 0 THEN $
+    PtrToColorTable = ReadColorTable(CT[0]) $
+  ELSE $
+    PtrToColorTable = ReadColorTable($
+                     '/usr/people/vapuser/Qscat/Resources/Color_Tables/pv.ct.2')
+;  PtrToColorTable = ReadColorTable($
+;                     '/home/daffer/idl5/OO/pv.ct')
+  self.PtrToCt = PtrToColorTable
+  CT =  *PtrToColorTable
+  self.Ncolors = N_elements( CT[0,*] )
+  self.PsInfo = Obj_New('PSFORM') ;
+  self.Annotation = Obj_new('ANNOTATION')
+
+
   status = 1
   IF n_elements( files ) NE 0 THEN BEGIN 
     status = self-> Read( files )
@@ -936,27 +951,14 @@ FUNCTION pv::Init, $
     ENDELSE 
   ENDIF 
 
-    ; Get Pointer to color table.
-  CT = GetEnv('PV_COLORTABLE')
-  IF strlen(CT) NE 0 THEN $
-    PtrToColorTable = ReadColorTable(CT[0]) $
-  ELSE $
-    PtrToColorTable = ReadColorTable($
-                     '/usr/people/vapuser/Qscat/Resources/Color_Tables/pv.ct.2')
-;  PtrToColorTable = ReadColorTable($
-;                     '/home/daffer/idl5/OO/pv.ct')
-  status =  status AND Ptr_Valid(PtrToColorTable)
+  status =  status AND $
+            Ptr_Valid(PtrToColorTable) AND $
+            Obj_Valid(Self.Annotation) AND $
+            Obj_Valid( self.PsInfo)
 
 
   IF status THEN BEGIN
-    self.PtrToCt = PtrToColorTable
-    CT =  *PtrToColorTable
-    self.Ncolors = N_elements( CT[0,*] )
-    self.PsInfo = Obj_New('PSFORM') ;
-    self.Annotation = Obj_new('ANNOTATION')
-
-      ; Only realize the widget if the status = 1
-    status = self-> CreateWidget()
+    self->Draw
   ENDIF 
   RETURN,status
 END
@@ -972,65 +974,83 @@ FUNCTION Pv::CreateWidget
 
   Catch, Error
   IF Error NE 0 THEN BEGIN 
-    Catch,/Cancel
-;    ok = Dialog_Message(!Error_State.msg)
-;    Message,!error_state.msg,/cont
-    ok = Dialog_Message(!err_string)
-    Message,!err_string,/cont
-    ; Obj_Destroy,self
+    ok = Dialog_Message(!Error_State.msg)
+    Message,!error_state.msg,/cont
     return,0
   ENDIF 
 
-   ; Create the widget hierarchy.
-  set_plot,'x'
-  self.tlb = Widget_Base( mbar=MenuID, $
-                          /tlb_size_events, col=1, $
-                        Title='Plot Vectors')
-  self.MenuId =  MenuId
-  self.FileId =  Widget_Button( MenuID, Value='File',/menu)
-  self.ReadId =  Widget_Button( self.FileID, Value='Read', $
-                                UValue='READ') 
-  self.WriteId =  Widget_Button( self.FileID, Value='Write', $
-                                UValue='WRITE')
-  self.QuitId =  Widget_Button( self.FileID, Value='Quit',UValue='QUIT')
-  junk  =  Widget_Button( MenuID, Value='Config',/Menu, $
-                                  UValue='CONFIG')
-  self.ConfigId =   Widget_Button( junk, Value='Plotting Options', $
-                                UValue='PLOTOPTIONS')
-  junk =  Widget_Button( MenuId, Value='Hard Copy',/Menu, $
-                                  UValue='HARDCOPY')
-  self.HardCopyId =  Widget_Button( junk, Value='Configure Hard Copy', $
-                                    UValue='CONFIGHARDCOPY')
-  junk = Widget_Button( MenuId, Value='Overlay',/Menu,Uvalue='OVERLAY')
-  self.OverlayId = Widget_Button( junk,Value='Cloud Overlay', $
-                                  Uvalue='CLOUDOVERLAY')
-  self.DrawId =  Widget_Draw( self.tlb, scr_xsize=self.xsize, $
-                              scr_ysize=self.ysize, $
-                              /button_events, retain=2, $ 
-                              colors=self.Ncolors,$
-                              event_pro='pv_draw_events')
-  junk = Widget_Base( self.tlb, col=2 )
-  self.StatusId = Widget_Label( junk,Scr_XSize=self.xsize/2-4,$
-                                   Scr_YSize=20, Frame=2, $
-                                /Dynamic_Resize,/Align_Left)
-  self.xyLabId =  Widget_Label( junk,Scr_XSize=self.xsize/2-2,$
-                                Scr_YSize=20, Frame=2, /Dynamic_Resize, $
-                                 Value='X:      ,Y:    ',/Align_Left );, $
-;                                  Font="helvetica-medium-o-normal--10")
+  IF NOT Widget_Info( self.tlb, /Valid) THEN BEGIN 
+     ; Reset all the plotObjects
+    self-> ResetPlotObjects,/all
+     ; Create the widget hierarchy.
+    set_plot,'x'
+    self.tlb = Widget_Base( mbar=MenuID, $
+                            /tlb_size_events, col=1, $
+                          Title='Plot Vectors')
+    self.MenuId =  MenuId
+    self.FileId =  Widget_Button( MenuID, Value='File',/menu)
+    self.ReadId =  Widget_Button( self.FileID, Value='Read', $
+                                  UValue='READ') 
+    self.WriteId =  Widget_Button( self.FileID, Value='Write', $
+                                  UValue='WRITE')
+    self.QuitId =  Widget_Button( self.FileID, Value='Quit',UValue='QUIT')
+    junk  =  Widget_Button( MenuID, Value='Config',/Menu, $
+                                    UValue='CONFIG')
+    self.ConfigId =   Widget_Button( junk, Value='Plotting Options', $
+                                  UValue='PLOTOPTIONS')
+    junk =  Widget_Button( MenuId, Value='HardCopy',/Menu, $
+                                    UValue='HARDCOPY')
+    self.HardCopyId =  Widget_Button( junk, Value='Configure Hard Copy', $
+                                      UValue='CONFIGHARDCOPY')
+    junk = Widget_Button( MenuId, Value='Overlay',/Menu,Uvalue='OVERLAY')
+    self.OverlayId = Widget_Button( junk,Value='Cloud Overlay', $
+                                    Uvalue='CLOUDOVERLAY')
+
+    ; put a MENU below the menubar one, just in case  
+    junk = Widget_Base(self.tlb,/row)
+    self.MiscId =  Widget_Button( junk, Value='Misc',Uvalue='MISC',$
+                                  /menu)
+    self.SetSensId = Widget_Button( self.MiscId, Value='Reset Sensitivity',$
+                                    Uvalue='RESETSENS')
+    self.RedrawId = Widget_Button( self.MiscId, Value='Redraw', $
+                                   Uvalue='REDRAW' )
+
+    self.Quit2Id = Widget_Button( self.MiscId, Value='Quit', $
+                                   Uvalue='QUIT2' )
+
+    self.DrawId =  Widget_Draw( self.tlb, scr_xsize=self.xsize, $
+                                scr_ysize=self.ysize, $
+                                /button_events, retain=2, $ 
+                                colors=self.Ncolors,$
+                                event_pro='pv_draw_events')
+    junk = Widget_Base( self.tlb, col=1 )
+  ;  self.StatusId = Widget_Label( junk,Scr_XSize=self.xsize/2-4,$
+  ;                                   Scr_YSize=20, Frame=2, $
+  ;                                /Dynamic_Resize,/Align_Left)
+  ;  self.xyLabId =  Widget_Label( junk,Scr_XSize=self.xsize/2-2,$
+  ;                                Scr_YSize=20, Frame=2, /Dynamic_Resize, $
+  ;                                 Value='X:      ,Y:    ',/Align_Left );, $
+  ;                                  Font="helvetica-medium-o-normal--10")
+    self.StatusId = Widget_Label( junk, Scr_XSize=self.xsize,$
+                                     Scr_YSize=20, Frame=2, $
+                                  /Dynamic_Resize,/Align_Left)
+    self.xyLabId =  Widget_Label( junk, Scr_XSize=self.xsize,$
+                                  Scr_YSize=20, Frame=2, /Dynamic_Resize, $
+                                   Value='X:      ,Y:    ',/Align_Left );, $
+  ;                                  Font="helvetica-medium-o-normal--10")
 
 
-  Widget_Control,self.tlb,/Realize
-  Widget_Control, self.DrawId, get_value=wid
-  self.wid = wid
-  Window,/Free,/Pixmap,colors=self.Ncolors,XSize=self.XSize, YSize=self.YSize
-  self.PixId = !d.Window
-  Wset, wid
-  TvLct, transpose(*self.PtrToCT)
-  Widget_Control, self.tlb, set_uval=self
-    ; Draw whatever data there is.
-  Self->Draw
-    ; Call Xmanager to Manage the Widget.
-  XManager, 'PV', self.TLB, event_handler='pv_events', /no_block
+    Widget_Control,self.tlb,/Realize
+    Widget_Control, self.DrawId, get_value=wid
+    self.wid = wid
+    Window,/Free,/Pixmap,colors=self.Ncolors,XSize=self.XSize, YSize=self.YSize
+    self.PixId = !d.Window
+    Wset, wid
+    TvLct, transpose(*self.PtrToCT)
+    Widget_Control, self.tlb, set_uval=self
+      ; Call Xmanager to Manage the Widget.
+    XManager, 'PV', self.TLB, event_handler='pv_events', /no_block
+  ENDIF 
   return,1
 END
 
@@ -1041,20 +1061,23 @@ END
 ;====================================================
 
 
-PRO Pv::Draw, NoErase = NoErase
-   
+PRO Pv::Draw, NoErase = NoErase, AlreadyPlotted=AlreadyPlotted, Force=Force
+
+  COMMON PrevDims, oldLimit
+
+  force = keyword_set(Force)
+  IF keyword_set(AlreadyPlotted) THEN self->ResetPlotObjects,/AlreadyPlotted
+  IF force THEN self-> ResetPlotObjects,/AlreadyPlotted
   Erase = keyword_set( NoErase) NE 1
 
   Catch, Error
   IF Error NE 0 THEN BEGIN 
-    Catch,/Cancel
-;      ok = Dialog_Message(!Error_State.msg)
-;      Message,!error_state.msg,/cont
-    ok = Dialog_Message(!err_string)
-    Message,!err_string,/cont
+    ok = Dialog_Message(!error_State.Msg)
+    Message,!error_State.Msg,/cont
+    self-> set, Sensitivity = 1
+    return
   ENDIF 
 
-;  print,'Pv::Draw'
   status = 1
   nTotPlots = 0
   noData = -2 ; A particular failure mode from q2b->getplotdata
@@ -1069,7 +1092,11 @@ PRO Pv::Draw, NoErase = NoErase
 
   !p.subTitle = subTitle
 
-  IF NOT Widget_Info( self.Tlb,/Valid ) THEN status =  self-> CreateWidget()
+  IF NOT Widget_Info( self.Tlb,/Valid ) THEN BEGIN 
+    status =  self-> CreateWidget()
+    force = 1
+  ENDIF 
+
   IF !d.name NE 'PS' THEN Wset, self.wid
 
   IF status THEN BEGIN 
@@ -1083,38 +1110,24 @@ PRO Pv::Draw, NoErase = NoErase
     Dim = *CurrentDimNode.data
     Dim->Get,lon = lon,lat=lat,center=center
     limit = [  lon[0], lat[0], lon[1], lat[1]  ]
+    maplimit = [ lat[0], lon[0], lat[1], lon[1] ]
 
+    IF NOT exist( oldLimit ) THEN oldLimit =  limit
+
+    map_extent = abs(lon[1]-lon[0])*abs(lat[1]-lat[0])
+    dots =  map_extent GE (140*110)
       ; Map_set likes limit as [lat0, lon0, lat1, lon1]
 
-    IF strlen(!p.SubTitle) NE 0 OR $
-       strlen( Xtitle )    NE 0 OR $
-       strlen( YTitle )    NE 0 THEN BEGIN 
-
-      IF Erase THEN $
-      Map_Set, 0,center[0], /Grid,/Label,/Continent,$
-       limit=[ lat[0], lon[0], lat[1], lon[1] ],Title=mtitle, $
-          xmargin=6, ymargin=5
-
-      IF strlen( Xtitle ) NE 0 THEN $
-        XYOUTS, 0.5, 0.75*!y.window[0], Xtitle, Align=0.5, /normal, $
-           charsize=1.2
-
-      IF strlen( Ytitle ) NE 0 THEN $
-        XYOUTS, 0.75*!x.window[0], 0.5, Ytitle, Align=0.5, /normal, $
-           charsize=1.2, Orient=90
-
-    ENDIF ELSE BEGIN 
-      IF Erase THEN $
-        Map_Set, 0,center[0], /Grid,/Label,/Continent,$
-        limit=[ lat[0], lon[0], lat[1], lon[1] ],Title=mtitle
-    ENDELSE 	
+    limitChange = where( limit-oldLimit, nlimitChange )
 
 
 
     junk = self.DataList->GetHead()
     CurrentPlotDataPtr = self.datalist->GetCurrentDataPtr()
     IF Ptr_Valid( CurrentPlotDataPtr ) THEN BEGIN 
+      first = 1
       WHILE Ptr_Valid(CurrentPLotDataPtr) DO BEGIN 
+
 
         po = *(CurrentPlotDataPtr)
         po-> Get,Data=Q2b, $
@@ -1129,6 +1142,12 @@ PRO Pv::Draw, NoErase = NoErase
         IF PlotFlag AND NOT (AlreadyPlotted) AND $
            InRegion NE 0 THEN BEGIN 
 
+          IF first THEN BEGIN 
+            self-> CreateMap, Erase = Erase, Force=Force, $
+                   center = center, limit=maplimit
+            first = 0
+          ENDIF 
+
           s = q2b-> Get( Filename=filename)
           junk = rstrpos(filename,'/')+1
           basename = strmid( filename, junk, strlen(filename)-junk)
@@ -1139,9 +1158,10 @@ PRO Pv::Draw, NoErase = NoErase
                          CRDecimate  = self.CRDecimate_by, $
                          ExcludeCols = self.ExcludeCols)
           IF SelectedOnly THEN BEGIN 
-
+            t1 = systime(1)
             status = q2b-> GetPlotData(u,v,lon,lat,limit=limit,/Silent)
-
+            t2 = systime(1)
+            print,'  Time to extract ', t2-t1
             IF Status THEN BEGIN 
               self-> UpdateSpeedHisto,u,v,nTotPlots
               self->WriteToStatusBar,'Drawing...'
@@ -1152,7 +1172,7 @@ PRO Pv::Draw, NoErase = NoErase
                       MinSpeed=self.MinSpeed, $
                        MaxSpeed=self.MaxSpeed, $
                          Start_index=self.Wind0,$
-                          NColors=self.NWind
+                          NColors=self.NWind, dots=dots
               po->InRegion,1
               nTotPlots =  nTotPlot+1
             ENDIF ELSE IF status EQ NoData THEN BEGIN 
@@ -1165,6 +1185,8 @@ PRO Pv::Draw, NoErase = NoErase
               t1 = systime(1)
               status = q2b->GetPLotData(u,v,lon,lat, PlotAmbiguities[p], $
                                         limit = limit, /Silent  )
+              t2 = systime(1)
+              print,'  Time to extract ', t2-t1
               IF status THEN BEGIN 
                 self-> UpdateSpeedHisto,u,v,nTotPlots
                 self->WriteToStatusBar,'Drawing...'
@@ -1178,7 +1200,7 @@ PRO Pv::Draw, NoErase = NoErase
                         MinSpeed=self.MinSpeed, $
                          MaxSpeed=self.MaxSpeed, $
                            Start_index=self.Wind0,$
-                            NColors=self.NWind
+                            NColors=self.NWind, dots=dots
                 po->InRegion,1
                 nTotPlots =  nTotPlots + 1
               ENDIF ELSE IF status EQ NoData THEN BEGIN 
@@ -1197,7 +1219,15 @@ PRO Pv::Draw, NoErase = NoErase
         ; Copy new plot to pix map
       self->CopyToPixMap
 
-    ENDIF ELSE Message," There's No Data!",/cont
+    ENDIF ELSE BEGIN 
+      Message," There's No Data!",/cont
+      self-> CreateMap, Erase = Erase, Force=Force,$
+           center = center, limit=maplimit
+      xyouts, 0.5, 0.6, 'No Data!!', align=0.5, $
+       Charsize=1.3,charthick=2,/normal
+    ENDELSE 
+
+      
 
 
     self-> ChangeSensitivity, On =  SaveSensitivity
@@ -1214,12 +1244,16 @@ END
 ;========================================
 PRO Pv::ChangeSensitivity, On = On, Off=Off
   IF Keyword_set( On ) THEN BEGIN 
-    Widget_Control, self.MenuId, Sensitive=1
-    Widget_Control, self.DrawId, Draw_Button_Events=1
+    IF Widget_Info( self.MenuId, /Valid) THEN $
+      Widget_Control, self.MenuId, Sensitive=1
+    IF Widget_Info( self.DrawId, /Valid) THEN $
+      Widget_Control, self.DrawId, Draw_Button_Events=1
     self.sensitivity = 1
   ENDIF ELSE BEGIN 
-    Widget_Control, self.MenuId, Sensitive=0
-    Widget_Control, self.DrawId, Draw_Button_Events=0
+    IF Widget_Info( self.MenuId, /Valid) THEN $
+      Widget_Control, self.MenuId, Sensitive=0
+    IF Widget_Info( self.DrawId, /Valid) THEN $
+      Widget_Control, self.DrawId, Draw_Button_Events=0
     self.sensitivity = 0
   ENDELSE 
 END
@@ -1243,11 +1277,12 @@ FUNCTION Pv::Read,files
     nfiles_string = strtrim( nf, 2 )
     FOR f=0,nf-1 DO BEGIN 
       print,'Attempting to read ', files[f]
-      IF Widget_Info( self.StatusId, /valid ) THEN $
-       junk = rstrpos(files[f],'/')+1
-      basename = strmid( files[f], junk[0], strlen(files[f])-junk[0] )
-      self-> WriteToStatusBar,'Reading file ' +  basename + $
-       ' (' + strtrim(f+1,2) + ' of ' + nfiles_string + ')'
+      IF Widget_Info( self.StatusId, /valid ) THEN BEGIN 
+        junk = rstrpos(files[f],'/')+1
+        basename = strmid( files[f], junk[0], strlen(files[f])-junk[0] )
+        self-> WriteToStatusBar,'Reading file ' +  basename + $
+         ' (' + strtrim(f+1,2) + ' of ' + nfiles_string + ')'
+      ENDIF 
 ;         Widget_Control, self.StatusId,Set_Value='Reading File ' + $
 ;            files(f) + ' (' + strtrim(f+1,2) + ' of ' + nfiles_string + ')'
 
@@ -1281,7 +1316,10 @@ FUNCTION Pv::Read,files
         po = Obj_New('PvPlotObject',q)
         IF Obj_Valid( po ) THEN BEGIN 
           status =  self.DataList->append(po)
-          self->Draw,/NoErase
+          n = self.DataList-> GetCount()
+          IF n EQ 1 THEN $
+            self->Draw ELSE $
+            self->Draw,/NoErase
         ENDIF ELSE status = 0
       ENDIF ELSE status = 0
 
@@ -1858,7 +1896,10 @@ FUNCTION PV::Version
                   "UNDEFINED METHOD" ) NE -1 THEN BEGIN 
          error = 0
          i = i+1
-       ENDIF ELSE return,''
+       ENDIF ELSE BEGIN 
+         self-> set, Sensitivity = 1
+         return,''
+       ENDELSE 
      ENDIF 
      
      IF VarType( self.(i) ) EQ 'OBJECT' THEN BEGIN 
@@ -1887,6 +1928,7 @@ FUNCTION PV::Version
            i = i+1
          ENDIF ELSE BEGIN 
            Message,!error_state.msg,/cont
+           self-> set, Sensitivity = 1
            return,''
          ENDELSE 
        ENDIF 
@@ -1967,9 +2009,11 @@ END
 ;
 ;====================================================
 PRO Pv::ResetPlotObjects,All = All, AlreadyPlotted=AlreadyPlotted
+
    All = keyword_set(all)
    AlreadyPlotted = keyword_set(AlreadyPlotted)
    
+   n = self.Datalist-> WhichNode()
    Current = self.DataList-> GetHead()
    WHILE Ptr_Valid(Current) DO BEGIN 
      DataPtr = (*Current).data
@@ -1980,14 +2024,63 @@ PRO Pv::ResetPlotObjects,All = All, AlreadyPlotted=AlreadyPlotted
            po-> set, InRegion = -1, PlotFlag=1, AlreadyPlotted=0
          END
          AlreadyPlotted: BEGIN 
-           po-> Get,InRegion = InRegion, PlotFlag=PlotFlag
-           IF InRegion AND PlotFlag THEN $
-             po-> Set, AlreadyPlotted=0
+           po-> Set, AlreadyPlotted=0
          END
        ENDCASE 
      ENDIF 
      Current = self.DataList-> GetNext()
    ENDWHILE 
+   IF n NE 0 THEN s = self.Datalist-> GotoNode(n)
+
+END
+
+
+;====================================================
+;
+; CreateMap
+;
+;====================================================
+
+PRO pv::CreateMap, Erase = Erase, force=force, $
+      center = center, limit = limit
+
+  self.Annotation-> Get,MainTitle = Mtitle, Xtitle=Xtitle, $
+                      Ytitle=Ytitle, SubTitle=SubTitle
+
+  !p.subTitle = subTitle
+
+   map_extent = abs(limit[3]-limit[1])*abs(limit[2]-limit[0])
+   dots =  map_extent GE (140*110)
+   IF strlen(!p.SubTitle) NE 0 OR $
+     strlen( Xtitle )    NE 0 OR $
+     strlen( YTitle )    NE 0 THEN BEGIN 
+
+     IF Erase OR Force THEN BEGIN 
+       self-> ResetPlotObjects,/AlreadyPlotted
+       Map_Set, 0,center[0], /Grid,/Label,/Continent,$
+        limit=limit,Title=mtitle, $
+        xmargin=6, ymargin=5
+                               ;        oldLimit = limit
+     ENDIF 
+
+     IF strlen( Xtitle ) NE 0 THEN $
+      XYOUTS, 0.5, 0.75*!y.window[0], Xtitle, Align=0.5, /normal, $
+      charsize=1.2
+
+     IF strlen( Ytitle ) NE 0 THEN $
+      XYOUTS, 0.75*!x.window[0], 0.5, Ytitle, Align=0.5, /normal, $
+      charsize=1.2, Orient=90
+
+   ENDIF ELSE BEGIN 
+     IF Erase OR Force THEN BEGIN 
+       self-> ResetPlotObjects,/AlreadyPlotted
+       Map_Set, 0,center[0], /Grid,/Label,/Continent,$
+        limit=limit,Title=mtitle
+     ENDIF 
+   ENDELSE 	
+
+
+  
 END
 
 ;====================================================
@@ -2024,6 +2117,10 @@ PRO Pv__define
             ConfigId     : 0l ,$
             HardcopyId   : 0L ,$
             OverlayId    : 0l ,$
+            MiscId       : 0l ,$
+            SetSensId    : 0l ,$
+            RedrawId     : 0L ,$
+            Quit2Id      : 0L ,$
             DrawId       : 0l, $ ; IDL Draw Widget ID
             Wid          : 0l, $ ; IDL window ID
             PixID        : 0L, $ ; pixmap id
@@ -2086,12 +2183,12 @@ PRO Pv__define
             Water0    : 0,$    ; Start of Water indices (cur= 1)
             Land0     : 0,$    ; Start of Land Colors in Color table
                                ; (cur= 7)
-            Cloud0    : 0,$   ; Start of Cloud Indicies (cur=27)
-            Wind0     : 0,$   ; Start of Wind Indicies (cur=47)
-            Ambig0    : 0,$   ; Start of Ambiguity Color Indicies (cur=92)
+            Cloud0    : 0,$    ; Start of Cloud Indicies (cur=27)
+            Wind0     : 0,$    ; Start of Wind Indicies (cur=47)
+            Ambig0    : 0,$    ; Start of Ambiguity Color Indicies (cur=92)
                                ; (Red is the top of the Wind colors, so
                                ; there is some overlap)
-            NWind     : 0,$   ; Number of Wind Colors. (cur=45)
+            NWind     : 0,$    ; Number of Wind Colors. (cur=45)
                                 
                 ; All of these values are set in ::init
             
@@ -2103,11 +2200,11 @@ PRO Pv__define
 ;           OutputFilter   : '', $      ; Output filter for data files
             HCFile       : '', $        ; Default Output Hardcopy file name
             HCCntr       : 0 , $        ; For use as a extension.
-            HCType       : '',$      ; Type of hardcopy
+            HCType       : '',$         ; Type of hardcopy
             PSInfo       : Obj_New(),$  ; To hold Postscript info.
             OutputHCFiles: Obj_New() ,$ ; LinkedList of Output Hardcopies
-            OutputFiles  : Obj_New(),$  ; Linked list of Output Data Files.
-            Datalist     : Obj_New()}   ; List of data objects (Q2b,Qmodel)
+            OutputFiles  : Obj_New(),$  ; Linked ist of Output Data Files.
+            Datalist     : Obj_New()}   ; List of PvPlotObjects 
             
 END
 
