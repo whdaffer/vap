@@ -3,9 +3,15 @@
 %overlay_defs= (
 		NEPAC_Goes_1 => {
 		  Region     => "NEPAC_Goes_1",
-		  Satellite  => "Goes",
-		  LonLim     => [-175,-115],
-  		  LatLim     => [25,65],
-		  SatNum     => 10,
-		  SensorNum  => 4 } );
+		  CloudData => {
+		    Satellite  => "Goes",
+		    LonLim     => [-175,-115],
+		    LatLim     => [25,65],
+		    SatNum     => 10,
+		    SensorNum  => 4 },
+		  WVCData => {
+		    NVectors => 2000,
+		    CRDecimate => [2,3],
+		    ExcludeCols => "34:42"}
+		} );
 
