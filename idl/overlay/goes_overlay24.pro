@@ -13,8 +13,6 @@
 ;
 ; CALLING SEQUENCE:  goes_overlay24, goesfile, 
 ;                    windfiles   = windfiles, $ 
-;                    gif         = gif,$        
-;                    ps          = ps, $        
 ;                    xsize       = xsize, $     
 ;                    ysize       = ysize, $     
 ;                    CRDecimate  = CRDecimate,$
@@ -25,7 +23,20 @@
 ;                    minspeed    = minspeed, $
 ;                    maxspeed    = maxspeed,$
 ;                    length      = length,$
-;                    thick       = thick
+;                    thick       = thick, $
+;                    title       = title,$
+;                    BrightMin   = BrightMin, $
+;                    BrightMax   = BrightMax, $
+;                    SatMin      = SatMin, $
+;                    SatMax      = SatMax, $
+;                    LandHue     = LandHue,$
+;                    WaterHue    = WaterHue,$
+;                    outfile     = outfile,$
+;                    gif         = gif,$        
+;                    ps          = ps, $        
+;                    scalefac    = scalefac,$
+;                    jpeg        = jpeg,$
+;                    quality     = quality
 ;
 ;
 ;
@@ -66,17 +77,72 @@
 ;     maxspeed    : maximum speed (in Meters/sec) to display for wind vectors
 ;     length      : length of vectors (in IDL 'character' units)
 ;     thick       : Thickness of vectors (in IDL 'character' units)
-;     gif         : output as Gif file
-;     ps          : out as Postscript file
+;     title       : title for plot. This string is prepended to one 
+;                   built by the routine, containing the data of the
+;                   Goes file used.
+;     Subtitle    : A subtitle. No subtitle will appear, if this
+;                   string is absent.
+;     outfile     : (I/O) if set to a non-empty string on input, the
+;                   output file will have this name. If available for
+;                   output, but not set to non-empty string, outfile
+;                   will return the name of the output file
+;
+;     BrightMin   : The abscissa at which the brightness transfer
+;                   function starts it's linear ramp to 1. The
+;                   ordinates of the transfer function for abscissa
+;                   less than this abscissa will be set to 0. Input as
+;                   a float between 0 and 1 (default=0)
+;     BrightMax   : The abscissa at which the brightness function
+;                   reaches 1. The ordinates of the transfer function
+;                   for abscissa greater than this one will be set to
+;                   1. Input as float between 0 and 1. 
+;                   (Default = 0.8)
+;     SatMin      : The abscissa at which the Saturation transfer
+;                   function starts its linear ramp to 0. Ordinates of
+;                   the transfer function less than this one will be
+;                   set to 1. Input as a float between 0 and 1. (Default=0.)
+;     SatMax      : The abscissa at whith the saturation transfer
+;                   function reachs 0. Ordinates of the transfer
+;                   function for abscissa greater than this one are ;
+;                   set to 0. Input as a float between 0 and
+;                   1. (Default=0.55)
+;     LandHue     : The 3-vector containing the RGB values for the
+;                   Land color
+;     WaterHue    : The 3-vector containing the RGB values for the
+;                   Water color
+;
+;     gif         : output as Gif file (the default)
+;     scalefac    : scale factor to be used in making Postscript files.
+;                   (def=0.05)
+;     ps          : output as Postscript file
+;     jpeg        : output file as Jpeg file 
+;     Quality     : Use this quality when making Jpeg files (def=75)
 ;     verbose     : flag, if set, emit many messages
 ;
 ;
 
 ;
 ;
-; OUTPUTS:  A file named ????
+; OUTPUTS:  A file, either a .gif, .jpeg (the default) or a .ps file,
+;          depending on the status of these three flags having either
+;          a name built from the input goes file name (the default) or
+;          whatever is passed in via the 'outfile' keyword. The
+;          default output format is Gif and the default name is :
+; 
+;          GOES_nn_mmm_yyyymmddThh:mm-%aaaa,bbb,cccc,ddd%.gif
 ;
+;          where 
+;          nn = 8 or 10
+;          mmm = VIS, IR1,IR2,IR3, OR IR4 
+;          yyyymmdd = year, month, day, e.g. 19981202
+;          hh:mm  = hour:minute
+;          aaaa = minimum longitude, 4 digit, signed 
+;          bbb  = minimum latitude, 3 digit, signed 
+;          cccc = maximum longitude, 4 digit, signed 
+;          ddd  = maximum latitude, 3 digit, signed 
 ;
+;          The keyword 'outfile' will contain the output file name if
+;          it (i.e. outfile) is  present for output.
 ;
 ; OPTIONAL OUTPUTS:  None
 ;
@@ -104,6 +170,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  1998/12/02 00:32:33  vapuser
+; New cloudmask for non-IR data.
+;
 ; Revision 1.2  1998/11/25 22:37:04  vapuser
 ; Use Errorf to scale cloudmask
 ;
@@ -117,8 +186,6 @@
 ;-
 PRO goes_overlay24, goesfile, $
                     windfiles   = windfiles, $ 
-                    gif         = gif,$        
-                    ps          = ps, $        
                     xsize       = xsize, $     
                     ysize       = ysize, $     
                     CRDecimate  = CRDecimate,$
@@ -131,11 +198,25 @@ PRO goes_overlay24, goesfile, $
                     length      = length,$
                     thick       = thick, $
                     title       = title,$
+                    subtitle    = subtitle, $
                     outfile     = outfile,$
-                    scalefac    = scalefac
+                    BrightMin   = BrightMin, $
+                    BrightMax   = BrightMax, $
+                    SatMin      = SatMin, $
+                    SatMax      = SatMax, $
+                    LandHue     = LandHue,$
+                    WaterHue    = WaterHue,$
+                    gif         = gif,$        
+                    ps          = ps, $        
+                    scalefac    = scalefac, $
+                    jpeg        = jpeg,$
+                    quality     = quality
 
 COMMON goes_overlay_cmn, landel
 
+
+  Default_WaterHue = [31,  33, 129]
+  Default_LandHue =  [25, 110,   0]
 
   genv,/save
   tvlct,orig_red,orig_green,orig_blue,/get
@@ -164,7 +245,7 @@ COMMON goes_overlay_cmn, landel
     ENDIF 
   ENDFOR 
   IF n_elements(goesfile) EQ 0 THEN BEGIN 
-    Message,'Usage: goes_overlay24, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif,CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick ] ',/cont
+    Message,'Usage: goes_overlay24, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandHue=LandHue,WaterHue=WaterHue ] ',/cont
     tvlct,orig_red,orig_green,orig_blue
     genv,/restore
     return
@@ -172,34 +253,65 @@ COMMON goes_overlay_cmn, landel
 
   ps = keyword_set(ps)
   gif = keyword_set(gif)
+  jpeg = keyword_set(jpeg)
   verbose = keyword_set(verbose)
 
-  IF ps AND gif THEN BEGIN 
-    Message,'Only one of PS or GIF may be set',/cont
+  IF ps AND gif OR $
+     ps AND jpeg OR $
+     gif AND jpeg THEN BEGIN 
+    Message,'Only one of PS, GIF  or JPEG may be set',/cont
     tvlct,orig_red,orig_green,orig_blue
     genv,/restore
     return
   ENDIF 
 
-  IF NOT (ps OR gif) THEN BEGIN 
-    Message,' Defaulting to GIF output ',/info
+  IF NOT (ps OR gif OR jpeg) THEN BEGIN 
+    Message,' Defaulting to gif output ',/info
     gif = 1
   ENDIF 
+
+  IF n_elements( Quality ) EQ 0 THEN Quality = 75
+  Quality =  1 > Quality < 100
 
   IF n_elements(scalefac) EQ 0 THEN BEGIN 
     IF ps THEN scalefac = 0.05 ELSE scalefac = 1
   ENDIF ELSE BEGIN 
     IF gif THEN BEGIN 
-      Message,'Keyword SCALEFAC is ignored when creating GIFs',/cont
+      Message,'Keyword SCALEFAC is ignored when creating GIFs/JPEGs',/cont
       scalfac = 1
     ENDIF 
   ENDELSE 
 
   IF n_Elements(minspeed) EQ 0 THEN minspeed = 2
-  IF n_Elements(maxspeed) EQ 0 THEN maxspeed = 37
+  IF n_Elements(maxspeed) EQ 0 THEN maxspeed = 25
   IF n_elements(length)   EQ 0 THEN length = 2
-  IF n_elements(thick)    EQ 0 THEN thick = 2
+  IF n_elements(thick)    EQ 0 THEN thick = 1
+  IF n_elements(BrightMin) EQ 0 THEN BrightMin = 0.
+  IF n_elements(BrightMax) EQ 0 THEN BrightMax = 0.8
+  IF n_elements(SatMin) EQ 0 THEN SatMin = 0.0
+  IF n_elements(SatMax) EQ 0 THEN SatMax = 0.55
 
+  BrightMin = 0> float(BrightMin) < 1.
+  BrightMax = BrightMin+.01> BrightMax < 1.
+
+  SatMin = 0> float(SatMin) < 1.
+  SatMax = SatMin+.01> SatMax < 1.
+
+  IF n_Elements(LandHue) NE 3 THEN BEGIN 
+    IF n_Elements(LandHue) NE 0 THEN $
+      Message,'LandHue must be a 3-vector',/cont
+    Message,'  Taking default Land Hue ' + strtrim( Default_LandHue,2),/cont
+    LandHue = Default_Landhue
+  ENDIF 
+
+  IF n_Elements(WaterHue) NE 3 THEN BEGIN 
+    IF n_Elements(WaterHue) NE 0 THEN $
+      Message,'WaterHue must be a 3-vector',/cont
+    Message,'  Taking default Water Hue ' + strtrim( Default_WaterHue,2),/cont
+    WaterHue = Default_WaterHue
+  ENDIF 
+
+  
   start_time = systime(1)
   Read_PCGoes,goesfile,limits,data,hdr=hdr, status=status
 
@@ -208,12 +320,12 @@ COMMON goes_overlay_cmn, landel
   lonrange = FixLonRange( [ limits[0],limits[2] ])
   
   IF n_Elements(xsize) EQ 0 THEN BEGIN 
-    IF gif THEN xsize = 640 ELSE xsize = 8.4
+    IF ps THEN xsize = 8.4 ELSE xsize = 640 
     xoffset = 1.2
   ENDIF 
 
   IF n_Elements(ysize) EQ 0 THEN BEGIN 
-    IF gif THEN ysize = 480 ELSE ysize = 6.5
+    IF ps THEN ysize = 6.5 ELSE ysize = 480 
     yoffset = 9.5
   ENDIF 
 
@@ -242,7 +354,7 @@ COMMON goes_overlay_cmn, landel
 
     IR =  ( sensornum GT 1 )
 
-    IF ir THEN data = 1024-data
+    IF ir THEN data = 1024-temporary(data)
     IF N_elements(minpix) EQ 0 THEN minpix = 0
 
     ptr = ReadColorTable($
@@ -256,11 +368,9 @@ COMMON goes_overlay_cmn, landel
     CT = *ptr
     ptr_free,ptr
 
-    WATER_INDEX = 1
-    LAND_START = 2
-    WIND_START = 22
+    WIND_START = 1
     N_WIND_COLORS = 26
-    N_COLORS = 47
+    N_COLORS = 27
 
     IF n_elements(Windfiles) NE 0 THEN BEGIN 
       t0 = systime(1)
@@ -301,7 +411,7 @@ COMMON goes_overlay_cmn, landel
             ENDIF 
             veccol = BytScl( speed, min=minspeed, $
                              max=maxspeed, $
-                             top=N_COLORS-N_WIND_COLORS-1) + $
+                             top=N_COLORS-WIND_START-1) + $
                              WIND_START
             col24 = color24( veccol, colortable=ct)
             t0 = systime(1)
@@ -359,18 +469,13 @@ COMMON goes_overlay_cmn, landel
     lati = 0
 
     ; cloudmask = bytscl(sqrt(1.0*(minpix>data<1024 )/1024),top=200) 
-    IF IR THEN $
-      cloudmask = byte( 255*( 0.5*(errorf(4.d*scale(data,max=1024,/double)-2) +1) ) ) ELSE $
-      cloudmask =  bytscl(data,min=0)
+;    IF IR THEN $
+;      cloudmask = byte(255*(0.5*(errorf(4.d*scale(data,max=1024,/double)-2)+1))) $
+;    ELSE $
+;      cloudmask =  bytscl(data,min=0)
 
-    data = 0
 
-
-    IF gif THEN BEGIN 
-      set_plot,'x'
-      ; device,set_resolution=[xsize,ysize],z_buff=0
-      window,/free, /pixmap, xsize=xsize, ysize=ysize
-    ENDIF ELSE BEGIN 
+    IF ps THEN BEGIN 
       set_plot,'PS'
       ps_form = { XSIZE          : xsize   ,$ 
                   XOFF           : xoffset ,$ 
@@ -382,7 +487,16 @@ COMMON goes_overlay_cmn, landel
                   ENCAPSULATED   : 0       ,$
                   LANDSCAPE      : 1        }
       device,_extra=ps_form
+      ; device,font='
+    ENDIF ELSE BEGIN 
+      set_plot,'x'
+      ; device,set_resolution=[xsize,ysize],z_buff=0
+      window,/free, /pixmap, xsize=xsize, ysize=ysize
+      pixmap = !d.window
+      !p.font = 0
+      device,font='7x14bold'
     ENDELSE 
+
     loncent = mean(lonrange)
     Map_Set,0,loncent,$
      limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
@@ -424,29 +538,41 @@ COMMON goes_overlay_cmn, landel
          ENDIF 
       ENDIF 
 
-      IF gif THEN BEGIN 
-        OutputFilename = ofileroot+'.gif'
-      ENDIF ELSE BEGIN 
-        OutputFilename = ofileroot+'.ps'
-      ENDELSE 
+      CASE 1 OF 
+        gif : ext = '.gif'
+        jpeg: ext = '.jpeg'
+        ps  : ext = '.ps'
+      ENDCASE  
+      OutputFilename = ofileroot + ext
 
     ENDIF ELSE outputFilename =  outfile
 
     IF ps THEN device,filename=OutputFilename
 
+
+    cloudmask =   scale( map_image( bytscl(temporary(data)), $
+                           xs,ys,xsize,ysize,$
+                            lonmin=lonrange[0],$
+                             latmin=limits[1],$
+                               lonmax=lonrange[1],$
+                                 latmax=limits[3],$
+                                   scale=scalefac, /compress, /bilinear ))
+
     FOR channel=0,2 DO BEGIN 
-      image = intarr(nlon,nlat)+CT[channel,water_index]
-      image[land] = reform( $
-                     CT[ channel, $
-                       LAND_START>(topoIm[land]+LAND_START)<(WIND_START-1) ] )
+      image = intarr(nlon,nlat)+WaterHue[channel]
+      image[land] =  LandHue[channel]
+;      image[land] = reform( $
+;          
+;           CT[ channel, $
+;                       LAND_START>(topoIm[land]+LAND_START)<(WIND_START-1) ] )
 ;      commented out, 98/11/25, whd
 ;      image = 0> (image-cloudmask)
 ;      image = image + cloudmask
 ;      image =  byte(image <  255)
 
-      m = max(cloudmask)
-      image = image-m/4.
-      image = byte( 0> (image + cloudmask) < 255)
+;      m = max(cloudmask)
+;      image = image-m/4.
+;      image = byte( 0> (image + cloudmask) < 255)
 
       tmpIm =   map_image( image, xs,ys,xsize,ysize,$
                          lonmin=lonrange[0],$
@@ -462,7 +588,29 @@ COMMON goes_overlay_cmn, landel
       tmpIm = 0l
     ENDFOR 
 
-      ; Tv the final PS image
+      ; scale cloud mask into [0,1]
+;    cloudmask =  scale( data, min=0, max=1024)*100
+      ; Convert mapIm to HLS
+    Color_Convert, mapIm[*,*,0],mapIm[*,*,1],mapIm[*,*,2],h,l,s,/rgb_hls
+    mapIm = 0; free some memory
+
+      ; Define the new Brightness/Saturation mappings
+    xx=findgen(100)/99.
+
+    bi = 0> interpol( [0.,1], [brightmin, brightMax], xx ) < 1
+    si = 0> interpol( [1.,0], [Satmin, SatMax],xx ) < 1
+
+      ; Use 'cloudmask' to create new L,S values
+    b2=bi[cloudmask*100]
+    s2=si[cloudmask*100]
+
+      ; Substitute these new Lightness/Saturation values in for those in
+      ; mapIm and convert back to RGB 
+
+    Color_Convert, h,b2,s2, imr, img, imb, /hls_rgb
+    mapIm = [ [[temporary(imr)]], [[temporary(img)]], [[temporary(imb)]] ]
+
+      ; Tv the final PS image 
     IF ps THEN $
       Tv,mapIm,xs,ys,xsize=xsize,ysize=ysize,true=3 ELSE $
       Tv,mapIm,xs,ys,true=3
@@ -490,50 +638,70 @@ COMMON goes_overlay_cmn, landel
     y = xyz[1]
     y = [3*y+2, 2*y+3]/5
 
-    IF gif THEN $
-      ColorBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
-             position=[0.25,y[0], 0.75, y[1]], $
-               Title='Wind Speed (knots)',Min=minspeed, $
-                 max=maxspeed,divisions=4, format='(f5.0)', $
-                  pscolor=ps, /true, table=ct, charsize=0.75, $
-                    color='ffffff'x $
-    ELSE $
+    IF ps THEN BEGIN 
       ColorBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
              position=[0.25,y[0], 0.75, y[1]], $
                Title='Wind Speed (knots)',Min=minspeed, $
                  max=maxspeed,divisions=4, format='(f5.0)', $
                   pscolor=ps, /true, table=ct, charsize=0.75
-     
+    ENDIF ELSE BEGIN 
+      ColorBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+             position=[0.25,y[0], 0.75, y[1]], $
+               Title='Wind Speed (knots)',Min=minspeed, $
+                 max=maxspeed,divisions=4, format='(f5.0)', $
+                  pscolor=ps, /true, table=ct, charsize=0.75, $
+                    color='ffffff'x 
+    ENDELSE 
 
 
+
+    IF ps THEN text_color = '000000'x ELSE text_color = 'ffffff'x
 
     IF n_elements(title) NE 0 THEN $
       Title= title + ' ' + goes_string ELSE $
       Title= goes_string 
 
-    IF ps THEN text_color = '000000'x ELSE text_color = 'ffffff'x
+      ; Lay down the title
     xyz = Convert_Coord(0,ys,/device,/to_normal)
-    y = xyz[1]
-    xyouts, 0.5, y/2., title, align=0.5, $
+    y = xyz[1]/2.
+    xyouts, 0.5, y, title, align=0.5, $
         /normal, charsize=1.05, color=text_color
 
+    IF n_Elements(subtitle) NE 0 THEN BEGIN 
+      xyz = Convert_Coord( 0, fix(1.5*!d.Y_CH_Size), /device, /to_normal )
+      y1 = xyz[1]
+      xyouts, 0.5, y-y1, subtitle, align=0.5, $
+         /normal, charsize=1.0, color=text_color
+    ENDIF 
 
 
-      ;If output is 'gif' quantize it down to 100 colors.
-    IF gif THEN BEGIN 
-      t0 = systime(1)
-      tmpim = tvrd(true=3)
-      im = color_Quan( tmpim, 3, r,g,b, colors=150 )
-      t1 = systime(1)
-      IF verbose THEN print,' Color_Quan took: ', t1-t0,' Seconds '
-      t0 = t1
 
-      Write_Gif, OutputFilename, im, r,g,b
-      t1 = systime(1)
-      IF verbose THEN print,' Write_Gif took: ', t1-t0,' Seconds '
-      t0 = t1
+    CASE 1 OF 
+      gif: BEGIN 
+        ;If output is 'gif' quantize it down to 175 colors.
+        t0 = systime(1)
+        tmpim = tvrd(true=3)
+        im = color_Quan( tmpim, 3, r,g,b, colors=175 )
+        t1 = systime(1)
+        IF verbose THEN print,' Color_Quan took: ', t1-t0,' Seconds '
+        t0 = t1
 
-    ENDIF ELSE device,/close ; else close the Postscript file.
+        Write_Gif, OutputFilename, im, r,g,b
+        t1 = systime(1)
+        IF verbose THEN print,' Write_Gif took: ', t1-t0,' Seconds '
+        t0 = t1
+      END
+
+      jpeg: BEGIN 
+        tmpim = tvrd(true=3)
+        Write_Jpeg, OutputFilename, tmpim, $
+               quality=quality, true=3
+      END
+
+      ps: device,/close
+
+    ENDCASE
+
   ENDIF ELSE BEGIN 
     Message,'Error Reading Goesfile ' + goesfile
   ENDELSE 
@@ -541,6 +709,7 @@ COMMON goes_overlay_cmn, landel
   end_time = systime(1)
   IF Verbose THEN print,'Total Time: ', (end_time-start_time)/60. ,' Minutes'
   IF Arg_Present(Outfile) THEN Outfile =  OutputFilename
+  IF NOT ps THEN Wdelete,pixmap
   genv,/restore
 
 END
