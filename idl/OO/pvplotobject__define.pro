@@ -63,6 +63,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/29 22:37:31  vapuser
+; added filename member/keywords
+;
 ; Revision 1.2  1998/10/28 23:35:37  vapuser
 ; ??
 ;
@@ -95,7 +98,7 @@ FUNCTION PvPlotObject::Init, data, $
     IF s THEN BEGIN 
       name = Tag_Names(*tdata,/Structure_Name)
       test =  where( $
-                    strpos( ['Q2BDATA' ,'RQ2BDATA','QMODEL'  ], name) NE -1, $
+                    strpos( ['Q2BDATA' ,'RQ2BDATA','QMODELDATA'  ], name) NE -1, $
                     ntest)
       IF ntest NE 0 THEN BEGIN 
         self.data =  data
