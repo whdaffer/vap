@@ -71,37 +71,40 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/07 18:50:39  vapuser
+; Initial revision
+;
 ;
 ;
 ;Copyright (c) 1999, William Daffer
 ;-
 ; No Warranties
 ;
-FUNCTION read_cfgfile, filename, path=path
+PRO read_cfgfile, filename, retstruct, path=path
   
   IF n_params() LT 1 THEN BEGIN 
     Usage,"return_structure = read_cfgfile(filename [,path=pat])"
-    return,''
+    return
   ENDIF 
   IF n_elements(path) EQ 0 THEN path =  './'
    
   IF rstrpos(path,'/') NE strlen(path)-1 THEN path = path + '/'
   fqfn =path + filename
   IF NOT fexist(fqfn) THEN BEGIN 
-    Message,"CFG File <" +fqfn +"> doesn't exist!",/cont
-    return,''
+    Message,"CFG File <" +fqfn +"> doesn't exist!",/info
+    return
   ENDIF 
 
   nn = nlines(fqfn)
   IF nn EQ 0 THEN BEGIN 
-    Message, "CFG file <" +fqfn +"> is EMPTY!",/cont
-    return,''
+    Message, "CFG file <" +fqfn +"> is EMPTY!",/info
+    return
   ENDIF 
 
   openr,lun, fqfn,/get,error=err
   IF err NE 0 THEN BEGIN 
-    Message,!error_state.msg,/cont
-    return,''
+    Message,!error_state.msg,/info
+    return
   ENDIF 
 
   rec = ''
@@ -111,7 +114,7 @@ FUNCTION read_cfgfile, filename, path=path
     line = line+1
     rec =  strtrim(strcompress( rec ),2)
 
-    IF strpos(rec,';') ne 0  THEN BEGIN 
+    IF strpos(rec,';') ne 0  AND strlen(rec) GT 0 THEN BEGIN 
       tmp = str_sep(rec,'=')
       tag = strcompress(tmp[0],/remove_all)
       value = strcompress( tmp[1],/remove_all)
@@ -119,7 +122,7 @@ FUNCTION read_cfgfile, filename, path=path
       IF NOT s THEN BEGIN 
         Message,"Error at line " + strtrim(line,2) + $
           " in CFG file <" + fqfn ,/cont
-        return,''
+        return
       ENDIF 
       IF NOT exist(retstruct) THEN $
         retstruct = create_struct( tag, v ) ELSE $
@@ -128,6 +131,5 @@ FUNCTION read_cfgfile, filename, path=path
   ENDREP UNTIL eof(lun)
 
   free_lun, lun
-  return, retstruct
 END
 
