@@ -23,7 +23,8 @@
 ;                                   Decimate=Decimate,$
 ;                                   CRDecimate=CRDecimate,$
 ;                                   ExcludeCols=ExcludeCols,$
-;                                   Nscat=Nscat, noFile=nofile )
+;                                   Nscat=Nscat, noFile=nofile,$
+;                                   u=u,v=v,lon=lon,lat=lat)
 ;
 ;
 ; 
@@ -102,6 +103,15 @@
 ;                  output file. If present as a return argument, it
 ;                  will return the name of the output file.
 ;   Nscat: (I) flag. If set, expect Nscat data.
+;   U    : (I) 2-d vector. The U component of the field passed in
+;          directly
+;   V    : (I) 2-d vector. The V component of the field passed in
+;          directly
+;   Lon  : (I) 2-d vector. The longitude of the field passed in
+;          directly
+;   Lat  : (I) 2-d vector. The latitude of the field passed in
+;          directly
+;
 ;
 ;
 ; FILE FORMAT:
@@ -171,6 +181,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.6  1998/11/25 22:40:56  vapuser
+; Changed Ofile to Outfile
+;
 ; Revision 1.5  1998/11/23 21:39:48  vapuser
 ; Changed meaning of min_Nvect (-1 .vs. 0 for 'make regardless')
 ; Corrected an endif/endelse bug
@@ -255,7 +268,11 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                                                   ; of vectors.
                          Decimate = Decimate, $   ; See Explanation above
                          CRDecimate=CRDecimate,$  ; See Explanation above
-                         ExcludeCols=ExcludeCols  ; See Explanation above
+                         ExcludeCols=ExcludeCols,$; See Explanation above
+                         U=U, $
+                         V=V, $
+                         Lons=Lons, $
+                         Lats=Lats
 
 
   rcsid = "$Id$"
@@ -263,62 +280,73 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
   LongName = "QSCAT_VAP_SUCCOR_INTERP_FIELD"
   VersionID=rcsid
   CreationTime =  (idldt2Vaptime(today()))[0]
-
   Nscat = Keyword_set(Nscat)
-  IF n_elements(Wfiles) eq 0 THEN BEGIN 
-    IF n_Elements(date_time) EQ 0 THEN date_time = TodayAsString(sep='/')
-    IF n_elements(time_inc) NE 0 THEN time_inc = 26
-    IF n_elements(Wpath) EQ 0 THEN Wpath = getenv('VAP_WINDS')
-    IF N_Elements(filter) EQ 0 THEN BEGIN 
-      IF Nscat THEN filter = 'N*' ELSE filter = 'Q*'
-    ENDIF  
-     Wfiles = GetWindFiles(date_time,delta=time_inc,path=wpath, $
-                           filter=filter, count=cnt, nscat=nscat)
-  ENDIF 
 
-  IF strlen( Wfiles[0] ) EQ 0 AND N_Elements(Wfiles) EQ 0 THEN BEGIN 
-    Message,'Error in GetWindFiles',/cont
-    return,0
-  ENDIF 
+  IF n_elements(u) eq 0 OR $
+     n_elements(v) eq 0 OR $
+     n_elements(lons) eq 0 OR $
+     n_elements(lats) eq 0 THEN BEGIN 
 
-  minnvect = 0
-  IF n_elements(min_nvect) ne 0 THEN BEGIN 
-    IF min_nvect NE 0 THEN minnvect = min_nvect
-  ENDIF 
+      ; Data hasn't been passed directly. Have to read it.
 
+    IF n_elements(Wfiles) eq 0 THEN BEGIN 
+      IF n_Elements(date_time) EQ 0 THEN date_time = TodayAsString(sep='/')
+      IF n_elements(time_inc) eq 0 THEN time_inc = 14.
+      IF n_elements(Wpath) EQ 0 THEN Wpath = getenv('VAP_WINDS')
+      IF N_Elements(filter) EQ 0 THEN BEGIN 
+        IF Nscat THEN filter = 'N*' ELSE filter = 'Q*'
+      ENDIF  
+      Wfiles = GetWindFiles(date_time,delta=time_inc,path=wpath, $
+                             filter=filter, count=cnt, nscat=nscat)
+    ENDIF 
 
-  data = Read_Wind_Files( Wfiles, nscat=nscat, $
-                        Decimate=Decimate, $
-                        CRDecimate=CRDecimate, $
-                        ExcludeCols=ExcludeCols, $
-                        StartTime=StartTime,$
-                        EndTime=EndTime )
-
-  IF n_Elements(data) GT 1 THEN BEGIN 
-
-    U   = data[*,0]
-    V   = data[*,1]
-    Lon = data[*,2]
-    Lat = data[*,3]
-
-      ; check to see if there are enough vectors.
-    IF n_elements(U) LT minNvect THEN BEGIN 
-      nu =strtrim( n_elements(u),2)
-      mnu = strtrim( minNVect,2 )
-      Message,'Too Few vectors!',/cont
-      print,'U has only ', nu, ' min NVect = ', mnu
+    IF strlen( Wfiles[0] ) EQ 0 AND N_Elements(Wfiles) EQ 0 THEN BEGIN 
+      Message,'Error in GetWindFiles',/cont
       return,0
     ENDIF 
 
-    IF N_elements(LonPar) NE 3  THEN LonPar =  [0.,359,1.]
-    IF N_elements(LatPar) NE 3  THEN LatPar =  [-60.,60.,1.]
-    IF N_elements(RaInf) NE 4 THEN Rainf = [12.,10,6,4]
-    IF N_elements(ErMax) NE 4 THEN Ermax = [50.,20.,10,5]
+    minnvect = 0
+    IF n_elements(min_nvect) ne 0 THEN BEGIN 
+      IF min_nvect NE 0 THEN minnvect = min_nvect
+    ENDIF 
 
 
+    data = Read_Wind_Files( Wfiles, nscat=nscat, $
+                          Decimate=Decimate, $
+                          CRDecimate=CRDecimate, $
+                          ExcludeCols=ExcludeCols, $
+                          StartTime=StartTime,$
+                          EndTime=EndTime )
+
+    IF n_Elements(data) GT 1 THEN BEGIN 
+
+      U   = data[*,0]
+      V   = data[*,1]
+      Lon = data[*,2]
+      Lat = data[*,3]
+
+        ; check to see if there are enough vectors.
+      IF n_elements(U) LT minNvect THEN BEGIN 
+        nu =strtrim( n_elements(u),2)
+        mnu = strtrim( minNVect,2 )
+        Message,'Too Few vectors!',/cont
+        print,'U has only ', nu, ' min NVect = ', mnu
+        return,0
+      ENDIF 
+
+      IF N_elements(LonPar) NE 3  THEN LonPar =  [0.,359,1.]
+      IF N_elements(LatPar) NE 3  THEN LatPar =  [-60.,60.,1.]
+      IF N_elements(RaInf) NE 4 THEN Rainf = [12.,10,6,4]
+      IF N_elements(ErMax) NE 4 THEN Ermax = [50.,20.,10,5]
+
+
+    ENDIF ELSE BEGIN 
+      Message,'Error in ReadWindFiles - Aborting',/cont
+      return,0
+    ENDELSE 
   ENDIF ELSE BEGIN 
-    Message,'Error in ReadWindFiles - Aborting',/cont
-    return,0
+    lon = lons
+    lat = lats
   ENDELSE 
 
   status = RunSuccor( U,V,Lon,Lat,ui,vi,lonpar,latpar,$
@@ -327,10 +355,10 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     Message,'Bad return from 1st succor run',/cont
     return,0
   ENDIF 
-   rainf = [10.,6.,3.,2]
-   ermax = [10.,6.,3.,2]
-   status = RunSuccor( U,V,Lon,Lat,ui,vi,lonpar,latpar,$
-                       rainf=rainf,ermax=ermax,/reuse )
+  rainf = [10.,6.,3.,2]
+  ermax = [10.,6.,3.,2]
+  status = RunSuccor( U,V,Lon,Lat,ui,vi,lonpar,latpar,$
+                      rainf=rainf,ermax=ermax,/reuse )
   IF status eq 0 THEN BEGIN 
     Message,'Bad return from 2nd succor run',/cont
     return,0
@@ -343,10 +371,13 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
   IF NOT keyword_set( NoFile) THEN BEGIN 
     IF N_Elements(OutFile) eq 0 THEN BEGIN 
       cd,current=cur
-      OutFile = cur + '/QIF-'
-      tmp = str_sep( EndTime,'/' )
-      nn = n_elements(tmp)
-      FOR i=0,nn-1 DO OutFile = OutFile + tmp[i]
+      OutFile = cur + '/QIF'
+      IF n_elements(endtime) NE 0 THEN BEGIN 
+        tmp = str_sep( EndTime,'/' )
+        nn = n_elements(tmp)
+        OutFile = OutFile + '-'
+        FOR i=0,nn-1 DO OutFile = OutFile + tmp[i]
+      ENDIF 
       OutFile = OutFile + '.hdf'
     ENDIF 
 
