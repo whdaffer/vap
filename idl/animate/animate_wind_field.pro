@@ -92,6 +92,7 @@
 ;          ps - write postscript file
 ;          tiff - writes out a tiff file.
 ;          jpeg - writes out a jpeg file
+;          ppm - writes out a ppm file
 ;          save_first - will save the first set of images in an IDL
 ;                       save set 'first_frame.save'. Useful for
 ;                       debugging purposes.
@@ -103,6 +104,14 @@
 ;                  the speed in meters/second. Also, if this flag is
 ;                  set, min/max speed must be input as knots.
 ;
+;          outbase - (I/O). If present and non-empty on input, the
+;                    program uses this base to construct the output
+;                    file name. IF not present, the basename will
+;                    default to either whatever is in the config file
+;                    or the string 'wind.' In any case the resultant
+;                    filename is "basename.frame_number.extention"
+;                    where extention is one of 'gif', 'jpeg', 'ps',
+;                    'pict', 'ppm' or 'tiff.'
 ;
 ;                  Nota Bene! The dimensions of U and V are always
 ;                  M/S, this is how they appear in the data! Don't
@@ -321,6 +330,11 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.14  2002/05/03 01:06:25  vapdev
+; Changes environmental variables to reflect new vapdev/vaprun env variables.
+; Also made sure that all the various env variable routines were being
+; called correctly.
+;
 ; Revision 1.13  2001/12/08 00:02:35  vapdev
 ; Getting rid of obsolete RSI routines and fixing ENV vars
 ;
@@ -435,6 +449,7 @@ PRO ANIMATE_WIND_FIELD, files, $ ; fully qualified grid file name(s) (no default
                     tiff= tiff,$      ; flag to write tiff
                                                   ; file
                     jpeg = jpeg, $          ; Write Jpeg
+                    ppm = ppm, $          ; Write Ppm
                     debug = debug       ,$  ; for debugging
                     title=title ,$          ; Title for each frame.
                     min_speed=min_speed,$  ; Minimum wind speed 
@@ -456,8 +471,9 @@ PRO ANIMATE_WIND_FIELD, files, $ ; fully qualified grid file name(s) (no default
                                        ; Implies tvsafe.
                     thick = thick, $   ; Thickness of vectors (def=1)
                     harmonic=harmonic, $; 
-                     knots  = knots; report the speed in knots, instead of 
+                     knots  = knots,$; report the speed in knots, instead of 
                                    ; the default of m/s
+                    outbase =  outbase, $
                     noxinter= noxinter ; obsolete, does nothing, 
                             ; it's just here so 
                             ; a lot of other software doesn't
@@ -561,6 +577,7 @@ chkcfg,'GIF',gif,cfg,/bool
 chkcfg,'PS',ps,cfg,/bool
 chkcfg,'TIFF',tiff,cfg,/bool
 chkcfg,'JPEG',jpeg,cfg,/bool
+chkcfg,'PPM',ppm,cfg,/bool
 
 chkcfg,'HARMONIC',harmonic,cfg
 chkcfg,'THICK',thick,cfg
@@ -570,14 +587,20 @@ chkcfg,'MIN_SPEED',min_speed,cfg
 chkcfg,'MAX_SPEED',max_speed,cfg
 chkcfg,'LENGTH',length,cfg
 chkcfg,'TITLE',title,cfg
+chkcfg,'OUTBASE',outbase,cfg
 
+num_output_types =  0
+IF gif THEN num_output_types =  num_output_types+1
+IF pict THEN num_output_types =  num_output_types+1
+IF ps THEN num_output_types =  num_output_types+1
+IF tiff THEN num_output_types =  num_output_types+1
+IF jpeg THEN num_output_types =  num_output_types+1
+IF ppm THEN num_output_types =  num_output_types+1
 
-
-;pict    = KEYWORD_SET( pict )  
-;gif     = KEYWORD_SET( gif )  
-;ps      = KEYWORD_SET( ps )   
-;tiff    = KEYWORD_SET( tiff )  
-;jpeg    = KEYWORD_SET( jpeg )  
+IF num_output_types GT 1 THEN BEGIN 
+  Message,"Only one of gif, tiff, pict, ps, jpeg or ppm can be chosen!",/info
+  return
+ENDIF 
 
 
 IF n_elements(harmonic) EQ 0 THEN harmonic = 1;
@@ -590,7 +613,8 @@ IF NOT pict AND $
    NOT gif AND $
    NOT ps AND $
    NOT tiff AND $
-   NOT jpeg THEN gif =  1
+   NOT jpeg AND $
+   NOT ppm THEN jpeg =  1
 
 mps2knots =  1./0.51479 ; converts meters/sec to knots.
 
@@ -611,6 +635,7 @@ ENDIF
 
 IF n_elements( length ) EQ 0 THEN length =  3;
 IF n_elements( title ) EQ 0 THEN title =  '' 
+IF n_elements( outbase ) EQ 0 THEN outbase =  'wind' 
 
   ; To the maintainer. As a optimzation move, do all internal
   ; calculations in meters/second. Otherwise, we have to keep
@@ -631,6 +656,7 @@ IF n_elements( title ) EQ 0 THEN title =  ''
 ncolors = 29
 
 CASE 1 OF
+  ppm: Message,' Files will be output in PPM format',/cont
   gif: message,' Files will be output in GIF format',/cont
   pict: message,' Files will be output in PICT format',/cont
   ps: message,' Files will be output in PS format',/cont
@@ -1453,48 +1479,57 @@ IF read_success THEN BEGIN
       ENDIF ELSE outim =  im
 
       frame = PadAndJustify(frm+1,3,pad='0',/right)
-      IF gif THEN BEGIN 
-        gfile =  'gwind.' + frame  
-        write_gif, gfile, outim, red,green,blue
-      ENDIF 
-      IF pict THEN BEGIN 
-        pfile =  'pwind.' + frame  
-        write_pict, pfile, outim, red,green,blue
-      ENDIF 
-      IF ps THEN BEGIN 
-        pfile =  'pswind.' + frame  
-        ps, file=pfile,/land
-        DEVICE,/color,bits_per_pixel=8
-        tv, outim, xsiz=640/0.02, ysiz=480/0.02
-        device,/close
-        set_plot,'z'
-      ENDIF 
-      IF jpeg THEN BEGIN 
-        im = [ [[red[outim]]], [[green[outim]]],[[blue[outim]]] ]
-        outim = 0
-        jfile = 'jwind.' + frame
-        write_jpeg,jfile,im,quality=100,true=3
-        im = 0
-      ENDIF 
-      IF tiff THEN BEGIN
-          ; Convert from 'bottom to top' 
-          ; ordering to 'top to bottom', just to be sure.
-        outim = reverse(outim,2)
-        IF frame EQ '001' THEN BEGIN 
-          rr =(gg=(bb=bytarr(256)))
-          nn = n_elements(red)
-          rr[0:nn-1] =  red
-          rr[255] = 255b
-          gg[0:nn-1] =  green
-          gg[255] = 255b
-          bb[0:nn-1] =  blue
-          bb[255] = 255b
-        ENDIF 
-        tfile =  'twind.' + frame
-        tiff_write, tfile, outim, 1, $
-         red= rr, green= gg, blue=bb,$
-         xresol=600,yresol=600
-      ENDIF 
+      CASE 1 OF 
+        jpeg: BEGIN 
+          im = [ [[red[outim]]], [[green[outim]]],[[blue[outim]]] ]
+          outim = 0
+          file = outbase + "." + frame + ".jpeg"
+          write_jpeg,file,im,quality=100,true=3
+          im = 0
+        END 
+        gif: BEGIN 
+          file =  outbase + '.' + frame  + ".gif" 
+          write_gif, file, outim, red,green,blue
+        END 
+        pict: BEGIN 
+          file =  outbase + '.' + frame  + ".pict"
+          write_pict, file, outim, red,green,blue
+        END 
+        ps: BEGIN 
+          file =  outbase + '.' + frame  + ".ps"
+          ps, file=file,/land
+          DEVICE,/color,bits_per_pixel=8
+          tv, outim, xsiz=640/0.02, ysiz=480/0.02
+          device,/close
+          set_plot,'z'
+        END
+        ppm: BEGIN 
+          im = [ [[red[outim]]], [[green[outim]]],[[blue[outim]]] ]
+          outim = 0
+          file = outbase + '.' + frame + ".ppm"
+          write_ppm,file,im
+          im = 0
+        END 
+        tiff: BEGIN
+            ; Convert from 'bottom to top' 
+            ; ordering to 'top to bottom', just to be sure.
+          outim = reverse(outim,2)
+          IF frame EQ '001' THEN BEGIN 
+            rr =(gg=(bb=bytarr(256)))
+            nn = n_elements(red)
+            rr[0:nn-1] =  red
+            rr[255] = 255b
+            gg[0:nn-1] =  green
+            gg[255] = 255b
+            bb[0:nn-1] =  blue
+            bb[255] = 255b
+          ENDIF 
+          file =  outbase + '.' + frame + ".tiff"
+          tiff_write, file, outim, 1, $
+           red= rr, green= gg, blue=bb,$
+           xresol=600,yresol=600
+        END
+      ENDCASE 
 
     ENDIF ; if istep-n_runup_frames ge 0
     ;
