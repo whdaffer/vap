@@ -1,122 +1,204 @@
 ;+
-; NAME:  GOES_OVERLAY 
+; NAME:  goes_overlay
 ; $Id$
-;
-; PURPOSE:  Read in a GOES file (one created by the
-; goes program obtained from Paul Chang ) run it through map_image,
-; put on pretty colors and overlay winds, if there are any.
+; PURPOSE:  does Goes overlays in true color
 ;
 ;
-; AUTHOR: William Daffer
+; AUTHOR:  William Daffer
 ;
 ;
-; CATEGORY:  Goes image processing
+; CATEGORY:  Qscat Vap
 ;
 ;
 ;
-; CALLING SEQUENCE:  
+; CALLING SEQUENCE:  goes_overlay, goesfile, 
+;                    windfiles   = windfiles, $ 
+;                    xsize       = xsize, $     
+;                    ysize       = ysize, $     
+;                    CRDecimate  = CRDecimate,$
+;                    Decimate    = Decimate, $
+;                    ExcludeCols = ExcludeCols, $
+;                    verbose     = verbose, $
+;                    minpix      = minpix, $
+;                    minspeed    = minspeed, $
+;                    maxspeed    = maxspeed,$
+;                    length      = length,$
+;                    thick       = thick, $
+;                    title       = title,$
+;                    BrightMin   = BrightMin, $
+;                    BrightMax   = BrightMax, $
+;                    SatMin      = SatMin, $
+;                    SatMax      = SatMax, $
+;                    LandRGB     = LandRGB,$
+;                    WaterRGB    = WaterRGB,$
+;                    LandHue     = LandHue,$
+;                    WaterHue    = WaterHue,$
+;                    outfile     = outfile,$
+;                    gif         = gif,$        
+;                    ps          = ps, $        
+;                    scalefac    = scalefac,$
+;                    jpeg        = jpeg,$
+;                    quality     = quality, $
+;                    config      = config, $
+;                    scalevec    = scalevec, $
+;                    gridlines   = gridlines, $
+;                    use_rf      = use_rf, $
+;                    rf_action   = rf_action, $
+;                    rf_color    = rf_color, $
+;                    status      = status
 ;
-;  Minimally:
-;
-;   goes_overlay, goesfile, wfiles=wfiles
-;
-;  Read 'Inputs', and 'Keywords' for fuller descriptions.
 ;
 ;
 ; 
 ; INPUTS:  
 ;
-;   goesfile  - (I) name of goes file to read
-
+;   goesfile: A gridded Goes file, as output by Paul Chang's Goes
+;             Gridding program.
 ;
-;
-;
-; OPTIONAL INPUTS:  
+; OPTIONAL INPUTS:  None
 ;
 ;
 ;	
 ; KEYWORD PARAMETERS:  
 ;
-;      wfiles : (I) vector containing the fully qualified filenames of
-;               windfiles to read
-;      minpix : -1, minpix : avg-sigma of data -2, call widget
-;               configurator. 0 is illegal value. Otherwise, take
-;               number as given. In anycase, minpix it is the minimum
-;               image value that will remain as clouds. Pixels with
-;               values below this are set to be land OR water.
+;     windfiles   : Vector of Strings, List of wind files  to
+;                   read. Must be fully qualified filenames
+;     xsize       : Xsize of resulting picture (def=640)
+;     ysize       : ditto, y size (def=480)
+;     CRDecimate  : Column/Row Decimate, 2 vector, CRdecimate=[2,3]
+;                   means take every 2nd column, every 3rd
+;                   row. (def=[1,1], i.e. take every vector.)
+;     Decimate    : Decimate: scalare. decimate=m means take every
+;                   m-th vector.
+;     ExcludeCols : String, A comma seperated list of columns or
+;                   ranges of columns to exclude, independently of 
+;                   whatever is excluded by CRDecimate and Decimate. 
+;                   Exclude='0,38:42,75' will exclude columns 0, 38 ;
+;                   through 42, inclusive and column 75. Note, the
+;                   string should be ; input using single quotes, as
+;                   the IDL interpreter has problems with ; "n where n
+;                   is a number. It thinks it's an octal number, and
+;                   fails ; with a syntax error when it sees a comma
+;                   or colon.
 ;
-;      getminpix : returns minpix if it changed
-;      minspeed  : minimum wind speed
-;      maxspeed  : max wind speed
-;      thick     : thickness of vectors (default:2)
-;      length    : length of vector (def:2)
-;      uu        : (I) u value of vectors
-;      vv        : (I) v value
-;      llon      : (I) long of u/v
-;      llat      : (I) lat of u/v
-;      save      : (IF) save to save set
-;      Z         : (IF) work in Z buffer
-;      nogrid    : (IF) Don't put down grid
-;      gif       : (IF) write gif file
-;      ps        : (IF) write postscript file
-;      title     : (I) string to add onto title string
-;      file_str  : (I) string to add onto file string
-;      thumbnail : (IF) if set, will make a 1/4 size (160x120)
-;               thumbnail image.
-;      watcolor : use only this color index for water (allowable range:
-;                 1<watcolor<11)
-;      windcolor : either a color index (int) in which case use only
-;               this color index for wind (allowable range:
-;               73<windcolor<97) or a color keyword.  available
-;               keywords are 'red', 'green','blue','white'
+;     minpix      : pixels below this number are set to 0 in cloud mask
+;     minspeed    : minimum speed (in Meters/sec) to display for wind vectors
+;     maxspeed    : maximum speed (in Meters/sec) to display for wind vectors
+;     length      : length of vectors (in IDL 'character' units)
+;     thick       : Thickness of vectors (in IDL 'character' units)
+;     title       : title for plot. This string is prepended to one 
+;                   built by the routine, containing the data of the
+;                   Goes file used.
+;     Subtitle    : A subtitle. No subtitle will appear, if this
+;                   string is absent.
+;     outfile     : (I/O) if set to a non-empty string on input, the
+;                   output file will have this name. If available for
+;                   output, but not set to non-empty string, outfile
+;                   will return the name of the output file
 ;
-;      l2        :  (I) if set, wind data is in  nscat level 2 files
-;      xsize     : Number of pixels in the x directionr (def:640)
-;      ysize     : Number of pixels in y dir(def:480)
-;      windowid  : (I) if set, plot to specified window.
-;      outpath   : (I) output directory
-;      getoutfile: (O) get output file name
-;      debug     : debug flag
-;      nscat     : flag: if set, this routine expects nscat style data
-;                 files.;
+;     BrightMin   : The abscissa at which the brightness transfer
+;                   function starts it's linear ramp to 1. The
+;                   ordinates of the transfer function for abscissa
+;                   less than this abscissa will be set to 0. Input as
+;                   a float between 0 and 1 (default=0)
+;     BrightMax   : The abscissa at which the brightness function
+;                   reaches 1. The ordinates of the transfer function
+;                   for abscissa greater than this one will be set to
+;                   1. Input as float between 0 and 1. 
+;                   (Default = 0.8)
+;     SatMin      : The abscissa at which the Saturation transfer
+;                   function starts its linear ramp to 0. Ordinates of
+;                   the transfer function less than this one will be
+;                   set to 1. Input as a float between 0 and 1. (Default=0.)
+;     SatMax      : The abscissa at whith the saturation transfer
+;                   function reachs 0. Ordinates of the transfer
+;                   function for abscissa greater than this one are ;
+;                   set to 0. Input as a float between 0 and
+;                   1. (Default=0.55)
+;     LandRGB     : The 3-vector containing the RGB values for the
+;                   Land color (default = [25, 110,   0]
+
+;     WaterRGB    : The 3-vector containing the RGB values for the
+;                   Water color. Default=[28, 15,  80]
 ;
-;                               ; These next three keywords
-;                               ; are Qscat/Seawinds
-;                               ; specific.
-;
-;      decimate : Take every n-th vector, i.e. 2 means take every 2nd,
-;               3 : take every 3rd...
-;
-;
-;      CRDecimate: two element array, CRD[0] :n, take every nth column,
-;               CRD[1]:m, take every mth row, e.g. [2,3] means take
-;               every 2nd col, 3rd row. crdecimate:[0,0],
-;               CRDecimate:[1,1] take every vector.  CRDecimate takes
-;               precidence over decimate.;
-;
-;      excludecols : String suitible for an 'execute' call,
-;               e.g. "2,3,23:35,71,72".  These columns will be
-;               excluded, in addition to the ones excluded by decimate
-;               and CRDecimate
-;
-;
-;
-; OUTPUTS:  
-;
+;     LandHue     : the Hue value for land (from a Hue/Brightness/Saturation
+;                   triple )
+;     WaterHue    : the Hue value for water (from a
+;                   Hue/Brightness/Saturation triple
 ;
 ;
-; OPTIONAL OUTPUTS:  
+;     gif         : output as Gif file 
+;     scalefac    : scale factor to be used in making Postscript files.
+;                   (def=0.05)
+;     ps          : output as Postscript file
+;     jpeg        : output file as Jpeg file (the default)
+;     Quality     : Use this quality when making Jpeg files (def=75)
+;     verbose     : flag, if set, emit many messages
+;     thumbnail   : if present, this will contain the bytarr with a
+;                   thumbnail (30% of the size of the full image)
+;                   Not applicable in the case of Postscript output.
+;     Config      : Flag, if set a 'configuration window' will open
+;                   and allow you to chose the {bright,Sat}{min,max}
+;                   values.
 ;
-;  bimage : (o) resulting byte imate
-;  wdata  : (O) output of wind data, if any was read,  using the
-;          'wfiles' keyword. A 4 X nn array where nn is the number of
-;          data. wdata(0,*) = u, (1,*)=v, (2,*)=lon ...
+;     ScaleVec   : Flag, if set, the vectors will be scaled by their
+;                   speed. (Mind the similarity with 'scalefac')
 ;
-; COMMON BLOCKS:  
+;     GridLines    : Put down map grid lines after TVing the image.
+;
+;     Status       : (0), 0 means failure, 1 means success.
+;
+;     Use_RF       : (I), Flag , 0|1|2 depending on whether you want
+;                    NO flagging (0), MP flagging (1) or 
+;                    NOF flagging (2). Default=0, no flagging
+;
+;     FL_Action    : (I), flag, 0|1 depending on whether you want to
+;                    skip plotting rain flagged data (0) or plot it
+;                    with the color given in FL_Color(1), Default = 1,
+;                    use FL_color.
+;
+;     FL_Color     : (I), long integer. The 24 bit color to be used
+;                    when plotting the rain flagged data, provide
+;                    FL_Action=1. The default is black. (Although I
+;                    like '80541e'xl, which is a sort of muddy
+;                    brown. It's index 12 in the pv colortable. Much
+;                    more visible and 'dirty' looking.
 ;
 ;
 ;
-; SIDE EFFECTS:  
+;
+;
+;
+; OUTPUTS:  A file, either a .gif, .jpeg (the default) or a .ps file,
+;          depending on the status of these three flags having either
+;          a name built from the input goes file name (the default) or
+;          whatever is passed in via the 'outfile' keyword. The
+;          default output format is Gif and the default name is :
+; 
+;          GOES_nn_mmm_yyyymmddThh:mm-%aaaa,bbb,cccc,ddd%.ext (ext=gif,jpeg,ps)
+;
+;          where 
+;          nn = 8 or 10
+;          mmm = VIS, IR1,IR2,IR3, OR IR4 
+;          yyyymmdd = year, month, day, e.g. 19981202
+;          hh:mm  = hour:minute
+;          aaaa = minimum longitude, 4 digit, signed 
+;          bbb  = minimum latitude, 3 digit, signed 
+;          cccc = maximum longitude, 4 digit, signed 
+;          ddd  = maximum latitude, 3 digit, signed 
+;
+;          The keyword 'outfile' will contain the output file name if
+;          it (i.e. outfile) is  present for output.
+;
+; OPTIONAL OUTPUTS:  None
+;
+;
+;
+; COMMON BLOCKS:  goes_overlay_cmn
+;
+;
+;
+; SIDE EFFECTS:  Vast reduction of memory, as this program uses ALOT.
 ;
 ;
 ;
@@ -124,1001 +206,826 @@
 ;
 ;
 ;
-; PROCEDURE:  
+; PROCEDURE:  Way to complicated to describe here.
 ;
 ;
 ;
 ; EXAMPLE:  
 ;
 ;
-;
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
-; Revision 1.8  1999/04/08 22:00:36  vapuser
-; Replaced Colorbar with ColBar
-;
-; Revision 1.7  1999/04/08 16:01:45  vapuser
-; Various cleanup and bug squashing.
-;
-; Revision 1.6  1998/11/13 22:03:16  vapuser
-; Added standard header
-;
-; Revision 1.5  1998/11/11 20:51:18  vapuser
-; Took out 'limits' keyword, did other remediation of memory usage.
-;
-; Revision 1.4  1998/11/04 19:39:21  vapuser
-; Put in call to ColorBar, use Hist_Equal on data array, other
-; oddiments here and there.
-;
-; Revision 1.3  1998/10/30 22:12:02  vapuser
-; Worked on image processing, not done yet.
-;
-; Revision 1.2  1998/10/17 00:14:39  vapuser
-; worked on CRDecimate and ExcludeCols keywords.
-; Killed a few bugs.
-;
-; Revision 1.1  1998/09/09 17:34:51  vapuser
-; Initial revision
 ;
 ;
-
+;  ===== Removed mod log from goes_overlay24.pro ===
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
 ;Government sponsorship under NASA Contract NASA-1260 is acknowledged.
 ;-
-; $Id$
-;
-;
-PRO GOES_OVERLAY, goesfile, $ ; (I) name of goes file to read
-                  bimage, $   ; (o) resulting byte imate
-                  wdata,$     ; (O) output of wind
-                              ; data, if any was read, 
-                              ; using the 'wfiles'
-                              ; keyword. A 4 X nn array
-                              ; where nn is the number
-                              ; of data. wdata(0,*)
-                              ; = u, (1,*)=v, (2,*)=lon ...
-                  wfiles = wfiles,$         ; (I) vector containing the
-                                           ; fully qualified filenames
-                                           ; OF windfiles to read 
-                  minpix    = minpix,$     ; -1, minpix=avg-sigma of data
-                                           ; -2, call widget
-                                           ; configurator.
-                                           ; 0 is illegal value.
-                                           ; Otherwise, take number as
-                                           ; given. In anycase, minpix
-                                           ; it is the minimum image 
-                                           ; value that will remain as 
-                                           ; clouds. Pixels with
-                                           ; values below this  
-                                           ; are set to be land OR
-                                           ; water. 
-                  getminpix =  getminpix, $ ; returns minpix if it changed
-                  minspeed  = minspeed,$   ; minimum wind speed
-                  maxspeed  = maxspeed,$   ; max wind speed
-                  thick     = thick ,$     ; thickness of vectors (default=1)
-                  length    = length ,$    ; length of vector (def=2)
-                  uu        = uu   ,$      ; (I) u value of vectors
-                  vv        = vv   ,$      ; (I) v value
-                  llon      = llon ,$      ; (I) long of u/v
-                  llat      = llat ,$      ; (I) lat of u/v
-                  save      = save ,$      ; (IF) save to save set
-                  Z         = Z    ,$      ; (IF) work in Z buffer
-                  nogrid    = nogrid ,$    ; (IF) Don't put down grid
-                  gif       = gif  ,$      ; (IF) write gif file
-                  jpeg      = jpeg,$       ; (IF) write jpeg files (default)
-                  ps        = ps   ,$      ; (IF) write postscript file
-                  title     = title ,$     ; (I) string to add onto title string
-                  file_str  = file_str ,$  ; (I) string to add onto file string
-                   thumbnail = thumbnail,$ ; (I/O) if present as output 
-                                ; argument, routine will make
-                                ; thumbnail image and put name in this
-                                ; field. It will be 30% X 30% of
-                                ; orginal. Not available if output is
-                                ; Postscript.
-                  
-                  watcolor    = watcolor ,$    ; use only this color index
-                                           ; for water (allowable
-                                           ; range: 1<watcolor<11)
-                  windcolor    = windcolor ,$ ; either a color index
-                                              ; (int) in which case use only
-                                              ; this color index
-                                              ; for wind (allowable
-                                              ; range: 73<windcolor<97)
-                                              ; or a color keyword.
-                                              ; available keywords are
-                                              ; 'red', 'green','blue','white'
-                  l2        =  l2    ,$    ; (I) if set, wind data is in 
-                                           ; nscat level 2 files
-                  xsize     = xsize  ,$    ; number of pixels in x dir(def=640)
-                  ysize     = ysize  ,$    ; number of pixels in y dir(def=480)
-                  windowid  = windowid ,$  ; (I) if set, plot to specified window.
-                  outpath   = outpath ,$   ; (I) output directory
-                  getoutfile= getoutfile,$ ; (O) get output file name
-                  debug     =  debug ,$    ; 
-;                  limits    = limits,$     ; (I) 4 vector (minlon, minlat, 
-                                           ; maxlon,maxlat).
-                                           ; map will be set to these
-                                           ; limits. NOTE. care must
-                                           ; be used with this keyword
-                                           ; since these limits may
-                                           ; bear little relation to
-                                           ; the limits of the data in
-                                           ; the goes file. It's best
-                                           ; to map the whole file. If
-                                           ; you want different
-                                           ; limits, use the 'goes'
-                                           ; program to create a
-                                           ; different 'goesfile' with
-                                           ; those limits.
-                  nscat = nscat ,$         ; flag: if set, this routine 
-                                           ; expects nscat 
-                                           ; style data files.
-
-                                           ; These next three keywords
-                                           ; are Qscat/Seawinds
-                                           ; specific.
-
-                  decimate = decimate ,$   ; Take every n-th vector, 
-                                           ; i.e. 2 means take every
-                                           ; 2nd, 3 = take every
-                                           ; 3rd...
+PRO goes_overlay, goesfile, $
+                    windfiles   = windfiles, $ 
+                    xsize       = xsize, $     
+                    ysize       = ysize, $     
+                    CRDecimate  = CRDecimate,$
+                    Decimate    = Decimate, $
+                    ExcludeCols = ExcludeCols, $
+                    verbose     = verbose, $
+                    minpix      = minpix, $
+                    minspeed    = minspeed, $
+                    maxspeed    = maxspeed,$
+                    length      = length,$
+                    thick       = thick, $
+                    title       = title,$
+                    subtitle    = subtitle, $
+                    outfile     = outfile,$
+                    BrightMin   = BrightMin, $
+                    BrightMax   = BrightMax, $
+                    SatMin      = SatMin, $
+                    SatMax      = SatMax, $
+                    LandRGB     = LandRGB,$
+                    WaterRGB    = WaterRGB,$
+                    LandHue     = LandHue,$
+                    WaterHue    = WaterHue,$
+                    gif         = gif,$        
+                    ps          = ps, $        
+                    scalefac    = scalefac, $
+                    jpeg        = jpeg,$
+                    quality     = quality, $
+                    thumbnail   = thumbnail, $
+                    config      = config , $
+                    scalevec    = scalevec, $
+                    gridlines   = gridlines, $
+                    status      = status, $
+                    use_rf      = use_rf, $
+                    rf_action   = rf_action, $
+                    rf_color    = rf_color 
 
 
-                  CRDecimate=CRDecimate,$  ; two element array, 
-                                           ; CRD[0] =n, take every nth
-                                           ; column, CRD[1]=m, take every
-                                           ; mth row, e.g. [2,3] means
-                                           ; take every 2nd col, 3rd
-                                           ; row. crdecimate=[0,0] =
-                                           ; CRDecimate=[1,1] = take
-                                           ; every vector.
-                                           ; CRDecimate takes
-                                           ; precidence over decimate.
-
-                  excludecols=excludecols  ; String suitible for 
-                                           ; an 'execute' call,
-                                           ; e.g. "2,3,23:35,71,72". 
-                                           ; These columns will be
-                                           ; excluded, in addition to
-                                           ; the ones excluded by
-                                           ; decimate and CRDecimate
+; COMMON goes_overlay_cmn, landel
 
 
-                  
+  status = 1
+  genv,/save
+  tvlct,orig_red,orig_green,orig_blue,/get
+  loadct,0,/silent
+;  catch, error
+;  IF error NE 0 THEN BEGIN 
+;    Message,!error_state.msg,/cont
+;    catch,/cancel
+;    tvlct,orig_red,orig_green,orig_blue
+;    genv,/restore
+;    status=0
+;    return
+;  END
 
+;  FOR i=0,1 DO BEGIN 
+;    device,get_visual_name= this_visual
+;    this_visual =  strupcase(this_visual)
+;    IF this_visual NE 'DIRECTCOLOR' AND  $
+;       this_visual NE 'TRUECOLOR' THEN BEGIN 
+;      IF i EQ 0 THEN device,true=24 ELSE BEGIN 
+;        Message,'Visual Class MUST be either DIRECTCOLOR or TRUECOLOR',/cont
+;        print,'  You must Exit and restart IDL'
+;        print,'  If you continue getting this error, look at you initilization'
+;        print," files and make sure you're not setting device,pseudo=8"
+;        Message,'ERROR'
+;      ENDELSE
+;    ENDIF 
+;  ENDFOR 
 
-                                         
-                  
-                  
-
-
-; Calling sequence
-;
-; IDL> goes_overlay, goesfile, bimage
-;
-;      will read specified goes file and map the entire image 
-;      It will not plot any wind vectors. It will return the
-;      final image used in the variable bimage.
-;      
-;
-; IDL> goes_overlay, goesfile, bimage, wfiles = vector_of_files, wdata = wdata
-;
-;      map all data in goesfile, read wind data from input vector of
-;      wind files, return wind data in variable wdata as a 4 X nn
-;      array and the warped byte image in bimage
-; 
-; IDL> goes_overlay, goesfile, bimage, uu=uu, vv=vv, llon=llon,$
-;      llat=llat, /write_gif
-;
-;      map all data in goesfile, plot uu/vv vectors at specified
-;      llon/llat locations, write output to gif file.
-;
-;
-COMMON goes_overlay_cmn, landel
-COMMON colors, r_curr, g_curr, b_curr, r_orig, g_orig, b_orig
-
-catch, error
-IF error NE 0 THEN BEGIN 
-  catch,/cancel
-  Message,!err_string,/cont
-  return
-END
-
-lf =  string(10B)
-debug =  keyword_set( debug )
-; IF NOT debug THEN on_error, 2 ; return to caller
-GENV,/save ; save graphics environment 
-nparams =  n_params(0);
-IF nparams EQ 0 OR n_elements(goesfile) EQ 0 THEN BEGIN 
-  str =  'Usage: Goes_Overlay, goesfile, $ ' + lf + $
-         '   [wfiles=wfiles | [uu=uu,vv=vv,llon=llon,llat=llat]], $' + lf + $
-         '   [,bimage, wdata, image, data, $ ' +lf + $
-         '   minpix=minpix, minspeed=minspeed, maxspeed=maxspeed, $ ' + lf + $
-         '    thick=thick, length=length, Z=Z, gif=gif, ps=ps, $' + lf + $
-         '     jpeg=jpeg,title=title, file_str=file_str, $ ' + lf + $
-         '      thumbnail=thumbnail, watcolor=watcolor, $ ' + lf + $
-         '       windcolor=windcolor, decimate=decimate, $' + lf + $
-         '        CRDecimate=CRDecimate, ExcludeCols=ExcludeCols] '
-  Message,str,/cont
-  return
-ENDIF 
-
-gif =  keyword_set(gif)
-ps  =  keyword_set(ps)
-jpeg = keyword_set(jpeg)
-l2  =  keyword_set(l2)
-thumbnail =  arg_present( thumbnail )
-ofile = ''
-
-IF ( ( keyword_set(xsize) OR keyword_set(ysize) ) AND ps ) THEN BEGIN 
-  str = "keywords PS and any combination of XSIZE/YSIZE disallowed"
-  message,str,/cont
-  message,' XSIZE/YSIZE only allowed with GIF/X/Z outputs/devices ',/cont
-  return
-ENDIF 
-
-
-IF n_elements( minspeed ) EQ 0 THEN minspeed =  0
-IF n_elements( maxspeed ) EQ 0 THEN maxspeed =  30
-
-IF n_elements( xsize ) EQ 0 THEN xsize =  640
-IF n_elements( ysize ) EQ 0 THEN ysize =  480
-
-IF n_elements( thick ) EQ 0 THEN thick =  2
-
-IF n_elements( length ) EQ 0 THEN length = 2
-
-IF n_elements( outpath ) NE 0 THEN BEGIN
-  IF strmid( outpath, strlen(outpath)-1, 1 ) NE '/' THEN $
-   outpath =  outpath + '/'
-ENDIF ELSE outpath =  './'
-
-IF n_Elements(ExcludeCols) NE 0 THEN BEGIN 
-  IF VarType(ExcludeCols) eq 'STRING' THEN BEGIN 
-    IF strlen(ExcludeCols) EQ 0 THEN BEGIN 
-      Message,'ExcludeCols must be of non-zero length, ignored ',/cont
-      exclude = ''
-    ENDIF ELSE exclude = ExcludeCols
-  ENDIF ELSE BEGIN 
-    Message,'ExcludeCols must be of a string, ignored ',/cont
-    exclude = ''
-  ENDELSE 
-ENDIF 
-
-IF exist(CRDecimate) AND N_Elements(CRDecimate) NE 2 THEN BEGIN 
-  Message,'CRDecimate must be a 2-vector, ignored',/cont
-  CRD = [1,1]
-ENDIF ELSE IF NOT exist(CRDecimate) THEN CRD = [2,2] ELSE CRD = CRDecimate
-
-
-IF N_Elements(Decimate) EQ 0 THEN Decimate = 1
-
-cblables =  strtrim( [ minspeed, maxspeed ], 2 )
-cbtitle = 'Wind Speed (M/S)'
-
-IF gif AND ps OR $
-   gif AND jpeg OR $
-   jpeg AND ps THEN BEGIN
-  message," Only one of 'gif' or 'ps' or 'jpeg' allowed ",/cont
-  return
-ENDIF 
-
-IF NOT gif AND NOT ps AND NOT jpeg THEN jpeg = 1
-
-CASE 1 OF 
-  gif : extension =  'gif'
-  jpeg: extension = 'jpeg'
-  ps  : extension = 'ps'
-ENDCASE
-
-Message,'Output will be as a .' + extension + ' file',/info
-
-
-IF ps THEN BEGIN 
-  set_plot,'ps'
-  device, /color, bits=8,/landscape 
-  scalef =  0.02
-ENDIF ELSE scalef =  1.
-
-;IF ps THEN Z =  1
-PLOTVECT = 0;
-;
-; Handle watcolor requests.
-;
-IF keyword_set( watcolor ) THEN BEGIN
-  IF watcolor LT 1 OR watcolor GT 11 THEN BEGIN 
-    message,' keyword WATCOLOR must be in range [1, 11] ',/cont
+  IF n_elements(goesfile) EQ 0 THEN BEGIN 
+    Message,'Usage: goes_overlay, goesfile [,windfiles=windfile, xsize=xsize, ysize=ysize, ps=ps | gif=gif | jepg=jpeg,title=title,subtitle=subtitle, CRDecimate=CRDecimate,Decimate=Decimate,ExcludeCols=ExcludeCols, verbose=verbose, minspeed=minspeed, maxspeed=maxspeed, length=length, thick=thick,BrightMin=BrightMin,BrightMax=BrightMax,SatMin=SatMin,SatMax=SatMax,LandRGB=LandRGB,WaterRGB=WaterRGB,LandHue=LandHue,WaterHue=WaterHue,ScaleVec=ScaleVec,use_rf=0|1|2,rf_action=0|1,rf_color=24bitnumber ] ',/cont
+    tvlct,orig_red,orig_green,orig_blue
+    genv,/restore
+    status = 0
     return
   ENDIF 
-ENDIF 
-goesfile =  goesfile(0)
-
-sensors =  [ 'Visible','IR2','IR3','IR4','IR5']
-;tmp       =  str_sep( goesfile, '/' )
-;base_name =  tmp(n_elements(tmp)-1)
-;sensornum =  strmid( base_name, 5,1)
-;sensor    =  sensors( sensornum-1 )
-;sat_num =  fix( strmid( base_name, 4,1 ) )
-; sat_name =  strmid( base_name, 0, 4 ) + ' ' + strmid( base_name, 4, 1 )
-
-GoesFilenameStruct = ParseGoesFileName( goesfile )
-IF VarType( GoesFilenameStruct ) NE 'STRUCTURE' THEN BEGIN 
-  Message," Trouble parsing " + Goesfile ,/cont
-  return
-ENDIF ELSE BEGIN 
-  sat_name = GoesFilenameStruct.SatName + " " + $
-   strtrim(GoesFilenameStruct.SatNum,2 )
-ENDELSE 
-sensornum = GoesFilenameStruct.Sensornum
-sensor    =  sensors[ sensornum-1 ]
-;dash =  strpos( base_name, '_' )
-;jday =  strmid( base_name, dash+1, 3 )
-;time =  strmid( base_name, dash+4, 4 )
-;tmp =  strtrim( doy2date( fix(year), fix(jday) ), 2 ) 
-;date_str =  tmp(0) + '/' + tmp(1) + '/' + $
-; strmid( strtrim( year,2 ), 2,2 )
-
-IR =  ( sensornum GT 1 )
-; check for wind data input .
-;
-
-NullPtr = Ptr_New()
-CASE 1 OF 
-  keyword_set( wfiles ) : BEGIN
-    plotvect =  1
-    IF keyword_set( nscat ) THEN BEGIN 
-      IF L2 THEN READ_L2_DATA,    wfiles, uu,vv,llon,llat,$
-                              mintime= mintime, maxtime=maxtime ELSE $
-                 READ_RMGDR_DATA, wfiles, uu,vv,llon,llat, mintime=mintime,$
-                                           maxtime=maxtime 
-    ENDIF ELSE BEGIN 
-        ; Data is assumed to be Qscat or Seawinds data
-      retptr = ReadQ2BData( wfiles, $
-                            decimate=decimate, $
-                            CRDecimate=CRD, $
-                            ExcludeCols=exclude) ; take every other vector
-      IF retptr EQ NullPtr THEN BEGIN 
-        Message,'Error Reading Quikscat/Seawinds data',/cont
-        return
-      ENDIF ELSE BEGIN 
-        wdata =  temporary( *retptr )
-        uu    = wdata[*,*,0] 
-        vv    = wdata[*,*,1]
-        llon  = wdata[*,*,2]
-        llat  = wdata[*,*,3]
-        wdata = 0;
-        plotvect = 1
-      ENDELSE 
-    ENDELSE 
-    IF n_elements( uu ) EQ 0 THEN BEGIN 
-      message,' No data found for input data files ',/cont
-      print, wfiles
-      print,' Are the filenames fully qualified ?'
-      print,' *** Returning *** '
-      return
-    ENDIF 
-    IF nparams GE 3 THEN wdata =  [[uu],[vv],[llon],[llat]]
-
-  END 
-  keyword_set( vv )   AND keyword_set( uu ) AND $
-  keyword_set( llon ) AND keyword_set( llat ) : BEGIN
-    plotvect =  1
-  END
-  ELSE : BEGIN 
-    ; if one is set, they all must be!
-    IF keyword_set( uu ) THEN BEGIN
-      IF NOT keyword_set(vv) THEN $
-        message,' If you set one wind keyword, you must set them all '
-      IF NOT keyword_set(llon) THEN $
-        message,' If you set one wind keyword, you must set them all '
-      IF NOT keyword_set(llat) THEN $
-        message,' If you set one wind keyword, you must set them all '
-    ENDIF 
-
-    IF keyword_set( vv ) THEN BEGIN
-      IF NOT keyword_set(uu) THEN $
-        message,' If you set one wind keyword, you must set them all '
-      IF NOT keyword_set(llon) THEN $
-        message,' If you set one wind keyword, you must set them all '
-      IF NOT keyword_set(llat) THEN $
-        message,' If you set one wind keyword, you must set them all '
-    ENDIF     
-
-    IF keyword_set( llon ) THEN BEGIN
-      IF NOT keyword_set(vv) THEN $
-        message,' If you set one wind keyword, you must set them all '
-      IF NOT keyword_set(uu) THEN $
-        message,' If you set one wind keyword, you must set them all '
-      IF NOT keyword_set(llat) THEN $
-        message,' If you set one wind keyword, you must set them all '
-    ENDIF 
-
-    IF keyword_set( llat ) THEN BEGIN
-      IF NOT keyword_set(vv) THEN $
-        message,' If you set one wind keyword, you must set them all '
-      IF NOT keyword_set(llon) THEN $
-        message,' If you set one wind keyword, you must set them all '
-      IF NOT keyword_set(uu) THEN $
-        message,' If you set one wind keyword, you must set them all '
-    ENDIF 
-    IF NOT( keyword_set( uu ) AND keyword_set( vv ) AND $
-            keyword_set( llon) AND keyword_set( llat ) ) THEN BEGIN 
-       ; if none are set, then don't plot the vectors
-       plotvect = 0
-    ENDIF 
-  END 
-ENDCASE 
-
-
-IF exist( mintime ) AND exist( maxtime ) THEN BEGIN 
-    ;             1         2
-    ;   012345678901234567890    
-    ;  'yyyy-dddThh:mm:ss.ccc'
-  mintime =  strmid( mintime, 0, 8) + '/' + $
-   strmid( mintime, 9, 2) + strmid( mintime, 12,2 )
-  maxtime =  strmid( maxtime, 0, 8) + '/' + $
-   strmid( maxtime, 9, 2) + strmid( maxtime, 12,2 )
-
-  wind_time_str =  ' Wind Data: ' + strtrim( mintime ,2 ) + ' - ' + $
-  strtrim( maxtime, 2 )
-
-ENDIF 
-save       =  keyword_set( save )
-Z          =  keyword_set( Z )
-grid       =  NOT keyword_set( nogrid )
-
-;IF NOT keyword_set( minpix ) THEN BEGIN
-;  IF NOT IR THEN minpix =  150
-;ENDIF ELSE BEGIN 
-;  IF minpix EQ  -1 AND NOT ir THEN minpix =  150
-;ENDELSE 
-
-BACKGROUND  = 0b
-WATER_START = 1b
-WATER_MAX   = 12b
-LAND_START  = 13b
-CLOUD_START = 33b
-WIND_START  = 73b
-WHITE       = 98b
-N_WIND_COLORS =  WHITE-WIND_START+1
-
-IF getenv('VAP_RESOURCES') NE '' THEN BEGIN 
-  colorTableFile = getenv('VAP_RESOURCES')+ $
-    '/Color_Tables/goes_overlay.ct'
-ENDIF ELSE $
-  colorTableFile = $
-     '/usr/people/vapuser/Qscat/Resources/Color_Tables/goes_overlay.ct'
-
-PtrToColorTable = ReadColorTable(colorTableFile)
-IF NOT Ptr_Valid(PtrToColorTable) THEN BEGIN 
-  Message,"ERROR: Can't open " + colorTablefile,/cont
-  return
-ENDIF ELSE BEGIN 
-  CT = *PtrToColorTable
-  Red = reform(CT[0,*])
-  Green = reform(CT[1,*])
-  Blue = reform(CT[2,*])
-  Ptr_Free,PtrToColorTable
-  CT = 0
-ENDELSE 
-
-;openr,rlun,'$VAP_/goes_overlay.ct',/get,error=err
-;IF err NE 0 THEN BEGIN 
-;  message,!err_string,/cont
-;  return
-;ENDIF 
-;spawn,' wc -l $VAP_ROOT/goes-vis-overlay-ct.txt', nlines
-;nlines =  nlines(0)
-;tmp =  bytarr(3,nlines)
-;top_color_index =  nlines-1
-;readf,rlun, tmp
-;free_lun,rlun
-;tmp =  transpose( tmp )
-;red   =  tmp( *,0)
-;green =  tmp(*,1)
-;blue  =  tmp(*,2) &  tmp=0
-
-
-
-; Handle windcolor requests
-IF n_elements( windcolor ) NE 0 THEN BEGIN
-  input_windcolor = windcolor
-  s =  size( windcolor )
-  IF type(windcolor) EQ 'STRING' THEN BEGIN
-    color =  GETCOLOR( windcolor )
-    windcolor = wind_start
-    tvlct,color,wind_start
-    red(windcolor) = color(0)
-    green(windcolor) = color(1)
-    blue(windcolor) = color(2)
-  ENDIF ELSE BEGIN
-    IF windcolor LT  wind_start OR $
-       windcolor GT white THEN BEGIN
-      str =  ' Out of range wind color, keep 73 <=windcolor,98!'
-      message,str,/cont
-      return
-    ENDIF 
-  ENDELSE 
-ENDIF ELSE windcolor = -1
-
-r_curr = red 
-g_curr = green
-b_curr = blue
-r_orig = red
-g_orig = green
-b_orig = blue
-
-message,' Reading Goes file ' + goesfile,/cont
-
-IF NOT keyword_set( file_str ) THEN file_str =  ''
-;IF thumbnail THEN BEGIN
-;  ; GOTN = Goes Overlay ThumbNail
-;  IF keyword_set( watcolor ) THEN $
-;    GOTN, goesfile=goesfile, data=data, limits=limits, $
-;       uu=uu, vv=vv,  llon=llon, llat=llat, minpix=minpix, $
-;       minspeed=minspeed, maxspeed=maxspeed, date_str= date_str, $
-;         file_str= file_str,watcolor=watcolor, $
-;         windcolor=input_windcolor  ELSE $
-;    GOTN, goesfile=goesfile, data=data, limits=limits, $
-;       uu=uu, vv=vv, llon=llon, llat=llat, minpix=minpix, $
-;       minspeed=minspeed, maxspeed=maxspeed, date_str= date_str, $
-;         file_str= file_str, windcolor=input_windcolor
-;ENDIF ELSE BEGIN
-
-
-  ; read the goes file
-  READ_PCGOES, goesfile, limits, data, image, year, jday, $
-              time, nlon,nlat, lonsize, latsize, info_string, $
-              area_file = area_file, hdr=hdr
-  IF year EQ 0 THEN BEGIN
-    ; older version of the grid file don't
-    ; have the year info in them. so set current year.
-    ;spawn,'date',ret_str
-    ;tmp =  str_sep( ret_str(0), ' ' )
-    ;year =  tmp( n_elements(tmp)-1 )
-    year =  (bin_date())[0]
-  ENDIF 
-
-  tmp =  strtrim( doy2date( fix(year), fix(jday) ), 2 )
-  date_str =  tmp(0) + '/' + tmp(1) + '/' + $
-     strmid( strtrim( year,2 ), 2,2 )
-  jday = strtrim( fix(jday),2 )
-  tmp =  '000'
-  strput, tmp, jday, 3-strlen(jday)
-  jday = tmp
-
-;ENDELSE 
-
-
-IF n_elements( data ) EQ 0 THEN BEGIN
-  message,' Error reading file ' + goesfile ,/cont
-  return
-ENDIF 
-
-date = doy2date( year, jday )
-
-month =  date[0]
-dom = date[1]
-
-IF NOT keyword_set( windowid ) THEN BEGIN 
-  IF NOT Z AND NOT ps THEN BEGIN 
-    set_plot,'x'
-    window, xsize=xsize,ysize=ysize,colors=n_elements(red),/free 
-  ENDIF ELSE IF NOT ps THEN BEGIN
-    set_plot,'z'
-    device, set_resolution=[xsize,ysize]
-  ENDIF 
-ENDIF ELSE WSET, windowid
-
-tvlct,red,green,blue
-
-
-
-IF n_elements( landel ) EQ 0 THEN BEGIN 
-  ; read the land elevation file if it isn't in the common
-  openr,landlun,'$VAP_LIB/land_elevations.bin', /get, error=err
-  IF err NE 0 THEN BEGIN 
-    Message,!error_state.msg,/cont
-    return
-  ENDIF 
-  landel =  intarr( 12l*360, 12l*180 + 1 )
-  readu,landlun, landel
-  free_lun,landlun
-ENDIF 
-
-; get the section of the land el file we need
-lonpar =  limits([0,2])
-latpar =  limits([1,3])
-x = where( lonpar LT 0., nx )
-IF nx GT 0 THEN lonpar(x) =  lonpar(x) + 360.
-landlon   = fix( [lonpar(0),lonpar(1)]*12. )
-landlat   = fix( ([latpar(0),latpar(1)]+90)*12 )
-nlandlon  = landlon(1)-landlon(0)+1 
-nlandlat  = landlat(1)-landlat(0)+1 
-landlon   = findgen(nlandlon)/12. + lonpar(0); #(fltarr(nlandlat)+1)   
-landlat   = findgen(nlandlat)/12. + latpar(0); ##(fltarr(nlandlon)+1)
-
-tlimits =  limits ; copy to protect limits variable
-minlat =  limits(1) &  minlon= limits(0) &  maxlon= tlimits(2)
-
-latcent =  0
-loncent = 0
-y = [0,2]
-x =  where( tlimits(y) LT 0,nx )
-IF nx NE 0 THEN tlimits(y(x)) =  tlimits(y(x)) + 360.
-
-loncent =  mean( tlimits([0,2]) )
-
-IF exist( wind_time_str ) THEN $
- tit =  wind_time_str ELSE $
- tit =  ''
-
-If keyword_set( title ) THEN tit = tit + ' ' + title 
-
-
-title_str =  sat_name + ' '+ $
-  sensor +  ' ' +          $
-   '('+ date_str + ') = '  + $
-    jday + '/' + time  + ' UT '
-
-IF strlen(tit) GT 0 THEN $
- title_str =  title_str + ' ' + tit
-
-; define and load color bar for winds
-;cbar =  bytarr( 10, 10, n_wind_colors ) 
-;FOR i=0,n_wind_colors-1 DO cbar(*,*,i) =  byte(i) + wind_start
-;cbar =  transpose( reform( cbar, 10, 10*n_wind_colors ) )
-
-
-
-s = size(data)
-nlon =  s[1]
-nlat =  s[2]
-
-latinc =  (tlimits(3)-tlimits(1))/nlat 
-loninc =  (tlimits(2)-tlimits(0))/nlon 
-
-
-IF ir THEN  data =  temporary(1024-data) ; reverse for IR
-
-moments = moment(data)
-a = moments[0]
-s = sqrt(moments[1])
-oneSigma = a-s
-
-  ; This may not work for visual images!
-IF n_Elements( minpix ) EQ 0 THEN minpix = -1
-CASE minpix OF 
-  -1: BEGIN 
-    minpix =  oneSigma
-    message,' Minpix set to ' + strtrim( minpix, 2 ),/cont
-  END
-  -2: BEGIN 
-    ret = Cloud_Overlay_Config( data=data, limits=limits)
-    minpix = ret.cutoff
-    Message,' Minpix set to ' + strtrim( minpix, 2 ),/cont
-  END
-  ELSE:
-ENDCASE
-
-smallpix =  where( data LE minpix, nsmallpix )
-IF nsmallpix EQ 0 THEN BEGIN 
-  Message,'No pixels smaller than ' + strtrim(minpix,2),/cont
-  print,' Setting minpix to ' + oneSigma
-  minpix = OneSigma
-  smallpix =  where( data LE minpix, nsmallpix )
-  IF nsmallpix EQ 0 THEN BEGIN 
-    Message,' Still no pixels smaller than minpix (=' + strtrim( minpix,2) + ')',/cont
-    print,'    Returning'
-    return
-  ENDIF 
-ENDIF 
-
-dlon =  (findgen( nlon )*loninc + minlon ) # replicate(1.,nlat)
-dlat =  replicate(1.,nlon) # (findgen( nlat )*latinc + minlat ) 
-
-
-; Scale data array to 40 indices starting at 33
-;bimage =  bytscl( data, MIN=minpix, top=40 ) + CLOUD_START
-
-bimage = hist_equal( data, min=minpix, max=1024, $
-                     top=WIND_START-CLOUD_START-1)+CLOUD_START
-data = 0
-UNPACK_WHERE, bimage, smallpix, col, row
-
-lons =  dlon[ smallpix ]
-lats =  dlat[ smallpix ]
-mask =  lonarr( nsmallpix )
-t7 =  systime(1)
-xx =  where( lons LT 0, nxx )
-IF nxx NE 0 THEN lons(xx) =  lons(xx)+360.
-; Call the linkimage routine 'land_mask' to calculate which of each
-; point is land and which is water. Set the appropriate color index
-; in each.
-print,' Going into land_mask '
-t =  systime(1)
-LAND_MASK, lons, lats, mask
-print,' Time to do land_mask = ', $
- systime(1)-t, ' seconds for ', nsmallpix, ' pixels '
-;lon =  0
-;lat =  0
-
-print,' Going into land section '
-t1 =  systime(1)
-land =  where( mask EQ 1, nland )
-IF nland NE 0 THEN BEGIN 
-  ix =  lons( land )*12.
-  iy =  (lats( land )+90.)*12.
-  bimage( col(land), row(land) ) =  $
-   land_start >  (landel( ix, iy ) + LAND_START) <  (cloud_start-1)
-ENDIF 
-landel = 0
-t2 =  systime(1)
-print,' land section took ', (t2-t1)/60., ' minutes '
-
-sea =  where( mask EQ 0, nsea )
-IF nsea NE 0 THEN BEGIN 
-  IF keyword_set( watcolor ) THEN $
-    bimage( smallpix( sea ) ) =  watcolor $ 
-  ELSE $
-    bimage( smallpix( sea ) ) =  $
-      bytscl( bimage( smallpix( sea ) ), min= cloud_start, $
-           top= WATER_START + 11 )   + water_start
-
-ENDIF 
-
-col = 0
-row = 0
-land = 0
-sea = 0
-mask = 0
-
-xx =  where( bimage EQ 0, nxx )
-IF nxx NE 0 THEN BEGIN
-  IF keyword_set( watcolor ) THEN $
-   bimage( xx ) =  watcolor ELSE $
-   bimage( xx ) =  water_start+2
-ENDIF 
-
-t3 =  systime(1)
-print,' sea section took ', t3-t2, ' seconds '
-
-MAP_SET, latcent, loncent,  $
- limit=tlimits[ [1,0,3,2] ],/noborder, ymargin=[4.,4.]
-
-
-t1 =  systime(1)
-print, 'Going into map_image '
-bimage = Map_Image( bimage,xs,ys,xsiz,ysiz, $
-                    lonmin = tlimits(0), $
-                    latmin = tlimits(1),$
-                    lonmax = tlimits(2),$
-                    latmax = tlimits(3), $
-                    /whole_map,compress=1)
-t2 =  systime(1)
-print, 'map_image took ', (t2-t1)/60., ' Minutes '
-
-IF ps OR gif  OR save THEN BEGIN 
-  tmp =  '0000'
-  strput, tmp, time, 4-strlen(time)
-  time =  tmp
-  lim_str   =  strtrim( long(limits), 2 )
-  lim_str =  '%' + lim_str(1) + ',' + lim_str(0) + ',' + $
-                   lim_str(3) + ',' + lim_str(2) +  '%'
-  dlm =  '_'
-
   
-  year =  strtrim( year, 2 )
-  IF strlen(year) EQ 2 THEN year =  strtrim( fix(year)+1900,2)
-  time_string = year + month + dom + "T" + $
-    strmid(time,0,2) + ":" + strmid(time,2,2)
-  ofileroot = outpath + strtrim( sat_name, 2 ) +  dlm + $
-   sensor + '_' + time_string
-
-
-  sp =  strpos( ofileroot,' ' )
-  strput, ofileroot, '_', sp
-  ofileroot =  ofileroot + '-' + lim_str
-  IF keyword_set( file_str ) AND $
-     strlen( file_str(0) ) GT 0 THEN BEGIN 
-    s =  str_sep( file_str,' ' )
-    tt =  '_' + s(0)
-    FOR i=1,n_elements(s)-1 DO tt =  tt + '_' + s(i)
-    ofileroot =  ofileroot + tt
-  ENDIF 
-ENDIF 
-
-ofile = ofileroot + '.' + extension
-IF ps THEN  device, filename = ofile
-Message,' Output file = ' + ofile,/cont
-
-
-tv,bimage,xs,ys
-;s =  size( bimage ) &  ny= s(2)
-IF ps THEN BEGIN 
-; bimage(*,ny-40:ny-1) =  top_color_index ; ps looks best in white
- TV, bimage, xs,ys, XSIZ=xsiz, YSIZ=ysiz 
-ENDIF ELSE BEGIN 
-; bimage(*,ny-40:ny-1) =  0 ; gif/x looks best in black
- TV, bimage, xs,ys
-ENDELSE 
-
-;xy =  convert_coord( [ xs + xsiz/2, (ny-40)/scalef ] , /dev, /to_data )
-;y =  xy[1]
-
-sz = size(bimage,/dimensions)
-xyz = Convert_Coord( 0, ys+sz[1]/scalef, /device,/to_data )
-y = xyz[1]
-  ;
-  ; over plot the wind vectors, if there are any.
-
-IF plotvect THEN BEGIN 
-
-    ; Now we know what limits we're using, discard any data that falls
-    ; outside the plot window
-  flon = fixlonrange( [limits[0], limits[2] ] )
-  good = where( llon GE flon[0] AND llat GE limits[1] AND $
-                llon LE flon[1] AND llat LE limits[3], ngood )
-  IF ngood NE 0 THEN BEGIN 
-    uu = uu[good]
-    vv = vv[good]
-    llon = llon[good]
-    llat = llat[good]
+  read_cfgfile = 0
+  cfgname = cfgname()
+  cfgpath = '~/.idlcfg/' 
+  ff = findfile(cfgpath + cfgname,count=nf)
+  IF nf NE 0 THEN BEGIN 
+    read_cfgfile = 1
   ENDIF ELSE BEGIN 
-      ; Need some data in uu/vv/llon,/./at to keep the other 
-      ; portions of this code happy.
-    uu = uu[0]
-    vv = vv[0]
-    llon = llon[0]
-    llat = llat[0]
+    IF getenv('VAP_LIB') NE '' THEN BEGIN 
+      cfgpath = deenvvar('$VAP_LIB')
+      ff = findfile(cfgpath + cfgname,count=nf)      
+      read_cfgfile = (nf NE 0)
+    ENDIF
+  ENDELSE   
+
+  IF read_cfgfile THEN BEGIN 
+    print,' Reading CFG file ' + cfgname
+    read_cfgfile,cfgname, cfg,path=cfgpath
+    IF n_elements(cfg) NE 0 THEN BEGIN 
+      print,'CFG found! Details follow:'
+      help,cfg,/st
+    ENDIF 
+  ENDIF 
+
+  config =  keyword_set(config)
+  chkcfg,'GRIDLINES',GridLines,CFG,/bool
+
+  chkcfg,'DEFAULT_WATERRGB',Default_WaterRGB,CFG
+  IF n_elements(Default_WaterRGB) EQ 0 THEN $
+    Default_WaterRGB = [11,  11, 122] 
+  chkcfg,'DEFAULT_LANDRGB',default_LandRGB,CFG
+  IF n_elements(Default_LandRGB) EQ 0 THEN $
+     Default_LandRGB =  [25, 110,   0]
+
+  Color_Convert, Default_WaterRGB[0],Default_WaterRGB[1],Default_WaterRGB[2],$
+   Default_WaterHue,l,s,/rgb_hls
+  Color_Convert, Default_LandRGB[0],Default_LandRGB[1],Default_LandRGB[2],$
+   Default_LandHue,l,s,/rgb_hls
+
+  chkcfg,'PS',ps,cfg,/bool
+  chkcfg,'GIF',gif,cfg,/bool
+  chkcfg,'JPEG',jpeg,cfg,/bool
+  chkcfg,'VERBOSE',verbose,cfg,/bool
+
+  ;ps = keyword_set(ps)
+  ;gif = keyword_set(gif)
+  ;jpeg = keyword_set(jpeg)
+  ;verbose = keyword_set(verbose)
+
+  IF ps AND gif OR $
+     ps AND jpeg OR $
+     gif AND jpeg THEN BEGIN 
+    Message,'Only one of PS, GIF  or JPEG may be set',/cont
+    tvlct,orig_red,orig_green,orig_blue
+    genv,/restore
+    status = 0
+    return
+  ENDIF 
+
+  IF NOT (ps OR gif OR jpeg) THEN BEGIN 
+    Message,' Defaulting to jpeg output ',/info
+    jpeg = 1
+  ENDIF 
+
+  chkcfg,'QUALITY',quality,cfg
+
+  IF n_elements( Quality ) EQ 0 THEN Quality = 75
+  Quality =  1 > Quality < 100
+
+  chkcfg,'SCALEFAC',scalefac,cfg
+
+  IF n_elements(scalefac) EQ 0 THEN BEGIN 
+    IF ps THEN scalefac = 0.05 ELSE scalefac = 1
+  ENDIF ELSE BEGIN 
+    IF gif OR jpeg THEN BEGIN 
+      Message,'Keyword SCALEFAC is ignored when creating GIFs/JPEGs',/cont
+      scalefac = 1
+    ENDIF 
   ENDELSE 
 
-  good1 = where( finite(uu) AND finite(vv), ngood1)
-  IF ngood1 NE 0 THEN BEGIN 
-    xx =  where( llat[good1] LT y, nxx )
-    IF nxx NE 0 THEN BEGIN 
-      IF windcolor EQ -1 THEN $
-        PLOTVECT, uu[good1[xx]],vv[good1[xx]],$
-           llon[good1[xx]],llat[good1[xx]],$
-           length      = length ,$
-           start_index = wind_start, $
-           ncolors     = n_wind_colors, $
-           minspeed    = minspeed ,$
-           maxspeed    = maxspeed, $
-           thick       =  thick $     
-     ELSE $
-        PLOTVECT, uu[good1[xx]],vv[good1[xx]],$
-           llon[good1[xx]],llat[good1[xx]],$
-           length = length ,$
-           thick  = thick ,$
-           color  = windcolor
+  chkcfg,'MINSPEED',minspeed,cfg
+  chkcfg,'MAXSPEED',maxspeed,cfg
+  chkcfg,'LENGTH',length,cfg
+  chkcfg,'THICK',thick,cfg
+  chkcfg,'BRIGHTMIN',brightmin,cfg
+  chkcfg,'BRIGHTMAX',brightmax,cfg
+  chkcfg,'SATMIN',satmin,cfg
+  chkcfg,'SATMAX',satmax,cfg
+
+  IF N_Elements(minspeed) EQ 0 THEN minspeed = 2
+  IF n_Elements(maxspeed) EQ 0 THEN maxspeed = 25
+  IF n_elements(length)   EQ 0 THEN length = 2.5
+  IF n_elements(thick)    EQ 0 THEN thick = 1
+  IF n_elements(BrightMin) EQ 0 THEN BrightMin = 0.3
+  IF n_elements(BrightMax) EQ 0 THEN BrightMax = 1.
+  IF n_elements(SatMin) EQ 0 THEN SatMin = 0.0
+  IF n_elements(SatMax) EQ 0 THEN SatMax = 1.
+
+  BrightMin = 0> float(BrightMin) < 1.
+  BrightMax = BrightMin+.01> BrightMax < 1.
+
+  SatMin = 0> float(SatMin) < 1.
+  SatMax = SatMin+.01> SatMax < 1.
+
+
+  chkcfg,'LANDHUE',landhue,cfg
+  chkcfg,'WATERHUE',waterhue,cfg
+
+  chkcfg,'LANDRGB',landRGB,cfg
+  chkcfg,'WATERRGB',waterRGB,cfg
+
+  IF n_elements(LandHue) EQ 0 THEN BEGIN 
+    IF n_Elements(LandRGB) NE 3 THEN BEGIN 
+      IF n_Elements(LandRGB) NE 0 THEN $
+        Message,'LandRGB must be a 3-vector',/cont
+      Message,'  Taking default Land Hue = ' + $
+       '[' + strjoin( strtrim( Default_LandRGB,2)," ") + ']',/cont
+      LandRGB = Default_LandRGB
     ENDIF 
+    Color_Convert, LandRGB[0], LandRGB[1], LandRGB[2], LandHue,l,s,/rgb_hls
   ENDIF 
-ENDIF 
-;IF NOT ps THEN BEGIN
-;  xsiz =  !d.x_size
-;  ysiz =  !d.y_size
-;ENDIF
 
-;IF ps THEN $
-;  cbloc = convert_coord( [(xsiz-(10*27)/scalef)/2,$
-;                          ysiz-32/scalef], /device,/to_normal ) ELSE $
-;  cbloc = convert_coord( [(xsiz-(10*27)/scalef)/2,$
-;                          ysiz-40/scalef], /device,/to_normal )
-;; color bar x location 
-;cbx =  cbloc(0)
-;; color bar y location
-;cby =  cbloc(1)
-
-;; color bar title
-;  IF ps THEN $
-;   cbtitloc = convert_coord( [xsiz/2,ysiz-22/scalef], $
-;                             /device,/to_normal ) ELSE $
-;   cbtitloc = convert_coord( [xsiz/2,ysiz-27/scalef], $
-;                             /device,/to_normal ) 
-
-;cbtitx =  cbtitloc(0) &  cbtity= cbtitloc(1)
-;; end of color bar
-;cbend =  convert_coord( [(xsiz-(10*27)/scalef)/2 + (10*27 + 2)/scalef, $
-;                         ysiz-35/scalef], /dev, /to_norm )
-;cbendx =  cbend(0)
-;; title location
-;titloc =  convert_coord( [xsiz/2,ysiz - !d.y_ch_size-2],  $
-;                         /device, /to_normal )   
-;titx =  titloc(0) &  tity =  titloc(1)
-;IF ps THEN text_color = 0 ELSE text_color = 255
-
-;; Annotate the image
-;; First blank out the top 40 rows of the image
-;;blank =  bytarr( n_elements( bimage(*,0) ), 40 )
-;;tv, blank, xs, ysiz-40/scalef, xsiz=xsiz, ysiz=40/scalef
-
-;; Put down title string
-;xyouts, titx, tity, title_str, align=0.5, /normal, charsize=1.05, color=text_color
-;IF (windcolor EQ -1) THEN BEGIN 
-;  ; Put down color bar
-;  tv, cbar, cbx*xsiz, ysiz-35/scalef,xsiz=270/scalef,ysiz=10/scalef
-;  ; Annotate the color bar
-
-;  xyouts, cbtitx, cbtity, cbtitle,     align = 0.5, /normal, color=text_color
-;  xyouts, cbx,    cby,    cblables(0), align = 1.0, /normal, color=text_color
-;  xyouts, cbendx, cby,    cblables(1), align = 0.0, /normal, color=text_color
-;ENDIF 
-
-IF grid THEN BEGIN 
-  latrange =  limits(3)-limits(1)
-  lonrange =  limits(2)-limits(0)
-  IF latrange/5. GT 20 THEN latdel = 10 ELSE latdel = 5.
-  IF lonrange/5. GT 20 THEN londel = 10 ELSE londel = 5.
-
-  map_grid, latdel = latdel, londel = londel, $
-   lonlab = minlat-.3,latlab = minlon, $
-   charsize=.8, latalign=1, color = 255
-ENDIF 
-
-
-  ; Calculate where to put the Colorbar.
-  ; 
-sz = size(bimage,/dimensions)
-xyz = Convert_Coord( 0, ys+sz[1]/scalef,/device,/to_normal)
-y = xyz[1]
-y = [3*y+2, 2*y+3]/5
-
-ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
-            position=[0.25,y[0], 0.75, y[1]], $
-              Title='Wind Speed (knots)',Min=minspeed, $
-               max=maxspeed,divisions=4, format='(f5.0)', $
-                pscolor=ps
-
-
-  ; Now put the title at the bottom
-IF ps THEN text_color = 0 ELSE text_color = 255  
-xyz = Convert_Coord(0,ys,/device,/to_normal)
-y = xyz[1]
-xyouts, 0.5, y/2., title_str, align=0.5, $
-    /normal, charsize=1.05, color=text_color
-
-CASE extension OF 
-  'gif': BEGIN 
-  im =  tvrd()
-    Write_Gif, ofile, im, red, green, blue
-    IF arg_present(thumbnail) THEN BEGIN 
-      dims = size(im,/dim)
-      im = congrid(im,dims[0]*0.3,dims[1]*0.3)
-      thumbnail = ofile+'.TN'
-      Write_Gif,thumbnail,im,red,green,blue
+  IF n_elements(WaterHue) EQ 0 THEN BEGIN 
+    IF n_Elements(WaterRGB) NE 3 THEN BEGIN 
+      IF n_Elements(WaterRGB) NE 0 THEN $
+        Message,'WaterRGB must be a 3-vector',/cont
+      Message,'  Taking default Water Hue= ' + $
+       '[' + strjoin( strtrim( Default_WaterRGB,2)," ") + ']',/cont
+      WaterRGB = Default_WaterRGB
     ENDIF 
-  END
-  'jpeg': BEGIN 
-    im = tvrd(true=3)
-    Write_Jpeg,ofile,im,true=3, quality=75
-    IF arg_present(thumbnail) THEN BEGIN 
-      dims = size(im,/dim)
-      im = congrid(im,dims[0]*0.3,dims[1]*0.3)
-      thumbnail = ofile+'.TN'
-      Write_Jpeg,thumbnail,im, true=3, quality=75
+    Color_Convert, WaterRGB[0], WaterRGB[1], WaterRGB[2], WaterHue,l,s,/rgb_hls
+  ENDIF 
+  
+  LandHue =  0> LandHue < 360.
+  WaterHue =  0> WaterHue < 360.
+  
+
+  chkcfg,'XSIZE',xsize,cfg
+  chkcfg,'YSIZE',ysize,cfg
+
+  IF n_Elements(xsize) EQ 0 THEN BEGIN 
+    IF ps THEN xsize = 8.4 ELSE xsize = 640 
+  ENDIF 
+  xoffset = 1.2
+
+  IF n_Elements(ysize) EQ 0 THEN BEGIN 
+    IF ps THEN ysize = 6.5 ELSE ysize = 480 
+  ENDIF 
+  yoffset = 9.5
+
+
+
+  chkcfg,'USE_RF',use_rf,cfg
+  chkcfg,'RF_ACTION',rf_action,cfg
+  chkcfg,'RF_COLOR',rf_color,cfg
+
+  IF n_elements(use_rf) EQ 0 THEN use_rf = 0
+  IF n_elements(rf_action) EQ 0 THEN rf_action = 1
+    ; if rf_action=1, plot the rain flagged data as black
+  IF n_elements(rf_color) EQ 0 THEN rf_color =  0l
+
+
+
+
+    ; ============ Start the processing ==================
+
+
+  start_time = systime(1)
+  Read_PCGoes,goesfile,limits,GoesData,hdr=hdr, status=status
+
+  IF NOT status THEN BEGIN 
+    Message,'ERROR Reading Goesfile ' + goesfile,/cont
+    status = 0
+    return
+  ENDIF 
+
+    ; Make sure the longitude range is monotonic
+  lonrange = FixLonRange( [ limits[0],limits[2] ])
+  
+
+
+  IF status THEN BEGIN 
+    GoesFilenameStruct = ParseGoesFileName( goesfile )
+    IF VarType( GoesFilenameStruct ) NE 'STRUCTURE' THEN BEGIN 
+      Message," Trouble parsing " + Goesfile ,/cont
+      tvlct,orig_red,orig_green,orig_blue
+      genv,/restore
+      status = 0
+      return
+    ENDIF ELSE BEGIN 
+      sat_name = GoesFilenameStruct.SatName + " " + $
+       strtrim(GoesFilenameStruct.SatNum,2 )
+    ENDELSE 
+    sensornum = GoesFilenameStruct.Sensornum
+    sensors = ['VIS','IR2','IR3','IR4']
+    sensor    =  sensors[ sensornum-1 ]
+    goes_date = PadAndJustify(GoesFilenameStruct.year, 4, /right ) + $
+                PadAndJustify(GoesFilenameStruct.mm, 2, /right ) + $
+                PadAndJustify(GoesFilenameStruct.dd, 2, /right ) + $
+                'T' + $
+                PadAndJustify(GoesFilenameStruct.hh, 2, /right ) + $
+                PadAndJustify(GoesFilenameStruct.mm, 2, /right )
+    goes_string =  sat_name + ' ' + sensor + ' ('  + goes_date + ')'
+
+    IR =  ( sensornum GT 1 )
+
+    IF ir THEN GoesData = 1023-temporary(GoesData)
+    IF N_elements(minpix) EQ 0 THEN minpix = 0
+
+    IF getenv('OVERLAY_CT') NE '' THEN BEGIN 
+      ptr = ReadColorTable('$OVERLAY_CT')
+    ENDIF ELSE BEGIN 
+      ptr = ReadColorTable($
+         '/usr/people/vapuser/Qscat/Resources/Color_Tables/goes_overlay24.ct')
+    ENDELSE 
+    IF NOT Ptr_Valid(ptr) THEN BEGIN 
+      Message,'Error Reading ColorTable!',/cont
+      tvlct,orig_red,orig_green,orig_blue
+      genv,/restore
+      status = 0
+      return
     ENDIF 
-  END
-  ps: device,/close
+    CT = *ptr
+    ptr_free,ptr
 
-ENDCASE 
+    WIND_START = 1
+    N_COLORS = n_elements(ct[0,*])
+    N_WIND_COLORS = n_colors-2
 
-message,' Output file = ' + ofile,/cont
+    nn = where(strlen(windfiles) NE 0 , nf)
+    IF nf NE 0 THEN BEGIN 
+      WindFiles = WindFiles[nn]
+      t0 = systime(1)
+      windData = Read_Wind_Files(windFiles,$
+                                 CRDecimate=CRDecimate,$
+                                 Decimate=Decimate,$
+                                 ExcludeCols=ExcludeCols, $
+                                 use_rf=use_rf, $
+                                 rf_action=rf_action, $
+                                 rf_index=rfi)
+      t1 = systime(1)
+      IF verbose THEN print,' Read_wind_Files took: ', t1-t0,$
+        ' Seconds '
+      t0 = t1
 
-IF save THEN BEGIN
-  window_size =  [ [!d.x_size], [!d.y_size]]
-  device =  !d.name
-  filename =  ofileroot + '.save'
-  save,bimage,xs,ys,window_size,xsiz,ysiz,device, f=filename
-ENDIF 
+      ndims = size(windData,/n_dim)
+      IF ndims NE 2 THEN BEGIN 
+        Message,'Error reading data from windfiles ',/cont
+        print,'Input Windfiles are ', transpose(windFiles)
+        print,'Continuing with overlay without the Wind Data!'
+      ENDIF ELSE BEGIN 
+        u = windData[*,0]
+        v = windData[*,1]
+        lon = windData[*,2]
+        lat = windData[*,3]
+        
+        good = where( finite(u) AND finite(v), ngood )
+        IF ngood NE 0 THEN BEGIN 
+          IF rf_action EQ 1 AND $
+           rfi[0] NE -1 THEN BEGIN 
+            ii = lonarr(n_elements(u))
+            ii[rfi] = 1
+            rfi =  where( ii[good], nn)&  ii=0
+          ENDIF 
 
-GENV,/restore ; restore graphics environment 
-getminpix =  minpix
-getoutfile =  ofile
+          u = u[good]
+          v = v[good]
+          lon = lon[good]
+          lat = lat[good]
 
-RETURN
+          speed = sqrt( u^2+v^2)
+          good = where( speed NE 0, ngood )
+          IF ngood NE 0 THEN BEGIN 
+            IF ngood NE n_elements(u) THEN BEGIN 
+
+              IF rf_action EQ 1 AND $
+               rfi[0] NE -1 THEN BEGIN 
+                ii = lonarr(n_elements(u))
+                ii[rfi] = 1
+                rfi =  where( ii[good],nn)&  ii=0
+              ENDIF 
+
+              u = u[good]
+              v = v[good]
+              lon = lon[good]
+              lat = lat[good]
+              speed = speed[good]
+
+            ENDIF 
+            good = where( lon GE lonrange[0] AND $
+                          lon LE lonrange[1] AND $
+                          lat GE limits[1] AND $
+                          lat LE limits[3], ngood )
+            IF ngood NE 0 THEN BEGIN 
+              IF rf_action EQ 1 AND $
+               rfi[0] NE -1 THEN BEGIN 
+                ii = lonarr(n_elements(u))
+                ii[rfi] = 1
+                rfi =  where( ii[good],nn)&  ii=0
+              ENDIF 
+              u = u[good]
+              v = v[good]
+              lon = lon[good]
+              lat = lat[good]
+              speed = speed[good]
+
+              veccol = BytScl( speed, min=minspeed, $
+                               max=maxspeed, $
+                               top=N_WIND_COLORS-1) + $
+                                  WIND_START
+              col24 = Rgb2True( veccol, colortable=ct)
+              
+            ENDIF ELSE BEGIN 
+              u = 0
+              v = 0
+              lon = 0
+              lat = 0
+              speed = 0
+              col24 = 0
+            ENDELSE 
+            t0 = systime(1)
+            
+          ENDIF 
+        ENDIF 
+      ENDELSE 
+
+    ENDIF   
+
+    sz = size(GoesData,/dimensions)
+    nlon = 1.0*sz[0]
+    nlat = 1.0*sz[1]
+
+    lonmin = lonrange[0]
+    latmin = limits[1]
+    loninc = (lonrange[1]-lonrange[0])/nlon
+    latinc = (limits[3]-limits[1])/nlat
+    loni = (findgen(nlon)*loninc+lonmin)#(replicate(1.,nlat))
+    lati = replicate(1.,nlon)#(findgen(nlat)*latinc+latmin)
+
+    t0 = systime(1)
+    land = where( runLandMask(loni,lati), nland )
+    t1 = systime(1) 
+    IF verbose THEN print,'Time for Landmask : ',t1-t0, ' Seconds '
+    t0 = t1
+
+;    x = where(loni LT 0, nx )
+;    IF nx NE 0 THEN loni[x] =  loni[x] + 360.
+;    topoIm = landel[ loni*12, (lati+90)*12 ]
+
+    t1 = systime(1) 
+    IF verbose THEN print,'Time for TopoIm : ',t1-t0, ' Seconds '
+    t0 = t1
+
+    loni = 0
+    lati = 0
+
+
+    IF ps THEN BEGIN 
+      set_plot,'PS'
+      ps_form = { XSIZE          : xsize   ,$ 
+                  XOFF           : xoffset ,$ 
+                  YSIZE          : ysize   ,$ 
+                  YOFF           : yoffset ,$ 
+                  INCHES         : 1       ,$  
+                  COLOR          : 1       ,$  
+                  BITS_PER_PIXEL : 8       ,$
+                  ENCAPSULATED   : 0       ,$
+                  LANDSCAPE      : 1        }
+      device,_extra=ps_form
+      ; device,font='
+    ENDIF ELSE BEGIN 
+      set_plot,'z'
+      device,set_resolution=[xsize,ysize],z_buff=0
+      finalim = bytarr(xsize,ysize,3)
+      ;window,/free, /pixmap, xsize=xsize, ysize=ysize
+      ;pixmap = !d.window
+      !p.font = 0
+      device,font='7x14bold'
+    ENDELSE 
+
+    loncent = mean(lonrange)
+;    Map_Set,0,loncent,$
+;     limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
+;      Ymargin=[4.,4]
+
+
+    IF n_Elements(outfile) EQ 0 THEN BEGIN 
+
+      t = long([lonrange[0],limits[1],lonrange[1],limits[3]])
+      lim_str =  '%'+ StrJoin(t,',') +  '%'
+      dlm =  '_'
+
+      year =  PadAndJustify(hdr.year, 4 )
+      tmp = doy2date(hdr.year,hdr.doy)
+      month = tmp[0]
+      dom = tmp[1]
+      hh = hdr.hhmm/100
+      mm = hdr.hhmm-hh*100
+      hh = PadAndJustify(hh,2,/right)
+      mm = PadAndJustify(mm,2,/right)
+
+
+      time_string = year + month + dom + "T" + hh+':'+mm
+
+
+      ofileroot = strtrim( sat_name, 2 ) +  dlm + $
+       sensor + '_' + time_string
+
+
+      sp =  strpos( ofileroot,' ' )
+      strput, ofileroot, '_', sp
+      ofileroot =  ofileroot + '-' + lim_str
+      IF keyword_set( file_str ) THEN BEGIN 
+         IF strlen( file_str[0] ) GT 0 THEN BEGIN 
+           s =  str_sep( file_str,' ' )
+           tt =  '_' + s(0)
+           FOR i=1,n_elements(s)-1 DO tt =  tt + '_' + s(i)
+           ofileroot =  ofileroot + tt
+         ENDIF 
+      ENDIF 
+
+      CASE 1 OF 
+        gif : ext = '.gif'
+        jpeg: ext = '.jpeg'
+        ps  : ext = '.ps'
+      ENDCASE  
+      OutputFilename = ofileroot + ext
+
+    ENDIF ELSE outputFilename =  outfile
+
+    IF ps THEN device,filename=OutputFilename
+
+    cloudmask = scale( GoesData,minv=0,maxv=1023)*99
+    Hue = fltarr(nlon,nlat)+WaterHue
+    IF nland NE 0 THEN Hue[land] = LandHue
+
+    IF config THEN $
+      CLOUD_OVERLAY_CONFIG, $
+        landwater=hue, $
+          cloudmask=cloudmask, $
+           brightmin=brightmin, $
+            brightmax=brightmax, $
+             satmin=satmin, $
+              satmax=satmax, $
+               lonmin=lonrange[0], $
+                lonmax=lonrange[1], $
+                 latmin=limits[1], $
+                   latmax=limits[3]
+
+      ; Re-establish the plotting environs.
+    Map_Set,0,loncent,$
+     limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
+      Ymargin=[4.,4]
+   
+      ; Define the new Brightness/Saturation mappings
+    xx=findgen(100)/99.
+
+    bi = 0> interpol( [0.,1], [BrightMin, BrightMax], xx ) < 1
+    si = 0> interpol( [1.,0], [SatMin,    SatMax],xx ) < 1
+
+      ; Use 'cloudmask' to create new Brightness/Saturation values
+
+    b2=bi[cloudmask]
+    s2=si[temporary(cloudmask)]
+    cloudmask = 0
+
+      ; Substitute these new Brightness/Saturation values in for those in
+      ; mapIm and convert back to RGB 
+
+    Color_Convert, Hue,b2,s2, imr, img, imb, /hls_rgb
+    Hue = 0
+    b2 = 0
+    s2 = 0
+    Im = [ [[temporary(imr)]], [[temporary(img)]], [[temporary(imb)]] ]
+
+    FOR i=0,2 DO BEGIN 
+      tmpIm = Map_Image( Im[*,*,i], $
+                         xs,ys,xsize,ysize,$
+                         lonmin=lonrange[0],$
+                         latmin=limits[1],$
+                         lonmax=lonrange[1],$
+                         latmax=limits[3],$
+                         scale=scalefac, /compress, /bilinear )
+
+      
+      IF i EQ 0 THEN BEGIN 
+        dim = size(tmpIm,/dim)
+        mapIm = bytarr(dim[0], dim[1], 3)
+      ENDIF 
+      mapIm[*,*,i] =  temporary(tmpIm)
+    ENDFOR 
+    im = 0
+
+      ; Tv the final image. Put on grid lines and plot the vectors.
+
+
+      ; Calculate where to put Colorbar
+    sz = size( mapIm[*,*,0],/dim)
+    xyz = Convert_Coord( 0, ys+sz[1]/scalefac,/device,/to_normal)
+
+    y = xyz[1]
+    ycb = [3*y+2, 2*y+3]/5
+
+      ; Lay down the title
+    xyz = Convert_Coord(0,ys,/device,/to_normal)
+    ytitle = xyz[1]/2.
+
+    xyz = Convert_Coord( 0, fix(1.5*!D.Y_CH_Size), /device, /to_normal )
+    ysubtitle = ytitle-xyz[1]
+
+
+
+    nn = n_Elements(u)
+
+    IF ps THEN BEGIN 
+
+      text_color = '000000'xl
+      Tv,mapIm,xs,ys,xsize=xsize,ysize=ysize,true=3 
+      tvlct,orig_red,orig_green,orig_blue,/get
+      tvlct,transpose(ct)
+      IF nn GT 1 THEN $
+        PlotVect,u,v,lon,lat,len=length,$
+         thick=thick,start_index=WIND_START,ncolors=N_WIND_COLORS, $
+           minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec
+      
+      IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
+        TVLCT,rf_color AND 'ff'xl,$
+         ishft(rf_color,-8) AND 'ff'xl, $
+         ishft(rf_color,-16) AND 'ff'xl,1
+        PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
+         thick=thick,minspeed=minspeed, maxspeed=maxspeed, $
+         scale=scaleVec,color=1
+      ENDIF 
+      IF gridlines THEN $
+        Map_Set,0,loncent,$
+          limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],$
+           Ymargin=[4.,4], /grid,/label,/noerase
+
+      ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+             position=[0.25,ycb[0], 0.75, ycb[1]], $
+               Title='Wind Speed (m/s)',Min=minspeed, $
+                 max=maxspeed,divisions=4, format='(f5.0)', $
+                  pscolor=ps, /true, table=ct, charsize=0.75, $
+                    color=text_color
+
+      IF n_elements(title) NE 0 THEN $
+        Title= title + ' ' + goes_string ELSE $
+        Title= goes_string 
+
+      xyouts, 0.5, ytitle, title, align=0.5, $
+       /normal, charsize=1.05, color=text_color
+
+      IF n_Elements(subtitle) NE 0 THEN BEGIN 
+         xyouts, 0.5, ysubtitle, subtitle, align=0.5, $
+            /normal, charsize=1.0, color=text_color
+      ENDIF 
+
+      IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
+        newct = ct
+        newct[*,0] =  [rf_color AND 'ff'xl, $
+                        ishft(rf_color,-8) AND 'ff'xl, $
+                         ishft(rf_color,-16) AND 'ff'xl]
+
+        Colbar,pos=[0.49,0.005,0.51,0.025],bottom=0,ncolors=1,min=0,max=1,$
+             table=newct,/true,/noannot,color=text_color
+        xyouts,0.49,0.005,'Rain ',align=1,/normal,color=text_color
+        xyouts,0.51,0.005,' Flagged',/normal,color=text_color
+
+
+      ENDIF 
+
+        tvlct,orig_red,orig_green,orig_blue
+    ENDIF ELSE BEGIN 
+
+        ; Here we do the gif/jpeg processing. Since the device we're
+        ; using isn't a native 24 bit device, we do it 'plane by
+        ; plane.'
+
+
+        ; Set some constant quantities.
+
+      text_color = 255b
+
+        ; Now loop over each color plane, plotting vectors and putting
+        ; down color bars, titles and such.
+
+      FOR i=0,2 DO BEGIN 
+        Tv,mapIm[*,*,i],xs,ys
+
+        Map_Set,0,loncent,$
+         limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],/noborder,$
+           Ymargin=[4.,4],/noerase
+
+        ; Plot the vectors (if there are any.)
+        IF nn GT 1 THEN BEGIN 
+          CASE i OF 
+            0: col =  col24 AND 'ff'xl
+            1: col =  ishft(col24,-8) AND 'ff'xl
+            2: col =  ishft(col24,-16) AND 'ff'xl
+          ENDCASE 
+          PlotVect, u,v,lon,lat, color=col, len=length, thick=thick, $
+            scale=scaleVec,minspeed=minspeed,maxspeed=maxspeed
+          IF rfi[0] NE -1 AND rf_action EQ 1 THEN BEGIN 
+            PlotVect,u[rfi],v[rfi],lon[rfi],lat[rfi],len=length,$
+              thick=thick,minspeed=minspeed, maxspeed=maxspeed, scale=scaleVec,$
+                color=rf_color
+          ENDIF 
+        ENDIF  
+
+
+        col = bytarr(3,n_elements(ct[0,*]))
+        col[0,*] =  ct[i,*]
+        ;tvlct,r,g,b,/get
+        ;tvlct,transpose(col)
+        ColBar, bottom=Wind_Start, nColors=N_Wind_Colors,$
+               position=[0.25,ycb[0], 0.75, ycb[1]], $
+                 Title='Wind Speed (m/s)',Min=minspeed, $
+                   max=maxspeed,divisions=4, format='(f5.0)', $
+                   charsize=0.75,color=255, table=col, /true
+
+        ;tvlct,r,g,b
+
+
+        IF i EQ 0 THEN BEGIN 
+          IF n_elements(title) NE 0 THEN $
+            Title= title + ' ' + goes_string ELSE $
+            Title= goes_string 
+        ENDIF 
+        xyouts, 0.5, ytitle, title, align=0.5, $
+         /normal, charsize=1.05, color=text_color
+
+
+        IF n_Elements(subtitle) NE 0 THEN BEGIN 
+            xyouts, 0.5, ysubtitle, subtitle, align=0.5, $
+              /normal, charsize=1.0, color=text_color
+        ENDIF 
+
+
+
+
+        IF use_rf NE 0 AND rf_action EQ 1 THEN BEGIN 
+          newct = ct
+          CASE i OF
+            0: newct[0,0] = rf_color AND 'ff'xl
+            1: newct[0,0] = ishft(rf_color,-8) AND 'ff'xl
+            2: newct[0,0] = ishft(rf_color,-16) AND 'ff'xl
+          ENDCASE 
+
+          ;tvlct,r,g,b,/get
+          ;tvlct,transpose(newct)
+          Colbar,pos=[0.49,0.005,0.51,0.025],bottom=0,ncolors=1,min=0,max=1,$
+               table=newct,/true,/noannot,color=255
+          ;tvlct,r,g,b
+          xyouts,0.49,0.005,'Rain ',align=1,/normal,color=text_color
+          xyouts,0.51,0.005,' Flagged',/normal,color=text_color
+
+
+        ENDIF 
+
+
+        IF gridlines THEN $
+          Map_Set,0,loncent,$
+            limit=[ limits[1],lonrange[0],limits[3],lonrange[1] ],$
+             Ymargin=[4.,4], /grid,/label,/noerase, color=255b
+
+        finalim[*,*,i] =  tvrd()
+      ENDFOR 
+
+      t1 = systime(1)
+      IF verbose THEN print,' Plotvect took: ', t1-t0,' Seconds '
+      t0 = t1
+
+    ENDELSE 
+
+
+    CASE 1 OF 
+      gif: BEGIN 
+        ;If output is 'gif' quantize it down to 175 colors.
+        t0 = systime(1)
+        ;finalim = tvrd(true=3)
+        im = color_Quan( finalim, 3, r,g,b, colors=175 )
+        t1 = systime(1)
+        IF verbose THEN print,' Color_Quan took: ', t1-t0,' Seconds '
+        t0 = t1
+
+        Write_Gif, OutputFilename, im, r,g,b
+        t1 = systime(1)
+        IF arg_present(thumbnail) THEN  BEGIN 
+          dims = size(im,/dimension)
+          thumbnail = OutputFilename + '.TN'
+          thumbnailIm =  congrid( im, dims[0]*0.3, dims[1]*0.3)
+          Write_Gif, thumbnail, temporary(thumbnailIm), r,g,b
+        ENDIF 
+        IF verbose THEN print,' Write_Gif took: ', t1-t0,' Seconds '
+        t0 = t1
+      END
+
+      jpeg: BEGIN 
+        ;finalim = tvrd(true=3)
+        Write_Jpeg, OutputFilename, finalim, $
+               quality=quality, true=3
+        IF arg_present(thumbnail) THEN  BEGIN 
+          dims = size(finalim,/dimen)
+          thumbnailIm = congrid( finalim,  dims[0]*0.3, dims[1]*0.3,dims[2] )
+          thumbnail = OutputFilename + '.TN'
+          Write_Jpeg, thumbnail, temporary(thumbnailIm), $
+           quality=quality, true=3
+        ENDIF 
+      END
+
+      ps: device,/close
+
+    ENDCASE
+
+  ENDIF ELSE BEGIN 
+    Message,'Error Reading Goesfile ' + goesfile
+  ENDELSE 
+  
+  end_time = systime(1)
+  IF Verbose THEN print,'Total Time: ', (end_time-start_time)/60. ,' Minutes'
+  IF Arg_Present(Outfile) THEN Outfile =  OutputFilename
+  ;IF NOT ps THEN Wdelete,pixmap
+  genv,/restore
+
 END
 
