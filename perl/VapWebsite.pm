@@ -104,9 +104,10 @@ sub new{
   $self->_croak("file ". $self->{FILE} . " doesn't exist!\n",
 		"VapWebsite: non-existent file!") unless (-e $self->{FILE});
 
+  my $file = $self->{FILE};
   my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
       $atime,$mtime,$ctime,$junk)=stat($file);
-  $self->_croak("file ". $self->{FILE} . " is empty!\n",
+  $self->_croak("file ". $file . " is empty!\n",
 		"VapWebsite: non-existent file!") unless ($size > 0)
 
   $self->{MTIME} = $mtime;
@@ -116,7 +117,9 @@ sub new{
   require $defs or $self->_croak("Can't `require' $defs\n", 
 				 "VapWebsite: require ERROR");
 
-  $self->{DEFAULTS} = $website_defs;
+  $self->{WEB}->{DEFS} = $website_defs;
+  $self->{CGI} = CGI->new(-nodebug=>1);
+
   $self->parseFilename;
   return $self;
 }
@@ -166,6 +169,13 @@ sub parseFilename{
       $self->{DESTINATION} = $ENV{VAP_TS_ARCHIVE};
       $self->{WEBPAGE} = $type2webpage{$self->{TYPE}};
       $self->{WHICH_SEAWINDS} = $insttype;
+      my $tropical_storm_defs_file = "tropical_storm_defs_oo";
+      my $foo=$ENV{VAP_LIBRARY}. "/tropical_storm_defs_oo";
+      require "$tropical_storm_defs_file" ||
+	$self->_croak("Can't require $foo\n:$!",
+		      "ERROR IN `REQUIRE'");
+
+      $self->{TROPICAL_STORM}->{DEFS} = $tsoo_defs; 
 
 
     } else {
@@ -187,13 +197,28 @@ sub parseFilename{
         # plus the other parts of the name uniquely determine the
         # satellite/sensor/region information.
 
+      my ($number,@junk);
       my ($sat, $sensor, $date, $limits, $type, $region) = split(/_/,$name);
+      ($region,$number,@junk) = $region =~ /(\w+)_(\d)?\.\w+/;
       $self->{TYPE} = "OVERLAY";
-      $self->{REGION} = $region;
+      $self->{REGION} = join('_',($sat,$sensor2num{$sensor},$region));
+      $self->{REGION_NUM} = $number;
+      $self->{COMPRESSED_NAME} = "$sat.$sensor.$type.$region";
       $self->{WHICH_SEAWINDS} = $type;
       $self->{DESTINATION} = $ENV{VAP_OVERLAY_ARCHIVE};
-      $self->{SYMLINK} = $ENV{VAP_WWW_TOP} . "/images/$sat.$sensor.$type.$region";
+      $self->{SYMLINK} = $ENV{VAP_WWW_TOP} . 
+	"/images/" . $self->{COMPRESSED_NAME};
       $self->{WEBPAGE} = $type2webpage{$self->{TYPE}} "_$insttype.html";
+
+      my $defsfile = "overlay_defs_oo";
+      my $msgdefsfile = $ENV{VAP_LIBRARY} . "/overlay_defs_oo";
+      $self->_croak("Can't find defaults file $msgdefsfile!\n",
+		    "CAN'T FIND DEFS FILE!") unless (! -e $msgdefsfile );
+      do { require "$defsfile"; } or 
+	$self->_croak("Can't `require $msgdefsfile\n",
+		      "ERROR in `REQUIRE' of DEFS!");
+      $self->{OVERLAY}->{DEFS} = $overlay_defs;
+
     }
 
   } else {
@@ -220,50 +245,14 @@ sub parseFilename{
     my $destdir = $self->{DESTINATION};
     $self->{SYMLINK} = $ENV{VAP_WWW_TOP} . "/images/$region.$ext";
 
-    @fields=split /_/,$name;
-  }
-
-}
-
-=pod
-
-=head1
-
-=head2
-
-=cut
-
-
-sub UpdateWebsite{
-  my $self=shift;
-  my $status = $self->moveFile();
-  $msg = "Unable to move $file to webspace!\n" . $msg
-
-  my $msg2 = $self->{ERROROBJ}->{MSG};
-  if ($msg2) {
-    if (ref($msg2) eq 'ARRAY') {
-      $msg2 = join("\n", @{$msg});
-    } 
-  } else {
-    $msg .= $msg2;
-  }
-  $self->_croak($msg, "VapWebsite: CP ERROR") unless $status;
-
-  my $type=$self->{TYPE};
-  if ($type =~ /OVERLAY/i){
-
-      # Regular overlay
-
-    
-  } elsif ($type =~ /TROPICAL_STORM/i) {
-
-      # Tropical Storm.
-
-  } else {
-
-      # Animation!
+    my $defsfile = $ENV{VAP_LIBRARY}. "/auto_movie_defs.dat";
+    $self->_croak("Body::new. Empty file:\n$defsfile",
+		  "Can't find $defsfile") if (! (-e $defsfile));
+    my $hash = VapUtil::auto_movie_defs($defsfile);
+    $self->{ANIMATION}->{DEFS} = $hash;
 
   }
+
 }
 
 =pod
@@ -316,7 +305,7 @@ sub moveFile{
     # /images/daily_nepac.mov to
     # /mov_archive/daily_nepac_200208271234.mov to
     # /images/nepac.mov. Then create a new link to the newest version of
-    # $region.mov and $region.001.ext, where ext is the type of file (ppm by default
+    # $region.mov and $region.001.ext, where ext is the type of file 
 
     # First the movie itself.
     my $symlink = $self->{WWW_TOP}."/images/$region.mov";
@@ -358,4 +347,76 @@ sub redoSymlink{
 		  "$0: DELETE ERROR!");
   1;
 }
+
+
+=pod
+
+=head1
+
+=head2
+
+=cut
+
+
+sub UpdateWebsite{
+  my $self=shift;
+  my $status = $self->moveFile();
+  $msg = "Unable to move $file to webspace!\n";
+
+  my $msg2 = $self->{ERROROBJ}->{MSG};
+  if ($msg2) {
+    if (ref($msg2) eq 'ARRAY') {
+      $msg2 = join("\n", @{$msg});
+    } 
+  } else {
+    $msg .= $msg2;
+  }
+  $self->_croak($msg, "VapWebsite: CP ERROR") unless $status;
+
+  my $dir=$ENV{VAP_WWW_TOP} . "/images";
+  opendir DIR, "$dir" or 
+    $self->_croak("VapWebsite: Can't open images directory!\n",
+		  "Error opening directory!");
+  my @imagedir_files = grep(!/\.\.?/, readdir(DIR));
+  closedir DIR;
+
+  my $type=$self->{TYPE};
+  if ($type =~ /OVERLAY/i){
+    @imagedir_files = grep(/?:(jpg|JPG|jpeg|JPEG)$/, @imagedir_files);
+    foreach (@imagedir_files){
+      my $file= "$dir/$_";
+      my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,
+	  $size,$atime,$mtime,$ctime,$junk)=stat($file);
+    }
+    $self->{WEBSITE}->{$file} = [$size/1024.0, $mtime];
+      # Regular overlay
+    my $q=$self->{CGI};
+    my @order = @{$self->{DEFS}->{OVERLAY}->{ORDER}};
+    my $title=$self->{DEFS}->{OVERLAY}->{TITLE};
+    my $h1=$self->{DEFS}->{OVERLAY}->{HEADING1};
+    my $nrows = @order;
+    my $table = HTML::Table(-rows => $nrows, -cols=>1);
+    
+    foreach (@order){
+      
+    }
+  } elsif ($type =~ /TROPICAL_STORM/i) {
+
+      # Tropical Storm.
+
+
+  } else {
+
+      # Animation!
+
+    my @order = @{$self->{DEFS}->{ORDER}->{ANIMATION}};
+    my $nrows = @order;
+    my $table = HTML::Table(-rows => $nrows, -cols=>1);
+    @imagedir_files = grep(/?:(mov|MOV)$/, @imagedir_files);
+    foreach (@order){
+    }
+
+  }
+}
+
 1;

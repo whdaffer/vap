@@ -86,6 +86,9 @@
 # Modifications:
 #
 # $Log$
+# Revision 1.6  2002/12/03 00:13:28  vapdev
+# Ongoing work
+#
 # Revision 1.5  2002/08/21 18:24:59  vapdev
 # Continuing work
 #
@@ -98,6 +101,8 @@ use Cwd;
 use File::Copy;
 use File::Basename;
 use vars qw/$VERSION $usage/;
+
+@Animate::ISA = qw/ VapError/;
 
 # Make sure we can get the Perl code we need.
 BEGIN{
@@ -120,7 +125,7 @@ BEGIN{
 
   $usage = "$0: obj=Animate->new(REGION=>region [,TIME=>time,DELTA=>DELTA])\n";
 }
-
+use lib $ENV{VAP_SFTWR_PERL};
 use VapUtil; #qw(&systime2idltime &SysNow);
 use VapError;
 
@@ -139,16 +144,16 @@ sub new {
   $self->{DEFAULTS_FILE} = $ENV{VAP_LIBRARY}."/auto_movie_defs.dat";
   bless $self, ref($class) || $class;
 
-  # Set the Error reporting object.
+    # Set the Error reporting object.
   $self->{ERROROBJ} = VapError->new() or
     $self->_croak("$0:Error creating VapError object!\n",
 		  "$0: ERROR CREATING ERROR OBJECT");
 
 
-  # Read the defaults file
+    # Read the defaults file
   $self->ReadDefsFile;
-  # Make sure this is a valid region
 
+    # Make sure this is a valid region
   $self->_croak("Invalid REGION! ". $self->{REGION} .
 		" valid regions are \n". 
 		join("\n",keys(%{$self->{ROIS}})). "\n",
@@ -156,8 +161,8 @@ sub new {
     unless grep($self->{REGION},keys(%{$self->{ROIS}}));
   
 
-  # Set time and working dir, make sure the latter exists and that we
-  # can CD to it.
+    # Set time and working dir, make sure the latter exists and that we
+    # can CD to it.
 
   $self->{TIME} = systime2idltime(SysNow()) unless defined $self->{TIME};
   $self->{STARTTIME} = $^T;
@@ -174,7 +179,7 @@ sub new {
 		"$0: NONEXISTENT TMPFILE DIRECTORY!")
     unless (-e $self->{TMPFILE_DIR});
 
-  # Return new object
+    # Return new object
   return $self;
 }
 
@@ -307,17 +312,15 @@ sub ReadDefsFile{
   @rois = keys %{$self->{ROIS}};
 }
 
+
 #==================================================================
-# MoveOutput
+# getOutput
 #
 # Gets the output name from the temporary file created by
-# auto_movie.pro which holds the name. Deletes that temporary file and
-# moves the output movie plus the first frame of that movie to the WWW
-# area, changing the name to <roi>.mov and <roi>.001
-#
-#==================================================================
-
-sub MoveOutput{
+# auto_movie.pro which holds the name, stores the name in the hash and
+# deletes that temporary file.
+# ==================================================================
+sub getOutput {
   my $self=shift;
 
   my $region=lc $self->{REGION};
@@ -331,45 +334,25 @@ sub MoveOutput{
   chomp $ext;
   my $first_frame = "wind.001.$ext";
   close FILE;
+  unlink $file;
 
   $self->{MOV_FILE} = $mov_file;
-  my ($basename, $path) = fileparse($mov_file);
-  my $wwwmov   = $self->{WWW_TOP}. "/images/mov_archive/$basename";
-  my $wwwframe = $self->{WWW_TOP}. "/images/$region.001.$ext";
-  unlink $wwwframe;
-  copy($mov_file, $wwwmov ) || 
-    $self->_croak("$0: Error copying $mov_file to\n$wwwmov:$!\n",
-		 "$0: COPY ERROR");
-  copy($first_frame, $wwwframe ) || 
-    $self->_croak("$0: Error copying $first_frame to $wwwframe:$!\n",
-		 "$0: COPY ERROR");
-  unlink $mov_file;
-  unlink $first_frame;
+  $self->{EXT} = $ext;
+  ($mov_file, $ext);
+}
 
-  # Delete the symlink from the images subdirectory to the real file
-  # in mov_archive.  currently this link points from, e.g.,
-  # /images/daily_nepac.mov to
-  # /mov_archive/daily_nepac_200208271234.mov to
-  # /images/nepac.mov. Then create a new link to the newest version of
-  # $region.mov and $region.001.ext, where ext is the type of file (ppm by default
+#==================================================================
+# MoveOutput
+#
+# Gets the output name from the temporary file created by
+# auto_movie.pro which holds the name. Deletes that temporary file and
+# moves the output movie plus the first frame of that movie to the WWW
+# area, changing the name to <roi>.mov and <roi>.001
+#
+#==================================================================
 
-  # First the movie itself.
-  my $symlink = $self->{WWW_TOP}."/images/$region.mov";
-  unlink $symlink || 
-    $self->_croak("$0: Can't unlink $region.mov:$!\n",
-		  "$0: DELETE ERROR!");
-  symlink $wwwmov,$symlink || 
-    $self->_croak("$0: Can't symlink $region.mov to $wwwmov!:$!\n",
-		  "$0: DELETE ERROR!");
+sub MoveOutput{
 
-  # Now the first frame of the movie.
-  $symlink = $self->{WWW_TOP}."/images/$region.001.$ext";
-  unlink $symlink || 
-    $self->_croak("$0: Can't unlink $symlink!:$!\n",
-		  "$0: DELETE ERROR!");
-  symlink $wwwframe,$symlink ||
-    $self->_croak("$0: Can't synlink $symlink!:$!\n",
-		  "$0: DELETE ERROR!");
   1;
 }
 
