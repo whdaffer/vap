@@ -31,7 +31,7 @@
 ;                           details) eontaining information about the
 ;                           equator crossing time
 
-;                     StartDate: (O) String 'yyyy/mon/day/hour/min'
+;                     StartTime: (O) String 'yyyy/mon/day/hour/min'
 ;                                the start time of the data
 ;                     EndDate  : (O) String 'yyyy/mon/day/hour/min'
 ;                                then end time of the data.
@@ -47,7 +47,7 @@
 ;    data is 'STRUCTURE'. If it isn't, the call failed.
 ;
 ;
-; OPTIONAL OUTPUTS:  the keywords eqx,StartDate and EndData are
+; OPTIONAL OUTPUTS:  the keywords eqx,StartTime and EndData are
 ;                   optional outputs.
 ;
 ;
@@ -74,6 +74,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/05 23:30:48  vapuser
+; added wvc_row_time to list of parameters to be retrieved.
+;
 ; Revision 1.1  1998/10/05 22:43:27  vapuser
 ; Initial revision
 ;
@@ -85,10 +88,17 @@
 
 FUNCTION q2bhdfread, filename, $
                      eqx=eqx, $
-                     StartDate=StartDate, $
-                     EndDate=EndDate
+                     StartTime=StartTime, $
+                     EndTime=EndTime
 
   rcsid = "$Id$"
+
+  catch, error
+  IF error NE 0 THEN BEGIN 
+    Message,!error_state.msg,/cont
+    return,-1
+  ENDIF 
+
   retstruct = -1
   t1 = systime(1)
   t0 = t1
