@@ -64,7 +64,7 @@
 ;              See 'file format' below for the format of the file.
 ;
 ;
-;   WPath: (I) string, path to wind files (def=$VAP_WINDS)
+;   WPath: (I) string, path to wind files (def=$VAP_DATA_TOP)
 ;
 ;   Filter: (I) string, filter you use when finding wind files.
 ;
@@ -174,6 +174,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  2001/02/07 19:15:29  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 2000, California Institute of Technology
@@ -246,7 +249,7 @@ FUNCTION makeETfield, date_time, $;(I/O) yyyy/mm/dd/hh End time
    
    rcsid = "$Id$"
 
-  LongName = "QSCAT_VAP_SUCCOR_INTERP_FIELD"
+  LongName = "VAP_SUCCOR_INTERP_FIELD"
   VersionID=rcsid
   CreationTime =  (idldt2Vaptime(today()))[0]
 
@@ -296,7 +299,7 @@ FUNCTION makeETfield, date_time, $;(I/O) yyyy/mm/dd/hh End time
   IF n_elements(Wfiles) eq 0 THEN BEGIN 
     IF n_Elements(date_time) EQ 0 THEN date_time = TodayAsString(sep='/')
     IF n_elements(time_inc) eq 0 THEN time_inc = 26
-    IF n_elements(Wpath) EQ 0 THEN Wpath = getenv('VAP_WINDS')
+    IF n_elements(Wpath) EQ 0 THEN Wpath = getenv('VAP_DATA_TOP')
     Wfiles = GetWindFiles(date_time,delta=time_inc,path=wpath, $
                              filter="Q*", count=cnt)    
     

@@ -35,7 +35,7 @@
 ;
 ;  interpfile: (I) scalar string, FQFN: Name of interpolated file to use,
 ;              overrides all other pertinent parameters/keywords.
-;  Wpath: (I) Place to look for wind files (default=VAP_WINDS)
+;  Wpath: (I) Place to look for wind files (default=VAP_DATA_TOP)
 ;  
 ;  Filter: (I) Filter to use in finding wind files.
 ;
@@ -130,6 +130,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  2001/12/08 00:02:35  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.1  2001/02/07 19:15:23  vapuser
 ; Initial revision
 ;
@@ -147,7 +150,7 @@ PRO makeetanim, date_time, $;(I/O) yy/mm/dd/hh End time
    interpfile = interpfile, $   ; Name of interpolated file to use. 
                                 ; overrides all the other pertanent 
                                 ; keyword/parameters
-    Wpath     = Wpath    , $    ; path to wind files.
+    Wpath     = Wpath    , $    ; path to wind files (default=VAP_DATA_TOP)
     Filter    = Filter   , $    ; Filter to use in finding wind 
                                 ; files.
    Wfiles    = Wfiles   , $     ; (I/O) Wind files included in 

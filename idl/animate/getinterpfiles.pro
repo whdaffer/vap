@@ -25,7 +25,8 @@
 ;                                   interp_time_inc = interp_time_inc,$
 ;                                   interp_path     = interp_path, $
 ;                                   wpath           = wpath,$       
-;                                   nscat           = nscat, $      
+;                                   interpfilter    = interpfilter,$    
+;                                   windfilefilter  = windfilefilter,$    
 ;                                   Min_Nvect       = min_Nvect, $
 ;                                   filetimes       = filetimes, $  
 ;                                   decimate        = decimate, $         
@@ -51,18 +52,41 @@
 ;                       search of wind files (def=26)
 ;     interp_time_inc : (I) Number of hours to go backward from date_time
 ;                       to search for interpolated wind field files (def=2)
-;     interp_path     : (I) string, path in which to search for interpolated wind
+
+;     interp_path     : (I) string(s), path in which to search for interpolated wind
 ;                       field files (Def=$VAP_OPS_ANIM)
-;     wpath           : (I), string, Path in which to search for wind files
-;                       (Def=$VAP_WINDS)
+;                        It is possible that this could be an array,
+;                        in which case it will be interated over using
+;                        the filters given in `interpfilter' and the
+;                        results concatenated. The caller is
+;                        responsible for arranging the output to
+;                        his/her desires.
+;              
+;     wpath           : (I), string(s), Path in which to search for wind files
+;                       (Def=$VAP_DATA_TOP)
+;                        It is possible that this could be an array,
+;                        in which case case it will be interated over
+;                        using the filters given in windfilefilter and
+;                        the results concatenated. The caller is
+;                        responsible for arranging the output to
+;                        his/her desires.
 ;     decimate        : (I) scalar, decimate=n means take  every n-th vector
 ;     CRDecimate      : (I) 2-vector: CRDecimate=[p,q] means take
 ;                       every p-th column of every q-th row 
 ;     ExcludeCols     : (I) string, ExcludeCols='0,38:42,75' means
 ;                       exclude cols 0, 38,39,40,41,42 and  75 from use when calculating
 ;                       interpolated field
-;     nscat           : (I), Flag, if set, expect Nscat data/wind
-;                       field files
+;     interpfilter    : (I), scalar string or array of strings.
+;                       The filter to use in finding the interp
+;                       files. vfindfile is used to 
+;                       to find the files using this filter. If the
+;                       variable is an array, it will be interated
+;                       over and the results concatenated. The caller
+;                       should check the arrangement of files, no
+;                       promises are made on this end.
+;     windfilefilter  : Same as interpfile filter, but this one is
+;                       used to find the wind files.
+;
 ;     Min_Nvect       : (I) scalar, Don't make interp file if there are less 
 ;                       than this number of vectors.
 ;
@@ -111,6 +135,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.10  2001/12/10 23:31:25  vapdev
+; replace obsolete RSI routines
+;
 ; Revision 1.9  2001/12/08 00:02:35  vapdev
 ; Getting rid of obsolete RSI routines and fixing ENV vars
 ;
@@ -153,8 +180,8 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
                                 ; default=14.
    interp_time_inc = interp_time_inc, $ ; Amount of time back from date_time 
                                 ; to look for interp files. Default=2.
-   Wpath = Wpath,$              ; Path to wind files
-   Interp_path = Interp_path, $ ; Path to the interpolated files
+   Wpath = Wpath,$              ; Path(s) to wind files 
+   Interp_path = Interp_path, $ ; Path(s) to the interpolated files
    decimate=decimate, $         ; (I) scalar, decimate=n means take 
                                 ; every n-th vector
    CRDecimate=CRDecimate,$      ; (I) 2-vector: CRDecimate=[p,q] means
@@ -164,8 +191,15 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
                                 ; exclude cols 0, 38,39,40,41,42 and
                                 ; 75 from use when calculating
                                 ; interpolated field
-   Nscat = nscat, $             ; Flag, if set, expect NSCAT interp files and 
-                                ; NSCAT data files
+
+   interpfilter =  interpfilter, $ ; (I) scalar string or array of strings. 
+                                   ; Filter(s) to be used when
+                                   ; searching for interpfiles.
+
+
+   windfilefilter=windfilefilter, $ ; (I), same as interpfilter, but for 
+                                    ; wind files.
+
    Min_Nvect = Min_Nvect, $     ; Don't make interp file if there are less 
                                 ; than this number of vectors.
    filetimes=filetimes, $       ; Array of IDLDT containing the times 
@@ -193,22 +227,32 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
 
   tdate_time = regularizeVapTime(date_time, /max)
 
-  IF  strpos(Interp_Path,'/',/reverse_search)  NE strlen(Interp_Path)-1 THEN $
-     Interp_Path = Interp_Path + '/'
+  FOR i=0,n_elements(interp_path) DO BEGIN 
+    IF  strpos(Interp_Path[i],'/',/reverse_search)  NE strlen(Interp_Path[i])-1 THEN $
+       Interp_Path[I] = Interp_Path[I] + '/'
+  ENDFOR 
   IF n_Elements(Wpath) EQ 0 THEN Wpath = GetEnv('VAP_DATA_TOP')
-  IF  strpos(WPath,'/',/reverse_search)  NE strlen(WPath)-1 THEN $
-     WPath = WPath + '/'
 
-  nscat = keyword_set(nscat)
- 
-  interp_filter = 'QIF-*.hdf'
-  windfile_filter = 'Q*'
-  IF nscat THEN BEGIN 
-    interp_filter = 'NIF-*.hdf'
-    windfile_filter = 'N*'    
-  ENDIF 
-  ;interp_files = findfile(Interp_Path+interp_filter,count=cnt)
-  spawn,'find ' + Interp_Path + ' -name "' + interp_filter + '" -print ', interp_files
+  FOR i=0,n_elements(wpath[i])-1 DO BEGIN 
+    IF  strpos(Wpath[I],'/',/reverse_search)  NE strlen(Wpath[I])-1 THEN $
+     Wpath[I] = Wpath[I] + '/'
+  ENDFOR 
+
+  IF n_elements(interp_filter) EQ 0 THEN interp_filter = '*IF-*.hdf'
+  IF n_elements(windfilefilter) EQ 0 THEN windfilefilter = '{Q,S}*'
+
+  FOR p=0,n_elements(interp_path)-1 DO BEGIN 
+    FOR i=0,n_elements(interp_filter)-1 DO BEGIN 
+      tmpfiles = vfindfile(interp_filter[i],interp_path[p],count)
+      IF count NE 0 THEN BEGIN 
+        tmpfiles = interp_path + tmpfiles;
+        IF n_elements(interp_files) EQ 0 THEN $
+           interp_files = tmpfiles ELSE $
+           interp_files = [interp_files, tmpfiles]
+        tmpfiles = 0
+    ENDFOR 
+  ENDFOR 
+
   good = where(strlen(interp_files) GT 0,cnt)
   interp_files = interp_files[good]
   make_interp_file =  0 
@@ -236,18 +280,20 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
   ENDIF ELSE make_interp_file = 1
 
   IF make_interp_file THEN BEGIN 
-    Message,'Either no interpolated wind field files present in ' + interp_path + lf + $
+    IF n_elements(interp_path) GT 0 THEN $
+       ipath = strjoin(interp_path,lf) ELSE $
+       ipath = interp_path
+    Message,'Either no interpolated wind field files present in ' + ipath + lf + $
      ' or none in time range' ,/cont
     print,'   Making new interp file '
     cd,interp_path
     field = MakeInterpFile( tdate_time,time_inc, $
                             wpath = wpath, $
-                            filter = windfile_filter,$
+                            filter = windfilefilter,$
                             min_nvect=Min_Nvect, $
                             decimate=decimate, $
                             CRDecimate=CRDecimate, $
                             ExcludeCols=ExcludeCols, $
-                            nscat = nscat, $
                             Outfile = OutFile )
     ndim = size(field,/n_dim)
     IF ndim EQ 2 OR $

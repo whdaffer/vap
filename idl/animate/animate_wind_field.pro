@@ -321,6 +321,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.13  2001/12/08 00:02:35  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.12  2001/02/21 01:04:55  vapuser
 ; Took out 'path=' in call to read_cfgfile
 ;
@@ -740,10 +743,6 @@ first = 1
   ;
   ; Define the color table. On rainy, $NSCAT-VAP = /nscat-vap
   ;
-;red =  bytarr(51) &  green=red &  blue=red
-;openr,1,'$VAP_LIBRARY/Resources/Color_Tables/nscat-vap-animation.ct2', error= err
-;readu,1,red,green,blue
-;close,1
 
 PtrToColorTable = ReadColorTable( $
      "$VAP_COLORTABLES/vap-animation.ct")

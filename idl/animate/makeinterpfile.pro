@@ -55,16 +55,26 @@
 ;              output file name. If it is not set, and the 'NoFile'
 ;              flag is also clear,  then the field will be
 ;              output to a file with the standard name formula
-;              (i.e. QIF-yyyymmddhh.hdf) Q=Qscat,IF=Interpolated
-;              field. yyyymmddhh is the end time of the field. 
+;              (e.g. IF-yyyymmddhh.hdf) IF=Interpolated Field. 
+;               yyyymmddhh is the end time of the field. 
 ;
 ;
 ;              See 'file format' below for the format of the file.
 ;
 ;   Nofile:(I) flag, if set, no output file will be written.
 ;
-;   WPath: (I) string, path to wind files (def=$VAP_WINDS)
-;   Filter: (I) string, filter you use when finding wind files.
+;   WPath: (I) string(s), path to wind files (def=$VAP_DATA_TOP)
+;              This might be an array, in which case it's iterated
+;              over and the results concatenated.
+;   Filter: (I), scalar string or array of strings.
+;                The filter to use in finding the interp
+;                files. Vfindfile is used to find the files. If the
+;                variable is an array, it will be interated
+;                over and the results concatenated. The iteration is
+;                over filter, then path but the caller
+;                should check the arrangement of files as no other 
+;                promises are made on this end.
+;
 ;   LonPar: (I/O) if set on input to a 3-vector (min,max,inc), these parameters are
 ;                 used in creating the interpolated field. If only
 ;                 present as an output variable, these parameters are
@@ -199,6 +209,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.17  2001/12/10 23:31:25  vapdev
+; replace obsolete RSI routines
+;
 ; Revision 1.16  2001/02/02 19:13:25  vapuser
 ; Added Interptime and rflag keywords. Added call to `checkinterpfile' to
 ; check for voids
@@ -258,8 +271,8 @@
 FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time 
                                                  ; of interpolated field
                          time_inc  , $;          ; start_time=date_time-time_inc
-                         Wpath     = Wpath    , $ ; path to wind files.
-                         Filter    = Filter   , $ ; Filter to use in finding wind 
+                         Wpath     = Wpath    , $ ; path(s) to wind files.
+                         Filter    = Filter   , $ ; Filter(s) to use in finding wind 
                                                   ; files.
                          Wfiles    = Wfiles   , $ ; (I/O) Wind files included in 
                                                   ; Interpolated
@@ -279,7 +292,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                          Latpar    = Latpar   , $ ; (I/O) Same as Lonpar, but 
                                                   ; for latitude.
                          RaInf     =  RaInf   , $ ; (I) Radius of Influence, 
-                                                  ; a vector, a
+                                                  ; a vector, apromises
                                                   ; decreasing
                                                   ; sequence of floats
                                                   ; indicating the
@@ -329,7 +342,8 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
                          V=V, $
                          Lons=Lons, $
                          Lats=Lats, $
-                         rflag=rflag 
+                         rflag=rflag, $
+                          old_succor=old_succor
 
 
   rcsid = "$Id$"
@@ -342,7 +356,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
   IF N_elements(LonPar) NE 3  THEN LonPar =  [0.,359,1.]
   IF N_elements(LatPar) NE 3  THEN LatPar =  [-60.,60.,1.]
 
-  IF n_elements(rainf) eq 0 THEN rainf =     [8.,1]
+  IF n_elements(rainf) eq 0 THEN rainf =     [8.,5,1]
   IF N_Elements(ermax) eq 0 THEN ermax = replicate(50.,n_elements(rainf))
 
   IF N_elements(rainf) NE n_Elements(ermax) THEN BEGIN 
@@ -372,15 +386,25 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
 
       ; Data hasn't been passed directly. Have to read it.
 
+    message,'No data passed directly in!',/info
     IF n_elements(Wfiles) eq 0 THEN BEGIN 
       IF n_Elements(date_time) EQ 0 THEN date_time = TodayAsString(sep='/')
       IF n_elements(time_inc) eq 0 THEN time_inc = 14.
-      IF n_elements(Wpath) EQ 0 THEN Wpath = getenv('VAP_WINDS')
-      IF N_Elements(filter) EQ 0 THEN BEGIN 
-        IF Nscat THEN filter = 'N*' ELSE filter = 'Q*'
-      ENDIF  
+      IF n_elements(Wpath) EQ 0 THEN Wpath = getenv('VAP_DATA_TOP')
+      IF N_Elements(filter) EQ 0 THEN filter =  '{Q,S}*'
+      twpath =  wpath
+      IF n_elements(wpath) GT 1 THEN twpath = strjoin(wpath,',')
+      tfilter = filter
+      IF n_elements(filter) GT 1 THEN tfilter = strjoin(filter,',')
+      Message,'Calling GetWindfiles: ' + lf + $
+              ' date_time: '+ date_time + lf + $
+              ' time_inc: ' + strtrim(time_inc,2) + lf + $
+              ' path: ' + twpath + lf + $
+              ' filter: ' + tfilter,/info
+      
       Wfiles = GetWindFiles(date_time,delta=time_inc,path=wpath, $
-                             filter=filter, count=cnt, nscat=nscat)
+                            filter=filter, count=cnt)
+      message,'Found ' + strtrim(cnt,2) + ' files',/info
     ENDIF ELSE cnt = n_elements(Wfiles)
 
     IF cnt EQ 0 THEN BEGIN 
@@ -390,7 +414,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     ENDIF 
       
     IF strlen( Wfiles[0] ) EQ 0 OR N_Elements(Wfiles) EQ 0 THEN BEGIN 
-      Message,'Error in GetWindFiles',/cont
+      Message,'Error in GetWindFiles or bad input Wfiles array!',/cont
       return,0
     ENDIF 
 
@@ -400,7 +424,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     ENDIF 
 
 
-    data = Read_Wind_Files( Wfiles, nscat=nscat, $
+    data = Read_Wind_Files( Wfiles, $
                           Decimate=Decimate, $
                           CRDecimate=CRDecimate, $
                           ExcludeCols=ExcludeCols, $
@@ -455,8 +479,14 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
     lat = lats
   ENDELSE 
 
-  status = RunSuccor( U,V,Lon,Lat,ui,vi,lonpar,latpar,$
-                      rainf=rainf,ermax=ermax)
+  IF keyword_set(old_succor) THEN BEGIN 
+    status = RunSuccor( U,V,Lon,Lat,ui,vi,lonpar,latpar,$
+                        rainf=rainf,ermax=ermax)
+  ENDIF ELSE BEGIN 
+    status =  runsuccorf(U,V,Lon,Lat,ui,vi,lonpar,latpar,$
+                         rainf=rainf,ermax=ermax)
+  ENDELSE 
+
   IF status eq 0 THEN BEGIN 
     Message,'Bad return from 1st succor run',/cont
     return,0
@@ -467,12 +497,10 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
   IF NOT keyword_set( NoFile) THEN BEGIN 
     IF N_Elements(OutFile) eq 0 THEN BEGIN 
       cd,current=cur
-      OutFile = cur + '/QIF'
+      OutFile = cur + '/IF'
       IF n_elements(endtime) NE 0 THEN BEGIN 
-        tmp =  strsplit(  EndTime,'/' ,/extract) 
-        nn = n_elements(tmp)
-        OutFile = OutFile + '-'
-        FOR i=0,nn-1 DO OutFile = OutFile + tmp[i]
+        OutFile = OutFile + '-' + $
+         strjoin( (strsplit(endtime,'/',/extract))[0:4],'')
       ENDIF 
       OutFile = OutFile + '.hdf'
     ENDIF 

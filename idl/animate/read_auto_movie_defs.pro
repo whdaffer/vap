@@ -49,9 +49,9 @@
 ;   Nepac={ desig       : 'NEPAC'                 , $        
 ;           alonpar     : [195.,245,1.5]          , $
 ;           alatpar     : [30., 60,1.5]           , $
-;           wpath       : "$VAP_WINDS"            , $
-;           interp_path : "$VAP_ANIM/nepac"       , $
-;           anim_path   : "$VAP_ANIM/nepac/daily" , $
+;           wpath       : "$VAP_DATA_TOP"            , $
+;           interp_path : "$VAP_OPS_ANIM"       , $
+;           anim_path   : "$VAP_OPS_ANIM/nepac/daily" , $
 ;           anim_par    : [320,240,60]            , $
 ;           min_nvect   : 4000                    }
 ; 
@@ -83,6 +83,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  2001/12/08 00:02:36  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.3  1999/10/05 17:25:16  vapuser
 ; Worked on header
 ;

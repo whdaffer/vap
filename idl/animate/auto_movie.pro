@@ -4,7 +4,7 @@
 ;
 ; PURPOSE: automatically creates a quicktime movie of the requested
 ;          region of data. Regions, along with other info,  are
-;          defined in the file $VAP_ROOT/auto_movie_defs.dat and
+;          defined in the file $VAP_LIBRARY/auto_movie_defs.dat and
 ;          include the name of the region, the default location of the
 ;          winds files, where to put the interpolated wind file and
 ;          where to put the output of the animation.
@@ -53,10 +53,10 @@
 ;                alatpat :  [min,max] lat of movie (vlatpar =
 ;                           [latpar-10,latpar+10,alatpar(2)] )
 ;
-;                wpath       : path to wind files (def=$VAP_WINDS)
-;                interp_path : path to output interp file (def=$VAP_ANIM)
+;                wpath       : path to wind files (def=$VAP_DATA_TOP)
+;                interp_path : path to output interp file (def=$VAP_OPS_ANIM)
 ;                anim_path   : path for output animation files
-;                              (def=$VAP_ANIM/roi/daily)
+;                              (def=$VAP_OPS_ANIM/roi/daily)
 ;
 ;                min_nvect   : minimum number of vectors needed in 
 ;                              ROI to make movie.
@@ -119,6 +119,9 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.15  2001/12/08 00:02:35  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.14  2001/02/21 01:04:46  vapuser
 ; Took out 'path=' in call to read_cfgfile
 ;
@@ -193,13 +196,13 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
                                             ; [latpar-10,latpar+10,
                                             ; alatpar(2)] )
                 wpath       = wpath, $   ; (I) path to wind files 
-                                         ; (def=$VAP_WINDS)
+                                         ; (def=$VAP_DATA_TOP)
                 interp_path = interp_path , $; (I) path to output 
                                              ; interp file 
-                                             ; (def=$VAP_ANIM)
+                                             ; (def=$VAP_OPS_ANIM)
                 anim_path   = anim_path,$ ; (I) path for output animation 
                                           ; files 
-                                          ; (def=$VAP_ANIM/roi/daily)
+                                          ; (def=$VAP_OPS_ANIM/roi/daily)
                 min_nvect   =  min_nvect ,$ ; (I) minimum number of vectors 
                                             ; needed in ROI 
                                             ; to make movie.
@@ -321,7 +324,7 @@ PRO auto_movie, date_time, $ ; (I) end time of data used in movie
   auto_movie_cronjob = 0
   IF n_Elements(pid) NE 0 THEN BEGIN 
     lockfile = 'auto_movie_' + lroi + '.lock'
-    tmpfilesdir =  getenv('VAP_ROOT') + '/tmpfiles'
+    tmpfilesdir =  getenv('VAP_OPS_TMPFILES')
     auto_movie_cronjob = ( CheckForLock( pid, lockfile, $
                                      user, dir=tmpfilesdir) EQ 1)
   ENDIF 

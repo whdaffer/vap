@@ -89,6 +89,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  2001/12/08 00:02:36  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.1  2001/02/07 20:23:50  vapuser
 ; Initial revision
 ;
@@ -303,8 +306,7 @@ PRO showqmodels, GROUP=Group, $
   filter =  n_elements(filter) EQ 0? "QIF*.hdf": filter
 
   plotvect = keyword_set(plotvect)
-  cf =  $
-    "/usr/people/vapuser/Qscat/Resources/Color_Tables/vap-animation.ct" 
+  cf = "$VAP_COLORTABLES/vap-animation.ct" 
 
   IF n_elements(colorfile) EQ 0 THEN BEGIN 
     colorfile =  cf
