@@ -31,6 +31,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/08 00:25:13  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1995, William Daffer
 ;-
@@ -45,5 +48,5 @@ IF n_elements( psymnamesdef ) EQ 0 THEN BEGIN
   psymnames = [ 'no sym', '+', '*', '.', '!9V!X', '!4D!X', '!9B!X','!9X!X']
   psymnamesdef =1
 ENDIF 
-RETURN, psymnames( sym )
+RETURN, psymnames[ abs(sym ) ]
 END
