@@ -31,6 +31,9 @@
 # Modification Log:
 #
 # $Log$
+# Revision 1.7  2002/08/07 23:57:17  vapdev
+# move 'use strict' to top and fixed resulting compilation errors
+#
 # Revision 1.6  2002/07/03 22:36:54  vapdev
 # Continuing upgrade (-w/use strict) work
 #
@@ -55,7 +58,14 @@
 # 
 package VapUtil;
 use strict;
-use vars qw/@ISA @EXPORT/;
+
+use vars qw/@ISA @EXPORT_OK $VAP_LIBRARY $ARCHIVETOP $GRIDDINGTOP
+	    $WINDS_DIR $IDLEXE $auto_movie_defs_file
+	    $overlay_defs_file $vap_defs_file $vap_is_batch
+	    %satnum2areanum %areanum2satnum %satloc2satnum
+	    %sensornum2name %sensornum2dir %sensorname2num
+	    %vap_defs/;
+
 use subs qw/&doy2mday_mon  &date2doy &vaptime2systime &systime2vaptime 
 	   &systime2idltime &idltime2systime &leapyear 
 	   &GetNow &DeltaTime &ParseVapTime &vaptime2idltime
@@ -64,12 +74,16 @@ use subs qw/&doy2mday_mon  &date2doy &vaptime2systime &systime2vaptime
 	   &makeRandomTag/;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT=qw( doy2mday_mon  date2doy vaptime2systime systime2vaptime 
-	   systime2idltime idltime2systime leapyear 
-	   GetNow DeltaTime ParseVapTime vaptime2idltime
-	   vaptime2decyear systime2decyear parts2decyear 
-	   fixlonrange prepend_yyyymmdd SysNow makeIDLOplotString
-	   makeRandomTag );
+@EXPORT_OK=qw( &doy2mday_mon &date2doy &vaptime2systime &systime2vaptime 
+	       &systime2idltime &idltime2systime &leapyear 
+	       &GetNow &DeltaTime &ParseVapTime &vaptime2idltime
+	       &vaptime2decyear &systime2decyear &parts2decyear 
+	       &fixlonrange &prepend_yyyymmdd &SysNow &makeIDLOplotString
+	       &makeRandomTag $VAP_LIBRARY $ARCHIVETOP $GRIDDINGTOP
+	       $WINDS_DIR $IDLEXE $auto_movie_defs_file
+	       $overlay_defs_file $vap_defs_file $vap_is_batch 
+	       %satnum2areanum   %areanum2satnum %satloc2satnum 
+	       %sensornum2name %sensorname2dir);
 
 use Time::Local;
 use Carp;
@@ -78,52 +92,49 @@ use Carp;
 BEGIN {
     # Get ENV variables
 
-  $VapUtil::VAP_LIBRARY=$ENV{'VAP_LIBRARY'} || 
+  $VAP_LIBRARY=$ENV{'VAP_LIBRARY'} || 
     croak "ENV VAP_LIBRARY is not defined!\n";
 
-  # Get ENV variables
-  $VapUtil::ARCHIVETOP=$ENV{'VAP_GOES_TOP'}  || 
-    croak "ENV var VAP_GOES_TOP undefined!\n";
-  $VapUtil::GRIDDINGTOP=$ENV{'VAP_GOES_GRIDDED_TOP'} || 
-    croak "ENV var VAP_GOES_GRIDDED_TOP undefined\n";
-  $VapUtil::WINDS_DIR = $ENV{'VAP_DATA_TOP'} || 
+   # Get ENV variables
+   $ARCHIVETOP=$ENV{'VAP_GOES_TOP'}  || 
+     croak "ENV var VAP_GOES_TOP undefined!\n";
+   $GRIDDINGTOP=$ENV{'VAP_GOES_GRIDDED_TOP'} || 
+     croak "ENV var VAP_GOES_GRIDDED_TOP undefined\n";
+   $WINDS_DIR = $ENV{'VAP_DATA_TOP'} || 
         croak "ENV var  VAP_DATA_TOP undefined\n";
 
-  $VapUtil::IDLEXE = $ENV{IDLEXE} || croak "ENV var IDLEXE is undefined!\n";
+  $IDLEXE = $ENV{IDLEXE} || croak "ENV var IDLEXE is undefined!\n";
 
     # MOVIE DEFS
-  $VapUtil::auto_movie_defs_file=$VapUtil::VAP_LIBRARY."/auto_movie_defs.dat";
+  $auto_movie_defs_file=$VAP_LIBRARY."/auto_movie_defs.dat";
 
     # Get the Overlay Defaults
-  $VapUtil::overlay_defs_file=$VapUtil::VAP_LIBRARY."/overlay_defs";
-  require $VapUtil::overlay_defs_file;
+  $overlay_defs_file=$VAP_LIBRARY."/overlay_defs";
+  require $overlay_defs_file;
 
     # Get generic VAP processing Defaults
-  $VapUtil::vap_defs_file=$VapUtil::VAP_LIBRARY."/vap_defs";
-  require $VapUtil::vap_defs_file;
+  $vap_defs_file=$VAP_LIBRARY."/vap_defs";
+  require $vap_defs_file;
 
     # Check for interactivity.
-  $VapUtil::vap_is_batch = !defined($ENV{'TERM'});
+  $vap_is_batch = !defined($ENV{'TERM'});
 
-  %VapUtil::satnum2areanum = (10 => 8,
-			    8 => 9);
+  %satnum2areanum = (10 => 8,
+		     8 => 9);
 
-  %VapUtil::areanum2satnum = (8 => 10, 
-			    9 => 8 );
+  %areanum2satnum = (8 => 10, 
+		     9 => 8 );
 
-  %VapUtil::satloc2satnum = (WEST=>10,
-			   EAST=>8);
+  %satloc2satnum = (WEST=>10,
+		    EAST=>8);
 
-  %VapUtil::sensornum2name = ('1' => 'vis',
-			   '2' => 'ir2',
-			   '3' => 'ir3',
-			   '4' => 'ir4',
-			   '5' => 'ir5'
-			   );
-
-
-  %VapUtil::sensorname2num = reverse %VapUtil::sensornum2dir;
-
+  %sensornum2name = ('1' => 'vis',
+		     '2' => 'ir2',
+		     '3' => 'ir3',
+		     '4' => 'ir4',
+		     '5' => 'ir5'
+		    );
+  %sensorname2num = reverse %sensornum2dir;
 
 }
 
@@ -347,7 +358,7 @@ sub DeltaTime{
 }
 
 sub fixlonrange{
-  croak "Usage fixed_array=VapUtil::fixlonrange(minlon,maxlon)\n"
+  croak "Usage fixed_array=fixlonrange(minlon,maxlon)\n"
     unless @_ == 2;
   my ($minlon, $maxlon) = @_;
   while ($minlon>$maxlon) {
@@ -388,8 +399,9 @@ sub auto_movie_defs {
   
 
   # open the file 
-  open (DEFS,"<$VapUtil::auto_movie_defs_file") || 
-    croak "Can't open $VapUtil::auto_movie_defs_file\n";
+  my $file=shift || $auto_movie_defs_file;
+  open (DEFS,"<$file") || 
+    croak "Can't open $file\n";
   my @defs =<DEFS>;
   close DEFS;
 
@@ -846,7 +858,7 @@ sub gag {
   # Goes 10 files have the name goes8, goes 8 have names AREA9
   # $sat_num{10} = 8;
 
-  my $goes_type="goes".$satnum." ".$VapUtil::sensornum2name{$sensornum};
+  my $goes_type="goes".$satnum." ".$sensornum2name{$sensornum};
 
 
 
@@ -894,8 +906,8 @@ sub gag {
 
     # NB, this loop is reading the 'noaa_area_info' file.
     # Construct the filename for the noaa_area_info file.
-  my $noaa_area_info_filename=$VapUtil::ARCHIVETOP."/goes".$satnum."/";
-  $noaa_area_info_filename.=$VapUtil::sensornum2name{$sensornum}."/noaa_area_info";
+  my $noaa_area_info_filename=$ARCHIVETOP."/goes".$satnum."/";
+  $noaa_area_info_filename.=$sensornum2name{$sensornum}."/noaa_area_info";
     # Open 'info' file
   if (!open(NOAA_AREA_INFO, "<$noaa_area_info_filename") )
   {
@@ -920,7 +932,7 @@ sub gag {
       print "  Corrupted data/time for $filename\n";
         # Somehow, this field (mm/dd/yyyy) in the area_info file has
         # been corrupted, so we're going to read the file itself.
-      my $local_path=$VapUtil::ARCHIVETOP."/goes".$satnum."/".$VapUtil::sensornum2name{$sensornum}."/";
+      my $local_path=$ARCHIVETOP."/goes".$satnum."/".$sensornum2name{$sensornum}."/";
       my $ttmp=$local_path.$filename;
       if (open( AREAFILE, "<$ttmp" )){
 	my $hdr;
@@ -975,7 +987,7 @@ sub gag {
   my $filenum = substr( $area_file, $off+3, 2);
 
   # Construct path and file name on remote server.
-  my $remote_path = "goes".$satnum."/".$VapUtil::sensornum2name{$sensornum}."/";
+  my $remote_path = "goes".$satnum."/".$sensornum2name{$sensornum}."/";
 
   if ( $remote_path =~ m#^g# ) {
     $tmp = "/".$remote_path ;
@@ -987,8 +999,8 @@ sub gag {
     # on this machine.
     # While we're at it, might as well produce the path 
     # to the gridding files.
-  my $local_path=$VapUtil::ARCHIVETOP.$tmp;
-  my $gridding_path=$VapUtil::GRIDDINGTOP.$tmp;
+  my $local_path=$ARCHIVETOP.$tmp;
+  my $gridding_path=$GRIDDINGTOP.$tmp;
   my $local_area_file=$local_path.$area_file;
   my $test2 = 1.e20;
   my $local_file;
@@ -1189,7 +1201,7 @@ sub getgoesfile{
   my $sen=substr( $area_file, $off+1, 1);
   my $filenum = substr( $area_file, $off+2, 2);
 
-  my $remote_path = "goes".$VapUtil::satnum2areanum{$sat}."/".$VapUtil::sensornum2name{$sen}."/";
+  my $remote_path = "goes".$satnum2areanum{$sat}."/".$sensornum2name{$sen}."/";
   my $remote_file = $remote_path.$area_file;
   
   print "remote_path = $remote_path\n";
@@ -1202,7 +1214,7 @@ sub getgoesfile{
 	$tmp = $remote_path;
       }
     print "tmp = $tmp\n";
-    $local_path=$VapUtil::ARCHIVETOP.$tmp;
+    $local_path=$ARCHIVETOP.$tmp;
   }
   my $local_file=$local_path.$area_file;
 
@@ -1357,8 +1369,8 @@ sub GetWindFiles{
   my $filter = shift @_ || croak "usage files=GetWindFiles(file_filter [endtime startime])\n";
   my $end_time= shift @_ || GetNow() ;
   my $start_time = shift @_ || DeltaTime( $end_time, -24 );
-  opendir WINDDIR, $VapUtil::WINDS_DIR || 
-    croak "Couldn't open $VapUtil::WINDS_DIR\n";
+  opendir WINDDIR, $WINDS_DIR || 
+    croak "Couldn't open $WINDS_DIR\n";
   my @allfiles=readdir WINDDIR;
   my @windfiles=grep( /^Q*\.*.\*/, @allfiles );
   croak "grep didn't find any wind files \n" if !@windfiles;
@@ -1394,10 +1406,10 @@ sub GetWindFiles{
 
 
 sub VapMailErrorMsg{
-  if ($VapUtil::vap_is_batch){
+  if ($vap_is_batch){
     my $errmsg=$_[0] || "Generic Error\n";
     my $subject=$_[1] || "<Generic Vap Error>\n";
-    my $addresses=join ", ", @{$vap_perl::vap_defs{'Error_Mail_Address'}};
+    my $addresses=join ", ", @{$vap_defs{'Error_Mail_Address'}};
     open MAIL_MESSAGE, "|mailx -s \'$subject\' $addresses";
     print MAIL_MESSAGE $errmsg;
     close MAIL_MESSAGE;
@@ -1416,7 +1428,7 @@ sub CheckForErrors{
   my $lock_file=shift or croak "usage: CheckForErrors file\n";
 
   do{
-    VapUtil::VapMailErrorMsg(
+    VapMailErrorMsg(
 	   "cloud_overlay: Couldn't open $lock_file after IDL \n",
 			     "ERROR OPEN LOCKFILE");
       croak "Couldn't open $lock_file after IDL \n";} 
@@ -1434,7 +1446,7 @@ sub CheckForErrors{
       print "Error in IDL processing \n";
       print @idlout;
       my $msg=join "\n",@idlout;
-      VapUtil::VapMailErrorMsg($msg,"ERRORINIDLPROC");
+      VapMailErrorMsg($msg,"ERRORINIDLPROC");
       exit;
     }
   }
@@ -1454,7 +1466,7 @@ sub MoveOverlayOutput{
 
   my $VAP_OVERLAY_ARCHIVE = $ENV{VAP_OVERLAY_ARCHIVE} ||
     do {
-      VapUtil::VapMailErrorMessage("Undefined ENV var (VAP_OVERLAY_ARCHIVE)\n",
+      VapMailErrorMessage("Undefined ENV var (VAP_OVERLAY_ARCHIVE)\n",
 				   "UNDEFINED_ENV_VAR");
       croak "Undefined ENV var (VAP_OVERLAY_ARCHIVE)\n";
     };
@@ -1464,14 +1476,14 @@ sub MoveOverlayOutput{
   my $fullregionname = shift or croak "Need <FULLREGIONNAME>\n";
   my $regionname = shift or croak "Need <REGIONNAME>\n";
 
-  do {VapUtil::VapMailErrorMsg(
+  do {VapMailErrorMsg(
 				"cloud_overlay: Couldn't CD to $srcdir\n",
 				"CD TO SOURCE DIR ERROR");
     croak " Couldn't CD to $srcdir\n\n";} unless chdir $srcdir;
 
 
   do {
-    VapUtil::VapMailErrorMsg(
+    VapMailErrorMsg(
 			      "cloud_overlay: Can't open $file_with_output_name\n",
 			      "AUTO CLOUD OVERLAY OUTPUT FILE OPEN ERROR");
       croak "Can't open $file_with_output_name\n";
@@ -1503,7 +1515,7 @@ sub MoveOverlayOutput{
 
   my $file="$VAP_OVERLAY_ARCHIVE/$fileroot-$regionname.jpeg";
   print "Renaming $bigpicture to $file\n";
-  do {VapUtil::VapMailErrorMsg(
+  do {VapMailErrorMsg(
 	    "cloud_overlay: Couldn't rename $bigpicture to $file, error = $!\n",
 				"PICTURE COPY ERROR");
 	  croak "Couldn't rename $bigpicture to $file, error = $!\n";} 
@@ -1516,7 +1528,7 @@ sub MoveOverlayOutput{
 
   my $VAP_WWW_TOP = $ENV{VAP_WWW_TOP};
   do {
-    VapUtil::VapMailErrorMessage("Undefined ENV var (VAP_WWW_TOP)\n",
+    VapMailErrorMessage("Undefined ENV var (VAP_WWW_TOP)\n",
 				  "UNDEFINED_ENV_VAR");
       croak "Undefined ENV var (VAP_WWW_TOP)\n";
     } unless $VAP_WWW_TOP;
@@ -1540,7 +1552,7 @@ sub MoveOverlayOutput{
     # copy thumbnail to image overlay archive.
   $file= "$VAP_OVERLAY_ARCHIVE/$thumbnailroot-$regionname.TN.jpeg";
   print "Renaming $smallpicture to $file\n";
-  do {VapUtil::VapMailErrorMsg(
+  do {VapMailErrorMsg(
 				"cloud_overlay: Couldn't rename $smallpicture to $file, error = $!\n",
 				"THUMBNAIL COPY ERROR") ;
 	  croak "Couldn't rename $smallpicture to $file, error = $!\n";} 
