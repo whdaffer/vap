@@ -37,12 +37,15 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/02/01 21:33:32  vapuser
+; Initial revision
+;
 ;
 ; 
 ;Copyright (c) 1999, William Daffer
 ;-
 
-FUNCTION ppdt, dt, yeardate=yeardate, hhmmss=hhmms
+FUNCTION ppdt, dt, yeardate=yeardate, hhmmss=hhmmss
 IF n_params() LT 1 THEN BEGIN 
   Usage, ' string=ppdt(dt) '
   return,0
@@ -63,6 +66,6 @@ yeardate =  strtrim(dt.year,2) + '-' + $
 hhmmss =   PadAndJustify(dt.hour,2,/right) + ':' + $
            PadAndJustify(dt.minute,2,/right) + ':' + $
            PadAndJustify(dt.second,2,/right) + '.000' 
-string yeardate + 'T' + hhmmss
+string =  yeardate + 'T' + hhmmss
 return,string
 END
