@@ -49,6 +49,12 @@
 ;            Null Pointer or undefined variable ) return, -1l.
 ;
 ;
+; ISSUES:
+;
+;   While this routine returns the size of pointers, both within and
+; without structures, this information is hardly useful for the common
+; use of this routine, which is to determine the size of a record
+; defined by the input structure when written to a disk file.
 ;
 ; EXAMPLE:  
 ;
@@ -60,6 +66,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1998/11/23 16:47:38  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1998, William Daffer
 ;-
