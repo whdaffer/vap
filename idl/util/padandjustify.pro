@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  1998/10/21 23:06:37  vapuser
+; took out 'selecting right...' message
+;
 ; Revision 1.1  1998/10/21 21:02:28  vapuser
 ; Initial revision
 ;
@@ -95,8 +98,9 @@ FUNCTION PadAndJustify, number, ndigits, pad=pad,right=right, left=left
  IF n_params() EQ 2 THEN BEGIN 
    nnum = n_elements(number)
    retarr = strarr(nnum)
+   tnum = long(number)
    FOR i=0,nnum-1 DO BEGIN 
-     str = strtrim( number[i], 2 ) 
+     str = strtrim( tnum[i], 2 ) 
      len = strlen(str)
      IF len LT ndigits THEN BEGIN 
        padding = string(bytarr(ndigits) + replicate( byte(pad), ndigits ))
