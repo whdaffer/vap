@@ -32,6 +32,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 22:54:33  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -42,7 +45,7 @@
 ;  pv_overlay_events: Main Event routine
 ;=====================================================
 
-pv_overlay_events, events
+PRO pv_overlay_events, events
 END
 
 ;=====================================================
@@ -73,7 +76,8 @@ PRO pv_overlay, group=group
    MakeFinalId = Widget_Button( junk, Value='Make Final Gridded File',$
                                 UValue='FINALGRIDFILE')
    ; junk = Widget_Base( tlb, /map, frame=2, title='Cloud Overlay Type')
-   type = ['East Pacific (Goes 10)', 'West Atlantic (Goes 8)',/EXCLUSIVE ]
+   type = ['East Pacific (Goes 10)', 'West Atlantic (Goes 8)']
+    ; ,/EXCLUSIVE ]???was in line above??? whd 20011209
    TypeBGroupId = CW_Bgroup(tlb, type, /row, frame=2, $
                             title='Cloud Overlay Type',$
                            set_value=0)

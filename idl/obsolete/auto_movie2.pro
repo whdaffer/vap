@@ -124,9 +124,12 @@
 ; MODIFICATION HISTORY:  
 ;
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:14:14  vapuser
+; Imported sources
+;
 ;
 ;-
-PRO auto_movie2.pro, date_time, $ ; (I) end time of data used in movie 
+PRO auto_movie2, date_time, $ ; (I) end time of data used in movie 
                              ; (def=current time)
                              ; ((yy)yy/mm/dd/hh(/mi). if yy <= 99 then 1900
                                 ; will be added to it. Default=current

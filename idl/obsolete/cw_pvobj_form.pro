@@ -84,6 +84,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:14:14  vapuser
+; Imported sources
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -108,14 +111,14 @@ FUNCTION cw_pvobj_form, tlb, labels, Filenames, plotflag, SelectedOnly
    n1 = N_Elements(Filenames)
    n2 = n_Elements(plotFlag)
    n3 = n_Elements(SelectedOnly) 
-   IF n1 ne n2 OR n2 NE n3 OR  n1 NE n3 BEGIN 
+   IF n1 ne n2 OR n2 NE n3 OR  n1 NE n3 THEN BEGIN 
      Message,"All input arrays (Filenames, Plotflags, SelectedOnly) must have the same number of elements",/cont
      return,0
    ENDIF 
 
    IF n_elements(labels) NE 3 THEN BEGIN 
-     Message,'There must be 3 labels ',cont
-     return
+     Message,'There must be 3 labels ',/cont
+     return,0
    ENDIF 
    
    return, cw_tlb

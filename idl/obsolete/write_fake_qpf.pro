@@ -65,7 +65,7 @@ WHILE NOT eof( lun ) DO BEGIN
   rec = ''
   readf, lun, rec
   rec = strtrim( strcompress(rec),2)
-  tmp = str_sep(rec,' ')
+  tmp =  strsplit( rec,' ',/extract) 
   reads, tmp[0], id, form='(z2)'
   nwords = long(tmp[1])
   nlines = nwords/16+1

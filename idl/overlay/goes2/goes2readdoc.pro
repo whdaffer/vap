@@ -75,7 +75,7 @@ FUNCTION  goes2readdoc, datetime, region
     readf, lun, rec
     rec = strcompress(strtrim(rec,2))
     t = strsplit(rec,'=',/extract)
-    t1 = strsplit(strtrim(t[0],2,/extract),' ')
+    t1 = strsplit(strtrim(t[0],2),' ',/extract)
     
     field = strupcase(t1[n_elements(t1)-1])
     x = where(tags EQ field, nx )
@@ -105,7 +105,7 @@ FUNCTION  goes2readdoc, datetime, region
     readf, lun, rec
     rec = strcompress(strtrim(rec,2))
     t = strsplit(rec,'=',/extract)
-    t1 = strsplit(strtrim(t[0],2,/extract),' ')
+    t1 = strsplit(strtrim(t[0],2),' ',/extract)
     
     field = t1[n_elements(t1)-1]
     index = fix(strmid(field,1,strlen(field)-1))

@@ -180,7 +180,7 @@ wpath       =  roistr.wpath
 IF n_elements( time ) EQ 0 THEN BEGIN
  ; Get the current GMT doy and hour
   spawn,'date -u +%j/%H/%Y',ret
-  tmp =  str_sep( ret(0), '/')
+  tmp =   strsplit(  ret(0), '/',/extract) 
   actual_doy =  tmp(0)
   test_hour =  tmp(1)
   test_year =  tmp(2)
@@ -188,7 +188,7 @@ IF n_elements( time ) EQ 0 THEN BEGIN
   test_day =  test_doy + fix(test_hour)/24.
 ENDIF ELSE BEGIN
   ; parse the users input date/time.
-  tmp =  str_sep( time, '/' )
+  tmp =   strsplit(  time, '/' ,/extract) 
   test_year =  fix(tmp(0))
   test_month = tmp(1)
   test_dom =  tmp(2)

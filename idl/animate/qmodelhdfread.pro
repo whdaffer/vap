@@ -67,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.4  2001/02/02 19:16:29  vapuser
+; Added `interptime', `wfiles' and `version' fields
+;
 ; Revision 1.3  2000/01/11 20:45:17  vapuser
 ; In line with the addition of metadata to the qmodel object and file, I
 ; added code to this module to read and transmit same.
@@ -114,7 +117,7 @@ FUNCTION qmodelhdfread, filename
         HDF_SD_ATTRINFO,sds_id,ai,name=name,$
            type=type,count=count,data=data
         IF strupcase(type) EQ 'STRING' THEN BEGIN 
-          tmp = str_sep( data, lf )
+          tmp =  strsplit(  data, lf ,/extract) 
           tmp = tmp(where(strlen(tmp)))
           data =  tmp(n_elements(tmp)-1)
           name =  strupcase( name )

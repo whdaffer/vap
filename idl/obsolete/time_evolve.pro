@@ -161,7 +161,7 @@ IF n_elements( date_time ) EQ 0 THEN BEGIN
  ; Get the current GMT doy and hour
   spawn,'date -u +%j/%Y/%m/%d/%H',ret
   date_time =  ret(0)
-  tmp =  str_sep( ret(0), '/')
+  tmp =   strsplit(  ret(0), '/',/extract) 
   actual_doy = tmp(0)
   test_year  = tmp(1)
   test_month = tmp(2)
@@ -173,7 +173,7 @@ IF n_elements( date_time ) EQ 0 THEN BEGIN
   test_year =  strtrim( fix(test_year)-1900,2 )
 ENDIF ELSE BEGIN
   ; parse the users input date/time.
-  tmp =  str_sep( date_time, '/' )
+  tmp =   strsplit(  date_time, '/' ,/extract) 
   test_year =  fix(tmp(0))
   test_month = tmp(1)
   test_dom =  tmp(2)
@@ -198,7 +198,7 @@ IF nif GT numfiles THEN BEGIN
 
   filedays =  fltarr(nif)
   FOR i= 0,nif-1 DO BEGIN 
-    tmp =  str_sep( interp_field_files(i), '/' )
+    tmp =   strsplit(  interp_field_files(i), '/' ,/extract) 
     tmp =  tmp(n_elements(tmp)-1)
     year  =  fix( strmid( tmp, 0, 2 ) )
     xx =  where( year GE 96, nxx )

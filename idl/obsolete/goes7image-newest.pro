@@ -345,7 +345,7 @@ IF do_winds THEN BEGIN
   IF err EQ  0 THEN begin
     exe_str =  'wc -l ' + windfile 
     spawn, exe_str, retval
-    nrecs =  long((str_sep( retval(0), ' ' ))(0))
+    nrecs =  long(( strsplit(  retval(0), ' ' ,/extract) )(0))
     ii =  0
     rec =  fltarr(5, nrecs)
     readf,windslun,rec

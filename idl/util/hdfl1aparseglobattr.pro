@@ -41,6 +41,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.4  2001/12/08 00:02:37  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.3  1999/06/18 18:11:29  vapuser
 ; Changed function name to match filename
 ;
@@ -64,7 +67,7 @@ FUNCTION HdfL1aParseGlobAttr, globalAttr
   ENDIF 
 
   lf = string(10b)
-  tmp = strstplit(globalAttr,lf,/extract)
+  tmp = strsplit(globalAttr,lf,/extract)
   nreps = tmp[1]
   data = strtrim(strcompress(tmp[2:2+nreps-1]),2)
   IF n_elements(data) EQ 1 THEN data = data[0]

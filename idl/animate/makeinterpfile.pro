@@ -199,6 +199,10 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.16  2001/02/02 19:13:25  vapuser
+; Added Interptime and rflag keywords. Added call to `checkinterpfile' to
+; check for voids
+;
 ; Revision 1.15  2000/03/08 21:51:11  vapuser
 ; Added some error checking code
 ;
@@ -465,7 +469,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
       cd,current=cur
       OutFile = cur + '/QIF'
       IF n_elements(endtime) NE 0 THEN BEGIN 
-        tmp = str_sep( EndTime,'/' )
+        tmp =  strsplit(  EndTime,'/' ,/extract) 
         nn = n_elements(tmp)
         OutFile = OutFile + '-'
         FOR i=0,nn-1 DO OutFile = OutFile + tmp[i]

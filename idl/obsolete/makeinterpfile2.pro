@@ -181,6 +181,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:14:14  vapuser
+; Imported sources
+;
 ; Revision 1.6  1998/11/25 22:40:56  vapuser
 ; Changed Ofile to Outfile
 ;
@@ -376,7 +379,7 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
       cd,current=cur
       OutFile = cur + '/QIF'
       IF n_elements(endtime) NE 0 THEN BEGIN 
-        tmp = str_sep( EndTime,'/' )
+        tmp =  strsplit(  EndTime,'/' ,/extract) 
         nn = n_elements(tmp)
         OutFile = OutFile + '-'
         FOR i=0,nn-1 DO OutFile = OutFile + tmp[i]

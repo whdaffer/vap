@@ -64,7 +64,7 @@ CASE Event.value OF
              ; older version of the grid file don't
              ; have the year info in them.
              spawn,'date',ret_str
-             tmp =  str_sep( ret_str(0), ' ' )
+             tmp =   strsplit(  ret_str(0), ' ' ,/extract) 
              year =  tmp( n_elements(tmp)-1 )
            ENDIF 
            hhmm =  strtrim( time, 2 )
@@ -241,7 +241,7 @@ CASE event.id OF
         WIDGET_CONTROL, s.ids.statusid, set_valu = v
         WIDGET_CONTROL, s.ids.statusid, set_uvalu= v
         goesfile =  s.goesfile
-        tmp =  str_sep( goesfile, '/')
+        tmp =   strsplit(  goesfile, '/',/extract) 
         goesfile =  tmp( n_elements(tmp)-1 )
         sat  =  strmid( goesfile, 4,1 )
         sens =  strmid( goesfile, 5,1 )
@@ -465,7 +465,7 @@ IF keyword_set( goes_file ) THEN BEGIN
         ; older version of the grid file don't
         ; have the year info in them.
         spawn,'date',ret_str
-        tmp =  str_sep( ret_str(0), ' ' )
+        tmp =   strsplit(  ret_str(0), ' ' ,/extract) 
         year =  tmp( n_elements(tmp)-1 )
       ENDIF 
       hhmm =  strtrim( time, 2 )

@@ -92,6 +92,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  2001/12/08 00:02:37  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.2  1998/10/29 22:33:26  vapuser
 ; Added some code to handle the Level processors strange attributes
 ;
@@ -148,7 +151,7 @@ FUNCTION hdfgetattr, filename, attribute=attribute, printall=printall
         hdf_sd_attrinfo,fileid,ai,name=name,type=type,count=count,data=data
         IF printall THEN BEGIN 
           IF VarType( data ) EQ 'STRING' THEN BEGIN 
-            tmp = strstrsplit( data, lf,/extract )
+            tmp = strsplit( data, lf,/extract )
             tmp = tmp(where(strlen(tmp)))
             data =  tmp(n_elements(tmp)-1)
             name =  name + " : "

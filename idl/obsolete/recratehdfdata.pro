@@ -57,6 +57,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/23 22:16:33  vapuser
+; Took out calls to Q2B object and did it by hand.
+;
 ; Revision 1.2  1998/10/23 14:43:12  vapuser
 ; Added comments, worked on ::version
 ;
@@ -122,7 +125,7 @@ PRO RecrateHDFData, newfile, oldfile, startDt, EndDt
         
         ; print,'Working on ', name
         IF VarType(data) EQ 'STRING' THEN BEGIN 
-          tmp = str_sep( data, lf )
+          tmp =  strsplit(  data, lf ,/extract) 
           tmp = tmp(where(strlen(tmp)))
           data =  tmp(n_elements(tmp)-1)
         ENDIF 

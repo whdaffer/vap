@@ -32,6 +32,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.2  2001/12/08 00:02:35  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.1  1999/10/06 23:15:04  vapuser
 ; Initial revision
 ;
@@ -174,7 +177,7 @@ FUNCTION  eatime::L1ATime2FTS,L1ATime
   year = fix(strmid(TT[0],0,4))
   doy = fix(strmid(tt[0],5,3))
   ;tt = str_sep(tt[1],':')
-  tt = strtrim(tt[1],':',/extract)
+  tt = strsplit(tt[1],':',/extract)
   hour = fix(tt[0])
   minute = fix(tt[1])
   second = fix(tt[2])

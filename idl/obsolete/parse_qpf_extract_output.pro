@@ -32,7 +32,7 @@ if err eq 0 then begin
     if strpos( rec, '@' ) eq -1 and $
        strpos( rec, '#' ) eq -1  AND $
        strlen(rec) NE 0 then begin 
-      tmp = str_sep( rec, ' ')
+      tmp =  strsplit(  rec, ' ',/extract) 
       date = tmp[0]
       ids  = strcompress(tmp[1],/remove_all)
       reads, strmid( ids, 2,2 ), id, format = '(Z2)'

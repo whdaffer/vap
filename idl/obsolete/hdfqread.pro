@@ -16,7 +16,7 @@ FUNCTION hdfqread, filename,su1=su1,sv1=sv1
       eqx = { date:'', time:'', long:0.}
       FOR ai =0,attributes-1 DO BEGIN 
         hdf_sd_attrinfo,sds_id,ai,name=name,type=type,count=count,data=data
-        tmp = str_sep( data, lf )
+        tmp =  strsplit(  data, lf ,/extract) 
         tmp = tmp(where(strlen(tmp)))
         data =  tmp(n_elements(tmp)-1)
         CASE name OF 

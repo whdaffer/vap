@@ -19,7 +19,7 @@ PRO histgoes, file
 
   Read_PCGoes, file[0], limits, goesdata, hdr=hdr, status=status
 
-  tmp = str_sep(basename(file[0]) ,'.')
+  tmp =  strsplit( basename(file[0]) ,'.',/extract) 
   outfilebase = tmp[0]
   plotfile = outfilebase  + '-hist.ps'
   savefile = outfilebase + '-hist.save'

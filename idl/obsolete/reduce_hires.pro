@@ -4,7 +4,7 @@ IF n_params() EQ 0 THEN message,'Need FILE parameter '
 
 openr,rlun,file,/get,error=err
 IF err NE 0 THEN message,!err_string
-tmp =  str_sep( file,'.')
+tmp =   strsplit(  file,'.',/extract) 
 ofile =  tmp(0) + 'R' + tmp(1)
 openw,wlun, ofile,/get,error=err
 IF err NE 0 THEN message, !err_string

@@ -216,6 +216,10 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.14  2000/03/01 19:34:10  vapuser
+; Added a status flag to communicate
+; to outside world.
+;
 ; Revision 1.14  2000/03/01 16:37:26  vapuser
 ; Added a status flag to communicate
 ; to outside world.
@@ -783,7 +787,7 @@ PRO goes_overlay24, goesfile, $
       ofileroot =  ofileroot + '-' + lim_str
       IF keyword_set( file_str ) THEN BEGIN 
          IF strlen( file_str[0] ) GT 0 THEN BEGIN 
-           s =  str_sep( file_str,' ' )
+           s =   strsplit(  file_str,' ' ,/extract) 
            tt =  '_' + s(0)
            FOR i=1,n_elements(s)-1 DO tt =  tt + '_' + s(i)
            ofileroot =  ofileroot + tt

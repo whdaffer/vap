@@ -1,6 +1,9 @@
 ; Mods.
 ;
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:17:15  vapuser
+; Imported sources
+;
 ;
 ;
 PRO svh2hdf, files, date=date
@@ -87,11 +90,11 @@ PRO svh2hdf, files, date=date
 
   FOR n=0,nn-1 DO BEGIN 
     
-    tmp = str_sep( StartTimes[n], '/')
+    tmp =  strsplit(  StartTimes[n], '/',/extract) 
     start_hour = tmp[0]
     start_min = tmp[1]
 
-    tmp = str_sep( EndTimes[n], '/')
+    tmp =  strsplit(  EndTimes[n], '/',/extract) 
     end_hour = tmp[0]
     end_min = tmp[1]
 

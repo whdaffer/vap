@@ -22,13 +22,12 @@ PRO spinup_wind_field, qmodelfile, $
   IF n_elements(lonpar) NE 2 THEN lonpar =  minmax(lon)
   IF n_elements(latpar) NE 2 THEN latpar =  minmax(lat)
 
-  IF n_elements(vlonpar) NE 3 than vlonpar= [lonpar,1]
-  IF n_elements(vlatpar) NE 3 than vlatpar= [latpar,1]
+  IF n_elements(vlonpar) NE 3 THEN vlonpar= [lonpar,1]
+  IF n_elements(vlatpar) NE 3 THEN vlatpar= [latpar,1]
 
   lonpar = fixlonrange(lonpar)
   IF lonpar[0] LT 0 AND lonpar[1] GT 0 THEN BEGIN 
     vlonpar =  fixlonrange(vlonpar[0:1])
-    slon = 
   ENDIF 
   
 

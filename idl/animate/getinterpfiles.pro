@@ -111,6 +111,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.9  2001/12/08 00:02:35  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.8  2000/03/08 21:50:52  vapuser
 ; Added some error checking code
 ;
@@ -190,10 +193,10 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
 
   tdate_time = regularizeVapTime(date_time, /max)
 
-  IF rstrpos(Interp_Path,'/') NE strlen(Interp_Path)-1 THEN $
+  IF  strpos(Interp_Path,'/',/reverse_search)  NE strlen(Interp_Path)-1 THEN $
      Interp_Path = Interp_Path + '/'
   IF n_Elements(Wpath) EQ 0 THEN Wpath = GetEnv('VAP_DATA_TOP')
-  IF rstrpos(WPath,'/') NE strlen(WPath)-1 THEN $
+  IF  strpos(WPath,'/',/reverse_search)  NE strlen(WPath)-1 THEN $
      WPath = WPath + '/'
 
   nscat = keyword_set(nscat)
@@ -212,11 +215,11 @@ FUNCTION GetInterpFiles,date_time, $ ; VapTime yyyy/mm/dd/hh/mi, the
 
   IF cnt NE 0 THEN BEGIN 
 
-    junk = (rstrpos( interp_files[0], '/'))[0] + 1
+    junk = ( strpos( interp_files[0], '/',/reverse_search) )[0] + 1
     len = strlen(interp_files[0])
     basenames = strmid(interp_files, junk, len-junk)
     filetimes = ifnames2dt(basenames)
-    tmp = str_sep( tdate_time, '/')
+    tmp =  strsplit(  tdate_time, '/',/extract) 
     testtime = var_to_dt( fix(tmp[0]), fix(tmp[1]), fix(tmp[2]), $
                           fix(tmp[3]), fix(tmp[4]) )
 

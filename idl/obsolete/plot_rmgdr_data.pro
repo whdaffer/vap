@@ -5,7 +5,7 @@ IF NOT( keyword_Set( lim ) ) THEN lim =  [-80,0,80,360]
 nf =  n_elements( files )
 first =  1
 READ_RMGDR_DATA, files, uu,vv,llon,llat
-window,/free,xsiz=800n,ysiz=640
+window,/free,xsiz=800,ysiz=640
 loadct,12
 MAP_SET,/cont,/grid,/lab,lim= lim 
 PLOTVECT,uu,vv,llon,llat,length = length

@@ -1,6 +1,9 @@
 ; Mods.
 ;
 ; $Log$
+; Revision 1.2  1998/10/23 21:08:41  vapuser
+; Took out rowtime
+;
 ; Revision 1.1  1998/10/22 21:23:41  vapuser
 ; Initial revision
 ;
@@ -90,11 +93,11 @@ PRO svh2hdf, files, date=date
 
   FOR n=0,nn-1 DO BEGIN 
     
-    tmp = str_sep( StartTimes[n], '/')
+    tmp =  strsplit(  StartTimes[n], '/',/extract) 
     start_hour = tmp[0]
     start_min = tmp[1]
 
-    tmp = str_sep( EndTimes[n], '/')
+    tmp =  strsplit(  EndTimes[n], '/',/extract) 
     end_hour = tmp[0]
     end_min = tmp[1]
 

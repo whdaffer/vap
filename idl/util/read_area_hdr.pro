@@ -32,6 +32,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 22:57:21  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -43,7 +46,7 @@ PRO read_area_hdr, file, date, time,lres,eres, $
 
 openr,rlun,inpath + file, /get,error=err
 IF err NE 0 THEN BEGIN
-  message !err_string,/cont
+  message, !err_string,/cont
   return
 ENDIF 
 

@@ -41,6 +41,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/06/18 18:00:09  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -55,7 +58,7 @@ FUNCTION HdfL1AParseGlobalAttr, globalAttr
   ENDIF 
 
   lf = string(10b)
-  tmp = str_sep(globalAttr,lf)
+  tmp =  strsplit( globalAttr,lf,/extract) 
   nreps = tmp[1]
   data = strtrim(strcompress(tmp[2:2+nreps-1]),2)
   IF n_elements(data) EQ 1 THEN data = data[0]

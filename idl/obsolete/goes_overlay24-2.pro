@@ -193,6 +193,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  2001/12/08 00:02:36  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.1.1.1  2001/12/04 19:14:14  vapuser
 ; Imported sources
 ;
@@ -472,7 +475,7 @@ PRO goes_overlay24, goesfile, $
   
 
 
-  IF status THEN BEGIN 
+;  IF status THEN BEGIN 
     GoesFilenameStruct = ParseGoesFileName( goesfile )
     IF VarType( GoesFilenameStruct ) NE 'STRUCTURE' THEN BEGIN 
       Message," Trouble parsing " + Goesfile ,/cont
@@ -694,7 +697,7 @@ PRO goes_overlay24, goesfile, $
       ofileroot =  ofileroot + '-' + lim_str
       IF keyword_set( file_str ) THEN BEGIN 
          IF strlen( file_str[0] ) GT 0 THEN BEGIN 
-           s =  str_sep( file_str,' ' )
+           s =   strsplit(  file_str,' ' ,/extract) 
            tt =  '_' + s(0)
            FOR i=1,n_elements(s)-1 DO tt =  tt + '_' + s(i)
            ofileroot =  ofileroot + tt
@@ -758,11 +761,11 @@ PRO goes_overlay24, goesfile, $
 ;    mapIm = 0; free some memory
 
 
-   cloudmask = scale( GoesData,minv=0,maxv=1023)*99
-   Hue = fltarr(nlon,nlat)+WaterHue
-   IF nland NE 0 THEN Hue[land] = LandHue
+    cloudmask = scale( GoesData,minv=0,maxv=1023)*99
+    Hue = fltarr(nlon,nlat)+WaterHue
+    IF nland NE 0 THEN Hue[land] = LandHue
 
-   IF config THEN $
+    IF config THEN $
      CLOUD_OVERLAY_CONFIG, $
        landwater=hue, $
          cloudmask=cloudmask, $
@@ -843,6 +846,7 @@ PRO goes_overlay24, goesfile, $
           PlotVect, u,v,lon,lat, color=col24, len=length, thick=thick, $
            scale=scaleVec
         ENDIF 
+      ENDFOR 
     ENDELSE 
 
 
@@ -929,9 +933,9 @@ PRO goes_overlay24, goesfile, $
 
     ENDCASE
 
-  ENDIF ELSE BEGIN 
-    Message,'Error Reading Goesfile ' + goesfile
-  ENDELSE 
+;  ENDIF ELSE BEGIN 
+;    Message,'Error Reading Goesfile ' + goesfile
+;  ENDELSE 
   
   end_time = systime(1)
   IF Verbose THEN print,'Total Time: ', (end_time-start_time)/60. ,' Minutes'

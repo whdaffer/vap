@@ -36,7 +36,7 @@ PRO wf::Set, $
     end_hhmm = strmid( tmp[2], 1, 4 );
     date = strmid(base_time,0,4) + '/' + $
              strmid(base_time,4,2) + '/' + $
-               strmid(base_time(6,2)
+               strmid(base_time,6,2)
 
     self.start_time = str_to_dt( date, start_hhmm, date_fmt=5, time_fmt=-2)
     self.end_time =  str_to_dt( date, end_hhmm,  date_fmt=5, time_fmt=-2)

@@ -40,6 +40,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  2001/12/08 00:02:36  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.1.1.1  2001/12/04 19:14:14  vapuser
 ; Imported sources
 ;
@@ -131,7 +134,7 @@ IF n_elements( date_time ) EQ 0 THEN BEGIN
  ; Get the current GMT doy and hour
   spawn,'date -u +%j/%Y/%m/%d/%H',ret
   date_time =  ret(0)
-  tmp =  str_sep( ret(0), '/')
+  tmp =   strsplit(  ret(0), '/',/extract) 
   actual_doy = tmp(0)
   test_year  = tmp(1)
   test_month = tmp(2)
@@ -143,7 +146,7 @@ IF n_elements( date_time ) EQ 0 THEN BEGIN
   test_day =  test_doy + fix(test_hour)/24.
 ENDIF ELSE BEGIN
   ; parse the users input date/time.
-  tmp =  str_sep( date_time, '/' )
+  tmp =   strsplit(  date_time, '/' ,/extract) 
   date_string =  date_time
   test_year =  fix(tmp(0))
   test_month = tmp(1)

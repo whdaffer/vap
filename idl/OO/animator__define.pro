@@ -56,6 +56,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1.1.1  2001/12/04 19:03:33  vapuser
+; Imported sources
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) YYYY, California Institute of Technology
@@ -66,7 +69,7 @@
 ; Init
 ;============================================
 
-FUNCTION animator::Init,
+FUNCTION animator::Init,foo
   status = 0
   return,status
 END
@@ -200,8 +203,5 @@ PRO animator__define
           Data: Ptr_New(),$
           Roi: '',$
           alonpar: fltarr(3),$
-          alatpar: fltarr(3),$
-          
-          
-           }
+          alatpar: fltarr(3) }
 END

@@ -33,6 +33,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/10/06 21:28:23  vapuser
+; Initial revision
+;
 ;
 ;Copyright (c) 1999, William Daffer
 ; No Warranties!
@@ -59,7 +62,7 @@ PRO hdfattr, file
   FOR i=0,nattributes-1 DO BEGIN 
     hdf_sd_attrinfo,fileid,i,name=name,type=type,count=count,data=data
     IF VarType(data) EQ 'STRING' THEN BEGIN 
-      tmp = str_sep( data, lf )
+      tmp =  strsplit(  data, lf ,/extract) 
       tmp = tmp(where(strlen(tmp)))
       data =  tmp(n_elements(tmp)-1)
     ENDIF 

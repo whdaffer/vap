@@ -39,6 +39,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  2001/12/08 00:02:36  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.1.1.1  2001/12/04 19:14:14  vapuser
 ; Imported sources
 ;
@@ -70,7 +73,7 @@ IF err EQ 0 THEN BEGIN
     test =  'END ' + desig 
     readf, rlun, rec
     WHILE (strpos( rec, test ) EQ -1 ) AND NOT( eof( rlun ) ) DO BEGIN
-      tmp =  str_sep( rec, ':' )
+      tmp =   strsplit(  rec, ':' ,/extract) 
       field =  strtrim( tmp(0), 2 )
       value =  tmp(1)
       xx =  where( tags EQ field, nxx )
