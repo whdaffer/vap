@@ -1,5 +1,5 @@
 ;+
-; NAME:  ReadColorTableFile
+; NAME:  ReadColorTable
 ; $Id$
 ; PURPOSE:  Reads a file containing a 3 by n array of byte values,
 ;          i.e. a color table
@@ -12,7 +12,7 @@
 ;
 ;
 ;
-; CALLING SEQUENCE:  PtrToColorTable=ReadColorTableFile(filename)
+; CALLING SEQUENCE:  PtrToColorTable=ReadColorTable(filename)
 ;
 ;
 ; 
@@ -60,6 +60,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/11/03 22:16:17  vapuser
+; Initial revision
+;
 ;
 ;
 ;Copyright (c) 1998, William Daffer
