@@ -86,6 +86,9 @@
   ;
   ; MODIFICATION HISTORY:
   ; $Log$
+  ; Revision 1.1  1998/09/30 23:39:58  vapuser
+  ; Initial revision
+  ;
   ;
   ;Jet Propulsion Laboratory
   ;Copyright (c) 1998, California Institute of Technology
@@ -175,7 +178,6 @@ FUNCTION q2b::init, $
 
   
   status = 0
-  self.rcsid = "$Id$"
   self.filename = '<No Name>'
   self.type = 'UNKOWN'
   IF N_Elements(filename) NE 0 THEN BEGIN 
@@ -1304,6 +1306,23 @@ PRO Q2B::SetExcludeCols, Cols
 END
 
 
+
+;============================================
+; Version
+;============================================
+
+FUNCTION Q2B::Version
+   rcsid = "$Id$"
+   super = Obj_Class(self,/Super,count=cnt)
+   IF cnt NE 0 THEN BEGIN 
+     versions = strarr(cnt+1)
+     versions[0] = rcsid
+     FOR i=0,cnt-1 DO versions[i] = call_method("VERSION",super[i])
+     return,versions
+   ENDIF ELSE return,rcsid
+END
+
+
   ; ==========================================
   ;
   ; Object Definition Routine
@@ -1313,7 +1332,6 @@ END
 PRO q2b__define
    eqx = eqx_str(1)
   junk = { Q2B,$
-           rcsid    : '',$        ; RCS id
            filename : '',$        ; Name of file containing data (if there)
            type     : '',$        ; 'SVH', 'HDF' or '???'
            ncells   : 0l,$        ; number of crosstrack cells
