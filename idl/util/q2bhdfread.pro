@@ -74,6 +74,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.3  1998/10/12 22:07:27  vapuser
+; Changed StartDate in command line to StartTime, ditto End...
+;
 ; Revision 1.2  1998/10/05 23:30:48  vapuser
 ; added wvc_row_time to list of parameters to be retrieved.
 ;
@@ -108,19 +111,22 @@ FUNCTION q2bhdfread, filename, $
   ENDIF 
 
   IF hdf_ishdf(filename) NE 0 THEN BEGIN 
-    lf =  byte(10)
-    sds_id = hdf_sd_start(filename,/read) 
-    IF sds_id gt 0 THEN BEGIN 
-      hdf_sd_fileinfo,sds_id,datasets,attributes
+    lf =  string(10b)
+    fileid = hdf_sd_start(filename,/read) 
+    IF fileid gt 0 THEN BEGIN 
+      hdf_sd_fileinfo,fileid,datasets,attributes
       ; print,'Number of SD data sets: ',datasets
       ; print,'Number of attributes:   ',attributes
       eqx = eqx_str(1)
       FOR ai =0,attributes-1 DO BEGIN 
-        hdf_sd_attrinfo,sds_id,ai,name=name,type=type,count=count,data=data
+        hdf_sd_attrinfo,fileid,ai,name=name,type=type,count=count,data=data
         name = strupcase(name)
-        tmp = str_sep( data, lf )
-        tmp = tmp(where(strlen(tmp)))
-        data =  tmp(n_elements(tmp)-1)
+        ; print,'Working on ', name
+        IF VarType(data) EQ 'STRING' THEN BEGIN 
+          tmp = str_sep( data, lf )
+          tmp = tmp(where(strlen(tmp)))
+          data =  tmp(n_elements(tmp)-1)
+        ENDIF 
         CASE name OF 
         'EQUATORCROSSINGDATE': eqx.date = data
         'EQUATORCROSSINGTIME': eqx.time = data
@@ -135,6 +141,8 @@ FUNCTION q2bhdfread, filename, $
       ENDFOR
 
       IF exist( StartDate ) AND exist( StartTime) THEN BEGIN 
+          ; Date has yyyy-DDD format
+          ; Time has hh:mm:ss.ccc format
         tmp = str_sep(StartDate,'-')
         StartYear = tmp[0]
         StartDoy = fix(tmp[1])
@@ -161,10 +169,11 @@ FUNCTION q2bhdfread, filename, $
       ENDIF ELSE EndTime = '0000/00/00/00/00'
 
 
-      r = hdf_sd_nametoindex(sds_id, 'wvc_lat')
-      r = hdf_sd_select( sds_id, r )
+      r = hdf_sd_nametoindex(fileid, 'wvc_lat')
+      r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, lat
+      hdf_sd_endaccess,r
       lat =  float(lat*cal.cal + cal.offset)
 
       retstruct  =  Q2B_STR( dims[1], ncells=dims[0] )
@@ -172,90 +181,88 @@ FUNCTION q2bhdfread, filename, $
       retstruct.lat =  float(lat) &  lat=0
 
 
-      r = hdf_sd_nametoindex(sds_id, 'wvc_row')
-      r = hdf_sd_select( sds_id, r )
+      r = hdf_sd_nametoindex(fileid, 'wvc_row')
+      r = hdf_sd_select( fileid, r )
       
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, row
-      row =  fix(row*cal.cal + cal.offset)
+      hdf_sd_endaccess,r
+      retstruct.row =  temporary(fix(row*cal.cal + cal.offset))
       
 
-      retstruct.row =  fix(row)
-      
 
-
-      r = hdf_sd_nametoindex(sds_id, 'wvc_lon')
-      r = hdf_sd_select( sds_id, r )
+      r = hdf_sd_nametoindex(fileid, 'wvc_lon')
+      r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, lon
+      hdf_sd_endaccess,r
       lon =  float(lon*cal.cal + cal.offset)
 
         ; Make it East Longitude.
       bad = where( Lon LT 0, nbad)
       IF nbad NE 0 THEN Lon(bad) = lon(bad)+360.
         
-      retstruct.lon =  lon &  lon=0
+      retstruct.lon =  temporary(lon)
 
-      r = hdf_sd_nametoindex(sds_id, 'wvc_quality_flag')
-      r = hdf_sd_select( sds_id, r )
+      r = hdf_sd_nametoindex(fileid, 'wvc_quality_flag')
+      r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, qual
+      hdf_sd_endaccess,r
       qual =  fix(qual*cal.cal + cal.offset)
 
-      retstruct.qual =  qual &  qual=0
+      retstruct.qual = temporary(qual)
 
-      r = hdf_sd_nametoindex(sds_id, 'wind_speed')
-      r = hdf_sd_select( sds_id, r )
+      r = hdf_sd_nametoindex(fileid, 'wind_speed')
+      r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, speed
+      hdf_sd_endaccess,r
       speed =  float(speed*cal.cal + cal.offset)
-
-      r = hdf_sd_nametoindex(sds_id, 'wind_dir')
-      r = hdf_sd_select( sds_id, r )
+      
+      r = hdf_sd_nametoindex(fileid, 'wind_dir')
+      r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, dir
+      hdf_sd_endaccess,r
       dir =  float(dir*cal.cal + cal.offset)
 
-      r = hdf_sd_nametoindex(sds_id, 'wvc_selection')
-      r = hdf_sd_select( sds_id, r )
+      r = hdf_sd_nametoindex(fileid, 'wvc_selection')
+      r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, sel
+      hdf_sd_endaccess,r
       sel =  fix(sel*cal.cal + cal.offset)
 
-      retstruct.sel =  sel
 
-      r = hdf_sd_nametoindex(sds_id, 'wvc_index')
-      r = hdf_sd_select( sds_id, r )
+      r = hdf_sd_nametoindex(fileid, 'wvc_index')
+      r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, idx
+      hdf_sd_endaccess,r
       idx =  fix(idx*cal.cal + cal.offset)
 
-      retstruct.idx =  idx &  idx=0
+      retstruct.idx =  temporary(idx)
 
-      r = hdf_sd_nametoindex(sds_id, 'num_ambigs')
-      r = hdf_sd_select( sds_id, r )
+      r = hdf_sd_nametoindex(fileid, 'num_ambigs')
+      r = hdf_sd_select( fileid, r )
       hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
       hdf_sd_getdata,r, nambig
+      hdf_sd_endaccess,r
       nambig =  fix(nambig*cal.cal + cal.offset)
 
       retstruct.nambig =  nambig
 
 
-      r = hdf_sd_nametoindex(sds_id, 'wvc_row_time')
+      r = hdf_sd_nametoindex(fileid, 'wvc_row_time')
       IF r GE 0  THEN BEGIN 
-        r = hdf_sd_select( sds_id, r )
+        r = hdf_sd_select( fileid, r )
         hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
         hdf_sd_getdata,r, rowtime
+        hdf_sd_endaccess,r
       ENDIF 
+      hdf_sd_end,fileid
 
-
-      r = hdf_sd_nametoindex(sds_id, 'wvc_row')
-      IF r GE 0  THEN BEGIN 
-        r = hdf_sd_select( sds_id, r )
-        hdf_sd_getinfo, r, ndims=nd, dims=dims, type=ty, unit=un, caldata=cal
-        hdf_sd_getdata,r, row
-      ENDIF 
-      
       t2 = systime(1)
       print, 'Time to Extract data from HDF file ',t2-t1
       t1 = t2
@@ -271,10 +278,8 @@ FUNCTION q2bhdfread, filename, $
       sv =  su
 
       t11 = systime(1)
-
       tsel = sel-1
-      tnambig = nambig
-      bad_sel = where( tsel EQ -1 OR tnambig LT 1, nx )
+      bad_sel = where( tsel EQ -1 OR nambig LT 1, nx )
       tsel(bad_sel) =  0
       
       tsel = tsel + lindgen( s(2)*s(3) )*4
@@ -289,7 +294,6 @@ FUNCTION q2bhdfread, filename, $
       retstruct.v = temporary(v)
       IF exist(rowtime) THEN $
         retstruct.rowtime = temporary(rowtime)
-      retstruct.row = temporary(row)
 
       t2 = systime(1)
       print,'Time to get selected vectors ',t2-t11
