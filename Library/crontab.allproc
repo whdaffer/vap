@@ -19,20 +19,20 @@
 # wpac    times are [23,    11:30] GMT +3 - 7 hours = [19,    7:30] PST
 # japan   times are [23,    11:30] GMT +3 - 7 hours = [19,    7:30] PST
 # fareast times are [00:30, 12:30] GMT +3 - 7 hours = [20:30, 8:30] PST
-30 2  * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_10_4_NEPAC_1 --windfilter Q >> $VAP_OPS_LOGFILES/GOES_10_4_NEPAC_1.log 2>&1;
-30 14 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_10_4_NEPAC_1 --windfilter Q >> $VAP_OPS_LOGFILES/GOES_10_4_NEPAC_1.log 2>&1;
-30 3  * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_10_4_PACHURR_1 --windfilter Q >>  $VAP_OPS_LOGFILES/GOES_10_4_PACHURR_1.log 2>&1;
-30 16 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_10_4_PACHURR_1 --windfilter Q >>  $VAP_OPS_LOGFILES/GOES_10_4_PACHURR_1.log 2>&1;
-30  9 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_8_4_NWATL_1 --windfilter Q >>  $VAP_OPS_LOGFILES/GOES_8_4_NWATL_1.log 2>&1;
-10 21 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_8_4_NWATL_1 --windfilter Q >>  $VAP_OPS_LOGFILES/GOES_8_4_NWATL_1.log 2>&1;
-30 10 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_8_4_ATLHURR_1 --windfilter Q  >>  $VAP_OPS_LOGFILES/GOES_8_4_ATLHURR_1.log 2>&1;
-10 22 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_8_4_ATLHURR_1 --windfilter Q  >>  $VAP_OPS_LOGFILES/GOES_8_4_ATLHURR_1.log 2>&1;
-#30  7 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_WPAC_1   --windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_WPAC_1.log 2>&1;
-#30 19 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_WPAC_1   --windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_WPAC_1.log 2>&1;
-#45  7 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_JAPAN_1  --windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_JAPAN_1.log 2>&1;
-#45 19 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_JAPAN_1  --windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_JAPAN_1.log 2>&1;
-#45  8 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_FAREAST_1--windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_FAREAST_1.log 2>&1;
-#30 20 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_FAREAST_1--windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_FAREAST_1.log 2>&1;
+30 2  * * * . $HOME/.profile; make_overlay --region GOES_10_4_NEPAC_1 --windfilter Q >> $VAP_OPS_LOGFILES/GOES_10_4_NEPAC_1.log 2>&1;
+30 14 * * * . $HOME/.profile; make_overlay --region GOES_10_4_NEPAC_1 --windfilter Q >> $VAP_OPS_LOGFILES/GOES_10_4_NEPAC_1.log 2>&1;
+30 3  * * * . $HOME/.profile; make_overlay --region GOES_10_4_PACHURR_1 --windfilter Q >>  $VAP_OPS_LOGFILES/GOES_10_4_PACHURR_1.log 2>&1;
+30 16 * * * . $HOME/.profile; make_overlay --region GOES_10_4_PACHURR_1 --windfilter Q >>  $VAP_OPS_LOGFILES/GOES_10_4_PACHURR_1.log 2>&1;
+30  9 * * * . $HOME/.profile; make_overlay --region GOES_8_4_NWATL_1 --windfilter Q >>  $VAP_OPS_LOGFILES/GOES_8_4_NWATL_1.log 2>&1;
+10 21 * * * . $HOME/.profile; make_overlay --region GOES_8_4_NWATL_1 --windfilter Q >>  $VAP_OPS_LOGFILES/GOES_8_4_NWATL_1.log 2>&1;
+30 10 * * * . $HOME/.profile; make_overlay --region GOES_8_4_ATLHURR_1 --windfilter Q  >>  $VAP_OPS_LOGFILES/GOES_8_4_ATLHURR_1.log 2>&1;
+10 22 * * * . $HOME/.profile; make_overlay --region GOES_8_4_ATLHURR_1 --windfilter Q  >>  $VAP_OPS_LOGFILES/GOES_8_4_ATLHURR_1.log 2>&1;
+#30  7 * * * . $HOME/.profile; make_overlay --region GMS_5_1_WPAC_1   --windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_WPAC_1.log 2>&1;
+#30 19 * * * . $HOME/.profile; make_overlay --region GMS_5_1_WPAC_1   --windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_WPAC_1.log 2>&1;
+#45  7 * * * . $HOME/.profile; make_overlay --region GMS_5_1_JAPAN_1  --windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_JAPAN_1.log 2>&1;
+#45 19 * * * . $HOME/.profile; make_overlay --region GMS_5_1_JAPAN_1  --windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_JAPAN_1.log 2>&1;
+#45  8 * * * . $HOME/.profile; make_overlay --region GMS_5_1_FAREAST_1--windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_FAREAST_1.log 2>&1;
+#30 20 * * * . $HOME/.profile; make_overlay --region GMS_5_1_FAREAST_1--windfilter Q  >>  $VAP_OPS_LOGFILES/GMS_5_1_FAREAST_1.log 2>&1;
 #
 #
 
@@ -55,20 +55,20 @@
 # wpac    times are [23,    11:30] GMT +3 - 7 hours = [19,    7:30] PST
 # japan   times are [23,    11:30] GMT +3 - 7 hours = [19,    7:30] PST
 # fareast times are [00:30, 12:30] GMT +3 - 7 hours = [20:30, 8:30] PST
-33 2  * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_10_4_NEPAC_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_10_4_NEPAC_1.log 2>&1;
-33 14 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_10_4_NEPAC_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_10_4_NEPAC_1.log 2>&1;
-33 3  * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_10_4_PACHURR_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_10_4_PACHURR_1.log 2>&1;
-33 16 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_10_4_PACHURR_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_10_4_PACHURR_1.log 2>&1;
-33  9 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_8_4_NWATL_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_8_4_NWATL_1.log 2>&1;
-13 21 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_8_4_NWATL_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_8_4_NWATL_1.log 2>&1;
-33 10 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_8_4_ATLHURR_1 --windfilter S  >>  $VAP_OPS_LOGFILES/GOES_8_4_ATLHURR_1.log 2>&1;
-13 22 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GOES_8_4_ATLHURR_1 --windfilter S  >>  $VAP_OPS_LOGFILES/GOES_8_4_ATLHURR_1.log 2>&1;
-#30  7 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_WPAC_1   --windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_WPAC_1.log 2>&1;
-#30 19 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_WPAC_1   --windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_WPAC_1.log 2>&1;
-#45  7 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_JAPAN_1  --windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_JAPAN_1.log 2>&1;
-#45 19 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_JAPAN_1  --windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_JAPAN_1.log 2>&1;
-#45  8 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_FAREAST_1--windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_FAREAST_1.log 2>&1;
-#30 20 * * * . $HOME/.profile; /usr/people/vapdev/development/vap/perl/make_overlay --region GMS_5_1_FAREAST_1--windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_FAREAST_1.log 2>&1;
+33 2  * * * . $HOME/.profile; make_overlay --region GOES_10_4_NEPAC_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_10_4_NEPAC_1.log 2>&1;
+33 14 * * * . $HOME/.profile; make_overlay --region GOES_10_4_NEPAC_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_10_4_NEPAC_1.log 2>&1;
+33 3  * * * . $HOME/.profile; make_overlay --region GOES_10_4_PACHURR_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_10_4_PACHURR_1.log 2>&1;
+33 16 * * * . $HOME/.profile; make_overlay --region GOES_10_4_PACHURR_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_10_4_PACHURR_1.log 2>&1;
+33  9 * * * . $HOME/.profile; make_overlay --region GOES_8_4_NWATL_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_8_4_NWATL_1.log 2>&1;
+13 21 * * * . $HOME/.profile; make_overlay --region GOES_8_4_NWATL_1 --windfilter S >>  $VAP_OPS_LOGFILES/GOES_8_4_NWATL_1.log 2>&1;
+33 10 * * * . $HOME/.profile; make_overlay --region GOES_8_4_ATLHURR_1 --windfilter S  >>  $VAP_OPS_LOGFILES/GOES_8_4_ATLHURR_1.log 2>&1;
+13 22 * * * . $HOME/.profile; make_overlay --region GOES_8_4_ATLHURR_1 --windfilter S  >>  $VAP_OPS_LOGFILES/GOES_8_4_ATLHURR_1.log 2>&1;
+#30  7 * * * . $HOME/.profile; make_overlay --region GMS_5_1_WPAC_1   --windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_WPAC_1.log 2>&1;
+#30 19 * * * . $HOME/.profile; make_overlay --region GMS_5_1_WPAC_1   --windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_WPAC_1.log 2>&1;
+#45  7 * * * . $HOME/.profile; make_overlay --region GMS_5_1_JAPAN_1  --windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_JAPAN_1.log 2>&1;
+#45 19 * * * . $HOME/.profile; make_overlay --region GMS_5_1_JAPAN_1  --windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_JAPAN_1.log 2>&1;
+#45  8 * * * . $HOME/.profile; make_overlay --region GMS_5_1_FAREAST_1--windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_FAREAST_1.log 2>&1;
+#30 20 * * * . $HOME/.profile; make_overlay --region GMS_5_1_FAREAST_1--windfilter S  >>  $VAP_OPS_LOGFILES/GMS_5_1_FAREAST_1.log 2>&1;
 #
 #
 

@@ -1,6 +1,9 @@
 # $Id$
 #
 # $Log$
+# Revision 1.13  2003/01/30 00:34:23  vapdev
+# Tweaking website appearance
+#
 # Revision 1.12  2003/01/28 19:02:49  vapdev
 # Ongoing work
 #
@@ -401,8 +404,12 @@ sub OverlayTable{
   my $row = 1;
   $overlay_table->setCell($row++,1,$overlay_qs_table->getTable) 
     if $overlay_qs_table;
-  $overlay_table->setCell($row,1,$overlay_sw_table->getTable) 
+  $overlay_table->setCell($row++,1,$overlay_sw_table->getTable) 
     if $overlay_sw_table;
+
+  my $archive = $q->a({-href=>"/images/overlay_archive"},"Archive");
+  $overlay_table->setCell($row++,1,$archive);
+
 
   $overlay_table;
 }
@@ -455,6 +462,8 @@ sub AnimTable{
 
 
     # Now put the anim_table into self
+  my $archive = $q->a({-href=>"/images/mov_archive"},"Archive");
+  $anim_table->setCell($row++,1,$archive);
 
   $anim_table;
 
@@ -570,6 +579,11 @@ sub Tropical_Storms_Table{
   my $row = 1;
   $ts_table->setCell($row++,1,$ts_qs_table->getTable) if $ts_qs_table;
   $ts_table->setCell($row,1,$ts_sw_table->getTable) if $ts_sw_table;
+
+  # Here's where the CGI script to sort the Tropical Storm archive will go.
+
+#  my $archive = $q->a({-href=>"/images/overlay_archive"},"Archive");
+#  $overlay_table->setCell($row++,1,$archive);
 
   $ts_table;
 }
