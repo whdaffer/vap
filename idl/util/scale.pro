@@ -1,7 +1,8 @@
 ;+
 ; NAME:  scale
 ; $Id$
-; PURPOSE:  Scales arrays to the range 0 to 1
+; PURPOSE:  Scales arrays to the range 0 to 1, linearly, or
+;          logarithmically, if gamma is set.
 ;
 ; AUTHOR:  William Daffer
 ;
@@ -22,6 +23,9 @@
 ;   MinV: The value (possible existing in the input array) that gets mapped to 0.
 ;   MaxV: The value (possible existing in the input array) that gets mapped to 1.
 ;   Double: If set, manipulations are to a double array.
+;   gamma: (I), float scalar. Use logarithmic scaling. i.e. first
+;          scale the array linearly between 0 and 1, then raise to the
+;          'gamma' power 
 ;
 ; OUTPUTS:  
 ;
@@ -41,11 +45,24 @@
 ;
 ; PROCEDURE:  
 ;
+;   If minv is absent, search array for minimum.
+;   If maxv is absent, search array for maximum.
+;   scale array between 0 and 1, i.e. 
+;
+;     scaled_array= ( (minv> scaled_array < maxv) -minv)/(maxv-minv)
+;
+;     If gamma is set: scaled_array=scaled_array^gamma
+;     return, scaled_array.
+;
+;
 ; EXAMPLE:  
 ;
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.3  1998/11/25 22:37:20  vapuser
+; Turn minv/maxv into keywords
+;
 ; Revision 1.2  1998/11/25 19:11:31  vapuser
 ; Took 'scale' out of call to Usage
 ;
@@ -56,7 +73,7 @@
 ;Copyright (c) 1998, William Daffer
 ;-
 
-FUNCTION scale, array, minv=minv, maxv=maxv, double=double
+FUNCTION scale, array, minv=minv, maxv=maxv, double=double, gamma=gamma
 
   double =  keyword_set(double)
 
@@ -90,7 +107,7 @@ FUNCTION scale, array, minv=minv, maxv=maxv, double=double
       IF n_Elements(minv) EQ 0 THEN minv = min(array,max=mx)
       IF n_elements(maxv) EQ 0 THEN maxv = mx
       scaled_array =  ( (minv> scaled_array < maxv) -minv)/(maxv-minv)
-
+      IF n_elements(gamma) NE 0 THEN scaled_array =  scaled_array^gamma
     END
   ENDCASE 
   return,scaled_array
