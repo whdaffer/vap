@@ -3,60 +3,37 @@
 ; $Id$
 ; PURPOSE:  Popup widget under 'config' pick on PVs main menu
 ;
-;
 ; AUTHOR: WHD
-;
 ;
 ; CATEGORY:  Qscat/Seawinds Widget (PV)
 ;
-;
-;
 ; CALLING SEQUENCE:  
-;
-;
 ; 
 ; INPUTS:  
 ;
-;
-;
 ; OPTIONAL INPUTS:  
-;
-;
 ;	
 ; KEYWORD PARAMETERS:  
 ;
-;
-;
 ; OUTPUTS:  
-;
-;
 ;
 ; OPTIONAL OUTPUTS:  
 ;
-;
-;
 ; COMMON BLOCKS:  
-;
-;
 ;
 ; SIDE EFFECTS:  
 ;
-;
-;
 ; RESTRICTIONS:  
-;
-;
 ;
 ; PROCEDURE:  
 ;
-;
-;
 ; EXAMPLE:  
-;
-;
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.5  1999/04/08 20:20:28  vapuser
+; Changed color24 to rgb2true
+;
 ; Revision 1.4  1999/01/24 20:06:25  vapuser
 ; Changed to accommidate new linkedlist object.
 ;
@@ -155,7 +132,7 @@ PRO Pv_Config_DrawEvents, event
   IF EventTypes( event.type ) NE 'DOWN' THEN return
 
   Widget_Control, event.top, get_UValue=info
-  Widget_Control, (*info).tlb, get_UValue=self
+  Widget_Control, (*info).pvbase, get_UValue=self
   Wset, (*info).Wid
   xsize = (*info).xsize
   ysize = (*info).ysize
@@ -368,7 +345,7 @@ END
 ;                 suitable for a Widget_List
 ;-----------------------------------------------------
 
-FUNCTION Pv_Config_MakeDataFileList, pv_object
+FUNCTION Pv_Config_MakeDataFileList, pv_object, starttimelist, endtimelist
 
   t1 = systime(1)
   
@@ -379,6 +356,8 @@ FUNCTION Pv_Config_MakeDataFileList, pv_object
     ii = 0
     IF nFiles GT 0 THEN BEGIN 
       filelist = strarr(nFiles)
+      starttimelist = filelist
+      endtimelist = filelist
 
       ;junk =  DataList-> GetHead()
       ;CurrentDataPtr = DataList->GetCurrentDataPtr()
@@ -386,9 +365,13 @@ FUNCTION Pv_Config_MakeDataFileList, pv_object
       WHILE ptr_valid( CurrentDataPtr ) DO BEGIN 
         t2 = systime(1)
         *CurrentDataPtr->Get,Data = Q2b
-        s = q2b-> Get(filename=filename)
+        s = q2b-> Get(filename=filename, $
+                      StartTime=starttime, $
+                      endtime=endtime )
 ;        print,'Time to get filename: ', systime(1)-t2
         filelist[ii] = filename
+        starttimelist[ii] = starttime
+        endtimelist[ii] = endtime
         ;s = DataList-> GetNext()
         ;CurrentDataPtr =  DataList-> GetCurrentDataPtr()
         CurrentDataPtr = DataList-> GetNext()
@@ -397,11 +380,18 @@ FUNCTION Pv_Config_MakeDataFileList, pv_object
 
         ; Reset 'Current' Pointer to 'head'
       junk =  DataList-> GetHead()
-    ENDIF ELSE filelist = '<No Data Files>'
+    ENDIF ELSE BEGIN 
+      filelist = '<No Data Files>'
+      startimelist = filelist
+      endtimelist = filelist
+    ENDELSE 
 
   ENDIF ELSE BEGIN 
-    Message,"Usage: datafilelist=Pv_Config_MakeDataFileList(pv_object)"
+    Message,$
+     "Usage: datafilelist=Pv_Config_MakeDataFileList(pv_object [,startimes, endtimes])",/cont
     filelist = ''
+    startimelist = filelist
+    endtimelist = filelist
   ENDELSE 
 ;   print,'Time to create Data File list ',systime(1)-t1
   return, filelist
@@ -424,7 +414,7 @@ END
 
 PRO Pv_Config_PrevDims_Events, event
    Widget_Control, event.top, Get_UValue=info
-   Widget_Control, (*info).tlb,Get_Uvalue=self
+   Widget_Control, (*info).pvbase,Get_Uvalue=self
    self-> Get,DimsList = DimsList
    nDims = DimsList-> GetCount()
    index = nDims-event.index
@@ -444,11 +434,11 @@ END
 FUNCTION AmbigSelectBgroup_Events, event
   retevent = 0
   Widget_Control, event.top, Get_Uvalue=info
-  Widget_Control, (*info).tlb, Get_UValue=self
+  Widget_Control, (*info).pvbase, Get_UValue=self
   (*info).redraw = 1
   self-> Set, Ambiguities = event.value
   (*info).AmbigArray = event.value
-  Widget_Control, (*info).tlb, Get_UValue=self  
+  Widget_Control, (*info).pvbase, Get_UValue=self  
   Widget_Control, event.top, Set_Uvalue=info
   return,retevent
 END
@@ -472,7 +462,7 @@ FUNCTION ConfigChoiceBgroup_Events, event
     'Map Dimensions'                     : map_array = [1,0,0,0,0]
     'Vector Configuration'               : BEGIN 
         ; Update the MinMax Speed Widgets
-      Widget_Control, (*info).tlb, Get_UValue=self
+      Widget_Control, (*info).pvbase, Get_UValue=self
       self-> Get, MinMaxSpeed = MinMaxSpeed
       Widget_Control, (*info).CurrentSpeedMinId, $
         Set_Value=string( MinMaxSpeed[0], form='(f7.2)')
@@ -562,10 +552,10 @@ PRO PV_CONFIG_Events, Event
 
   WIDGET_CONTROL,Event.Id,GET_UVALUE=Descript
   Widget_Control, Event.top, Get_UValue=info
-  Widget_Control, (*info).tlb, Get_UValue=self
+  Widget_Control, (*info).pvbase, Get_UValue=self
 
   IF Descript EQ 'CANCEL' THEN BEGIN 
-    Widget_control, (*info).tlb, set_Uvalue=self
+    Widget_control, (*info).pvbase, set_Uvalue=self
     Widget_Control, event.top,/destroy
     return 
   ENDIF 
@@ -640,6 +630,9 @@ PRO PV_CONFIG_Events, Event
 ;       (*info).Redraw = 1
 ;      Print, 'Event for DATAFILESLIST'
 ;    END
+    'WHICHTOPLOT': BEGIN 
+      pv_config_whichtoplot, (*info).tlb
+    END 
     'DELETEDATAENTRY': BEGIN
       selected = Widget_Info( (*info).DataListId , /LIST_SELECT )
       IF selected[0] NE -1 THEN BEGIN 
@@ -651,7 +644,7 @@ PRO PV_CONFIG_Events, Event
             DataPtr = DataList-> GoToNode( selected[s]+1 ) ; Nodes are '1' indexed
             IF Ptr_Valid( DataPtr ) THEN DataList-> DeleteCurrent
           ENDFOR 
-          filelist = Pv_Config_MakeDataFileList( self )
+          filelist = Pv_Config_MakeDataFileList( self, starttimes, endtimes )
           Widget_Control, (*info).DataListId, Set_Value=filelist
           (*info).Redraw = 1
         ENDIF 
@@ -667,7 +660,9 @@ PRO PV_CONFIG_Events, Event
        Obj_Destroy, DataList
        DataList = Obj_New('linkedlist' )
        self-> Set, DataList = DataList
-       Widget_Control, (*info).DataListId, Set_Value='<No Data Files>'
+       Widget_Control, (*info).DataListId, $
+         Set_Value='<No Data Files>'
+       ;filelist = pv_config_MakeDataList(self,startlist,endlist)
        (*info).Redraw = 1
      ENDIF 
     END
@@ -864,7 +859,7 @@ PRO PV_CONFIG_Events, Event
 
   ENDCASE
   redraw = (*info).redraw
-  tlb = (*info).tlb
+  pvbase = (*info).pvbase
 ;  print,' About to redraw'
 
   IF Descript EQ 'DISMISS' THEN BEGIN 
@@ -876,7 +871,7 @@ PRO PV_CONFIG_Events, Event
     self->Draw                  ; if necessary, Redraw.
   ENDIF 
   IF Ptr_Valid(info) THEN (*info).redraw = 0
-  Widget_Control, tlb, Set_Uvalue=self
+  Widget_Control, pvbase, Set_Uvalue=self
   Widget_Control, event.top, Set_Uvalue=info, bad_id=bad
 
 END
@@ -989,7 +984,7 @@ PRO pv_config, GROUP=Group
   LonMaxId = CW_FSLIDER( BASE58, $
       DRAG=1, $
       MAXIMUM=359.999, $
-      MINIMUM=0.00000, $
+      MINIMUM=-180.0, $
       TITLE='Max', $
       UVALUE='LONMAX', $
       /EDIT, $
@@ -1264,7 +1259,7 @@ PRO pv_config, GROUP=Group
       VALUE='Prune Data List')
 
     ;Make List of Data Files for Widget_List .
-  filelist = pv_Config_MakeDataFileList( self )
+  filelist = pv_Config_MakeDataFileList( self, starttimes, endtimes )
 
 ; idl 5.1
 ;  DataListId = WIDGET_LIST( PruneDataId,VALUE=FileList, $
@@ -1275,6 +1270,10 @@ PRO pv_config, GROUP=Group
   DataListId = WIDGET_LIST( PruneDataId,VALUE=FileList, $
       UVALUE='DATALIST', $
       YSIZE=3)
+
+;  WhichToPlotId =  Widget_button( PruneDatatId, $
+;                                  Value='Plot Which?',$
+;                                  Uvalue=WHICHTOPLOT')
 
   DeleteDataEntryId = Widget_Button( PruneDataId, $
                                      Value='Delete This Entry',$
@@ -1381,6 +1380,7 @@ PRO pv_config, GROUP=Group
 
 
                     DataListIndex     : Ptr_New() ,$ ; array of indices.   
+;                    WhichToPlotId     : WhichToPlotId, $
                     DeleteDataEntryId : DeleteDataEntryId, $               
                     ClearListId       : ClearListId,$                      
                     AmbigId           : AmbigId ,$                         
@@ -1399,7 +1399,8 @@ PRO pv_config, GROUP=Group
                     XtitleId          : XtitleId,$
                     YTitleId          : YTitleId,$
                     SubTitleId        : SubTitleId,$
-                    tlb               : Group } )            
+                    pvbase            : group, $
+                    tlb               : tlb } )            
                     
 
 
