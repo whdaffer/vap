@@ -34,6 +34,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  1999/06/17 19:59:35  vapuser
+; Now able to do vectors.
+;
 ; Revision 1.1  1999/06/17 19:14:36  vapuser
 ; Initial revision
 ;
@@ -50,7 +53,6 @@ FUNCTION isanumber, field,verbose=verbose
   ; 3-Dec-1997
   ; Calls Call_external routine 'isanumber'
 
-  on_error,0
   IF NOT isa(field,/string,/nonempty) THEN BEGIN 
     message,'Input parameter must be of type STRING',/cont
     return,0
@@ -71,11 +73,16 @@ FUNCTION isanumber, field,verbose=verbose
         message,' field contains illegal alphanumerics: ' + field[f],/cont
       result[f] = 0
     ENDIF ELSE BEGIN 
-      home = GETENV('HOME')
-      env = GetENV('IDL_RELEASE_ENV')
-      linkimage_file = home + '/idl/'+ env + '/linkimage/isanumber.so'
-      result[f] =  call_external( linkimage_file,'isanumber',field[f])
+      ;home = GETENV('HOME')
+      ;env = GetENV('IDL_RELEASE_ENV')
+      ;linkimage_file = home + '/idl/'+ env + '/linkimage/isanumber.so'
+                                ;result[f] =  call_external(
+                                ;linkimage_file,'isanumber',field[f])
+      t = byte(field[f])
+      x = where(t LT byte('0') OR t GT byte('9'), nx )
+      result[f] =  nx EQ 0
     ENDELSE 
+
   ENDFOR 
 RETURN, result
 END
