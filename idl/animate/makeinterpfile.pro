@@ -183,6 +183,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.8  1999/09/21 15:18:59  vapuser
+; Change over to new succor.so. 3 vector rainf/ermax.
+;
 ; Revision 1.6  1998/11/25 22:40:56  vapuser
 ; Changed Ofile to Outfile
 ;
@@ -290,6 +293,11 @@ FUNCTION MakeInterpFile, date_time, $            ;((yy)yy/mm/dd/hh End time
 
   IF n_elements(rainf) eq 0 THEN rainf = [12., 6,   2. ] 
   IF N_Elements(ermax) eq 0 THEN ermax = [50., 50,  50]
+
+  IF N_elements(rainf) NE n_Elements(ermax) THEN BEGIN 
+    Message,"Rainf and Ermax must have same num elements!",/cont
+    return,0
+  ENDIF 
 
   IF n_elements(u) eq 0 OR $
      n_elements(v) eq 0 OR $
