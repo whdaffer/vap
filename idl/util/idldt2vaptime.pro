@@ -58,6 +58,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/05 21:30:43  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -77,7 +80,7 @@ FUNCTION idldt2vaptime, idldt
 
   IF VarType( idldt ) eq 'STRUCTURE' THEN BEGIN 
 
-    IF Tag_Names( idldt, /STRUCTURE_NAME ) EQ 'IDLDT') THEN BEGIN 
+    IF Tag_Names( idldt, /STRUCTURE_NAME ) EQ 'IDLDT' THEN BEGIN 
 
       retarray = strarr(nn)
       FOR i=0,nn-1 DO BEGIN 
@@ -88,29 +91,29 @@ FUNCTION idldt2vaptime, idldt
         minute = fix( idldt[i].minute )
 
         IF month LT 10 THEN $
-          month = "0"+strtrim(month,2) $
+          month = '0'+strtrim(month,2) $
         ELSE $
           month=strtrim(month,2)
 
         IF day LT 10 THEN $
-          day = "0"+strtrim(day,2) $
+          day = '0'+strtrim(day,2) $
         ELSE $
           day=strtrim(day,2)
 
         IF hour LT 10 THEN $
-          hour = "0"+strtrim(hour,2) $
+          hour = '0'+strtrim(hour,2) $
         ELSE $
           hour=strtrim(hour,2)
 
         IF minute LT 10 THEN $
-          minute = "0"+strtrim(minute,2) $
+          minute = '0'+strtrim(minute,2) $
         ELSE $
           minute=strtrim(minute,2)
 
-        retarray[i] =  year + "/" + $
-                        month + "/" + $
-                         day + "/" + $
-                          hour + "/" + $
+        retarray[i] =  year + '/' + $
+                        month + '/' + $
+                         day + '/' + $
+                          hour + '/' + $
                            minute
 
       ENDFOR 
