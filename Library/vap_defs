@@ -1,0 +1,12 @@
+# $Id$
+# Generic Defaults for Vap Processing.
+# Currently, the only defaults in this file is where to send error messages.
+#
+# Modification History
+#
+# $Log$
+#
+#
+
+%vap_defs=( Error_Mail_Address =>
+	   ["vapuser@catspaw.jpl.nasa.gov","whdaffer@earthlink.net"] );
