@@ -290,6 +290,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.19  2001/12/08 00:02:36  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.18  2001/02/21 01:03:33  vapuser
 ; Took out 'path=' in call to read_cfgfile
 ;
@@ -631,7 +634,6 @@ PRO goes_overlay, goesfile, $
                   PadAndJustify(GoesFilenameStruct.year, 4, /right ) + $
                   PadAndJustify(GoesFilenameStruct.mm, 2, /right ) + $
                   PadAndJustify(GoesFilenameStruct.dd, 2, /right ) + $
-                  'T' + $
                   PadAndJustify(GoesFilenameStruct.hh, 2, /right ) + $
                   PadAndJustify(GoesFilenameStruct.mm, 2, /right ), /remove_all)
 
@@ -656,7 +658,7 @@ PRO goes_overlay, goesfile, $
       hh = (hdr.hhmm)/100
       mm = hdr.hhmm-hh*100
 
-      goes_date = strcompress(year + date[0] + date[1]+ 'T' + $
+      goes_date = strcompress(year + date[0] + date[1] + $
                   PadAndJustify(hh, 2, /right ) + $
                   PadAndJustify(mm, 2, /right ),/remove_all)
 
@@ -899,9 +901,9 @@ PRO goes_overlay, goesfile, $
   IF n_Elements(outfile) EQ 0 THEN BEGIN 
 
     t = long([lonrange[0],limits[1],lonrange[1],limits[3]])
-    lim_str =  '%'+ strcompress(StrJoin(t,','),/remove_all) +  '%'
+    lim_str =  strcompress(StrJoin(t,','),/remove_all)
 
-    ofileroot =  ofile_tmplt + lim_str
+    ofileroot =  ofile_tmplt + '_' + lim_str
 
     CASE 1 OF 
       gif : ext = '.gif'

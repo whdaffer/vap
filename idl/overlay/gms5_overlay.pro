@@ -308,6 +308,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.23  2001/12/08 00:02:36  vapdev
+; Getting rid of obsolete RSI routines and fixing ENV vars
+;
 ; Revision 1.22  2001/02/21 01:03:49  vapuser
 ; Took out 'path=' in call to read_cfgfile
 ;
@@ -820,8 +823,8 @@ PRO gms5_overlay, datetime, gmsType, $
       time_string = $
         datetime_str.year + $
           datetime_str.month + $
-           datetime_str.day + "T" + $
-            datetime_str.hour+':'+ $
+           datetime_str.day + $
+            datetime_str.hour + $
               datetime_str.min
     ENDELSE 
   ENDIF ELSE time_string =  "No_Cloud_Data"
@@ -829,17 +832,17 @@ PRO gms5_overlay, datetime, gmsType, $
 
   IF n_Elements(outfile) EQ 0 THEN BEGIN 
 
-    lim_str =  "%" + $
-       PadAndJustify(lonlim[0],4,pad='0',/right) + ','+$
-        PadAndJustify(latlim[0],3,pad='0',/right) + ','+$
-         PadAndJustify(lonlim[1],4,pad='0',/right) + ','+$
-          PadAndJustify(latlim[1],3,pad='0',/right) + "%"
+    lim_str = $
+     PadAndJustify(lonlim[0],4,pad='0',/right) + ','+$
+     PadAndJustify(latlim[0],3,pad='0',/right) + ','+$
+     PadAndJustify(lonlim[1],4,pad='0',/right) + ','+$
+     PadAndJustify(latlim[1],3,pad='0',/right) 
     dlm =  '_'
 
 
     ofileroot = 'GMS5' +  dlm + $
-     gmsType + '_' + time_string + $
-       '-' + lim_str
+     gmsType + dlm + $
+     time_string + dlm + lim_str
 
     CASE 1 OF 
       gif:  OutputFilename = ofileroot+'.gif'
