@@ -1,5 +1,6 @@
 ;+
 ; NAME:  Qmodel__define
+; $Id$
 ; PURPOSE:  Define an object of type QModel
 ;
 ;
@@ -66,6 +67,9 @@
 ;
 ; MODIFICATION HISTORY:
 ; $Log$
+; Revision 1.1  1998/10/01 17:50:57  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1998, California Institute of Technology
@@ -250,7 +254,8 @@ FUNCTION Qmodel::Version
 
    rcsid = "$Id$"
    versions = Q2b::Version()
-   return, [rcsid, versions]
+   versions = [rcsid, versions]
+   return, versions(uniq(versions,sort(versions)))
 
 END
 
