@@ -36,6 +36,9 @@
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.1  1999/04/07 16:14:14  vapuser
+; Initial revision
+;
 ;
 ;Jet Propulsion Laboratory
 ;Copyright (c) 1999, California Institute of Technology
@@ -103,7 +106,7 @@ FUNCTION CodeA2idldt, codea, check=check
   min   = strmid( codea, 14, 2 )
   sec   = strmid( codea, 17, 2 )
   ccc   = strmid( codea, 21, 3 )
-  returndt =  Var_To_dt( year, month, day, hour, minute, second)
+  returndt =  Var_To_dt( year, month, day, hour, min, sec)
 
 ;  FOR i=0,nn-1 DO BEGIN 
 ;    year = fix(tmp1[0])
