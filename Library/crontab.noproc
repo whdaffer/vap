@@ -1,0 +1,7 @@
+#04 13 * * * (/usr/people/vapdev/scr/test;) > /tmp/test.out.cron ;
+0  0  * * * (. $HOME/.profile; find $VAP_OPS_TOP/goes -name "AREA*" -mtime +2 -exec rm -f {} \; )
+0  2  * * * (. $HOME/.profile; find $VAP_OPS_TOP/goes/gridded_files -name "GOES*.dat.gz" -mtime +10 -exec rm -f {} \; )
+0  3  * * * (. $HOME/.profile; find $VAP_OPS_TOP/goes/gridded_files -name "GOES*.dat" -mtime +3 -exec gzip {} \; )
+#
+#
+#
