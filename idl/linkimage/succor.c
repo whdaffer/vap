@@ -32,6 +32,9 @@ void succor( int argc, IDL_VPTR argv[], char * argk )
  *            input guess field, or the current guess field, if 
  *            not the initial iteration, is dropped.
  * $Log$
+ * Revision 1.3  1999/09/21 18:32:34  vapuser
+ * changed succor2 to succor
+ *
  * Revision 1.2  1999/09/21 18:31:30  vapuser
  * Rewrote to handle variable rainf/ermax.
  *
@@ -56,7 +59,7 @@ void succor( int argc, IDL_VPTR argv[], char * argk )
   int i,j, k, lev=1, sp=32767, l, m, l1,m1, lmax=720, mmax = 290, 
     nvect, nvesc=1, nreps;
   long *nr;
-  extern void objanl_();
+  extern void objanl2_();
 
   if ( argc < 10 ) {
     IDL_Message( IDL_M_GENERIC, IDL_MSG_LONGJMP | IDL_MSG_ATTR_SYS,"usage: succor, lon, lat, u, v, ui, vi, lonpar, latpar, ermax, rainf" );
@@ -303,7 +306,7 @@ void succor( int argc, IDL_VPTR argv[], char * argk )
     */
 #endif
 
-    (void) objanl_( &sp, rinfo, uid, vid, &l, &m, 
+    (void) objanl2_( &sp, rinfo, uid, vid, &l, &m, 
 		    &nvect, &nreps, &time, sumx, sumy, 
 		    a, store, &latmin, &lonmin, 
 		    &latinc, &loninc, &nvesc, 
