@@ -15,6 +15,9 @@
  * Modification Log
  *
  * $Log$
+ * Revision 1.1  2002/08/21 18:28:54  vapdev
+ * initial revision
+ *
  *
  * Usage: status=objanl(sp,rinfo,ug,vg,l,m,nvect,nreps,time,
  *                      sumx,sumy,a,store,latpar,lonpar,nvesc,trainf,
@@ -53,4 +56,142 @@
  *
  */
 
-int objanl(
+int objanl(float *u, 
+           float *v, 
+           float *lon, 
+           float *lat,
+           float *time, 
+           long  *nvec,
+           float *lonpar, 
+           float *latpar, 
+           float *rainf,
+           float *ermax,
+           float *ug,
+           float *vg,
+           float rainfT, 
+           long  npasses) {
+
+    long nlon,nlat,loninc, latinc;
+    float lon0,lon1,lat0,lat1;
+    float r,r2,dist,dist2,xdist,ydist,alpha;
+    float denom[3] = {0.25, -0.5, 1};
+    float gamma[9] = {1,1,1,1,1,1,1,1,1};
+    float *udev, *vdev, *sumx, *sumy, *a;
+    long *num;
+    float a1,a2,a3;
+
+    long i,j,k,ii,jj,kk,i1,i2,j1,j2,ii1,ii2,jj1,jj2,pass,vec;
+    
+    /* Find dimensions, create work arrays */
+
+    lon0=*lonpar;
+    lon1=(*lonpar+1);
+    loninc=*lonpar+2;
+    lat0=*latpar;
+    lat1=(*latpar+1);
+    latinc=*latpar+2;
+    nlon = (lon1-lon0)/loninc+1;
+    nlat = (lat1-lat0)/latinc+1;
+
+    
+    if (objanl_allocmem(nlon,nlat,nvec,
+                        udev,vdev,sumx,sumy,a,num,flag)==0){
+        printf (" objanl_allocmem failure!\n");
+        return (0);
+    }
+
+    /* initialize flag to 1
+    /* Go through the data and mark all those points that fall within
+       the grid for the first Radius of influence (rainf) */
+        dout= (*rainf)*loninc;
+
+    for (vec=0;vec<nvec;vec++){
+        *flag+vec = 1;
+        
+            
+    }
+    
+
+        
+
+
+    /* Wrap up, deallocate memory */
+}
+
+int objanl_allocmam(long nlon,
+                    long nlat,
+                    long nvec, 
+                    float *udev,
+                    float *vdev, 
+                    float *sumx, 
+                    float *sumy,
+                    float *a, 
+                    float *num, 
+                    char *flag)
+{
+#ifdef IDL_DLM
+#else
+    udev=(float *) calloc( (size_t) (nlon*nlat),   (size_t) (float));
+    if (udev==NULL) {
+        printf("objanl : Error allocating udev\n");
+        return (0);
+    }
+    
+    vdev=(float *) calloc( (size_t) (nlon*nlat),   (size_t) (float));
+    if (vdev==NULL) {
+        printf("objanl : Error allocating vdev\n");
+        free(udev);
+        return (0);
+    }
+    
+    sumx=(float *) calloc( (size_t) (nlon*nlat),   (size_t) (float));
+    if (sumx==NULL) {
+        printf("objanl : Error allocating sumx\n");
+        free(udev);
+        free(vdev);
+        return (0);
+    }
+    
+    sumy=(float *) calloc( (size_t) (nlon*nlat),   (size_t) (float));
+    if (sumy==NULL) {
+        printf("objanl : Error allocating sumy\n");
+        free(udev);
+        free(vdev);
+        free(sumx);
+        return (0);
+    }
+    
+    a   =(float *) calloc( (size_t) (nlon*nlat*3), (size_t) (float));
+    if (a==NULL) {
+        printf("objanl : Error allocating a\n");
+        free(udev);
+        free(vdev);
+        free(sumx);
+        free(sumy);
+        return (0);
+    }
+    
+    num =(long  *) calloc( (size_t) (nlon*nlat),   (size_t) (long));
+    if (num==NULL) {
+        printf("objanl : Error allocating num\n");
+        free(udev);
+        free(vdev);
+        free(sumx);
+        free(sumy);
+        free(a);
+        return (0);
+    }
+    flag=(char *) calloc( (size_t) (nvec), (size_t) (char));
+    if (flag==NULL) {
+        printf("objanl : Error allocating flag\n");
+        free(udev);
+        free(vdev);
+        free(sumx);
+        free(sumy);
+        free(a);
+        return (0);
+    }
+    return(1)
+#endif 
+}
+                    
