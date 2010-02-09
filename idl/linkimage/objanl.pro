@@ -61,7 +61,47 @@ FUNCTION objanl,u,v,lon,lat,lonpar,latpar,rainf,ermax,ug,vg,$
    nlat = (lat1-lat0)/latinc+1
 
    ;; output array
-   ug = (vg = fltarr(nlon,nlat))
+   IF n_elements(ug) EQ 0 THEN BEGIN 
+     num = (ug = fltarr(nlon,nlat))
+     one = replicate(1,nlon,nlat)
+     loni = (long(lon-lon0)/loninc) MOD 360
+     lati = long(lat-lat0)/latinc
+     
+     ug[loni,lati] +=  u[loni,lati]
+     num[loni,lati] +=  1
+     ug /= (num> 1)
+     xx = where(num EQ 0,nxx)
+     IF nxx NE 0 THEN ug[xx] =  mean(u)
+   ENDIF ELSE BEGIN 
+     dim = size(ug,/dim)
+     IF dim[0] NE nlon || dim[1] NE nlat THEN BEGIN 
+       print,'Input UG array dimensions = ',dim
+       print,'Required dimensions = ',nlon,nlat
+       Message,'Dimension mismatch for input UG array'
+     ENDIF 
+   ENDELSE 
+
+   IF n_elements(vg) EQ 0 THEN BEGIN 
+     num = (vg = fltarr(nlon,nlat))
+     one = replicate(1,nlon,nlat)
+     loni = (long(lon-lon0)/loninc) MOD 360
+     lati = long(lat-lat0)/latinc
+     vg[*] =  mean(v)
+     vg[loni,lati] +=  v[loni,lati]
+     num[loni,lati] +=  1
+     vg /= (num> 1)
+     xx = where(num EQ 0,nxx)
+     IF nxx NE 0 THEN vg[xx] =  mean(v)
+
+   ENDIF ELSE BEGIN 
+     dim = size(vg,/dim)
+     IF dim[0] NE nlon || dim[1] NE nlat THEN BEGIN 
+       print,'Input VG array dimensions = ',dim
+       print,'Required dimensions = ',nlon,nlat
+       Message,'Dimension mismatch for input VG array'
+     ENDIF 
+   ENDELSE 
+
    glon = findgen(nlon)*loninc+lon0
    glat = findgen(nlat)*latinc+lat0
 
@@ -102,6 +142,7 @@ FUNCTION objanl,u,v,lon,lat,lonpar,latpar,rainf,ermax,ug,vg,$
    
    npasses=N_ELEMENTS(rainf) 
    FOR  p=0,npasses-1 DO BEGIN
+     t0 = systime(1)
      r=rainf[p]
      r2=r^2
      cgmax =  0.6*r
@@ -219,6 +260,7 @@ FUNCTION objanl,u,v,lon,lat,lonpar,latpar,rainf,ermax,ug,vg,$
      ug +=  a[*,0]*p1byp2/a[*,2]
      vg +=  a[*,1]*p1byp2/a[*,2]
 
+     print,'Time to do pass ',p, systime(1)-t0, ' seconds'
    ENDFOR ;; Loop over Radii of Influence (rainf[p])
    return,1
  END
@@ -243,6 +285,9 @@ FUNCTION objanl,u,v,lon,lat,lonpar,latpar,rainf,ermax,ug,vg,$
 ; MODIFICATION HISTORY:
 ;
 ; $Log$
+; Revision 1.2  2010/01/21 18:06:42  whdaffer
+; continuing work
+;
 ; Revision 1.1  2010/01/19 23:00:23  whdaffer
 ; stuff
 ;
